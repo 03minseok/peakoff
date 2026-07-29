@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import com.peakoff.congestion.domain.CongestionLevel;
 import com.peakoff.congestion.domain.CongestionProvider;
 import com.peakoff.global.config.DataSourceProfiles;
 import com.peakoff.global.support.Scores;
@@ -44,10 +45,6 @@ public class MockRecommendationProvider implements RecommendationProvider {
 
 	/** 1km 멀어질 때마다 깎는 점수. 20km를 넘으면 근접도 점수는 0이 된다. */
 	private static final double PENALTY_PER_KM = 5.0;
-
-	/** 혼잡 문구 임계값. 화면 표현용 임시 기준이며 분석 결과로 대체해야 한다. */
-	private static final int QUIET_THRESHOLD = 70;
-	private static final int MODERATE_THRESHOLD = 40;
 
 	private final CongestionProvider congestionProvider;
 
@@ -104,16 +101,7 @@ public class MockRecommendationProvider implements RecommendationProvider {
 
 	/** 예: "불국사 방문객이 함께 많이 찾는 곳 · 예상 혼잡 낮음" */
 	private static String reasonFor(Place origin, int quietness) {
-		return "%s 방문객이 함께 많이 찾는 곳 · %s".formatted(origin.name(), congestionPhrase(quietness));
-	}
-
-	private static String congestionPhrase(int quietness) {
-		if (quietness >= QUIET_THRESHOLD) {
-			return "예상 혼잡 낮음";
-		}
-		if (quietness >= MODERATE_THRESHOLD) {
-			return "예상 혼잡 보통";
-		}
-		return "예상 혼잡 다소 높음";
+		String phrase = CongestionLevel.fromQuietness(quietness).congestionPhrase();
+		return "%s 방문객이 함께 많이 찾는 곳 · %s".formatted(origin.name(), phrase);
 	}
 }

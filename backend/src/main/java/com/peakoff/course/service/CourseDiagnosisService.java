@@ -1,0 +1,89 @@
+package com.peakoff.course.service;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.peakoff.congestion.domain.CongestionProvider;
+import com.peakoff.course.domain.Course;
+import com.peakoff.course.domain.CourseSlot;
+import com.peakoff.course.dto.CourseDiagnosisRequest;
+import com.peakoff.course.dto.CourseDiagnosisResponse;
+import com.peakoff.global.error.NotFoundException;
+import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.SupportedRegion;
+import com.peakoff.place.service.PlaceService;
+
+/**
+ * 사용자가 짠 코스를 받아 각 슬롯의 한적도와 코스 총점을 매긴다.
+ *
+ * <p>서비스가 개입하는 첫 지점이다. 코스를 짜는 동안에는 아무 점수도 끼어들지 않는다.
+ */
+@Service
+public class CourseDiagnosisService {
+
+	private static final int MAX_SLOTS = 50;
+
+	private final PlaceService placeService;
+	private final CongestionProvider congestionProvider;
+
+	public CourseDiagnosisService(PlaceService placeService, CongestionProvider congestionProvider) {
+		this.placeService = placeService;
+		this.congestionProvider = congestionProvider;
+	}
+
+	public CourseDiagnosisResponse diagnose(CourseDiagnosisRequest request) {
+		validate(request);
+
+		SupportedRegion region = SupportedRegion.fromSlug(request.region());
+		List<CourseSlot> slots = request.slots().stream()
+				.map(slot -> diagnoseSlot(slot, request.startDate()))
+				.toList();
+
+		// Course 생성자가 일차 범위·점수 범위를 다시 검증한다. 여기서 틀리면 400으로 나간다.
+		Course course = new Course(
+				region.toRegion(), request.startDate(), request.nights(), slots, averageQuietness(slots));
+
+		return CourseDiagnosisResponse.from(course, region.slug());
+	}
+
+	private CourseSlot diagnoseSlot(CourseDiagnosisRequest.SlotRequest slotRequest, LocalDate startDate) {
+		Place place = placeService.getById(slotRequest.placeId());
+
+		// 2일차 슬롯은 시작일 다음 날 기준으로 본다. 날짜가 다르면 같은 장소라도 한적도가 다르다.
+		LocalDate visitDate = startDate.plusDays(slotRequest.day() - 1L);
+
+		if (!congestionProvider.hasData(place.id())) {
+			throw new NotFoundException("혼잡 예측 데이터가 없는 장소입니다: " + place.name());
+		}
+		int quietness = congestionProvider.quietnessOf(place.id(), visitDate);
+
+		return new CourseSlot(slotRequest.day(), slotRequest.order(), place, quietness);
+	}
+
+	/**
+	 * 코스 총점 = 슬롯 한적도의 평균.
+	 *
+	 * <p><b>임시 규칙이다.</b> 체류 시간이 긴 장소에 가중치를 주는 등의 보정은
+	 * 분석 검증 후 정해야 한다. 지금은 "원안 대비 개선폭"을 비교할 기준만 있으면 된다.
+	 */
+	private static int averageQuietness(List<CourseSlot> slots) {
+		return (int) Math.round(slots.stream().mapToInt(CourseSlot::quietness).average().orElseThrow());
+	}
+
+	private static void validate(CourseDiagnosisRequest request) {
+		if (request == null) {
+			throw new IllegalArgumentException("요청 본문이 필요합니다.");
+		}
+		if (request.startDate() == null) {
+			throw new IllegalArgumentException("여행 시작일이 필요합니다.");
+		}
+		if (request.slots() == null || request.slots().isEmpty()) {
+			throw new IllegalArgumentException("코스에 장소가 하나 이상 있어야 진단할 수 있습니다.");
+		}
+		if (request.slots().size() > MAX_SLOTS) {
+			throw new IllegalArgumentException("한 번에 진단할 수 있는 장소는 %d곳까지입니다.".formatted(MAX_SLOTS));
+		}
+	}
+}

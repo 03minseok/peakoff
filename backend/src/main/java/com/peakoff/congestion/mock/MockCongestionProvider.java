@@ -24,9 +24,16 @@ import com.peakoff.place.mock.GyeongjuMockCatalog;
 @Profile(DataSourceProfiles.MOCK)
 public class MockCongestionProvider implements CongestionProvider {
 
-	private static final int WEEKEND_PENALTY = -15;
-	private static final int FRIDAY_PENALTY = -5;
-	private static final int WEEKDAY_BONUS = 5;
+	/**
+	 * 요일 보정은 <b>뺄셈이 아니라 곱셈</b>이다.
+	 *
+	 * <p>뺄셈으로 하면 기준 한적도가 낮은 곳들이 0에서 뭉개진다.
+	 * 예를 들어 15점(불국사)과 12점(황리단길)에서 15를 빼면 둘 다 0이 되어,
+	 * 화면에서 어디가 더 붐비는지 구분할 수 없게 된다. 곱셈은 순위를 보존한다.
+	 */
+	private static final double WEEKEND_FACTOR = 0.80;
+	private static final double FRIDAY_FACTOR = 0.92;
+	private static final double WEEKDAY_FACTOR = 1.08;
 
 	@Override
 	public int quietnessOf(String placeId, LocalDate date) {
@@ -34,8 +41,8 @@ public class MockCongestionProvider implements CongestionProvider {
 		if (entry == null) {
 			throw new IllegalArgumentException("예측 데이터가 없는 장소입니다. placeId=" + placeId);
 		}
-		int adjusted = entry.baseQuietness() + adjustmentFor(date.getDayOfWeek());
-		return Math.clamp(adjusted, Scores.MIN, Scores.MAX);
+		double adjusted = entry.baseQuietness() * factorFor(date.getDayOfWeek());
+		return (int) Math.round(Math.clamp(adjusted, Scores.MIN, Scores.MAX));
 	}
 
 	@Override
@@ -43,11 +50,11 @@ public class MockCongestionProvider implements CongestionProvider {
 		return GyeongjuMockCatalog.findById(placeId) != null;
 	}
 
-	private static int adjustmentFor(DayOfWeek dayOfWeek) {
+	private static double factorFor(DayOfWeek dayOfWeek) {
 		return switch (dayOfWeek) {
-			case SATURDAY, SUNDAY -> WEEKEND_PENALTY;
-			case FRIDAY -> FRIDAY_PENALTY;
-			default -> WEEKDAY_BONUS;
+			case SATURDAY, SUNDAY -> WEEKEND_FACTOR;
+			case FRIDAY -> FRIDAY_FACTOR;
+			default -> WEEKDAY_FACTOR;
 		};
 	}
 }
