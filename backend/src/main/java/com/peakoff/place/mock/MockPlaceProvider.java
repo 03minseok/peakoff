@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import com.peakoff.global.config.DataSourceProfiles;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.Region;
@@ -17,7 +18,7 @@ import com.peakoff.place.domain.Region;
  * 호출하는 쪽 코드는 한 줄도 고치지 않는다.
  */
 @Component
-@Profile("mock")
+@Profile(DataSourceProfiles.MOCK)
 public class MockPlaceProvider implements PlaceProvider {
 
 	@Override
