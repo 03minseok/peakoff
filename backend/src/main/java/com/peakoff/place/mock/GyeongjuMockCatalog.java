@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceCategory;
 import com.peakoff.place.domain.Region;
+import com.peakoff.place.domain.SupportedRegion;
 
 /**
  * 경주 목업 데이터. <b>공공데이터 API 연동 전까지만 쓰는 임시 데이터다.</b>
@@ -23,8 +24,8 @@ import com.peakoff.place.domain.Region;
  */
 public final class GyeongjuMockCatalog {
 
-	/** 경상북도 경주시 법정동 코드. 연동 시 실제 값으로 검증 필요. */
-	public static final Region GYEONGJU = new Region("4713000000", "경상북도 경주시");
+	/** 지원 지역 정의는 {@link SupportedRegion} 한 곳에만 둔다. 코드를 두 번 적으면 언젠가 어긋난다. */
+	public static final Region GYEONGJU = SupportedRegion.GYEONGJU.toRegion();
 
 	static final PlaceCategory TOURIST_SPOT = new PlaceCategory("MOCK-TOURIST", "관광지");
 	static final PlaceCategory RESTAURANT = new PlaceCategory("MOCK-RESTAURANT", "음식점");
