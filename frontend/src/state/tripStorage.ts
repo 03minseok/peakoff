@@ -10,7 +10,7 @@ import type { TripState } from './tripTypes'
  */
 const STORAGE_KEY = 'peakoff.trip'
 
-export const EMPTY_TRIP_STATE: TripState = { plan: null }
+export const EMPTY_TRIP_STATE: TripState = { plan: null, days: [] }
 
 /**
  * 저장된 값이 지금 코드가 기대하는 모양인지 확인한다.
@@ -30,6 +30,13 @@ function isValidPlan(value: unknown): boolean {
   )
 }
 
+function isValidDays(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((day) => Array.isArray(day) && day.every((id) => typeof id === 'string'))
+  )
+}
+
 export function loadTripState(): TripState {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
@@ -37,10 +44,13 @@ export function loadTripState(): TripState {
       return EMPTY_TRIP_STATE
     }
     const parsed = JSON.parse(raw) as Record<string, unknown>
-    if (!isValidPlan(parsed.plan)) {
+    if (!isValidPlan(parsed.plan) || !isValidDays(parsed.days)) {
       return EMPTY_TRIP_STATE
     }
-    return { plan: parsed.plan as TripState['plan'] }
+    return {
+      plan: parsed.plan as TripState['plan'],
+      days: parsed.days as string[][],
+    }
   } catch {
     // 저장소를 못 쓰는 환경(사파리 시크릿 모드 등)에서도 앱은 돌아가야 한다.
     return EMPTY_TRIP_STATE

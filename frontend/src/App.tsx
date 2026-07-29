@@ -6,7 +6,7 @@ import { LoginPage } from './routes/LoginPage'
 import { NotFoundPage } from './routes/NotFoundPage'
 import { PlanPage } from './routes/PlanPage'
 import { PreviewPage } from './routes/PreviewPage'
-import { TripProvider } from './state/TripContext'
+import { TripProvider } from './state/TripProvider'
 
 /**
  * 경로 구성.

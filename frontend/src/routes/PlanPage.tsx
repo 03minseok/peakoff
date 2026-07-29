@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { DEFAULT_REGION, REGIONS } from '../constants/regions'
-import { useTrip } from '../state/TripContext'
+import { useTrip } from '../state/tripContext'
 import { daysFromToday, formatKoreanDate, today } from '../utils/date'
 import './PlanPage.css'
 
