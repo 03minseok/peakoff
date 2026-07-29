@@ -1,0 +1,7 @@
+server:
+  # Vite 프록시(vite.config.ts)가 이 포트를 바라본다. 바꾸면 양쪽 다 수정할 것.
+  port: 8080
+
+spring:
+  application:
+    name: peakoff
