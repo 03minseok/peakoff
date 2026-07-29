@@ -1,0 +1,56 @@
+.layout {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--header-height);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+/*
+ * 헤더 안쪽도 본문과 같은 폭으로 묶는다.
+ * 이렇게 하지 않으면 데스크톱에서 로고만 화면 왼쪽 끝에 붙어 본문과 어긋난다.
+ */
+.layout-header-inner {
+  max-width: var(--container-width);
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.brand {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--brand-strong);
+  text-decoration: none;
+}
+
+.brand-tagline {
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* 태그라인은 아주 좁은 화면에서 로고를 밀어내므로 숨긴다. */
+@media (max-width: 359px) {
+  .brand-tagline {
+    display: none;
+  }
+}
+
+.layout-main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-6);
+}
