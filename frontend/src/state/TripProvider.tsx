@@ -19,6 +19,7 @@ type TripAction =
   | { type: 'ADD_PLACE'; day: number; placeId: string }
   | { type: 'REMOVE_PLACE'; day: number; index: number }
   | { type: 'MOVE_PLACE'; day: number; index: number; direction: -1 | 1 }
+  | { type: 'REPLACE_PLACE'; day: number; index: number; placeId: string }
   | { type: 'RESET' }
 
 /** day는 1부터 시작한다. 배열 인덱스로 바꿔 쓴다. */
@@ -74,6 +75,19 @@ function reducer(state: TripState, action: TripAction): TripState {
       return { ...state, days: replaceDay(state.days, action.day, next) }
     }
 
+    case 'REPLACE_PLACE': {
+      const current = state.days[dayIndex(action.day)] ?? []
+      // 그 날에 이미 있는 곳으로 바꾸면 같은 곳이 두 번 들어간다.
+      // 화면에서 그런 후보를 미리 걸러내지만, 여기서도 막아둔다.
+      if (current.includes(action.placeId)) {
+        return state
+      }
+      const next = current.map((placeId, index) =>
+        index === action.index ? action.placeId : placeId,
+      )
+      return { ...state, days: replaceDay(state.days, action.day, next) }
+    }
+
     case 'RESET':
       return EMPTY_TRIP_STATE
   }
@@ -95,6 +109,8 @@ export function TripProvider({ children }: { children: ReactNode }) {
       removePlace: (day, index) => dispatch({ type: 'REMOVE_PLACE', day, index }),
       movePlace: (day, index, direction) =>
         dispatch({ type: 'MOVE_PLACE', day, index, direction }),
+      replacePlace: (day, index, placeId) =>
+        dispatch({ type: 'REPLACE_PLACE', day, index, placeId }),
       reset: () => dispatch({ type: 'RESET' }),
     }),
     [state],
