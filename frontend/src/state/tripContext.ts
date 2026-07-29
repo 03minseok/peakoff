@@ -14,6 +14,8 @@ export interface TripContextValue {
   addPlace: (day: number, placeId: string) => void
   removePlace: (day: number, index: number) => void
   movePlace: (day: number, index: number, direction: -1 | 1) => void
+  /** 해당 자리의 장소만 다른 곳으로 바꾼다. 일차와 순서는 유지된다 */
+  replacePlace: (day: number, index: number, placeId: string) => void
   reset: () => void
 }
 
