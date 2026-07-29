@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router'
+import { Link, NavLink, Outlet } from 'react-router'
 import './Layout.css'
 
 /**
@@ -17,7 +17,14 @@ export function Layout() {
           <Link to="/" className="brand">
             PEAKOFF
           </Link>
-          <span className="brand-tagline">예측 기반 혼잡 회피</span>
+
+          {/*
+            로그인은 구석에 작게 둔다. 게스트가 그냥 지나칠 수 있어야 하며,
+            눈에 띄게 만들면 "로그인해야 쓰는 서비스"로 읽힌다.
+          */}
+          <NavLink to="/login" className="header-login">
+            로그인
+          </NavLink>
         </div>
       </header>
 
