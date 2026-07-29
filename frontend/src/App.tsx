@@ -1,41 +1,32 @@
 import { useEffect, useState } from 'react'
+import { ApiRequestError, fetchPlaces } from './services/api'
+import type { Place } from './types/api'
 import './App.css'
 
-type HealthResponse = {
-  status: string
-}
+/** v1 파일럿 지역. 지역 선택 화면이 생기면 상태로 올라간다. */
+const REGION = 'gyeongju'
 
-/** 연결 확인 상태. 성공/실패를 각각 다른 모양으로 들고 있어 화면에서 분기하기 쉽게 한다. */
-type ConnectionState =
+type LoadState =
   | { phase: 'loading' }
-  | { phase: 'ok'; status: string }
+  | { phase: 'loaded'; places: Place[] }
   | { phase: 'error'; message: string }
 
 function App() {
-  const [connection, setConnection] = useState<ConnectionState>({
-    phase: 'loading',
-  })
+  const [state, setState] = useState<LoadState>({ phase: 'loading' })
 
   useEffect(() => {
-    // StrictMode는 개발 중 effect를 두 번 실행한다. 정리 함수에서 이전 요청을 취소해 둔다.
+    // StrictMode는 개발 중 effect를 두 번 실행한다. 정리 함수에서 이전 요청을 취소한다.
     const controller = new AbortController()
 
-    fetch('/api/health', { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
-        }
-        return response.json() as Promise<HealthResponse>
-      })
-      .then((data) => setConnection({ phase: 'ok', status: data.status }))
+    fetchPlaces(REGION, controller.signal)
+      .then((places) => setState({ phase: 'loaded', places }))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return
         }
-        setConnection({
-          phase: 'error',
-          message: error instanceof Error ? error.message : '알 수 없는 오류',
-        })
+        const message =
+          error instanceof ApiRequestError ? error.message : '알 수 없는 오류가 발생했습니다.'
+        setState({ phase: 'error', message })
       })
 
     return () => controller.abort()
@@ -48,22 +39,26 @@ function App() {
         <p>예측 기반 혼잡 회피 여행 플래너</p>
       </header>
 
-      <section className={`health health--${connection.phase}`}>
-        <h2>서버 연결 확인</h2>
-        <p className="health-endpoint">GET /api/health</p>
+      {state.phase === 'loading' && <p className="status">장소를 불러오는 중…</p>}
 
-        {connection.phase === 'loading' && (
-          <p className="health-result">확인 중…</p>
-        )}
-        {connection.phase === 'ok' && (
-          <p className="health-result">
-            응답: <code>{connection.status}</code>
-          </p>
-        )}
-        {connection.phase === 'error' && (
-          <p className="health-result">연결 실패: {connection.message}</p>
-        )}
-      </section>
+      {state.phase === 'error' && <p className="status status--error">{state.message}</p>}
+
+      {state.phase === 'loaded' && (
+        <section>
+          <p className="status">경주 {state.places.length}곳</p>
+          <ul className="place-list">
+            {state.places.map((place) => (
+              <li key={place.id} className="place">
+                <span className="place-name">{place.name}</span>
+                <span className="place-category">{place.categoryName}</span>
+                <span className="place-coords">
+                  {place.latitude.toFixed(4)}, {place.longitude.toFixed(4)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   )
 }
