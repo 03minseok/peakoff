@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
 import com.peakoff.global.support.Scores;
 import com.peakoff.place.mock.GyeongjuMockCatalog;
 
-class MockQuietnessProviderTest {
+class MockCongestionProviderTest {
 
-	private final MockQuietnessProvider provider = new MockQuietnessProvider();
+	private final MockCongestionProvider provider = new MockCongestionProvider();
 
 	private static final LocalDate SATURDAY = LocalDate.of(2026, 9, 12);
 	private static final LocalDate WEDNESDAY = LocalDate.of(2026, 9, 16);

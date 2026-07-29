@@ -1,4 +1,4 @@
-package com.peakoff.course.domain;
+package com.peakoff.recommendation.domain;
 
 import java.util.Objects;
 

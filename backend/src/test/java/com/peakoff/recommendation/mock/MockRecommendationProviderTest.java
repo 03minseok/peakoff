@@ -1,0 +1,104 @@
+package com.peakoff.recommendation.mock;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import com.peakoff.congestion.mock.MockCongestionProvider;
+import com.peakoff.place.domain.Place;
+import com.peakoff.place.mock.GyeongjuMockCatalog;
+import com.peakoff.recommendation.domain.Alternative;
+
+class MockRecommendationProviderTest {
+
+	private final MockRecommendationProvider provider =
+			new MockRecommendationProvider(new MockCongestionProvider());
+
+	private static final LocalDate WEDNESDAY = LocalDate.of(2026, 9, 16);
+
+	private static Place place(String id) {
+		return GyeongjuMockCatalog.findById(id).place();
+	}
+
+	@Test
+	@DisplayName("후보에는 자기 자신이 들어가지 않는다")
+	void excludesOrigin() {
+		List<Alternative> alternatives = provider.findAlternatives(place("mock-bulguksa"), WEDNESDAY, 5);
+
+		assertThat(alternatives).extracting(a -> a.place().id()).doesNotContain("mock-bulguksa");
+	}
+
+	@Test
+	@DisplayName("같은 분류끼리만 추천한다 — 음식점 자리에 숙박을 넣지 않는다")
+	void keepsCategoryConsistent() {
+		List<Alternative> alternatives = provider.findAlternatives(place("mock-gyorigimbap"), WEDNESDAY, 5);
+
+		assertThat(alternatives).isNotEmpty();
+		assertThat(alternatives)
+				.allSatisfy(a -> assertThat(a.place().category().name()).isEqualTo("음식점"));
+	}
+
+	@Test
+	@DisplayName("붐비는 곳을 물으면 더 한적한 대안이 맨 위에 온다")
+	void surfacesQuieterAlternativeFirst() {
+		Place crowded = place("mock-hwangnidan");
+		int crowdedQuietness = new MockCongestionProvider().quietnessOf(crowded.id(), WEDNESDAY);
+
+		List<Alternative> alternatives = provider.findAlternatives(crowded, WEDNESDAY, 3);
+
+		assertThat(alternatives).isNotEmpty();
+		assertThat(alternatives.get(0).quietness()).isGreaterThan(crowdedQuietness);
+	}
+
+	@Test
+	@DisplayName("추천 근거 문구가 요청한 형태로 만들어진다")
+	void buildsReasonPhrase() {
+		List<Alternative> alternatives = provider.findAlternatives(place("mock-bulguksa"), WEDNESDAY, 1);
+
+		assertThat(alternatives.get(0).reason())
+				.startsWith("불국사 방문객이 함께 많이 찾는 곳 · ")
+				.containsAnyOf("예상 혼잡 낮음", "예상 혼잡 보통", "예상 혼잡 다소 높음");
+	}
+
+	@Test
+	@DisplayName("근거 문구는 '실시간'이 아니라 '예상'으로 표현한다")
+	void neverClaimsRealtime() {
+		List<Alternative> alternatives = provider.findAlternatives(place("mock-bulguksa"), WEDNESDAY, 5);
+
+		assertThat(alternatives).allSatisfy(a -> assertThat(a.reason()).doesNotContain("실시간"));
+	}
+
+	@Test
+	@DisplayName("요청한 개수만큼만 돌려준다")
+	void respectsLimit() {
+		assertThat(provider.findAlternatives(place("mock-bulguksa"), WEDNESDAY, 2)).hasSize(2);
+	}
+
+	@Test
+	@DisplayName("한적도 가중치가 더 높아, 조금 멀어도 훨씬 한적한 곳이 위로 올라온다")
+	void weighsQuietnessOverProximity() {
+		List<Alternative> alternatives = provider.findAlternatives(place("mock-cheomseongdae"), WEDNESDAY, 10);
+
+		// 정렬이 근접도만 따랐다면 첫 후보가 가장 가까운 곳이어야 한다.
+		// 한적도 가중치가 더 크므로, 첫 후보의 한적도는 평균 이상이어야 한다.
+		double averageQuietness = alternatives.stream().mapToInt(Alternative::quietness).average().orElseThrow();
+
+		assertThat(alternatives.get(0).quietness()).isGreaterThan((int) averageQuietness);
+	}
+
+	@Test
+	@DisplayName("잘못된 인자는 즉시 거부한다")
+	void rejectsInvalidArguments() {
+		Place origin = place("mock-bulguksa");
+
+		assertThatThrownBy(() -> provider.findAlternatives(origin, WEDNESDAY, 0))
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> provider.findAlternatives(null, WEDNESDAY, 3))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+}

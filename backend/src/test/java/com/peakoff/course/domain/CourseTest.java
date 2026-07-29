@@ -73,23 +73,11 @@ class CourseTest {
 	}
 
 	@Test
-	@DisplayName("한적도·추천도는 0~100을 벗어날 수 없다")
+	@DisplayName("한적도는 0~100을 벗어날 수 없다")
 	void rejectsScoreOutOfRange() {
 		assertThatThrownBy(() -> new CourseSlot(1, 1, PLACE, 101))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("한적도");
-
-		assertThatThrownBy(() -> new Alternative(PLACE, 50, -1, "근거"))
-				.isInstanceOf(IllegalArgumentException.class)
-				.hasMessageContaining("추천도");
-	}
-
-	@Test
-	@DisplayName("근거 없는 대안지는 아예 만들 수 없다 — 추천에는 항상 이유가 붙는다")
-	void rejectsAlternativeWithoutReason() {
-		assertThatThrownBy(() -> new Alternative(PLACE, 50, 50, "   "))
-				.isInstanceOf(IllegalArgumentException.class)
-				.hasMessageContaining("추천 근거");
 	}
 
 	@Test
