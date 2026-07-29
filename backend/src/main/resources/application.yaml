@@ -5,3 +5,6 @@ server:
 spring:
   application:
     name: peakoff
+  profiles:
+    # 목업 데이터로 동작한다. 공공데이터 API 구현이 붙으면 이 값을 바꿔 교체한다.
+    active: mock
