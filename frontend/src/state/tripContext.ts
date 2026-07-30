@@ -16,6 +16,8 @@ export interface TripContextValue {
   movePlace: (day: number, index: number, direction: -1 | 1) => void
   /** 해당 자리의 장소만 다른 곳으로 바꾼다. 일차와 순서는 유지된다 */
   replacePlace: (day: number, index: number, placeId: string) => void
+  /** 진단에 들어가며 지금 코스를 원안으로 찍는다. 이후 비교의 기준이 된다 */
+  markBaseline: () => void
   reset: () => void
 }
 

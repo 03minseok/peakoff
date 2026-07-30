@@ -6,6 +6,7 @@ import { LoginPage } from './routes/LoginPage'
 import { NotFoundPage } from './routes/NotFoundPage'
 import { PlanPage } from './routes/PlanPage'
 import { PreviewPage } from './routes/PreviewPage'
+import { ResultPage } from './routes/ResultPage'
 import { TripProvider } from './state/TripProvider'
 
 /**
@@ -27,6 +28,7 @@ function App() {
           <Route index element={<PlanPage />} />
           <Route path="course" element={<CoursePage />} />
           <Route path="diagnosis" element={<DiagnosisPage />} />
+          <Route path="result" element={<ResultPage />} />
           <Route path="login" element={<LoginPage />} />
 
           {/* 개발용. 화면 구현이 끝나면 이 줄과 PreviewPage를 함께 지운다. */}

@@ -31,6 +31,10 @@
  * 기본 마커 이미지 대신 쓰는 이유는 담긴 순서 번호를 그대로 얹기 위해서다.
  */
 .map-pin {
+  /* button과 span 양쪽으로 만들어지므로 정렬을 직접 잡는다 (읽기 전용 지도는 span) */
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
   width: 14px;
   height: 14px;
   padding: 0;
@@ -50,9 +54,12 @@
 }
 
 .map-pin--selected {
-  /* 담긴 장소는 번호가 들어가야 하므로 더 크게 */
-  width: 26px;
+  /* 담긴 장소는 번호가 들어가야 하므로 더 크게.
+     "2-1"처럼 두 자리가 올 수 있어 가로는 늘어날 수 있게 둔다. */
+  width: auto;
+  min-width: 26px;
   height: 26px;
+  padding: 0 5px;
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
