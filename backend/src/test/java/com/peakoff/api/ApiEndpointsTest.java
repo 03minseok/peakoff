@@ -171,6 +171,42 @@ class ApiEndpointsTest {
 					.andExpect(status().isBadRequest())
 					.andExpect(jsonPath("$.error.message").value("요청 형식이 올바르지 않습니다."));
 		}
+
+		@Test
+		@DisplayName("빈 placeId는 404가 아니라 400 — 없는 자원이 아니라 잘못된 요청이다")
+		void blankPlaceIdIsBadRequestNotNotFound() throws Exception {
+			String json = """
+					{
+					  "region": "gyeongju", "startDate": "2026-09-16", "nights": 0,
+					  "slots": [ { "day": 1, "order": 1, "placeId": "" } ]
+					}
+					""";
+
+			mockMvc.perform(post("/api/courses/diagnose")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(json))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+					// 목록 안쪽 원소까지 검사되므로 어느 슬롯인지 경로로 드러난다
+					.andExpect(jsonPath("$.error.fields[0].field").value("slots[0].placeId"));
+		}
+
+		@Test
+		@DisplayName("여러 필드가 틀리면 전부 알려준다 — 화면에서 각 입력칸을 짚을 수 있게")
+		void reportsEveryInvalidField() throws Exception {
+			String json = """
+					{ "region": "", "startDate": null, "nights": -5, "slots": [] }
+					""";
+
+			mockMvc.perform(post("/api/courses/diagnose")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(json))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.error.fields.length()").value(4))
+					.andExpect(jsonPath("$.error.fields[*].field")
+							.value(org.hamcrest.Matchers.containsInAnyOrder(
+									"region", "startDate", "nights", "slots")));
+		}
 	}
 
 	@Nested
@@ -219,14 +255,45 @@ class ApiEndpointsTest {
 		}
 
 		@Test
-		@DisplayName("조회 기간이 범위를 벗어나면 400")
+		@DisplayName("조회 기간이 범위를 벗어나면 400 — 어느 파라미터인지 함께 알려준다")
 		void rejectsOutOfRangeDays() throws Exception {
 			mockMvc.perform(get("/api/dates/alternatives")
 					.param("placeId", "mock-bulguksa")
 					.param("date", "2026-09-12")
 					.param("range", "100"))
 					.andExpect(status().isBadRequest())
-					.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+					.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+					.andExpect(jsonPath("$.error.fields[0].field").value("range"));
+		}
+	}
+
+	@Nested
+	@DisplayName("API 문서")
+	class Docs {
+
+		@Test
+		@DisplayName("OpenAPI 문서에 모든 엔드포인트가 실린다")
+		void exposesOpenApiDocument() throws Exception {
+			mockMvc.perform(get("/v3/api-docs"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.info.title").value("PEAKOFF API"))
+					.andExpect(jsonPath("$.paths['/api/places']").exists())
+					.andExpect(jsonPath("$.paths['/api/courses/diagnose']").exists())
+					.andExpect(jsonPath("$.paths['/api/dates/alternatives']").exists())
+					.andExpect(jsonPath("$.paths['/api/places/{placeId}/alternatives']").exists());
+		}
+
+		@Test
+		@DisplayName("검증 제약이 스키마에 그대로 실린다 — 문서와 실제 동작이 어긋나지 않는다")
+		void schemaCarriesValidationRules() throws Exception {
+			mockMvc.perform(get("/v3/api-docs"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath(
+							"$.components.schemas.CourseDiagnosisRequest.properties.nights.maximum")
+							.value(6))
+					.andExpect(jsonPath(
+							"$.components.schemas.CourseDiagnosisRequest.properties.region.minLength")
+							.value(1));
 		}
 	}
 }

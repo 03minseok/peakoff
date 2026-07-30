@@ -23,8 +23,6 @@ import com.peakoff.place.service.PlaceService;
 @Service
 public class CourseDiagnosisService {
 
-	private static final int MAX_SLOTS = 50;
-
 	private final PlaceService placeService;
 	private final CongestionProvider congestionProvider;
 
@@ -33,9 +31,11 @@ public class CourseDiagnosisService {
 		this.congestionProvider = congestionProvider;
 	}
 
+	/**
+	 * 요청의 모양(필수값·개수·범위)은 컨트롤러에서 {@code @Valid}가 이미 걸렀다.
+	 * 여기서는 그 값들이 업무적으로 말이 되는지만 본다.
+	 */
 	public CourseDiagnosisResponse diagnose(CourseDiagnosisRequest request) {
-		validate(request);
-
 		SupportedRegion region = SupportedRegion.fromSlug(request.region());
 		List<CourseSlot> slots = request.slots().stream()
 				.map(slot -> diagnoseSlot(slot, request.startDate()))
@@ -72,18 +72,4 @@ public class CourseDiagnosisService {
 		return (int) Math.round(slots.stream().mapToInt(CourseSlot::quietness).average().orElseThrow());
 	}
 
-	private static void validate(CourseDiagnosisRequest request) {
-		if (request == null) {
-			throw new IllegalArgumentException("요청 본문이 필요합니다.");
-		}
-		if (request.startDate() == null) {
-			throw new IllegalArgumentException("여행 시작일이 필요합니다.");
-		}
-		if (request.slots() == null || request.slots().isEmpty()) {
-			throw new IllegalArgumentException("코스에 장소가 하나 이상 있어야 진단할 수 있습니다.");
-		}
-		if (request.slots().size() > MAX_SLOTS) {
-			throw new IllegalArgumentException("한 번에 진단할 수 있는 장소는 %d곳까지입니다.".formatted(MAX_SLOTS));
-		}
-	}
 }

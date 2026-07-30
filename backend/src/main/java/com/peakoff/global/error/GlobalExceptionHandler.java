@@ -1,15 +1,20 @@
 package com.peakoff.global.error;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.peakoff.global.response.ApiResponse;
+import com.peakoff.global.response.ApiResponse.FieldError;
 
 /**
  * 모든 컨트롤러의 예외를 한 곳에서 응답으로 바꾼다.
@@ -28,10 +33,51 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * 요청 본문(@RequestBody)의 검증 실패.
+	 *
+	 * <p>어떤 필드가 왜 틀렸는지 함께 내려준다.
+	 */
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public ResponseEntity<ApiResponse<Void>> handleBodyValidation(
+			MethodArgumentNotValidException e) {
+
+		List<FieldError> fields = e.getBindingResult().getFieldErrors().stream()
+				.map(error -> new FieldError(error.getField(), error.getDefaultMessage()))
+				.toList();
+
+		// 대표 메시지는 첫 오류를 쓴다. 전부 이어붙이면 화면에 그대로 띄우기 어렵다.
+		String message = fields.isEmpty() ? "요청 값이 올바르지 않습니다." : fields.get(0).message();
+		return ResponseEntity.status(ErrorCode.INVALID_REQUEST.status())
+				.body(ApiResponse.failWithFields(ErrorCode.INVALID_REQUEST, message, fields));
+	}
+
+	/**
+	 * 쿼리 파라미터·경로 변수의 검증 실패.
+	 *
+	 * <p>본문 검증과 예외 타입이 다르다. 스프링이 메서드 인자를 직접 검사할 때 던진다.
+	 */
+	@ExceptionHandler(HandlerMethodValidationException.class)
+	public ResponseEntity<ApiResponse<Void>> handleParameterValidation(
+			HandlerMethodValidationException e) {
+
+		List<FieldError> fields = e.getParameterValidationResults().stream()
+				.flatMap(result -> result.getResolvableErrors().stream()
+						.map(error -> new FieldError(
+								result.getMethodParameter().getParameterName(),
+								error.getDefaultMessage())))
+				.toList();
+
+		String message = fields.isEmpty() ? "요청 값이 올바르지 않습니다." : fields.get(0).message();
+		return ResponseEntity.status(ErrorCode.INVALID_REQUEST.status())
+				.body(ApiResponse.failWithFields(ErrorCode.INVALID_REQUEST, message, fields));
+	}
+
+	/**
 	 * 잘못된 요청. 도메인 생성자가 던지는 {@link IllegalArgumentException}도 여기로 모인다.
 	 *
-	 * <p>덕분에 "한적도는 0~100 범위여야 합니다" 같은 도메인 검증 메시지가
-	 * 별도 변환 없이 그대로 400 응답이 된다.
+	 * <p>덕분에 "1박 2일 일정에 5일차 슬롯이 있습니다" 같은 도메인 검증 메시지가
+	 * 별도 변환 없이 그대로 400 응답이 된다. 여러 필드를 함께 봐야 하는 규칙은
+	 * 검증 애노테이션으로 표현되지 않으므로 이 경로가 계속 필요하다.
 	 */
 	@ExceptionHandler({
 			IllegalArgumentException.class,
