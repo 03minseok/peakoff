@@ -24,7 +24,6 @@ import com.peakoff.place.service.PlaceService;
 @Service
 public class DateAlternativeService {
 
-	private static final int MAX_RANGE_DAYS = 30;
 	private static final int MAX_OPTIONS = 5;
 
 	private final PlaceService placeService;
@@ -35,8 +34,8 @@ public class DateAlternativeService {
 		this.congestionProvider = congestionProvider;
 	}
 
+	/** 목록이 비어 있지 않은지와 기간 범위는 컨트롤러의 검증 애노테이션이 이미 걸렀다. */
 	public DateAlternativeResponse suggest(List<String> placeIds, LocalDate selectedDate, int rangeDays) {
-		validate(placeIds, rangeDays);
 		placeIds.forEach(this::ensureHasData);
 
 		int selectedQuietness = averageQuietness(placeIds, selectedDate);
@@ -70,13 +69,4 @@ public class DateAlternativeService {
 		}
 	}
 
-	private static void validate(List<String> placeIds, int rangeDays) {
-		if (placeIds == null || placeIds.isEmpty()) {
-			throw new IllegalArgumentException("장소를 하나 이상 지정해야 합니다.");
-		}
-		if (rangeDays < 2 || rangeDays > MAX_RANGE_DAYS) {
-			throw new IllegalArgumentException(
-					"조회 기간은 2~%d일 사이여야 합니다. 입력값: %d".formatted(MAX_RANGE_DAYS, rangeDays));
-		}
-	}
 }

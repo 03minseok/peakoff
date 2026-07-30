@@ -8,3 +8,13 @@ spring:
   profiles:
     # 목업 데이터로 동작한다. 공공데이터 API 구현이 붙으면 이 값을 바꿔 교체한다.
     active: mock
+
+springdoc:
+  swagger-ui:
+    # http://localhost:8080/docs 로 연다. 기본 경로(/swagger-ui.html)보다 기억하기 쉽다.
+    path: /docs
+    # 태그·엔드포인트를 이름순으로 정렬해, 코드 순서가 바뀌어도 문서 순서는 유지되게 한다.
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs

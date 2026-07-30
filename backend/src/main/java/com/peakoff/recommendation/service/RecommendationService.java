@@ -13,8 +13,6 @@ import com.peakoff.recommendation.dto.AlternativeResponse;
 @Service
 public class RecommendationService {
 
-	private static final int MAX_LIMIT = 20;
-
 	private final PlaceService placeService;
 	private final RecommendationProvider recommendationProvider;
 
@@ -23,10 +21,8 @@ public class RecommendationService {
 		this.recommendationProvider = recommendationProvider;
 	}
 
+	/** limit의 허용 범위는 컨트롤러의 {@code @Min}/{@code @Max}가 이미 걸렀다. */
 	public List<AlternativeResponse> findAlternatives(String placeId, LocalDate date, int limit) {
-		if (limit < 1 || limit > MAX_LIMIT) {
-			throw new IllegalArgumentException("후보 수는 1~%d 사이여야 합니다. 입력값: %d".formatted(MAX_LIMIT, limit));
-		}
 		Place origin = placeService.getById(placeId);
 
 		return recommendationProvider.findAlternatives(origin, date, limit).stream()
