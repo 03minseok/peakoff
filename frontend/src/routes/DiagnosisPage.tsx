@@ -22,7 +22,7 @@ interface SheetTarget {
 
 export function DiagnosisPage() {
   const navigate = useNavigate()
-  const { state, replacePlace, markBaseline } = useTrip()
+  const { state, replacePlace, markBaseline, changeStartDate } = useTrip()
   const plan = state.plan
 
   const [dates, setDates] = useState<DateAlternatives | null>(null)
@@ -30,13 +30,15 @@ export function DiagnosisPage() {
 
   // 주소로 바로 들어온 경우 원안이 비어 있다. 지금 코스를 원안으로 삼는다.
   useEffect(() => {
-    if (plan && state.days.length > 0 && state.baselineDays === null) {
+    if (plan && state.days.length > 0 && state.baseline === null) {
       markBaseline()
     }
-  }, [plan, state.days, state.baselineDays, markBaseline])
+  }, [plan, state.days, state.baseline, markBaseline])
 
   const current = useDiagnosis(plan, state.days)
-  const baseline = useDiagnosis(plan, state.baselineDays)
+  // 원안은 그때의 날짜(baseline.plan)로 진단한다. 지금 날짜로 계산하면
+  // 날짜를 옮겨 얻은 개선이 원안에도 반영돼 차이가 사라진다.
+  const baseline = useDiagnosis(state.baseline?.plan ?? null, state.baseline?.days ?? null)
 
   const uniquePlaceIds = useMemo(() => Array.from(new Set(state.days.flat())), [state.days])
 
@@ -65,6 +67,8 @@ export function DiagnosisPage() {
   const baselineTotal = baseline.phase === 'loaded' ? baseline.diagnosis.totalQuietness : null
   const improvement =
     diagnosis && baselineTotal !== null ? diagnosis.totalQuietness - baselineTotal : 0
+  const dateMoved =
+    state.baseline !== null && state.baseline.plan.startDate !== plan.startDate
 
   function handleSelectAlternative(placeId: string) {
     if (!sheet) {
@@ -109,6 +113,12 @@ export function DiagnosisPage() {
                 </strong>
               </p>
             )}
+            {dateMoved && state.baseline && (
+              <p className="text-[13px]">
+                날짜 {formatKoreanDate(state.baseline.plan.startDate)} →{' '}
+                <strong className="text-brand-strong">{formatKoreanDate(plan.startDate)}</strong>
+              </p>
+            )}
             {current.phase === 'loading' && <p className="text-xs">다시 계산 중…</p>}
           </section>
 
@@ -124,29 +134,29 @@ export function DiagnosisPage() {
               <>
                 <ul className="flex flex-col gap-2">
                   {dates.options.map((option) => (
-                    <li
-                      key={option.date}
-                      className={`${CARD} grid grid-cols-[1fr_auto_auto] items-center gap-3 p-3`}
-                    >
-                      <span className="text-fg text-sm">{formatKoreanDate(option.date)}</span>
-                      <CongestionBadge
-                        level={option.level}
-                        label={option.levelLabel}
-                        quietness={option.quietness}
-                        size="sm"
-                      />
-                      <span className="text-quiet font-mono text-[13px] font-bold">
-                        +{option.improvement}
-                      </span>
+                    <li key={option.date}>
+                      {/* 누르면 코스 전체가 그 날짜로 옮겨진다. 장소는 그대로 둔다. */}
+                      <button
+                        type="button"
+                        className={`${CARD} hover:border-brand hover:bg-quiet-bg grid w-full cursor-pointer grid-cols-[1fr_auto_auto] items-center gap-3 p-3 text-left`}
+                        onClick={() => changeStartDate(option.date)}
+                      >
+                        <span className="text-fg text-sm">{formatKoreanDate(option.date)}</span>
+                        <CongestionBadge
+                          level={option.level}
+                          label={option.levelLabel}
+                          quietness={option.quietness}
+                          size="sm"
+                        />
+                        <span className="text-quiet font-mono text-[13px] font-bold">
+                          +{option.improvement}
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
                 <p className="mt-2 text-[13px]">
-                  날짜를 바꾸려면{' '}
-                  <Link to="/" className="text-brand-strong">
-                    여행 조건
-                  </Link>
-                  에서 다시 골라주세요.
+                  날짜를 누르면 장소는 그대로 두고 코스 전체가 그 날로 옮겨져요.
                 </p>
               </>
             )}

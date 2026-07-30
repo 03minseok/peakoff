@@ -10,7 +10,15 @@ import type { TripPlan, TripState } from './tripTypes'
  */
 export interface TripContextValue {
   state: TripState
+  /** 조건 화면에서 여행을 새로 정한다. 원안 기준도 함께 초기화된다 */
   setPlan: (plan: TripPlan) => void
+  /**
+   * 진단 화면에서 더 한적한 날짜로 옮긴다.
+   *
+   * {@link setPlan}과 달리 원안을 지우지 않는다 — 날짜 이동도 혼잡을 피한 결과이므로
+   * 최종 비교에 그 효과가 남아야 한다.
+   */
+  changeStartDate: (startDate: string) => void
   addPlace: (day: number, placeId: string) => void
   removePlace: (day: number, index: number) => void
   movePlace: (day: number, index: number, direction: -1 | 1) => void

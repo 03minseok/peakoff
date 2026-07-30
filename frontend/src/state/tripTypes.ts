@@ -14,6 +14,21 @@ export interface TripPlan {
 }
 
 /**
+ * 원안 — 사용자가 직접 짜서 진단에 들고 온 코스.
+ *
+ * <b>날짜(plan)와 장소(days)를 함께 담는 것이 핵심이다.</b>
+ * 장소만 저장하면, 사용자가 더 한적한 날짜로 옮겼을 때 원안까지 새 날짜로 다시 계산된다.
+ * 그러면 "날짜를 바꿔서 얼마나 나아졌는지"가 통째로 사라진다.
+ *
+ * 이렇게 두면 최종 비교가 두 가지 회피 경로를 한 번에 보여준다:
+ * 원안(9/12·원래 장소) → 개선안(9/14·교체한 장소).
+ */
+export interface TripBaseline {
+  plan: TripPlan
+  days: string[][]
+}
+
+/**
  * 여행 흐름 전체가 공유하는 상태.
  *
  * days는 <b>일차별 장소 ID 배열</b>이다. days[0]이 1일차이고, 배열 순서가 곧 방문 순서다.
@@ -28,15 +43,5 @@ export interface TripPlan {
 export interface TripState {
   plan: TripPlan | null
   days: string[][]
-
-  /**
-   * 원안 — 사용자가 직접 짜서 진단에 들고 온 코스의 스냅샷.
-   *
-   * 코스 편집을 마치고 진단으로 넘어가는 순간 찍는다. 이후 대안 교체로 {@link days}가
-   * 바뀌어도 이 값은 그대로 남아, 최종 화면에서 "얼마나 나아졌는지"를 비교할 수 있다.
-   *
-   * 컴포넌트 메모리가 아니라 상태에 두는 이유: 화면을 새로고침해도 원안이 유지돼야 한다.
-   * 메모리에만 있으면 새로고침 후 이미 교체된 코스가 원안으로 둔갑한다.
-   */
-  baselineDays: string[][] | null
+  baseline: TripBaseline | null
 }

@@ -16,6 +16,7 @@ import type { TripPlan, TripState } from './tripTypes'
  */
 type TripAction =
   | { type: 'SET_PLAN'; plan: TripPlan }
+  | { type: 'CHANGE_START_DATE'; startDate: string }
   | { type: 'ADD_PLACE'; day: number; placeId: string }
   | { type: 'REMOVE_PLACE'; day: number; index: number }
   | { type: 'MOVE_PLACE'; day: number; index: number; direction: -1 | 1 }
@@ -40,9 +41,21 @@ function reducer(state: TripState, action: TripAction): TripState {
       // 남아 있는 일차의 선택은 살리고, 줄어든 일차만 버린다.
       const dayCount = action.plan.nights + 1
       const days = Array.from({ length: dayCount }, (_, index) => state.days[index] ?? [])
-      // 여행 조건을 다시 정하면 비교 기준도 무효가 된다.
-      // 날짜가 바뀌면 같은 장소라도 한적도가 달라져, 옛 원안과의 비교가 뜻을 잃는다.
-      return { plan: action.plan, days, baselineDays: null }
+      // 조건 화면에서 처음부터 다시 정하는 것이므로 비교 기준도 새로 잡는다.
+      return { plan: action.plan, days, baseline: null }
+    }
+
+    case 'CHANGE_START_DATE': {
+      if (!state.plan) {
+        return state
+      }
+      /*
+       * 진단 화면에서 "더 한적한 날짜"를 골랐을 때.
+       *
+       * SET_PLAN과 달리 <b>원안을 지우지 않는다.</b> 날짜 이동도 장소 교체와 마찬가지로
+       * 혼잡을 피한 결과이므로, 최종 비교에서 두 효과가 함께 잡혀야 한다.
+       */
+      return { ...state, plan: { ...state.plan, startDate: action.startDate } }
     }
 
     case 'ADD_PLACE': {
@@ -92,9 +105,12 @@ function reducer(state: TripState, action: TripAction): TripState {
     }
 
     case 'MARK_BASELINE':
-      // 코스 편집을 마치고 진단에 들어가는 순간 찍는다.
-      // 다시 편집하고 들어오면 그 코스가 새 원안이 된다 — 사용자가 직접 짠 코스가 원안이라는 뜻이다.
-      return { ...state, baselineDays: state.days }
+      // 코스 편집을 마치고 진단에 들어가는 순간 찍는다. 날짜와 장소를 함께 담는다.
+      // 다시 편집하고 들어오면 그 코스가 새 원안이 된다.
+      if (!state.plan) {
+        return state
+      }
+      return { ...state, baseline: { plan: state.plan, days: state.days } }
 
     case 'RESET':
       return EMPTY_TRIP_STATE
@@ -113,6 +129,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       setPlan: (plan) => dispatch({ type: 'SET_PLAN', plan }),
+      changeStartDate: (startDate) => dispatch({ type: 'CHANGE_START_DATE', startDate }),
       addPlace: (day, placeId) => dispatch({ type: 'ADD_PLACE', day, placeId }),
       removePlace: (day, index) => dispatch({ type: 'REMOVE_PLACE', day, index }),
       movePlace: (day, index, direction) =>
