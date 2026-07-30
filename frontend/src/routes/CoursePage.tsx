@@ -14,7 +14,7 @@ type LoadState =
 
 export function CoursePage() {
   const navigate = useNavigate()
-  const { state, addPlace, removePlace, movePlace } = useTrip()
+  const { state, addPlace, removePlace, movePlace, markBaseline } = useTrip()
   const plan = state.plan
 
   const [places, setPlaces] = useState<Place[]>([])
@@ -64,6 +64,9 @@ export function CoursePage() {
     [addPlace, currentDay],
   )
 
+  // 지도는 경로 배열을 받는다. 편집 화면은 현재 일차 하나만 넘긴다.
+  const currentDayRoute = useMemo(() => [currentDayPlaceIds], [currentDayPlaceIds])
+
   /* 조건 없이 들어온 경우. 편집할 기준이 없으므로 첫 화면으로 돌려보낸다. */
   if (!plan) {
     return <Navigate to="/" replace />
@@ -85,11 +88,8 @@ export function CoursePage() {
         </p>
       </header>
 
-      <CourseMap
-        places={places}
-        selectedPlaceIds={currentDayPlaceIds}
-        onSelect={handleSelect}
-      />
+      {/* 편집 중에는 현재 일차만 선으로 잇는다. 다른 날 경로까지 겹치면 읽기 어렵다. */}
+      <CourseMap places={places} routes={currentDayRoute} onSelect={handleSelect} />
 
       <nav className="day-tabs" aria-label="일차 선택">
         {Array.from({ length: totalDays }, (_, index) => index + 1).map((day) => {
@@ -197,7 +197,11 @@ export function CoursePage() {
           type="button"
           className="submit"
           disabled={!allDaysFilled}
-          onClick={() => navigate('/diagnosis')}
+          onClick={() => {
+            // 지금 코스를 원안으로 찍는다. 이후 교체해도 이 시점 코스와 비교할 수 있다.
+            markBaseline()
+            navigate('/diagnosis')
+          }}
         >
           코스 진단하기
         </button>

@@ -10,7 +10,7 @@ import type { TripState } from './tripTypes'
  */
 const STORAGE_KEY = 'peakoff.trip'
 
-export const EMPTY_TRIP_STATE: TripState = { plan: null, days: [] }
+export const EMPTY_TRIP_STATE: TripState = { plan: null, days: [], baselineDays: null }
 
 /**
  * 저장된 값이 지금 코드가 기대하는 모양인지 확인한다.
@@ -50,6 +50,8 @@ export function loadTripState(): TripState {
     return {
       plan: parsed.plan as TripState['plan'],
       days: parsed.days as string[][],
+      // 원안은 없을 수 있다(아직 진단에 들어가지 않은 상태). 모양이 이상하면 없는 것으로 친다.
+      baselineDays: isValidDays(parsed.baselineDays) ? (parsed.baselineDays as string[][]) : null,
     }
   } catch {
     // 저장소를 못 쓰는 환경(사파리 시크릿 모드 등)에서도 앱은 돌아가야 한다.

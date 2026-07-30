@@ -1,31 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate } from 'react-router'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { AlternativeSheet } from '../components/AlternativeSheet'
 import { CongestionBadge } from '../components/CongestionBadge'
-import { ApiRequestError, diagnoseCourse, fetchDateAlternatives } from '../services/api'
+import { useDiagnosis } from '../hooks/useDiagnosis'
+import { fetchDateAlternatives } from '../services/api'
 import { useTrip } from '../state/tripContext'
-import type { CourseDiagnosis, CourseSlotRequest, DateAlternatives } from '../types/api'
+import type { DateAlternatives } from '../types/api'
 import { formatKoreanDate } from '../utils/date'
 import './DiagnosisPage.css'
 
 /** 며칠 앞까지 더 한적한 날짜를 찾아볼지 */
 const DATE_SEARCH_RANGE = 14
-
-type LoadState =
-  | { phase: 'loading' }
-  | { phase: 'loaded' }
-  | { phase: 'error'; message: string }
-
-/** days[일차][순서] 구조를 서버가 받는 평평한 슬롯 목록으로 편다. */
-function toSlots(days: string[][]): CourseSlotRequest[] {
-  return days.flatMap((placeIds, dayIndex) =>
-    placeIds.map((placeId, orderIndex) => ({
-      day: dayIndex + 1,
-      order: orderIndex + 1,
-      placeId,
-    })),
-  )
-}
 
 interface SheetTarget {
   day: number
@@ -36,86 +21,54 @@ interface SheetTarget {
 }
 
 export function DiagnosisPage() {
-  const { state, replacePlace } = useTrip()
+  const navigate = useNavigate()
+  const { state, replacePlace, markBaseline } = useTrip()
   const plan = state.plan
 
-  const [diagnosis, setDiagnosis] = useState<CourseDiagnosis | null>(null)
   const [dates, setDates] = useState<DateAlternatives | null>(null)
-  const [load, setLoad] = useState<LoadState>({ phase: 'loading' })
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
 
-  /*
-   * 원안 총점. 이 화면에 처음 들어왔을 때의 점수를 기억해 두고,
-   * 교체로 얼마나 나아졌는지 비교한다.
-   *
-   * 코스를 다시 편집하고 돌아오면 그 코스가 새 기준이 된다. 그게 맞다 —
-   * "원안"은 사용자가 진단에 들고 온 코스를 뜻한다.
-   */
-  const baselineRef = useRef<number | null>(null)
+  // 주소로 바로 들어온 경우 원안이 비어 있다. 지금 코스를 원안으로 삼는다.
+  useEffect(() => {
+    if (plan && state.days.length > 0 && state.baselineDays === null) {
+      markBaseline()
+    }
+  }, [plan, state.days, state.baselineDays, markBaseline])
 
-  const slots = useMemo(() => toSlots(state.days), [state.days])
+  const current = useDiagnosis(plan, state.days)
+  const baseline = useDiagnosis(plan, state.baselineDays)
+
   const uniquePlaceIds = useMemo(
-    () => Array.from(new Set(slots.map((slot) => slot.placeId))),
-    [slots],
+    () => Array.from(new Set(state.days.flat())),
+    [state.days],
   )
 
   useEffect(() => {
-    if (!plan || slots.length === 0) {
+    if (!plan || uniquePlaceIds.length === 0) {
       return
     }
     const controller = new AbortController()
-    setLoad({ phase: 'loading' })
 
-    Promise.all([
-      diagnoseCourse(
-        {
-          region: plan.region,
-          startDate: plan.startDate,
-          nights: plan.nights,
-          slots,
-        },
-        controller.signal,
-      ),
+    fetchDateAlternatives(uniquePlaceIds, plan.startDate, DATE_SEARCH_RANGE, controller.signal)
+      .then(setDates)
       // 날짜 제안은 곁들이는 정보다. 실패해도 진단 결과까지 막지 않는다.
-      fetchDateAlternatives(
-        uniquePlaceIds,
-        plan.startDate,
-        DATE_SEARCH_RANGE,
-        controller.signal,
-      ).catch(() => null),
-    ])
-      .then(([result, dateResult]) => {
-        setDiagnosis(result)
-        setDates(dateResult)
-        if (baselineRef.current === null) {
-          baselineRef.current = result.totalQuietness
-        }
-        setLoad({ phase: 'loaded' })
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          return
-        }
-        setLoad({
-          phase: 'error',
-          message:
-            error instanceof ApiRequestError ? error.message : '진단하지 못했습니다.',
-        })
-      })
+      .catch(() => setDates(null))
 
     return () => controller.abort()
-  }, [plan, slots, uniquePlaceIds])
+  }, [plan, uniquePlaceIds])
 
   if (!plan) {
     return <Navigate to="/" replace />
   }
-  if (slots.length === 0) {
+  if (state.days.length === 0 || state.days.every((day) => day.length === 0)) {
     return <Navigate to="/course" replace />
   }
 
-  const baseline = baselineRef.current
+  const diagnosis = current.phase === 'loaded' ? current.diagnosis : null
+  const baselineTotal =
+    baseline.phase === 'loaded' ? baseline.diagnosis.totalQuietness : null
   const improvement =
-    diagnosis && baseline !== null ? diagnosis.totalQuietness - baseline : 0
+    diagnosis && baselineTotal !== null ? diagnosis.totalQuietness - baselineTotal : 0
 
   function handleSelectAlternative(placeId: string) {
     if (!sheet) {
@@ -123,7 +76,7 @@ export function DiagnosisPage() {
     }
     replacePlace(sheet.day, sheet.index, placeId)
     setSheet(null)
-    // days가 바뀌면 위 effect가 다시 돌아 자동으로 재진단된다.
+    // days가 바뀌면 useDiagnosis가 다시 돌아 자동으로 재진단된다.
   }
 
   return (
@@ -135,7 +88,7 @@ export function DiagnosisPage() {
         </Link>
       </header>
 
-      {load.phase === 'error' && <p className="diag-error">{load.message}</p>}
+      {current.phase === 'error' && <p className="diag-error">{current.message}</p>}
 
       {diagnosis && (
         <>
@@ -150,15 +103,15 @@ export function DiagnosisPage() {
               label={diagnosis.totalLevelLabel}
             />
 
-            {improvement !== 0 && baseline !== null && (
+            {improvement !== 0 && baselineTotal !== null && (
               <p className={`score-delta ${improvement > 0 ? 'score-delta--up' : ''}`}>
-                원안 {baseline} → 지금 {diagnosis.totalQuietness}
+                원안 {baselineTotal} → 지금 {diagnosis.totalQuietness}
                 <strong>
                   {improvement > 0 ? ` (+${improvement} 더 한적)` : ` (${improvement})`}
                 </strong>
               </p>
             )}
-            {load.phase === 'loading' && <p className="score-updating">다시 계산 중…</p>}
+            {current.phase === 'loading' && <p className="score-updating">다시 계산 중…</p>}
           </section>
 
           <section className="dates">
@@ -170,25 +123,25 @@ export function DiagnosisPage() {
               </p>
             )}
             {dates && !dates.alreadyQuietest && (
-              <ul className="date-list">
-                {dates.options.map((option) => (
-                  <li key={option.date} className="date-item">
-                    <span className="date-when">{formatKoreanDate(option.date)}</span>
-                    <CongestionBadge
-                      level={option.level}
-                      label={option.levelLabel}
-                      quietness={option.quietness}
-                      size="sm"
-                    />
-                    <span className="date-gain">+{option.improvement}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {dates && !dates.alreadyQuietest && (
-              <p className="muted date-note">
-                날짜를 바꾸려면 <Link to="/">여행 조건</Link>에서 다시 골라주세요.
-              </p>
+              <>
+                <ul className="date-list">
+                  {dates.options.map((option) => (
+                    <li key={option.date} className="date-item">
+                      <span className="date-when">{formatKoreanDate(option.date)}</span>
+                      <CongestionBadge
+                        level={option.level}
+                        label={option.levelLabel}
+                        quietness={option.quietness}
+                        size="sm"
+                      />
+                      <span className="date-gain">+{option.improvement}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="muted date-note">
+                  날짜를 바꾸려면 <Link to="/">여행 조건</Link>에서 다시 골라주세요.
+                </p>
+              </>
             )}
           </section>
 
@@ -243,10 +196,16 @@ export function DiagnosisPage() {
               </section>
             )
           })}
+
+          <div className="diag-footer">
+            <button type="button" className="submit" onClick={() => navigate('/result')}>
+              최종 코스 확인하기
+            </button>
+          </div>
         </>
       )}
 
-      {!diagnosis && load.phase === 'loading' && <p className="muted">진단하는 중…</p>}
+      {!diagnosis && current.phase === 'loading' && <p className="muted">진단하는 중…</p>}
 
       {sheet && (
         <AlternativeSheet

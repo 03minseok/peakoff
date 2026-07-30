@@ -28,4 +28,15 @@ export interface TripPlan {
 export interface TripState {
   plan: TripPlan | null
   days: string[][]
+
+  /**
+   * 원안 — 사용자가 직접 짜서 진단에 들고 온 코스의 스냅샷.
+   *
+   * 코스 편집을 마치고 진단으로 넘어가는 순간 찍는다. 이후 대안 교체로 {@link days}가
+   * 바뀌어도 이 값은 그대로 남아, 최종 화면에서 "얼마나 나아졌는지"를 비교할 수 있다.
+   *
+   * 컴포넌트 메모리가 아니라 상태에 두는 이유: 화면을 새로고침해도 원안이 유지돼야 한다.
+   * 메모리에만 있으면 새로고침 후 이미 교체된 코스가 원안으로 둔갑한다.
+   */
+  baselineDays: string[][] | null
 }

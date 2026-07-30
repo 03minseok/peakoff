@@ -20,6 +20,7 @@ type TripAction =
   | { type: 'REMOVE_PLACE'; day: number; index: number }
   | { type: 'MOVE_PLACE'; day: number; index: number; direction: -1 | 1 }
   | { type: 'REPLACE_PLACE'; day: number; index: number; placeId: string }
+  | { type: 'MARK_BASELINE' }
   | { type: 'RESET' }
 
 /** day는 1부터 시작한다. 배열 인덱스로 바꿔 쓴다. */
@@ -39,7 +40,9 @@ function reducer(state: TripState, action: TripAction): TripState {
       // 남아 있는 일차의 선택은 살리고, 줄어든 일차만 버린다.
       const dayCount = action.plan.nights + 1
       const days = Array.from({ length: dayCount }, (_, index) => state.days[index] ?? [])
-      return { plan: action.plan, days }
+      // 여행 조건을 다시 정하면 비교 기준도 무효가 된다.
+      // 날짜가 바뀌면 같은 장소라도 한적도가 달라져, 옛 원안과의 비교가 뜻을 잃는다.
+      return { plan: action.plan, days, baselineDays: null }
     }
 
     case 'ADD_PLACE': {
@@ -88,6 +91,11 @@ function reducer(state: TripState, action: TripAction): TripState {
       return { ...state, days: replaceDay(state.days, action.day, next) }
     }
 
+    case 'MARK_BASELINE':
+      // 코스 편집을 마치고 진단에 들어가는 순간 찍는다.
+      // 다시 편집하고 들어오면 그 코스가 새 원안이 된다 — 사용자가 직접 짠 코스가 원안이라는 뜻이다.
+      return { ...state, baselineDays: state.days }
+
     case 'RESET':
       return EMPTY_TRIP_STATE
   }
@@ -111,6 +119,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'MOVE_PLACE', day, index, direction }),
       replacePlace: (day, index, placeId) =>
         dispatch({ type: 'REPLACE_PLACE', day, index, placeId }),
+      markBaseline: () => dispatch({ type: 'MARK_BASELINE' }),
       reset: () => dispatch({ type: 'RESET' }),
     }),
     [state],

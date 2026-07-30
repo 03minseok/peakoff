@@ -1,0 +1,269 @@
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.result-title {
+  font-size: 20px;
+  letter-spacing: -0.4px;
+}
+
+.result-sub {
+  margin: var(--space-1) 0 0;
+  font-size: 13px;
+}
+
+.result-error {
+  margin: 0;
+  padding: var(--space-4);
+  text-align: center;
+  font-size: 14px;
+  color: var(--error);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+}
+
+.muted {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* --- 원안 vs 개선안 ---------------------------------------------------
+ * 발표에서 가장 오래 머무를 영역이다. 두 점수를 같은 크기로 나란히 놓고
+ * 색으로만 방향을 알린다. 크기를 다르게 하면 비교가 아니라 주장이 된다.
+ */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-3);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+}
+
+.compare-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.compare-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.compare-score {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.compare-score--before {
+  color: var(--text);
+}
+
+.compare-score--after {
+  color: var(--level-quiet-fg);
+}
+
+.compare-arrow {
+  font-size: 22px;
+  color: var(--text);
+}
+
+.gain {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+}
+
+.gain--up strong {
+  font-size: 18px;
+  color: var(--level-quiet-fg);
+}
+
+/* --- 변경 내역 --------------------------------------------------------- */
+
+.section-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.day-date {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.change-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.change {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.change-where {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-strong);
+}
+
+.change-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+
+.change-name {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text-strong);
+}
+
+/* 바뀌기 전 장소는 취소선으로 흐리게 — 무엇이 빠졌는지 한눈에 보이게 */
+.change-name--before {
+  color: var(--text);
+  text-decoration: line-through;
+}
+
+.change-arrow {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.map-note {
+  margin-top: var(--space-2);
+}
+
+/* --- 최종 일정 --------------------------------------------------------- */
+
+.final-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.final-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.final-order {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--brand-strong);
+  border-radius: var(--radius-full);
+}
+
+.final-name {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text-strong);
+}
+
+/* --- 저장 --------------------------------------------------------------- */
+
+.save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.save .submit {
+  width: 100%;
+  min-height: 52px;
+  font: inherit;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--brand-strong);
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.save .submit:hover {
+  background: var(--brand);
+}
+
+.save-prompt {
+  width: 100%;
+  padding: var(--space-4);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+}
+
+.save-text {
+  margin: 0 0 var(--space-3);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.save-login {
+  flex: 1 1 auto;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  text-decoration: none;
+  background: var(--brand-strong);
+  border-radius: var(--radius-md);
+}
+
+.save-dismiss {
+  flex: 1 1 auto;
+  min-height: 44px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.back-link {
+  font-size: 13px;
+  color: var(--text);
+}
