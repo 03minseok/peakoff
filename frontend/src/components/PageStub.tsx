@@ -1,5 +1,3 @@
-import './PageStub.css'
-
 interface Props {
   /** 서비스 흐름 몇 번째 단계인지 */
   step?: string
@@ -15,10 +13,12 @@ interface Props {
  */
 export function PageStub({ step, title, description }: Props) {
   return (
-    <section className="stub">
-      {step && <p className="stub-step">{step}</p>}
-      <h1 className="stub-title">{title}</h1>
-      <p className="stub-description">{description}</p>
+    <section className="py-6">
+      {step && (
+        <p className="text-brand mb-2 text-xs font-semibold tracking-wide">{step}</p>
+      )}
+      <h1 className="text-fg text-[22px] font-semibold tracking-tight">{title}</h1>
+      <p className="mt-2 text-sm">{description}</p>
     </section>
   )
 }

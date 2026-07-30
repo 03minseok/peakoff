@@ -1,5 +1,4 @@
 import { Link, NavLink, Outlet } from 'react-router'
-import './Layout.css'
 
 /**
  * 모든 페이지가 공유하는 껍데기.
@@ -11,24 +10,34 @@ import './Layout.css'
  */
 export function Layout() {
   return (
-    <div className="layout">
-      <header className="layout-header">
-        <div className="layout-header-inner">
-          <Link to="/" className="brand">
+    <div className="flex min-h-svh flex-col">
+      <header className="bg-bg border-line sticky top-0 z-10 h-14 border-b">
+        {/*
+          헤더 안쪽도 본문과 같은 폭으로 묶는다. 이렇게 하지 않으면 데스크톱에서
+          로고만 화면 왼쪽 끝에 붙어 본문과 어긋난다.
+        */}
+        <div className="max-w-app mx-auto flex h-full items-center justify-between gap-2 px-4">
+          <Link
+            to="/"
+            className="text-brand-strong text-lg font-bold tracking-tight no-underline"
+          >
             PEAKOFF
           </Link>
 
           {/*
-            로그인은 구석에 작게 둔다. 게스트가 그냥 지나칠 수 있어야 하며,
-            눈에 띄게 만들면 "로그인해야 쓰는 서비스"로 읽힌다.
+            로그인은 구석에 작게 둔다. 버튼처럼 강조하면 게스트가
+            "먼저 로그인해야 하나" 하고 멈칫한다.
           */}
-          <NavLink to="/login" className="header-login">
+          <NavLink
+            to="/login"
+            className="text-muted hover:text-fg -mr-2 rounded-md p-2 text-[13px] no-underline"
+          >
             로그인
           </NavLink>
         </div>
       </header>
 
-      <main className="layout-main">
+      <main className="max-w-app mx-auto w-full flex-1 px-4 pt-6 pb-8">
         <Outlet />
       </main>
     </div>
