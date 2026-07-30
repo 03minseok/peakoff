@@ -39,7 +39,9 @@ export function ResultPage() {
   const { state } = useTrip()
   const plan = state.plan
 
-  const original = useDiagnosis(plan, state.baselineDays)
+  // 원안은 그때의 날짜로 진단해야 한다. 지금 날짜로 계산하면 날짜를 옮겨 얻은 개선이
+  // 원안에도 반영돼, 두 경로 중 하나가 통째로 안 보이게 된다.
+  const original = useDiagnosis(state.baseline?.plan ?? null, state.baseline?.days ?? null)
   const improved = useDiagnosis(plan, state.days)
 
   const [places, setPlaces] = useState<Place[]>([])
@@ -77,6 +79,18 @@ export function ResultPage() {
 
   const changes = ready ? diffCourses(beforeDiagnosis, afterDiagnosis) : []
   const gain = ready ? afterDiagnosis.totalQuietness - beforeDiagnosis.totalQuietness : 0
+
+  // 날짜 이동과 장소 교체는 서로 다른 회피 경로다. 무엇을 해서 나아졌는지
+  // 구분해 보여줘야 "왜 좋아졌는지"가 화면에 남는다.
+  const movedDate =
+    state.baseline !== null && state.baseline.plan.startDate !== plan.startDate
+      ? { from: state.baseline.plan.startDate, to: plan.startDate }
+      : null
+
+  const summary = [
+    movedDate ? '날짜 이동' : null,
+    changes.length > 0 ? `장소 ${changes.length}곳 교체` : null,
+  ].filter(Boolean)
 
   return (
     <div className="flex flex-col gap-6">
@@ -133,23 +147,41 @@ export function ResultPage() {
           </section>
 
           <p className="text-center text-[15px]">
-            {gain > 0 && (
+            {summary.length === 0 && '원안 그대로입니다. 바꾼 곳이 없어요.'}
+            {summary.length > 0 && gain > 0 && (
               <>
-                한적도 <strong className="text-quiet text-lg">{gain} 상승</strong> · 장소{' '}
-                {changes.length}곳 교체
+                한적도 <strong className="text-quiet text-lg">{gain} 상승</strong> ·{' '}
+                {summary.join(' · ')}
               </>
             )}
-            {gain === 0 && changes.length === 0 && '원안 그대로입니다. 바꾼 곳이 없어요.'}
-            {gain === 0 &&
-              changes.length > 0 &&
-              `장소 ${changes.length}곳을 바꿨지만 총점은 같아요.`}
-            {gain < 0 && `한적도 ${Math.abs(gain)} 하락 · 장소 ${changes.length}곳 교체`}
+            {summary.length > 0 && gain === 0 && `${summary.join(' · ')} · 총점은 같아요.`}
+            {summary.length > 0 &&
+              gain < 0 &&
+              `한적도 ${Math.abs(gain)} 하락 · ${summary.join(' · ')}`}
           </p>
 
-          {changes.length > 0 && (
+          {(movedDate || changes.length > 0) && (
             <section>
-              <h2 className="text-fg mb-2 text-[15px] font-semibold">바뀐 곳</h2>
+              <h2 className="text-fg mb-2 text-[15px] font-semibold">바꾼 것</h2>
               <ul className="flex flex-col gap-2">
+                {movedDate && (
+                  <li className={`${CARD} p-3`}>
+                    <p className="text-brand-strong mb-2 text-xs font-semibold">여행 날짜</p>
+                    <div className="flex items-center gap-2 py-1">
+                      <span className="text-muted flex-1 text-[15px] line-through">
+                        {formatKoreanDate(movedDate.from)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 py-1">
+                      <span className="text-muted text-[13px]" aria-hidden="true">
+                        ↓
+                      </span>
+                      <span className="text-fg flex-1 text-[15px]">
+                        {formatKoreanDate(movedDate.to)}
+                      </span>
+                    </div>
+                  </li>
+                )}
                 {changes.map((change) => (
                   <li key={`${change.day}-${change.order}`} className={`${CARD} p-3`}>
                     <p className="text-brand-strong mb-2 text-xs font-semibold">
