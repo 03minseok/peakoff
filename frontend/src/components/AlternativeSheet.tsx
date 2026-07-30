@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { ApiRequestError, fetchAlternatives } from '../services/api'
 import type { Alternative } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
-import './AlternativeSheet.css'
 
 interface Props {
   /** 교체 대상 장소 */
@@ -80,51 +79,66 @@ export function AlternativeSheet({
   }, [onClose])
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-100 flex items-end justify-center bg-black/45"
+      onClick={onClose}
+    >
       {/*
         내용 영역 클릭이 배경까지 올라가면 시트가 닫힌다.
         키보드 사용자는 Escape로 닫으므로 이 div에는 역할을 주지 않는다.
+
+        화면을 다 덮지 않는다 — 뒤에 있는 코스가 조금 보여야 맥락을 잃지 않는다.
       */}
       <div
         ref={panelRef}
-        className="sheet"
+        className="bg-bg rounded-card flex max-h-[78svh] w-full max-w-app flex-col rounded-b-none px-4 pt-2 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.18)] focus-visible:outline-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sheet-handle" aria-hidden="true" />
+        {/* 아래에서 올라온 시트임을 알리는 손잡이 표시 */}
+        <div className="bg-line mx-auto mb-3 h-1 w-9 rounded-full" aria-hidden="true" />
 
-        <header className="sheet-head">
-          <h2 id="sheet-title" className="sheet-title">
-            <strong>{originName}</strong> 대신 어떠세요?
+        <header className="mb-3 flex items-start justify-between gap-2">
+          <h2 id="sheet-title" className="text-fg text-base font-normal">
+            <strong className="font-bold">{originName}</strong> 대신 어떠세요?
           </h2>
-          <button type="button" className="sheet-close" onClick={onClose} aria-label="닫기">
+          <button
+            type="button"
+            className="text-muted hover:text-fg h-8 w-8 shrink-0 cursor-pointer rounded-md"
+            onClick={onClose}
+            aria-label="닫기"
+          >
             ✕
           </button>
         </header>
 
-        {load.phase === 'loading' && <p className="sheet-status">후보를 찾는 중…</p>}
+        {load.phase === 'loading' && (
+          <p className="py-6 text-center text-sm">후보를 찾는 중…</p>
+        )}
         {load.phase === 'error' && (
-          <p className="sheet-status sheet-status--error">{load.message}</p>
+          <p className="text-danger py-6 text-center text-sm">{load.message}</p>
         )}
 
         {load.phase === 'loaded' && load.alternatives.length === 0 && (
-          <p className="sheet-status">추천할 만한 다른 곳을 찾지 못했어요.</p>
+          <p className="py-6 text-center text-sm">추천할 만한 다른 곳을 찾지 못했어요.</p>
         )}
 
         {load.phase === 'loaded' && load.alternatives.length > 0 && (
-          <ul className="alt-list">
+          <ul className="overflow-y-auto">
             {load.alternatives.map((alternative) => (
               <li key={alternative.place.id}>
                 <button
                   type="button"
-                  className="alt"
+                  className="border-line hover:bg-surface flex w-full cursor-pointer flex-col gap-1 border-b px-2 py-3 text-left"
                   onClick={() => onSelect(alternative.place.id)}
                 >
-                  <span className="alt-head">
-                    <span className="alt-name">{alternative.place.name}</span>
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-fg text-[15px] font-semibold">
+                      {alternative.place.name}
+                    </span>
                     <CongestionBadge
                       level={alternative.level}
                       label={alternative.levelLabel}
@@ -132,8 +146,11 @@ export function AlternativeSheet({
                       size="sm"
                     />
                   </span>
-                  <span className="alt-reason">{alternative.reason}</span>
-                  <span className="alt-meta">
+                  {/* 추천 근거. 이름 다음으로 눈에 들어와야 한다 — 데이터를 어떻게 썼는지 보여주는 자리다. */}
+                  <span className="text-brand-strong text-[13px] leading-snug">
+                    {alternative.reason}
+                  </span>
+                  <span className="text-muted text-xs">
                     {alternative.place.categoryName} · 추천도 {alternative.recommendation}
                   </span>
                 </button>

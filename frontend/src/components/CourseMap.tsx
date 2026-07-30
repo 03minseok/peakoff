@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useKakaoSdk } from '../hooks/useKakaoSdk'
 import type { KakaoCustomOverlay, KakaoMap, KakaoPolyline } from '../types/kakao'
 import type { Place } from '../types/api'
-import './CourseMap.css'
 
 interface Props {
   /** 지도에 찍을 장소 전체 */
@@ -20,6 +19,20 @@ interface Props {
 
 /** 경주 시내 근처. 장소를 받기 전 잠깐 보여줄 초기 중심점 */
 const FALLBACK_CENTER = { lat: 35.8397, lng: 129.2124 }
+
+const MAP_BOX = 'h-60 min-[480px]:h-[300px] w-full overflow-hidden rounded-card border border-line'
+
+/*
+ * 마커는 React가 아니라 document.createElement로 만들어 카카오 오버레이에 넣는다.
+ * Tailwind는 소스를 글자 그대로 훑으므로, 클래스를 이렇게 완성된 문자열로 두어야
+ * 빌드에 포함된다. 조립하면 CSS가 생성되지 않는다.
+ */
+const PIN_BASE =
+  'grid place-items-center box-border rounded-full border-2 border-white shadow-[0_1px_3px_rgba(0,0,0,0.35)]'
+const PIN_DOT = 'h-3.5 w-3.5 bg-muted'
+const PIN_MARKED =
+  'h-[26px] w-auto min-w-[26px] px-[5px] text-xs font-bold leading-none text-white bg-brand-strong'
+const PIN_CLICKABLE = 'cursor-pointer hover:bg-brand'
 
 /** 경로에서 이 장소의 위치를 찾는다. 없으면 null */
 function findInRoutes(routes: string[][], placeId: string) {
@@ -90,7 +103,7 @@ export function CourseMap({ places, routes, onSelect }: Props) {
       bounds.extend(position)
 
       const found = findInRoutes(routes, place.id)
-      const isSelected = found !== null
+      const isMarked = found !== null
 
       const pin = document.createElement(interactive ? 'button' : 'span')
       if (pin instanceof HTMLButtonElement) {
@@ -98,7 +111,11 @@ export function CourseMap({ places, routes, onSelect }: Props) {
         pin.addEventListener('click', () => onSelectRef.current?.(place.id))
         pin.setAttribute('aria-label', `${place.name} 코스에 추가`)
       }
-      pin.className = isSelected ? 'map-pin map-pin--selected' : 'map-pin'
+      pin.className = [
+        PIN_BASE,
+        isMarked ? PIN_MARKED : PIN_DOT,
+        interactive ? PIN_CLICKABLE : '',
+      ].join(' ')
       // 여러 날을 함께 그릴 때는 "2-1"처럼 일차를 붙여야 같은 번호가 겹치지 않는다.
       pin.textContent = found
         ? multiDay
@@ -113,7 +130,7 @@ export function CourseMap({ places, routes, onSelect }: Props) {
         xAnchor: 0.5,
         yAnchor: 0.5,
         // 담긴 장소가 다른 마커에 가리지 않도록 위로 올린다.
-        zIndex: isSelected ? 2 : 1,
+        zIndex: isMarked ? 2 : 1,
         clickable: interactive,
       })
       overlay.setMap(map)
@@ -155,7 +172,7 @@ export function CourseMap({ places, routes, onSelect }: Props) {
     return <MapPlaceholder status={status} />
   }
 
-  return <div ref={containerRef} className="course-map" />
+  return <div ref={containerRef} className={MAP_BOX} />
 }
 
 function MapPlaceholder({ status }: { status: 'no-key' | 'loading' | 'error' }) {
@@ -166,8 +183,8 @@ function MapPlaceholder({ status }: { status: 'no-key' | 'loading' | 'error' }) 
   }[status]
 
   return (
-    <div className="course-map course-map--placeholder">
-      <p>{message}</p>
+    <div className={`${MAP_BOX} bg-surface grid place-items-center p-4 text-center text-[13px]`}>
+      <p className="m-0 max-w-[28ch]">{message}</p>
     </div>
   )
 }

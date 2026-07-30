@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { ApiRequestError, fetchPlaces } from '../services/api'
-import './PreviewPage.css'
 
 /**
  * 개발용 확인 페이지. 서비스 흐름에 포함되지 않는다.
@@ -31,24 +30,24 @@ export function PreviewPage() {
 
   return (
     <section>
-      <h1 className="preview-title">공통 컴포넌트 확인</h1>
+      <h1 className="text-fg text-xl font-semibold">공통 컴포넌트 확인</h1>
 
-      <h2 className="preview-heading">한적도 배지</h2>
-      <div className="preview-row">
+      <h2 className="text-muted mt-6 mb-2 text-[13px] font-semibold">한적도 배지</h2>
+      <div className="flex flex-wrap items-center gap-2">
         <CongestionBadge level="QUIET" quietness={82} />
         <CongestionBadge level="MODERATE" quietness={54} />
         <CongestionBadge level="CROWDED" quietness={12} />
       </div>
 
-      <h2 className="preview-heading">점수 없이</h2>
-      <div className="preview-row">
+      <h2 className="text-muted mt-6 mb-2 text-[13px] font-semibold">점수 없이</h2>
+      <div className="flex flex-wrap items-center gap-2">
         <CongestionBadge level="QUIET" />
         <CongestionBadge level="MODERATE" size="sm" />
         <CongestionBadge level="CROWDED" size="sm" label="매우 붐빔" />
       </div>
 
-      <h2 className="preview-heading">백엔드 연결</h2>
-      <p className="preview-connection">{connection}</p>
+      <h2 className="text-muted mt-6 mb-2 text-[13px] font-semibold">백엔드 연결</h2>
+      <p className="text-sm">{connection}</p>
     </section>
   )
 }

@@ -1,39 +1,127 @@
-@import './styles/tokens.css';
+@import 'tailwindcss';
 
+/*
+ * 디자인 토큰.
+ *
+ * 색 의미는 서비스 정체성과 맞춘다.
+ *   한적 = 청록  (이 서비스가 사용자를 데려가려는 방향)
+ *   보통 = 앰버
+ *   붐빔 = 레드  (피해야 할 방향)
+ *
+ * 값을 여기 CSS 변수로 두고 아래 @theme에서 참조하는 이유는 다크 모드 때문이다.
+ * @theme에 색을 직접 적으면 값이 고정되어 미디어 쿼리로 바꿀 수 없다.
+ */
 :root {
-  font: 16px/1.5 var(--font-sans);
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  -webkit-font-smoothing: antialiased;
+  --c-bg: #ffffff;
+  --c-surface: #f8fafc;
+  --c-line: #e2e8f0;
+  --c-muted: #64748b;
+  --c-fg: #0f172a;
+
+  --c-brand: #0d9488;
+  --c-brand-strong: #0f766e;
+  --c-danger: #b91c1c;
+
+  /* 단계마다 글자색 / 배경 / 테두리 세 쌍. 배지는 배경 위에 글자를 올리므로
+     배경만 있으면 대비를 맞출 수 없다. */
+  --c-quiet: #0f766e;
+  --c-quiet-bg: #f0fdfa;
+  --c-quiet-line: #5eead4;
+
+  --c-moderate: #b45309;
+  --c-moderate-bg: #fffbeb;
+  --c-moderate-line: #fcd34d;
+
+  --c-crowded: #b91c1c;
+  --c-crowded-bg: #fef2f2;
+  --c-crowded-line: #fca5a5;
 }
 
-* {
-  box-sizing: border-box;
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 어두운 배경에서는 진한 색이 묻힌다. 글자는 밝게 올리고 배경은 투명도로 깐다.
+       단순히 반전시키면 이게 안 된다. */
+    --c-bg: #0f172a;
+    --c-surface: #1e293b;
+    --c-line: #334155;
+    --c-muted: #94a3b8;
+    --c-fg: #f1f5f9;
+
+    --c-brand: #2dd4bf;
+    --c-brand-strong: #5eead4;
+    --c-danger: #fca5a5;
+
+    --c-quiet: #5eead4;
+    --c-quiet-bg: rgb(20 184 166 / 0.14);
+    --c-quiet-line: rgb(45 212 191 / 0.45);
+
+    --c-moderate: #fcd34d;
+    --c-moderate-bg: rgb(245 158 11 / 0.14);
+    --c-moderate-line: rgb(251 191 36 / 0.45);
+
+    --c-crowded: #fca5a5;
+    --c-crowded-bg: rgb(239 68 68 / 0.14);
+    --c-crowded-line: rgb(248 113 113 / 0.45);
+  }
 }
 
-body {
-  margin: 0;
+/*
+ * inline을 붙이면 생성되는 유틸리티가 위 변수를 그대로 참조한다.
+ * 덕분에 bg-surface 하나로 라이트·다크가 모두 처리된다 —
+ * 클래스마다 dark: 짝을 달지 않아도 된다.
+ */
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-line: var(--c-line);
+  --color-muted: var(--c-muted);
+  --color-fg: var(--c-fg);
+
+  --color-brand: var(--c-brand);
+  --color-brand-strong: var(--c-brand-strong);
+  --color-danger: var(--c-danger);
+
+  --color-quiet: var(--c-quiet);
+  --color-quiet-bg: var(--c-quiet-bg);
+  --color-quiet-line: var(--c-quiet-line);
+
+  --color-moderate: var(--c-moderate);
+  --color-moderate-bg: var(--c-moderate-bg);
+  --color-moderate-line: var(--c-moderate-line);
+
+  --color-crowded: var(--c-crowded);
+  --color-crowded-bg: var(--c-crowded-bg);
+  --color-crowded-line: var(--c-crowded-line);
+
+  --font-sans: system-ui, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', sans-serif;
+  --font-mono: ui-monospace, Consolas, monospace;
+
+  /* 모바일 우선. 390px 화면을 기준으로 설계하고, 데스크톱에서는 이 폭으로 묶어
+     가운데 정렬한다. 가로로 늘어지면 지도·목록이 읽기 어려워진다. */
+  --container-app: 480px;
+
+  --radius-card: 10px;
 }
 
-#root {
-  min-height: 100svh;
-}
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
 
-h1,
-h2,
-h3 {
-  color: var(--text-strong);
-  margin: 0;
-}
+  body {
+    background: var(--color-bg);
+    color: var(--color-muted);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
 
-code {
-  font-family: var(--font-mono);
-  font-size: 0.875em;
-}
+  #root {
+    min-height: 100svh;
+  }
 
-/* 키보드 이동 시 초점이 어디 있는지 항상 보이게 한다. */
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
+  /* 키보드 이동 시 초점이 어디 있는지 항상 보이게 한다. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
 }
