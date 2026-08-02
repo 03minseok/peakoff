@@ -230,6 +230,14 @@ export function AlternativeSheet({
                       </p>
                     </div>
 
+                    {/*
+                      내역이 없어도 카드는 그려야 한다.
+
+                      서버와 화면이 따로 배포되는 순간이 있고(구버전 서버가 아직 떠 있는 등),
+                      그때 필드 하나가 비었다고 화면 전체가 하얘지면 안 된다.
+                      근거 문장은 그대로 남으므로 추천 이유는 여전히 보인다.
+                    */}
+                    {alternative.factors?.length ? (
                     <ul className="border-line flex flex-col gap-2 border-t pt-2.5">
                       {alternative.factors.map((factor) => (
                         <li
@@ -252,6 +260,7 @@ export function AlternativeSheet({
                         </li>
                       ))}
                     </ul>
+                    ) : null}
                   </div>
 
                   <button

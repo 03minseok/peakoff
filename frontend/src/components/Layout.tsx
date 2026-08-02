@@ -42,17 +42,6 @@ export function Layout() {
               화면을 옮겨 다니는 동안 날짜를 다시 확인하러 뒤로 갈 일이 없어진다.
               좁은 화면에서는 자리가 없어 감춘다.
             */}
-            {plan && regionName && (
-              <div className="hidden min-w-0 items-center gap-2.5 sm:flex">
-                <span className="bg-line h-4 w-px flex-none" aria-hidden="true" />
-                <span className="text-fg truncate text-sm font-semibold">
-                  {regionName} {formatDuration(plan.nights)}
-                </span>
-                <span className="text-hint flex-none font-mono text-[12.5px]">
-                  {formatDateRange(plan.startDate, plan.nights)}
-                </span>
-              </div>
-            )}
           </div>
 
           {/*
