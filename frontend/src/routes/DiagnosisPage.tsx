@@ -19,6 +19,9 @@ interface SheetTarget {
   placeId: string
   placeName: string
   visitDate: string
+  /** 지금 이 자리의 한적도. 후보가 더 나은지 비교해 보여주기 위해 함께 넘긴다 */
+  quietness: number
+  level: CongestionLevel
 }
 
 /** 날짜 목록의 한 줄. 현재 날짜와 대안을 같은 모양으로 다루기 위한 형태 */
@@ -381,23 +384,36 @@ export function DiagnosisPage() {
                           quietness={slot.quietness}
                           size="sm"
                         />
-                        {slot.level === 'CROWDED' && (
-                          <button
-                            type="button"
-                            className="bg-crowded hover:bg-crowded-deep rounded-chip ml-auto h-10 cursor-pointer px-4 text-sm font-semibold whitespace-nowrap text-white shadow-[0_4px_12px_rgb(206_81_56/0.22)] transition-colors sm:ml-0"
-                            onClick={() =>
-                              setSheet({
-                                day: slot.day,
-                                index: slot.order - 1,
-                                placeId: slot.place.id,
-                                placeName: slot.place.name,
-                                visitDate: slot.visitDate,
-                              })
-                            }
-                          >
-                            대안 보기
-                          </button>
-                        )}
+                        {/*
+                          대안은 모든 자리에서 열 수 있다. 한적하다고 판단된 곳도
+                          사용자가 더 나은 후보를 직접 보고 판단할 수 있어야 한다.
+
+                          다만 붐비는 곳만 채운 버튼으로 강하게 두고, 나머지는
+                          테두리만 있는 조용한 버튼으로 둔다. 모든 카드에 빨간 버튼이
+                          서 있으면 경고색이 의미를 잃는다 — 시안에도 "주황·빨강은
+                          경고 신호로만"이라고 못박혀 있다.
+                        */}
+                        <button
+                          type="button"
+                          className={`rounded-chip ml-auto h-10 cursor-pointer px-4 text-sm font-semibold whitespace-nowrap transition-colors sm:ml-0 ${
+                            slot.level === 'CROWDED'
+                              ? 'bg-crowded hover:bg-crowded-deep text-white shadow-[0_4px_12px_rgb(206_81_56/0.22)]'
+                              : 'border-line bg-surface text-muted hover:border-brand hover:text-brand-deep border'
+                          }`}
+                          onClick={() =>
+                            setSheet({
+                              day: slot.day,
+                              index: slot.order - 1,
+                              placeId: slot.place.id,
+                              placeName: slot.place.name,
+                              visitDate: slot.visitDate,
+                              quietness: slot.quietness,
+                              level: slot.level,
+                            })
+                          }
+                        >
+                          대안 보기
+                        </button>
                       </div>
                     </li>
                   ))}
@@ -420,6 +436,8 @@ export function DiagnosisPage() {
         <AlternativeSheet
           originName={sheet.placeName}
           originPlaceId={sheet.placeId}
+          originQuietness={sheet.quietness}
+          originLevel={sheet.level}
           visitDate={sheet.visitDate}
           excludePlaceIds={state.days[sheet.day - 1] ?? []}
           onClose={() => setSheet(null)}
