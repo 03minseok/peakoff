@@ -15,24 +15,39 @@ interface Props {
   routes: string[][]
   /** 없으면 마커를 누를 수 없는 읽기 전용 지도가 된다 */
   onSelect?: (placeId: string) => void
+  /**
+   * 지도 상자에 덧붙일 클래스. 주로 화면별 높이를 덮어쓰는 데 쓴다.
+   *
+   * 높이를 컴포넌트 안에서 정하지 않는 이유: 편집 화면은 데스크톱에서 화면 높이만큼
+   * 세워 두고, 최종 화면은 본문 흐름에 맞춰 낮게 둔다. 컴포넌트를 나누는 대신
+   * 클래스만 바깥에서 받는다.
+   */
+  className?: string
 }
 
 /** 경주 시내 근처. 장소를 받기 전 잠깐 보여줄 초기 중심점 */
 const FALLBACK_CENTER = { lat: 35.8397, lng: 129.2124 }
 
-const MAP_BOX = 'h-60 min-[480px]:h-[300px] w-full overflow-hidden rounded-card border border-line'
+const MAP_BOX = 'h-[290px] w-full overflow-hidden rounded-card border border-line'
 
 /*
  * 마커는 React가 아니라 document.createElement로 만들어 카카오 오버레이에 넣는다.
  * Tailwind는 소스를 글자 그대로 훑으므로, 클래스를 이렇게 완성된 문자열로 두어야
  * 빌드에 포함된다. 조립하면 CSS가 생성되지 않는다.
+ *
+ * 흰 테두리는 border가 아니라 ring 형태의 그림자로 준다. 지도 배경이 무엇이든
+ * 마커가 배경에서 떨어져 보이게 하려는 것이고, border와 달리 크기를 밀어내지 않는다.
  */
-const PIN_BASE =
-  'grid place-items-center box-border rounded-full border-2 border-white shadow-[0_1px_3px_rgba(0,0,0,0.35)]'
-const PIN_DOT = 'h-3.5 w-3.5 bg-muted'
+const PIN_WRAP = 'flex flex-col items-center gap-1'
+const PIN_BASE = 'grid place-items-center box-border rounded-full font-mono'
+const PIN_DOT =
+  'h-3.5 w-3.5 bg-muted shadow-[0_0_0_2px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
 const PIN_MARKED =
-  'h-[26px] w-auto min-w-[26px] px-[5px] text-xs font-bold leading-none text-white bg-brand-strong'
-const PIN_CLICKABLE = 'cursor-pointer hover:bg-brand'
+  'h-7 w-auto min-w-7 px-1.5 text-[13px] font-semibold leading-none text-white bg-brand shadow-[0_0_0_3px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
+const PIN_CLICKABLE = 'cursor-pointer hover:bg-brand-hover'
+/** 담긴 장소에만 붙는 이름표. 번호만으로는 어디가 어디인지 알 수 없다. */
+const PIN_LABEL =
+  'rounded-md bg-white/95 px-1.5 py-0.5 text-[11.5px] font-semibold text-fg whitespace-nowrap shadow-[0_1px_3px_rgba(22,33,31,0.12)]'
 
 /** 경로에서 이 장소의 위치를 찾는다. 없으면 null */
 function findInRoutes(routes: string[][], placeId: string) {
@@ -45,7 +60,7 @@ function findInRoutes(routes: string[][], placeId: string) {
   return null
 }
 
-export function CourseMap({ places, routes, onSelect }: Props) {
+export function CourseMap({ places, routes, onSelect, className = '' }: Props) {
   const status = useKakaoSdk()
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -105,7 +120,10 @@ export function CourseMap({ places, routes, onSelect }: Props) {
       const found = findInRoutes(routes, place.id)
       const isMarked = found !== null
 
-      const pin = document.createElement(interactive ? 'button' : 'span')
+      // 이미 담은 곳은 다시 담을 수 없으므로 버튼으로 만들지 않는다.
+      const clickable = interactive && !isMarked
+
+      const pin = document.createElement(clickable ? 'button' : 'span')
       if (pin instanceof HTMLButtonElement) {
         pin.type = 'button'
         pin.addEventListener('click', () => onSelectRef.current?.(place.id))
@@ -114,7 +132,7 @@ export function CourseMap({ places, routes, onSelect }: Props) {
       pin.className = [
         PIN_BASE,
         isMarked ? PIN_MARKED : PIN_DOT,
-        interactive ? PIN_CLICKABLE : '',
+        clickable ? PIN_CLICKABLE : '',
       ].join(' ')
       // 여러 날을 함께 그릴 때는 "2-1"처럼 일차를 붙여야 같은 번호가 겹치지 않는다.
       pin.textContent = found
@@ -124,14 +142,31 @@ export function CourseMap({ places, routes, onSelect }: Props) {
         : ''
       pin.title = place.name
 
+      const marker = document.createElement('div')
+      marker.className = PIN_WRAP
+      marker.appendChild(pin)
+
+      // 이름표는 담긴 곳에만 붙인다. 모든 마커에 붙이면 글자가 서로 겹쳐 지도가 읽히지 않는다.
+      if (isMarked) {
+        const label = document.createElement('span')
+        label.className = PIN_LABEL
+        label.textContent = place.name
+        marker.appendChild(label)
+      }
+
       const overlay = new maps.CustomOverlay({
         position,
-        content: pin,
+        content: marker,
         xAnchor: 0.5,
-        yAnchor: 0.5,
+        /*
+          yAnchor는 콘텐츠 높이에 대한 비율이다. 담긴 마커는 아래에 이름표가 붙어
+          전체가 더 길어지므로, 0.5로 두면 좌표가 이름표 근처에 찍힌다.
+          동그라미 가운데가 실제 좌표에 오도록 비율을 줄인다.
+        */
+        yAnchor: isMarked ? 0.28 : 0.5,
         // 담긴 장소가 다른 마커에 가리지 않도록 위로 올린다.
         zIndex: isMarked ? 2 : 1,
-        clickable: interactive,
+        clickable,
       })
       overlay.setMap(map)
       overlaysRef.current.push(overlay)
@@ -150,7 +185,8 @@ export function CourseMap({ places, routes, onSelect }: Props) {
       const polyline = new maps.Polyline({
         path,
         strokeWeight: 3,
-        strokeColor: '#0d9488',
+        // 브랜드 청록. CSS 변수를 못 쓰는 자리라(카카오가 그리는 캔버스) 값을 직접 적는다.
+        strokeColor: '#0e7c86',
         strokeOpacity: 0.9,
         strokeStyle: 'solid',
       })
@@ -159,23 +195,36 @@ export function CourseMap({ places, routes, onSelect }: Props) {
     })
 
     /*
-     * 화면 맞춤은 처음 한 번만. 장소를 담을 때마다 지도가 움직이면
+     * 편집 지도(interactive)는 처음 한 번만 맞춘다. 장소를 담을 때마다 지도가 움직이면
      * 방금 어디를 눌렀는지 놓치게 된다.
+     *
+     * 읽기 전용 지도는 반대로 <b>매번</b> 다시 맞춘다. 보여줄 경로가 통째로 바뀌기
+     * 때문이다(일차 전환). 한 번만 맞추면 2일차로 넘겼을 때 그 날 장소들이
+     * 화면 밖에 있어도 지도가 그대로 멈춰 있다.
      */
-    if (!hasFittedRef.current && places.length > 0 && !bounds.isEmpty()) {
+    const shouldFit = !interactive || !hasFittedRef.current
+    if (shouldFit && places.length > 0 && !bounds.isEmpty()) {
       map.setBounds(bounds)
       hasFittedRef.current = true
     }
   }, [places, routes, status, interactive])
 
+  // 대체 화면도 같은 크기로 그린다. 지도를 못 불러왔을 때 자리가 줄어들면
+  // 옆 칸까지 따라 움직여 화면이 흔들린다.
   if (status !== 'ready') {
-    return <MapPlaceholder status={status} />
+    return <MapPlaceholder status={status} className={className} />
   }
 
-  return <div ref={containerRef} className={MAP_BOX} />
+  return <div ref={containerRef} className={`${MAP_BOX} ${className}`} />
 }
 
-function MapPlaceholder({ status }: { status: 'no-key' | 'loading' | 'error' }) {
+function MapPlaceholder({
+  status,
+  className,
+}: {
+  status: 'no-key' | 'loading' | 'error'
+  className: string
+}) {
   const message = {
     'no-key': '지도 키가 설정되지 않았습니다. 아래 목록으로 코스를 짤 수 있어요.',
     loading: '지도를 불러오는 중…',
@@ -183,7 +232,9 @@ function MapPlaceholder({ status }: { status: 'no-key' | 'loading' | 'error' }) 
   }[status]
 
   return (
-    <div className={`${MAP_BOX} bg-surface grid place-items-center p-4 text-center text-[13px]`}>
+    <div
+      className={`${MAP_BOX} ${className} bg-surface grid place-items-center p-4 text-center text-[13px]`}
+    >
       <p className="m-0 max-w-[28ch]">{message}</p>
     </div>
   )

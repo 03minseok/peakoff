@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PEAKOFF</title>
+
+    <!--
+      본문은 Pretendard, 점수·시각·거리 같은 수치는 IBM Plex Mono.
+      수치를 고정폭으로 두면 목록에서 자릿수가 달라도 세로줄이 흔들리지 않는다.
+      preconnect를 먼저 걸어야 폰트 요청이 DNS 조회를 기다리지 않는다.
+    -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>

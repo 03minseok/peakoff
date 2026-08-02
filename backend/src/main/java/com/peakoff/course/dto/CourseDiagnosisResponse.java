@@ -34,7 +34,7 @@ public record CourseDiagnosisResponse(
 			int order,
 			LocalDate visitDate,
 			PlaceResponse place,
-			int quietness,
+			int quietness, //한적도 점수
 			CongestionLevel level,
 			String levelLabel) {
 

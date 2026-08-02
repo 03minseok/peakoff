@@ -2,6 +2,7 @@ package com.peakoff.place.service;
 
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.peakoff.global.error.NotFoundException;
@@ -11,13 +12,10 @@ import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.place.dto.PlaceResponse;
 
 @Service
+@RequiredArgsConstructor
 public class PlaceService {
 
 	private final PlaceProvider placeProvider;
-
-	public PlaceService(PlaceProvider placeProvider) {
-		this.placeProvider = placeProvider;
-	}
 
 	public List<PlaceResponse> findByRegion(String regionSlug) {
 		SupportedRegion region = SupportedRegion.fromSlug(regionSlug);

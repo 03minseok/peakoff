@@ -7,12 +7,40 @@
  * 조립하지 않고 완성된 문자열로 적는다. Tailwind는 소스를 글자 그대로 훑기 때문이다.
  */
 
-/** 화면당 하나뿐인 주요 행동 버튼. 모바일에서 엄지로 누를 수 있는 높이(52px)를 지킨다. */
+/**
+ * 화면당 하나뿐인 주요 행동 버튼.
+ *
+ * 높이 54px. 시안의 모바일 최소 터치 높이(48px)보다 넉넉하게 잡아,
+ * 엄지로 누를 때 빗나가지 않게 한다.
+ */
 export const PRIMARY_BUTTON =
-  'min-h-13 w-full cursor-pointer rounded-card bg-brand-strong font-bold text-white hover:bg-brand disabled:cursor-not-allowed disabled:opacity-45'
+  'min-h-13.5 w-full cursor-pointer rounded-ui bg-brand text-base font-semibold text-white shadow-cta transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-hint disabled:shadow-none'
 
-/** 목록·카드를 감싸는 기본 테두리 */
-export const CARD = 'rounded-card border border-line'
+/** 주요 버튼 옆에 서는 보조 버튼. 테두리만 두고 배경은 카드와 같게 둔다. */
+export const SECONDARY_BUTTON =
+  'min-h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15px] font-semibold text-fg transition-colors hover:bg-bg'
+
+/** 카드 안에 들어가는 작은 행동 버튼 (교체·추가 등). */
+export const CHIP_BUTTON =
+  'min-h-9 cursor-pointer rounded-chip bg-brand-tint px-3.5 text-[13px] font-semibold text-brand-deep transition-colors hover:bg-quiet-soft/40'
+
+/** 목록·내용을 담는 기본 카드. 배경 위에 놓인 상태 */
+export const CARD = 'rounded-card bg-surface shadow-rest'
+
+/** 눈길이 먼저 닿아야 하는 카드. 배경에서 한 겹 떠 있다 */
+export const CARD_RAISED = 'rounded-card bg-surface shadow-raised'
 
 /** 내용이 없거나 불러오는 중일 때 자리를 채우는 안내 */
-export const NOTICE = 'bg-surface rounded-card p-4 text-center text-[13px]'
+export const NOTICE =
+  'rounded-card bg-surface p-4 text-center text-[13px] shadow-rest'
+
+/**
+ * 화면 껍데기 안에서 본문을 다시 좁히는 열.
+ *
+ * 껍데기는 1180px까지 넓지만 본문까지 따라 넓히지는 않는다.
+ * 데스크톱에서 가운데로 모아 모바일과 같은 리듬으로 읽히게 하려는 것이다.
+ */
+export const READ_COLUMN = 'mx-auto w-full max-w-read'
+
+/** 입력 폼 화면의 본문 폭. 읽는 화면보다 더 좁다 */
+export const FORM_COLUMN = 'mx-auto w-full max-w-form'

@@ -3,6 +3,7 @@ package com.peakoff.course.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.peakoff.congestion.domain.CongestionProvider;
@@ -21,15 +22,11 @@ import com.peakoff.place.service.PlaceService;
  * <p>서비스가 개입하는 첫 지점이다. 코스를 짜는 동안에는 아무 점수도 끼어들지 않는다.
  */
 @Service
+@RequiredArgsConstructor
 public class CourseDiagnosisService {
 
 	private final PlaceService placeService;
 	private final CongestionProvider congestionProvider;
-
-	public CourseDiagnosisService(PlaceService placeService, CongestionProvider congestionProvider) {
-		this.placeService = placeService;
-		this.congestionProvider = congestionProvider;
-	}
 
 	/**
 	 * 요청의 모양(필수값·개수·범위)은 컨트롤러에서 {@code @Valid}가 이미 걸렀다.
