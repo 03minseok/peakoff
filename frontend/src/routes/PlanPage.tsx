@@ -81,9 +81,9 @@ export function PlanPage() {
           <br />
           피해서 가요
         </h1>
-        <p className="max-w-[300px] text-[15.5px] leading-[1.65] text-pretty">
-          날짜만 정하면 {regionName}의 각 장소가 그날 얼마나 붐빌지 미리 알려드려요. 가입 없이
-          바로 시작할 수 있어요.
+        <p className="min-w-[300px] text-[15.5px] leading-[1.65] text-pretty">
+          날짜만 정하면 {regionName}의 각 장소가 그날 얼마나 붐빌지 미리 알려드려요.<br/> 
+          가입 없이 바로 시작할 수 있어요.
         </p>
       </section>
 
