@@ -1,3 +1,4 @@
+import { LEVEL_SOLID, LEVEL_TINT } from './levelStyles'
 import type { CongestionLevel } from '../types/api'
 
 /**
@@ -10,22 +11,14 @@ const FALLBACK_LABEL: Record<CongestionLevel, string> = {
   CROWDED: '붐빔',
 }
 
-/**
- * 등급별 클래스를 <b>완성된 문자열로</b> 적어둔다.
- *
- * `text-${level}` 처럼 조립하면 안 된다. Tailwind는 소스를 글자 그대로 훑어
- * 쓰인 클래스만 CSS로 만들기 때문에, 조립한 이름은 빌드에 포함되지 않아
- * 개발 중에는 보이다가 배포하면 색이 사라지는 식으로 어긋난다.
- */
-const LEVEL_CLASS: Record<CongestionLevel, string> = {
-  QUIET: 'text-quiet bg-quiet-bg border-quiet-line',
-  MODERATE: 'text-moderate bg-moderate-bg border-moderate-line',
-  CROWDED: 'text-crowded bg-crowded-bg border-crowded-line',
+const SIZE_CLASS = {
+  md: 'gap-1.5 px-3 py-1.5 text-[13px]',
+  sm: 'gap-1.5 px-2.5 py-1 text-xs',
 }
 
-const SIZE_CLASS = {
-  md: 'px-2.5 py-[5px] text-[13px]',
-  sm: 'px-2 py-[3px] text-xs',
+const DOT_SIZE = {
+  md: 'h-1.75 w-1.75',
+  sm: 'h-1.5 w-1.5',
 }
 
 interface Props {
@@ -38,20 +31,27 @@ interface Props {
 }
 
 /**
- * 한적도 3단계 배지.
+ * 한적도 3단계 배지 — 시안의 pill 형태.
  *
  * 색만으로 등급을 구분하지 않고 <b>항상 글자를 함께</b> 넣는다.
  * 색각 이상이 있는 사용자에게 청록과 앰버는 구분되지 않을 수 있고,
  * 심사 환경의 빔프로젝터에서도 색 차이가 뭉개진다.
+ *
+ * 점(dot)은 같은 등급의 진한 색이다. 옅은 배경만으로는 멀리서 등급이 안 읽혀서,
+ * 색 신호를 한 번 더 준다.
  */
 export function CongestionBadge({ level, label, quietness, size = 'md' }: Props) {
   return (
     <span
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border font-semibold leading-none ${LEVEL_CLASS[level]} ${SIZE_CLASS[size]}`}
+      className={`inline-flex items-center rounded-full font-semibold whitespace-nowrap ${LEVEL_TINT[level]} ${SIZE_CLASS[size]}`}
     >
+      <span
+        className={`flex-none rounded-full ${LEVEL_SOLID[level]} ${DOT_SIZE[size]}`}
+        aria-hidden="true"
+      />
       {label ?? FALLBACK_LABEL[level]}
       {quietness !== undefined && (
-        <span className="font-mono font-medium opacity-75">
+        <span className="font-mono font-semibold">
           {/* 화면에서는 숫자만 보이고, 스크린리더는 무슨 숫자인지 듣는다 */}
           <span className="sr-only">한적도 </span>
           {quietness}

@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { PageStub } from '../components/PageStub'
+import { FORM_COLUMN } from '../components/styles'
 
 /**
  * 로그인은 아직 만들지 않았다.
@@ -9,12 +10,14 @@ import { PageStub } from '../components/PageStub'
  */
 export function LoginPage() {
   return (
-    <>
+    <div className={FORM_COLUMN}>
       <PageStub
         title="로그인"
         description="코스를 저장하고 다른 코스와 비교하려면 로그인이 필요합니다. 준비 중이에요."
       />
-      <Link to="/">로그인 없이 이용하기</Link>
-    </>
+      <Link to="/" className="text-brand text-sm font-semibold">
+        로그인 없이 이용하기
+      </Link>
+    </div>
   )
 }

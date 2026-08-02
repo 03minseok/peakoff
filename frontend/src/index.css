@@ -1,111 +1,118 @@
 @import 'tailwindcss';
 
 /*
- * 디자인 토큰.
+ * 디자인 토큰. 값은 전부 디자인 시안(PEAKOFF Design System)에서 그대로 옮겼다.
  *
  * 색 의미는 서비스 정체성과 맞춘다.
  *   한적 = 청록  (이 서비스가 사용자를 데려가려는 방향)
  *   보통 = 앰버
- *   붐빔 = 레드  (피해야 할 방향)
+ *   붐빔 = 주황  (피해야 할 방향)
  *
- * 값을 여기 CSS 변수로 두고 아래 @theme에서 참조하는 이유는 다크 모드 때문이다.
- * @theme에 색을 직접 적으면 값이 고정되어 미디어 쿼리로 바꿀 수 없다.
+ * 단계마다 solid / deep / tint / soft 네 가지를 둔다.
+ *   solid — 점·막대·마커처럼 색 자체가 신호인 자리
+ *   deep  — tint 위에 올리는 글자색 (대비 확보용)
+ *   tint  — 배지·안내 상자의 옅은 배경
+ *   soft  — 막대 그래프의 보조 단계
+ * 배경 하나만 두면 그 위에 올릴 글자색을 맞출 수 없어서 쌍으로 관리한다.
  */
 :root {
-  --c-bg: #ffffff;
-  --c-surface: #f8fafc;
-  --c-line: #e2e8f0;
-  --c-muted: #64748b;
-  --c-fg: #0f172a;
+  /* 화면은 옅은 회녹색, 카드는 흰색. 카드가 배경 위로 떠 보이게 하는 조합이다.
+     반대로(흰 배경 + 회색 카드) 두면 카드 경계가 뭉개진다. */
+  --c-bg: #f4f6f5;
+  --c-surface: #ffffff;
+  --c-line: #e4e8e7;
 
-  --c-brand: #0d9488;
-  --c-brand-strong: #0f766e;
-  --c-danger: #b91c1c;
+  --c-fg: #16211f;
+  --c-muted: #5f706e;
+  --c-hint: #8a9997;
 
-  /* 단계마다 글자색 / 배경 / 테두리 세 쌍. 배지는 배경 위에 글자를 올리므로
-     배경만 있으면 대비를 맞출 수 없다. */
-  --c-quiet: #0f766e;
-  --c-quiet-bg: #f0fdfa;
-  --c-quiet-line: #5eead4;
+  --c-brand: #0e7c86;
+  --c-brand-deep: #0a5a61;
+  --c-brand-hover: #0a5f67;
+  --c-brand-tint: #e2f1f1;
 
-  --c-moderate: #b45309;
-  --c-moderate-bg: #fffbeb;
-  --c-moderate-line: #fcd34d;
+  --c-quiet: #0e7c86;
+  --c-quiet-deep: #0a5a61;
+  --c-quiet-tint: #e2f1f1;
+  --c-quiet-soft: #8cc7c6;
 
-  --c-crowded: #b91c1c;
-  --c-crowded-bg: #fef2f2;
-  --c-crowded-line: #fca5a5;
+  --c-moderate: #c08329;
+  --c-moderate-deep: #8c5d17;
+  --c-moderate-tint: #faf0de;
+  --c-moderate-soft: #e4be7e;
+
+  --c-crowded: #ce5138;
+  --c-crowded-deep: #9b3320;
+  --c-crowded-tint: #fbe8e2;
+  --c-crowded-soft: #eba48f;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* 어두운 배경에서는 진한 색이 묻힌다. 글자는 밝게 올리고 배경은 투명도로 깐다.
-       단순히 반전시키면 이게 안 된다. */
-    --c-bg: #0f172a;
-    --c-surface: #1e293b;
-    --c-line: #334155;
-    --c-muted: #94a3b8;
-    --c-fg: #f1f5f9;
-
-    --c-brand: #2dd4bf;
-    --c-brand-strong: #5eead4;
-    --c-danger: #fca5a5;
-
-    --c-quiet: #5eead4;
-    --c-quiet-bg: rgb(20 184 166 / 0.14);
-    --c-quiet-line: rgb(45 212 191 / 0.45);
-
-    --c-moderate: #fcd34d;
-    --c-moderate-bg: rgb(245 158 11 / 0.14);
-    --c-moderate-line: rgb(251 191 36 / 0.45);
-
-    --c-crowded: #fca5a5;
-    --c-crowded-bg: rgb(239 68 68 / 0.14);
-    --c-crowded-line: rgb(248 113 113 / 0.45);
-  }
-}
-
-/*
- * inline을 붙이면 생성되는 유틸리티가 위 변수를 그대로 참조한다.
- * 덕분에 bg-surface 하나로 라이트·다크가 모두 처리된다 —
- * 클래스마다 dark: 짝을 달지 않아도 된다.
- */
 @theme inline {
   --color-bg: var(--c-bg);
   --color-surface: var(--c-surface);
   --color-line: var(--c-line);
-  --color-muted: var(--c-muted);
+
   --color-fg: var(--c-fg);
+  --color-muted: var(--c-muted);
+  --color-hint: var(--c-hint);
+
+  /* 어두운 면(최종 비교 화면의 히어로)에 쓰는 잉크색. 글자색과 같은 값이지만
+     쓰임이 달라 이름을 따로 둔다 — 나중에 한쪽만 조정할 수 있다. */
+  --color-ink: var(--c-fg);
 
   --color-brand: var(--c-brand);
-  --color-brand-strong: var(--c-brand-strong);
-  --color-danger: var(--c-danger);
+  --color-brand-deep: var(--c-brand-deep);
+  --color-brand-hover: var(--c-brand-hover);
+  --color-brand-tint: var(--c-brand-tint);
 
   --color-quiet: var(--c-quiet);
-  --color-quiet-bg: var(--c-quiet-bg);
-  --color-quiet-line: var(--c-quiet-line);
+  --color-quiet-deep: var(--c-quiet-deep);
+  --color-quiet-tint: var(--c-quiet-tint);
+  --color-quiet-soft: var(--c-quiet-soft);
 
   --color-moderate: var(--c-moderate);
-  --color-moderate-bg: var(--c-moderate-bg);
-  --color-moderate-line: var(--c-moderate-line);
+  --color-moderate-deep: var(--c-moderate-deep);
+  --color-moderate-tint: var(--c-moderate-tint);
+  --color-moderate-soft: var(--c-moderate-soft);
 
   --color-crowded: var(--c-crowded);
-  --color-crowded-bg: var(--c-crowded-bg);
-  --color-crowded-line: var(--c-crowded-line);
+  --color-crowded-deep: var(--c-crowded-deep);
+  --color-crowded-tint: var(--c-crowded-tint);
+  --color-crowded-soft: var(--c-crowded-soft);
 
-  --font-sans: system-ui, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', sans-serif;
-  --font-mono: ui-monospace, Consolas, monospace;
+  --font-sans: Pretendard, -apple-system, system-ui, 'Apple SD Gothic Neo', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
 
-  /* 모바일 우선. 390px 화면을 기준으로 설계하고, 데스크톱에서는 이 폭으로 묶어
-     가운데 정렬한다. 가로로 늘어지면 지도·목록이 읽기 어려워진다. */
-  --container-app: 480px;
+  /*
+   * 폭. 모바일 390px 기준으로 설계하고 데스크톱에서만 넓힌다.
+   *   app  — 화면 껍데기. 지도와 타임라인을 나란히 놓을 폭
+   *   read — 위에서 아래로 읽는 화면의 본문 (진단 결과)
+   *   form — 입력 폼. 넓히면 오히려 쓰기 어려워진다
+   */
+  --container-app: 1180px;
+  --container-read: 900px;
+  --container-form: 440px;
 
-  --radius-card: 10px;
+  /* 모서리. 시안의 card 20 / button·inner 14 / chip 11을 그대로 옮겼다.
+     알약(pill)은 rounded-full을 쓴다. */
+  --radius-card: 20px;
+  --radius-ui: 14px;
+  --radius-chip: 11px;
+
+  /* 그림자는 두 단계뿐이다. rest는 바닥에 놓인 카드, raised는 떠 있는 카드.
+     단계를 늘리면 어느 것이 더 중요한지 화면에서 읽히지 않는다. */
+  --shadow-rest: 0 1px 2px rgb(22 33 31 / 0.05);
+  --shadow-raised:
+    0 1px 2px rgb(22 33 31 / 0.05), 0 8px 24px rgb(22 33 31 / 0.06);
+  /* 주요 버튼 전용. 브랜드색을 머금은 그림자라 버튼이 배경에서 확실히 떠오른다. */
+  --shadow-cta: 0 6px 18px rgb(14 124 134 / 0.22);
 }
 
 @layer base {
   html {
-    color-scheme: light dark;
+    /* 시안이 밝은 화면 하나만 정의한다. 다크 모드 값을 임의로 만들면
+       심사 환경(브라우저 설정에 따라)에서 시안과 다른 화면이 나온다. */
+    color-scheme: light;
   }
 
   body {

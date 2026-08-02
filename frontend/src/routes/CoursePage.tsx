@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { CourseMap } from '../components/CourseMap'
-import { CARD, NOTICE, PRIMARY_BUTTON } from '../components/styles'
+import { CARD, CHIP_BUTTON, NOTICE, PRIMARY_BUTTON } from '../components/styles'
 import { ApiRequestError, fetchPlaces } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type { Place } from '../types/api'
-import { formatKoreanDate } from '../utils/date'
+import { formatDuration, formatKoreanDate } from '../utils/date'
 
 type LoadState =
   | { phase: 'loading' }
@@ -14,7 +14,7 @@ type LoadState =
 
 /** 모바일에서 손가락으로 누를 수 있는 최소 크기(36px)를 지킨다. */
 const ICON_BUTTON =
-  'h-9 w-9 cursor-pointer rounded-md border border-line bg-bg text-[15px] text-muted hover:border-muted hover:text-fg disabled:cursor-not-allowed disabled:opacity-30'
+  'grid h-9 w-9 place-items-center cursor-pointer rounded-chip bg-transparent text-[15px] text-muted transition-colors hover:bg-bg hover:text-fg disabled:cursor-not-allowed disabled:text-line disabled:hover:bg-transparent'
 
 export function CoursePage() {
   const navigate = useNavigate()
@@ -82,160 +82,222 @@ export function CoursePage() {
   const emptyDays = state.days
     .map((day, index) => (day.length === 0 ? index + 1 : 0))
     .filter((day) => day > 0)
+  const totalCount = state.days.flat().length
+  // 이미 어딘가에 담긴 곳은 후보 목록에서 뺀다. 같은 곳을 두 번 담을 일은 없다.
+  const chosenIds = new Set(state.days.flat())
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-fg text-xl font-semibold tracking-tight">코스 편집</h1>
-        <p className="text-[13px]">
-          {formatKoreanDate(plan.startDate)}부터 {plan.nights}박 {totalDays}일
-        </p>
-      </header>
+    /*
+      데스크톱은 화면 높이를 꽉 채우는 앱 셸이다 — 지도가 왼쪽에 고정되고
+      오른쪽 편집 패널만 안에서 스크롤한다. 장소를 담고 빼는 동안 지도가 계속
+      보여야 "어디를 담았는지"를 놓치지 않는다.
 
-      {/* 편집 중에는 현재 일차만 선으로 잇는다. 다른 날 경로까지 겹치면 읽기 어렵다. */}
-      <CourseMap places={places} routes={currentDayRoute} onSelect={handleSelect} />
-
-      {/* 일차가 늘어나면 가로로 넘칠 수 있어 이 줄만 스크롤되게 둔다. */}
-      <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="일차 선택">
-        {Array.from({ length: totalDays }, (_, index) => index + 1).map((day) => {
-          const count = state.days[day - 1]?.length ?? 0
-          const active = day === currentDay
-          return (
-            <button
-              key={day}
-              type="button"
-              className={`rounded-card inline-flex min-h-10 flex-none cursor-pointer items-center justify-center gap-2 border px-3 text-sm font-semibold ${
-                active
-                  ? 'border-brand bg-quiet-bg text-brand-strong'
-                  : 'border-line bg-bg text-muted'
-              }`}
-              aria-current={active}
-              onClick={() => setCurrentDay(day)}
-            >
-              Day {day}
-              <span
-                className={`min-w-5 rounded-full px-1.5 py-px text-xs font-bold text-white ${
-                  active ? 'bg-brand-strong' : 'bg-muted'
-                }`}
-              >
-                {count}
-              </span>
-            </button>
-          )
-        })}
-      </nav>
-
-      <section>
-        <h2 className="text-fg mb-2 text-[15px] font-semibold">Day {currentDay} 코스</h2>
-
-        {currentDayPlaceIds.length === 0 ? (
-          <p className={NOTICE}>아직 담은 곳이 없어요. 아래에서 골라 담아보세요.</p>
-        ) : (
-          <ol className="flex flex-col gap-2">
-            {currentDayPlaceIds.map((placeId, index) => {
-              const place = placesById.get(placeId)
-              return (
-                <li
-                  key={placeId}
-                  className={`${CARD} grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1 p-3`}
-                >
-                  <span className="bg-brand-strong row-span-2 grid h-6.5 w-6.5 place-items-center rounded-full text-[13px] font-bold text-white">
-                    {index + 1}
-                  </span>
-                  <span className="text-fg text-[15px]">{place?.name ?? placeId}</span>
-                  <span className="row-span-2 flex gap-1">
-                    <button
-                      type="button"
-                      className={ICON_BUTTON}
-                      onClick={() => movePlace(currentDay, index, -1)}
-                      disabled={index === 0}
-                      aria-label={`${place?.name ?? ''} 위로 옮기기`}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className={ICON_BUTTON}
-                      onClick={() => movePlace(currentDay, index, 1)}
-                      disabled={index === currentDayPlaceIds.length - 1}
-                      aria-label={`${place?.name ?? ''} 아래로 옮기기`}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      className={`${ICON_BUTTON} hover:border-danger hover:text-danger`}
-                      onClick={() => removePlace(currentDay, index)}
-                      aria-label={`${place?.name ?? ''} 빼기`}
-                    >
-                      ✕
-                    </button>
-                  </span>
-                  <span className="col-start-2 text-xs">{place?.categoryName ?? ''}</span>
-                </li>
-              )
-            })}
-          </ol>
-        )}
-      </section>
-
-      <section>
-        <h2 className="text-fg mb-2 text-[15px] font-semibold">장소 고르기</h2>
-
-        {load.phase === 'loading' && <p className={NOTICE}>불러오는 중…</p>}
-        {load.phase === 'error' && (
-          <p className={`${NOTICE} text-danger`}>{load.message}</p>
-        )}
-
-        {load.phase === 'loaded' && (
-          <ul className="border-line border-t">
-            {places.map((place) => {
-              const added = currentDayPlaceIds.includes(place.id)
-              return (
-                <li key={place.id}>
-                  <button
-                    type="button"
-                    className="border-line text-fg hover:bg-surface disabled:hover:bg-bg grid min-h-12 w-full cursor-pointer grid-cols-[1fr_auto_auto] items-center gap-3 border-b px-2 py-3 text-left disabled:cursor-default"
-                    onClick={() => addPlace(currentDay, place.id)}
-                    disabled={added}
-                  >
-                    <span className="text-[15px]">{place.name}</span>
-                    <span className="text-muted text-xs">{place.categoryName}</span>
-                    <span
-                      className={`text-[13px] ${added ? 'text-muted' : 'text-brand-strong font-semibold'}`}
-                    >
-                      {added ? '담김' : '담기'}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+      모바일은 지도를 위에 깔고 그 아래 목록이 이어진다. 화면이 좁아 둘을
+      나란히 놓을 수 없다. 컴포넌트는 하나로 두고 클래스로만 갈랐다.
+    */
+    // 높이 = 화면 − (헤더 3.5rem + 본문 위 2rem + 본문 아래 3rem)
+    <div className="flex flex-col gap-0 lg:h-[calc(100svh-8.5rem)] lg:flex-row lg:gap-6">
+      <div className="lg:min-w-0 lg:flex-1">
+        {/* 편집 중에는 현재 일차만 선으로 잇는다. 다른 날 경로까지 겹치면 읽기 어렵다. */}
+        <CourseMap
+          places={places}
+          routes={currentDayRoute}
+          onSelect={handleSelect}
+          className="lg:h-full"
+        />
+      </div>
 
       {/*
-        목록이 길어 스크롤이 생기므로 버튼을 화면 아래에 붙여둔다.
-        끝까지 내려야 진단 버튼을 만나는 구조면 다 담고도 뭘 해야 할지 모른다.
+        시안은 시트가 지도를 살짝 덮으며 올라오지만, 그건 지도가 화면 끝까지
+        닿아 있을 때 성립한다. 여기는 지도가 여백 안에 둥근 카드로 들어앉아 있어
+        겹치면 지도의 아래 모서리만 잘려 보인다. 겹치지 않고 그냥 이어 붙인다.
       */}
-      <div className="bg-bg border-line sticky bottom-0 border-t pt-3 pb-4">
-        {!allDaysFilled && emptyDays.length > 0 && (
-          <p className="mb-2 text-center text-[13px]">
-            {emptyDays.map((day) => `Day ${day}`).join(', ')}에 장소를 담아주세요.
+      <div className="flex flex-col gap-4 pt-4 lg:w-[400px] lg:flex-none lg:overflow-y-auto lg:pt-0">
+        <header className="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="text-fg text-xl font-bold tracking-tight">코스 편집</h1>
+          <p className="text-[13px]">
+            {formatKoreanDate(plan.startDate)}부터 {formatDuration(plan.nights)}
           </p>
-        )}
-        <button
-          type="button"
-          className={PRIMARY_BUTTON}
-          disabled={!allDaysFilled}
-          onClick={() => {
-            // 지금 코스를 원안으로 찍는다. 이후 교체해도 이 시점 코스와 비교할 수 있다.
-            markBaseline()
-            navigate('/diagnosis')
-          }}
+        </header>
+
+        {/*
+          당일치기면 고를 일차가 없다. 탭이 하나뿐이면 누를 수 있다는 신호만 주고
+          아무것도 바뀌지 않아 오히려 헷갈린다.
+
+          일차가 늘어나면 가로로 넘칠 수 있어 이 줄만 스크롤되게 둔다.
+        */}
+        <nav
+          className={`gap-2 overflow-x-auto pb-1 ${totalDays > 1 ? 'flex' : 'hidden'}`}
+          aria-label="일차 선택"
         >
-          코스 진단하기
-        </button>
+          {Array.from({ length: totalDays }, (_, index) => index + 1).map((day) => {
+            const count = state.days[day - 1]?.length ?? 0
+            const active = day === currentDay
+            return (
+              <button
+                key={day}
+                type="button"
+                className={`rounded-ui flex h-13 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 px-3 transition-colors ${
+                  active ? 'bg-fg' : 'bg-surface shadow-rest'
+                }`}
+                aria-current={active}
+                onClick={() => setCurrentDay(day)}
+              >
+                <span
+                  className={`text-sm font-semibold ${active ? 'text-white' : 'text-fg'}`}
+                >
+                  Day {day}
+                </span>
+                {/* 4일 일정이면 탭이 네 개다. "비어 있음" 같은 긴 문구를 넣으면
+                    탭 폭이 좁아졌을 때 두 줄로 접혀 탭 높이를 밀어낸다. */}
+                <span
+                  className={`text-[11.5px] ${active ? 'text-white/60' : 'text-hint'}`}
+                >
+                  {count}곳
+                </span>
+              </button>
+            )
+          })}
+        </nav>
+
+        <section>
+          <div className="mb-2.5 flex items-baseline justify-between">
+            <h2 className="text-fg text-sm font-semibold">
+              Day {currentDay} 코스
+            </h2>
+            <span className="text-hint text-[12.5px]">
+              {currentDayPlaceIds.length > 0 ? `${currentDayPlaceIds.length}곳` : '장소 없음'}
+            </span>
+          </div>
+
+          {currentDayPlaceIds.length === 0 ? (
+            <p className="border-line rounded-card border border-dashed p-6 text-center text-[13.5px] leading-[1.6]">
+              아직 이 날 장소가 없어요.
+              <br />
+              아래에서 가고 싶은 곳을 골라보세요.
+            </p>
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {currentDayPlaceIds.map((placeId, index) => {
+                const place = placesById.get(placeId)
+                return (
+                  <li
+                    key={placeId}
+                    className={`${CARD} flex items-center gap-3 py-3 pr-3 pl-3.5`}
+                  >
+                    <span className="bg-brand grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold text-white">
+                      {index + 1}
+                    </span>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-fg truncate text-[15px] font-semibold">
+                        {place?.name ?? placeId}
+                      </span>
+                      <span className="text-hint text-[12.5px]">
+                        {place?.categoryName ?? ''}
+                      </span>
+                    </div>
+                    <span className="ml-auto flex flex-none items-center">
+                      <button
+                        type="button"
+                        className={ICON_BUTTON}
+                        onClick={() => movePlace(currentDay, index, -1)}
+                        disabled={index === 0}
+                        aria-label={`${place?.name ?? ''} 위로 옮기기`}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className={ICON_BUTTON}
+                        onClick={() => movePlace(currentDay, index, 1)}
+                        disabled={index === currentDayPlaceIds.length - 1}
+                        aria-label={`${place?.name ?? ''} 아래로 옮기기`}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className={`${ICON_BUTTON} hover:bg-crowded-tint hover:text-crowded`}
+                        onClick={() => removePlace(currentDay, index)}
+                        aria-label={`${place?.name ?? ''} 빼기`}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+        </section>
+
+        <section className="pb-2">
+          <h2 className="text-fg mb-2.5 text-sm font-semibold">장소 추가</h2>
+
+          {load.phase === 'loading' && <p className={NOTICE}>불러오는 중…</p>}
+          {load.phase === 'error' && (
+            <p className={`${NOTICE} text-crowded-deep`}>{load.message}</p>
+          )}
+
+          {load.phase === 'loaded' && (
+            <ul className="flex flex-col gap-2">
+              {places.map((place) => {
+                const added = chosenIds.has(place.id)
+                return (
+                  <li
+                    key={place.id}
+                    className={`${CARD} flex items-center gap-2.5 px-3 py-2.75`}
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="text-fg truncate text-[14.5px] font-semibold">
+                        {place.name}
+                      </span>
+                      <span className="text-hint text-xs">{place.categoryName}</span>
+                    </div>
+                    {added ? (
+                      <span className="text-hint flex-none px-2 text-[13px]">담김</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`${CHIP_BUTTON} flex-none`}
+                        onClick={() => addPlace(currentDay, place.id)}
+                      >
+                        추가
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/*
+          목록이 길어 스크롤이 생기므로 버튼을 아래에 붙여둔다.
+          끝까지 내려야 진단 버튼을 만나는 구조면 다 담고도 뭘 해야 할지 모른다.
+        */}
+        <div className="from-bg/0 to-bg sticky bottom-0 mt-auto bg-gradient-to-b to-[30%] pt-3.5 pb-5">
+          {!allDaysFilled && emptyDays.length > 0 && (
+            <p className="mb-2.5 text-center text-[13px]">
+              {emptyDays.map((day) => `Day ${day}`).join(', ')}에 장소를 담아주세요.
+            </p>
+          )}
+          <button
+            type="button"
+            className={PRIMARY_BUTTON}
+            disabled={!allDaysFilled}
+            onClick={() => {
+              // 지금 코스를 원안으로 찍는다. 이후 교체해도 이 시점 코스와 비교할 수 있다.
+              markBaseline()
+              navigate('/diagnosis')
+            }}
+          >
+            코스 진단하기 · {totalCount}곳
+          </button>
+          <p className="text-hint mt-2.5 text-center text-xs">
+            날짜별 예상 혼잡을 한 번에 계산해요
+          </p>
+        </div>
       </div>
     </div>
   )

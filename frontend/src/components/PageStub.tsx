@@ -13,12 +13,12 @@ interface Props {
  */
 export function PageStub({ step, title, description }: Props) {
   return (
-    <section className="py-6">
+    <section className="flex flex-col gap-2.5 py-7">
       {step && (
-        <p className="text-brand mb-2 text-xs font-semibold tracking-wide">{step}</p>
+        <p className="text-brand m-0 text-xs font-semibold tracking-[0.12em]">{step}</p>
       )}
-      <h1 className="text-fg text-[22px] font-semibold tracking-tight">{title}</h1>
-      <p className="mt-2 text-sm">{description}</p>
+      <h1 className="text-fg m-0 text-[26px] font-bold tracking-[-0.02em]">{title}</h1>
+      <p className="m-0 text-sm leading-[1.65] text-pretty">{description}</p>
     </section>
   )
 }

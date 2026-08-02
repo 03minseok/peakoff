@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +33,7 @@ import com.peakoff.recommendation.service.RecommendationService;
  */
 @Tag(name = "장소", description = "장소 목록 조회와 대안 추천")
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/places")
 public class PlaceController {
 
@@ -39,11 +41,6 @@ public class PlaceController {
 
 	private final PlaceService placeService;
 	private final RecommendationService recommendationService;
-
-	public PlaceController(PlaceService placeService, RecommendationService recommendationService) {
-		this.placeService = placeService;
-		this.recommendationService = recommendationService;
-	}
 
 	/** GET /api/places?region=gyeongju */
 	@Operation(
