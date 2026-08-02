@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { ApiRequestError, fetchAlternatives } from '../services/api'
-import type { Alternative } from '../types/api'
+import type { Alternative, CongestionLevel } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
-import { LEVEL_SOLID } from './levelStyles'
 
 interface Props {
   /** 교체 대상 장소 */
   originName: string
   originPlaceId: string
+  /**
+   * 지금 이 자리의 한적도와 등급.
+   *
+   * 후보를 절대 점수로만 보여주면 "이게 지금보다 나은가"를 사용자가 암산해야 한다.
+   * 특히 원래 자리가 이미 한적한 경우, 후보 중에 더 붐비는 곳이 섞여 있을 수 있다.
+   */
+  originQuietness: number
+  originLevel: CongestionLevel
   /** 그 자리를 방문하는 날짜. 같은 후보라도 날짜에 따라 한적도가 다르다 */
   visitDate: string
   /** 이미 그 날에 담겨 있는 장소들. 후보에서 빼야 같은 곳이 두 번 들어가지 않는다 */
@@ -35,6 +42,8 @@ type LoadState =
 export function AlternativeSheet({
   originName,
   originPlaceId,
+  originQuietness,
+  originLevel,
   visitDate,
   excludePlaceIds,
   onClose,
@@ -130,8 +139,15 @@ export function AlternativeSheet({
               ✕
             </button>
           </div>
+          {/* 지금 점수를 함께 띄운다. 후보 옆의 증감이 무엇을 기준으로 한 것인지 알려면 필요하다. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-hint text-[12.5px]">지금</span>
+            <CongestionBadge level={originLevel} quietness={originQuietness} size="sm" />
+          </div>
           <p className="m-0 text-[13px] leading-[1.6] text-pretty">
-            같은 날 방문할 곳 중에서, 동선과 테마가 비슷하면서 더 한적한 곳을 골랐어요.
+            {originLevel === 'CROWDED'
+              ? '추천도가 높은 순이에요. 추천도에는 한적도가 가장 크게 반영됩니다.'
+              : '지금도 크게 붐비지는 않는 곳이에요. 추천도가 높은 순으로 비교해 보세요.'}
           </p>
         </header>
 
@@ -155,75 +171,87 @@ export function AlternativeSheet({
                   className="bg-surface shadow-rest flex flex-col gap-3 rounded-[18px] p-4"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-fg text-base font-semibold tracking-[-0.01em]">
                           {alternative.place.name}
                         </span>
-                        {/* 서버가 점수순으로 내려준다. 맨 위 하나만 표시해 시선을 모은다. */}
-                        {index === 0 && (
+                        {/*
+                          서버가 추천도 순으로 내려주므로 맨 위가 최선의 후보다.
+                          다만 지금보다 더 붐비는 곳에 "추천"을 붙이면 안 된다 —
+                          한적도가 추천도의 대부분을 차지하지만 전부는 아니라서,
+                          훨씬 가까운 후보가 1등으로 올라오는 경우가 남는다.
+                        */}
+                        {index === 0 && alternative.quietness > originQuietness && (
                           <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
                             추천
                           </span>
                         )}
                       </div>
-                      <span className="text-hint text-[12.5px]">
-                        {alternative.place.categoryName}
+                      {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-hint text-[12.5px]">
+                          {alternative.place.categoryName}
+                        </span>
+                        <CongestionBadge
+                          level={alternative.level}
+                          label={alternative.levelLabel}
+                          quietness={alternative.quietness}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 목록을 줄 세운 값이 곧 이 숫자다. 그래서 카드에서 가장 크게 둔다. */}
+                    <div className="flex flex-none flex-col items-end gap-0.5">
+                      <span className="text-hint text-[11px]">추천도</span>
+                      <span className="text-brand-deep font-mono text-[26px] leading-none font-semibold">
+                        {alternative.recommendation}
                       </span>
                     </div>
-                    <CongestionBadge
-                      level={alternative.level}
-                      label={alternative.levelLabel}
-                      size="sm"
-                    />
                   </div>
 
                   {/*
-                    두 점수를 막대로 나란히 둔다. 한적도는 등급 색, 추천도는 잉크색이다.
-                    같은 색으로 두면 "어느 쪽이 이 서비스의 핵심 지표인지"가 흐려진다.
+                    추천 근거. 데이터를 어떻게 썼는지 보여주는 자리다.
+                    문장 하나로는 "왜 82점인지"를 설명하지 못해서, 항목별 내역을 함께 편다.
+                    반영 비율은 서버가 준 값을 그대로 쓴다 — 화면에 숫자를 적어두면
+                    가중치가 바뀔 때 한쪽만 고쳐진다.
                   */}
-                  <div className="flex gap-4">
-                    <div className="flex flex-1 flex-col gap-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-hint text-[11.5px]">한적도</span>
-                        <span className="text-fg font-mono text-[11.5px] font-semibold">
-                          {alternative.quietness}
-                        </span>
-                      </div>
-                      <div className="bg-line h-1.5 overflow-hidden rounded-full">
-                        <div
-                          className={`h-full rounded-full ${LEVEL_SOLID[alternative.level]}`}
-                          style={{ width: `${alternative.quietness}%` }}
-                        />
-                      </div>
+                  <div className="bg-bg rounded-ui flex flex-col gap-2.5 px-3 py-3">
+                    <div className="flex items-start gap-2.5">
+                      <span
+                        className="bg-quiet-soft/50 text-brand-deep mt-px grid h-4 w-4 flex-none place-items-center rounded-full text-[10px] font-bold"
+                        aria-hidden="true"
+                      >
+                        i
+                      </span>
+                      <p className="m-0 text-[12.5px] leading-[1.6] text-pretty">
+                        {alternative.reason}
+                      </p>
                     </div>
-                    <div className="flex flex-1 flex-col gap-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-hint text-[11.5px]">추천도</span>
-                        <span className="text-fg font-mono text-[11.5px] font-semibold">
-                          {alternative.recommendation}
-                        </span>
-                      </div>
-                      <div className="bg-line h-1.5 overflow-hidden rounded-full">
-                        <div
-                          className="bg-fg h-full rounded-full"
-                          style={{ width: `${alternative.recommendation}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* 추천 근거. 이름 다음으로 눈에 들어와야 한다 — 데이터를 어떻게 썼는지 보여주는 자리다. */}
-                  <div className="bg-bg rounded-ui flex items-start gap-2.5 px-3 py-2.75">
-                    <span
-                      className="bg-quiet-soft/50 text-brand-deep mt-px grid h-4 w-4 flex-none place-items-center rounded-full text-[10px] font-bold"
-                      aria-hidden="true"
-                    >
-                      i
-                    </span>
-                    <p className="m-0 text-[12.5px] leading-[1.6] text-pretty">
-                      {alternative.reason}
-                    </p>
+                    <ul className="border-line flex flex-col gap-2 border-t pt-2.5">
+                      {alternative.factors.map((factor) => (
+                        <li
+                          key={factor.label}
+                          className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"
+                        >
+                          <span className="text-fg text-[12.5px] font-semibold">
+                            {factor.label}
+                          </span>
+                          <span className="text-fg font-mono text-[12.5px] font-semibold">
+                            {factor.score}
+                          </span>
+                          <span className="text-hint text-[11px]">
+                            반영 {factor.weightPercent}%
+                          </span>
+                          {/* 근거는 줄을 바꿔 통째로 내린다. 좁은 화면에서 옆에 붙이면 넘친다. */}
+                          <span className="text-hint basis-full text-[11.5px]">
+                            {factor.detail}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
                   <button
