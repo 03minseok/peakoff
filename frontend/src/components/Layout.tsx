@@ -1,7 +1,4 @@
 import { Link, NavLink, Outlet } from 'react-router'
-import { REGIONS } from '../constants/regions'
-import { useTrip } from '../state/tripContext'
-import { formatDateRange, formatDuration } from '../utils/date'
 
 /**
  * 모든 페이지가 공유하는 껍데기.
@@ -12,10 +9,6 @@ import { formatDateRange, formatDuration } from '../utils/date'
  * 라우트의 부모로 두면 페이지를 옮겨도 헤더가 다시 그려지지 않는다.
  */
 export function Layout() {
-  const { state } = useTrip()
-  const plan = state.plan
-  const regionName = REGIONS.find((region) => region.slug === plan?.region)?.name
-
   return (
     <div className="flex min-h-svh flex-col">
       <header className="bg-surface border-line sticky top-0 z-10 h-14 border-b">
