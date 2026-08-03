@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
+import { GuestSaveSheet } from '../components/GuestSaveSheet'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import {
   CARD_RAISED,
@@ -11,6 +12,7 @@ import {
 } from '../components/styles'
 import { useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchPlaces } from '../services/api'
+import { saveCourseToDevice } from '../state/savedCourse'
 import { useTrip } from '../state/tripContext'
 import type { CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
 import { formatCompactDate, formatKoreanDate } from '../utils/date'
@@ -198,7 +200,7 @@ export function ResultPage() {
   }, [places, visibleRoutes])
 
   if (!plan) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/plan" replace />
   }
   if (state.days.length === 0 || state.days.every((day) => day.length === 0)) {
     return <Navigate to="/course" replace />
@@ -494,46 +496,33 @@ export function ResultPage() {
           </section>
 
           <section className="flex flex-col items-center gap-3 pb-2">
-            {!showSavePrompt ? (
-              <div className="flex w-full flex-col gap-2.5 sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className={PRIMARY_BUTTON}
-                  onClick={() => setShowSavePrompt(true)}
-                >
-                  개선안으로 코스 저장하기
-                </button>
-                <Link
-                  to="/diagnosis"
-                  className={`${SECONDARY_BUTTON} grid flex-none place-items-center px-5.5 no-underline sm:w-auto`}
-                >
-                  원안 유지
-                </Link>
-              </div>
-            ) : (
-              <div className={`${CARD_RAISED} w-full p-4.5`}>
-                <p className="mb-3.5 text-sm leading-relaxed">
-                  코스를 저장하면 나중에 다시 열어보고, 다른 코스와 비교할 수 있어요. 저장에는
-                  로그인이 필요합니다.
-                </p>
-                <div className="flex flex-col gap-2.5 sm:flex-row">
-                  <Link
-                    to="/login"
-                    className="bg-brand rounded-ui hover:bg-brand-hover grid min-h-12 flex-1 place-items-center text-sm font-semibold text-white no-underline transition-colors"
-                  >
-                    로그인하고 저장하기
-                  </Link>
-                  <button
-                    type="button"
-                    className={`${SECONDARY_BUTTON} flex-1`}
-                    onClick={() => setShowSavePrompt(false)}
-                  >
-                    나중에 하기
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="flex w-full flex-col gap-2.5 sm:flex-row-reverse">
+              <button
+                type="button"
+                className={PRIMARY_BUTTON}
+                onClick={() => setShowSavePrompt(true)}
+              >
+                개선안으로 코스 저장하기
+              </button>
+              <Link
+                to="/diagnosis"
+                className={`${SECONDARY_BUTTON} grid flex-none place-items-center px-5.5 no-underline sm:w-auto`}
+              >
+                원안 유지
+              </Link>
+            </div>
           </section>
+
+          {/*
+            저장은 화면을 옮기지 않고 시트로 묻는다. 결과를 보다가 곁들이는 행동이라,
+            뒤에 비교 결과가 비쳐 보이는 편이 맥락을 유지해준다.
+          */}
+          {showSavePrompt && (
+            <GuestSaveSheet
+              onClose={() => setShowSavePrompt(false)}
+              onSaveToDevice={() => saveCourseToDevice(plan, state.days)}
+            />
+          )}
         </>
       )}
     </div>
