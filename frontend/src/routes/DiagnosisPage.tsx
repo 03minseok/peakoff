@@ -71,7 +71,7 @@ export function DiagnosisPage() {
   }, [plan, uniquePlaceIds])
 
   if (!plan) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/plan" replace />
   }
   if (state.days.length === 0 || state.days.every((day) => day.length === 0)) {
     return <Navigate to="/course" replace />

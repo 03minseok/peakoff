@@ -73,7 +73,7 @@ export function CoursePage() {
 
   /* 조건 없이 들어온 경우. 편집할 기준이 없으므로 첫 화면으로 돌려보낸다. */
   if (!plan) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/plan" replace />
   }
 
   const totalDays = plan.nights + 1
