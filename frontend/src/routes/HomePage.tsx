@@ -169,7 +169,7 @@ function ForecastCard({ day, best }: { day: ForecastDay; best: boolean }) {
 export function HomePage() {
   const navigate = useNavigate()
   const { restore } = useTrip()
-  const { member, loading: authLoading, logout } = useAuth()
+  const { member, loading: authLoading } = useAuth()
   const state = useHomeData(DEFAULT_REGION)
 
   const [savedCourse, setSavedCourse] = useState(loadSavedCourse)
@@ -196,18 +196,16 @@ export function HomePage() {
         {authLoading ? (
           <span className="h-4 w-12 flex-none" aria-hidden="true" />
         ) : member ? (
-          <div className="flex flex-none items-center gap-2">
-            <span className="text-fg max-w-24 truncate text-[13px] font-semibold">
-              {member.nickname}
+          /* 닉네임이 마이페이지로 가는 문이다. 로그아웃은 그 안에 있다. */
+          <Link
+            to="/my"
+            className="text-fg hover:text-brand flex max-w-32 flex-none items-center gap-1.5 px-0.5 py-1.5 text-[13px] font-semibold whitespace-nowrap"
+          >
+            <span className="truncate">{member.nickname}</span>
+            <span className="text-hint" aria-hidden="true">
+              ›
             </span>
-            <button
-              type="button"
-              onClick={logout}
-              className="text-hint hover:text-fg cursor-pointer bg-transparent px-0.5 py-1.5 text-[13px] font-medium"
-            >
-              로그아웃
-            </button>
-          </div>
+          </Link>
         ) : (
           <Link
             to="/login"

@@ -10,7 +10,7 @@ import { useAuth } from '../state/authContext'
  * 라우트의 부모로 두면 페이지를 옮겨도 헤더가 다시 그려지지 않는다.
  */
 export function Layout() {
-  const { member, loading, logout } = useAuth()
+  const { member, loading } = useAuth()
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -50,18 +50,17 @@ export function Layout() {
           {loading ? (
             <span className="h-4 w-12 flex-none" aria-hidden="true" />
           ) : member ? (
-            <div className="flex flex-none items-center gap-2">
-              <span className="text-fg max-w-24 truncate text-[13px] font-semibold">
-                {member.nickname}
+            /* 닉네임이 마이페이지로 가는 문이다. 로그아웃은 그 안에 있다 —
+               헤더에 둘 다 두면 좁은 화면에서 로고와 부딪힌다. */
+            <NavLink
+              to="/my"
+              className="text-fg hover:text-brand -mr-2 flex max-w-32 flex-none items-center gap-1.5 rounded-chip p-2 text-[13px] font-semibold no-underline"
+            >
+              <span className="truncate">{member.nickname}</span>
+              <span className="text-hint" aria-hidden="true">
+                ›
               </span>
-              <button
-                type="button"
-                onClick={logout}
-                className="text-hint hover:text-fg rounded-chip -mr-2 cursor-pointer bg-transparent p-2 text-[13px] font-medium"
-              >
-                로그아웃
-              </button>
-            </div>
+            </NavLink>
           ) : (
             <NavLink
               to="/login"
