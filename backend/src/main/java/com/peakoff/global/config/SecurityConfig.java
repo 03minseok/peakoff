@@ -85,9 +85,9 @@ public class SecurityConfig {
 						 * 막아두면 401을 그리려다 다시 401에 걸려 빈 응답이 나간다.
 						 */
 						.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-						.requestMatchers(PUBLIC_API).permitAll()
-						.requestMatchers(PUBLIC_DOCS).permitAll()
-						.anyRequest().authenticated())
+						.requestMatchers(PUBLIC_API).permitAll() // 게스트도 사용 가능
+						.requestMatchers(PUBLIC_DOCS).permitAll() // api 문서
+						.anyRequest().authenticated()) //나머지는 로그인 필수
 				.exceptionHandling(handling -> handling
 						.authenticationEntryPoint((request, response, exception) ->
 								handlerExceptionResolver.resolveException(request, response, null,
