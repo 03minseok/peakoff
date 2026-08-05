@@ -117,6 +117,53 @@ export interface DateOption {
   improvement: number
 }
 
+/** POST /api/courses 요청. 총점은 진단에서 받은 값을 그대로 싣는다 */
+export interface SaveCourseRequest {
+  name: string
+  region: string
+  startDate: string
+  nights: number
+  totalQuietness: number
+  slots: CourseSlotRequest[]
+}
+
+/**
+ * 서버 SavedCourseSummary. 마이페이지 목록 한 줄.
+ *
+ * 장소 목록이 없고 개수(placeCount)만 온다. 카드에 필요한 것이 그것뿐이라
+ * 코스 10개의 장소를 전부 실어 보내면 응답만 커진다.
+ */
+export interface SavedCourseSummary {
+  id: number
+  name: string
+  region: string
+  regionName: string
+  startDate: string
+  endDate: string
+  nights: number
+  days: number
+  totalQuietness: number
+  level: CongestionLevel
+  levelLabel: string
+  placeCount: number
+  /** 그 점수를 매긴 시각 (ISO). 저장 시점의 판단이라는 것을 화면에서 밝힐 수 있다 */
+  scoredAt: string
+  createdAt: string
+}
+
+/** 저장된 장소 한 줄. place가 null이면 저장 이후 그 장소가 목록에서 사라진 것이다 */
+export interface SavedPlace {
+  day: number
+  order: number
+  placeId: string
+  place: Place | null
+}
+
+/** 서버 SavedCourseDetail. 요약에 장소들이 붙은 모양 */
+export interface SavedCourseDetail extends Omit<SavedCourseSummary, 'placeCount'> {
+  places: SavedPlace[]
+}
+
 /** 서버 MemberResponse. 비밀번호 관련 값은 어떤 형태로도 내려오지 않는다. */
 export interface AuthMember {
   id: number

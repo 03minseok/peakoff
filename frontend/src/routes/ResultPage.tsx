@@ -10,8 +10,9 @@ import {
   PRIMARY_BUTTON,
   SECONDARY_BUTTON,
 } from '../components/styles'
-import { useDiagnosis } from '../hooks/useDiagnosis'
-import { fetchPlaces } from '../services/api'
+import { REGIONS } from '../constants/regions'
+import { toSlots, useDiagnosis } from '../hooks/useDiagnosis'
+import { fetchPlaces, saveCourse } from '../services/api'
 import { saveCourseToDevice } from '../state/savedCourse'
 import { useTrip } from '../state/tripContext'
 import type { CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
@@ -219,6 +220,16 @@ export function ResultPage() {
     state.baseline !== null && state.baseline.plan.startDate !== plan.startDate
       ? { from: state.baseline.plan.startDate, to: plan.startDate }
       : null
+
+  /*
+   * 저장 시트의 이름 기본값.
+   *
+   * 빈칸으로 두면 "이름 짓기"가 저장을 막는 관문이 된다. 지역과 기간으로 무난한 이름을
+   * 미리 채워두고, 고치고 싶은 사람만 고치게 한다.
+   */
+  const defaultCourseName = `${
+    REGIONS.find((option) => option.slug === plan.region)?.name ?? ''
+  } ${plan.nights === 0 ? '당일치기' : `${plan.nights}박 ${plan.nights + 1}일`}`.trim()
 
   const crowdedBefore = beforeDiagnosis
     ? beforeDiagnosis.slots.filter((slot) => slot.level === 'CROWDED').length
@@ -528,8 +539,20 @@ export function ResultPage() {
           */}
           {showSavePrompt && (
             <GuestSaveSheet
+              defaultName={defaultCourseName}
               onClose={() => setShowSavePrompt(false)}
-              onSaveToDevice={() => saveCourseToDevice(plan, state.days)}
+              onSaveToDevice={(name) => saveCourseToDevice(name, plan, state.days)}
+              onSaveToAccount={async (name) => {
+                await saveCourse({
+                  name,
+                  region: plan.region,
+                  startDate: plan.startDate,
+                  nights: plan.nights,
+                  // 방금 진단에서 받은 총점을 그대로 싣는다. 서버가 다시 계산하지 않는다.
+                  totalQuietness: afterDiagnosis.totalQuietness,
+                  slots: toSlots(state.days),
+                })
+              }}
             />
           )}
         </>

@@ -1,18 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../state/authContext'
-import { PRIMARY_BUTTON } from './styles'
+import { PRIMARY_BUTTON, TEXT_INPUT } from './styles'
+
+/** 여행 이름 최대 길이. 서버 SavedCourse.NAME_MAX_LENGTH와 같은 값이어야 한다 */
+const NAME_MAX_LENGTH = 30
 
 interface Props {
+  /** 이름 입력란에 미리 채워둘 값. 예: "경주 2박 3일" */
+  defaultName: string
   onClose: () => void
-  /** 실제 저장은 부모가 한다. @returns 저장에 성공했는지 */
-  onSaveToDevice: () => boolean
+  /** 기기(localStorage) 저장. @returns 성공했는지 */
+  onSaveToDevice: (name: string) => boolean
+  /** 계정 저장. 로그인 상태일 때만 쓰인다. 실패하면 예외를 던진다 */
+  onSaveToAccount: (name: string) => Promise<void>
 }
 
-type Phase = 'asking' | 'saved' | 'failed'
+type Phase = 'asking' | 'savedToDevice' | 'savedToAccount' | 'failed'
 
 const OUTLINE_BUTTON =
-  'h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15.5px] font-semibold text-fg transition-colors hover:bg-bg'
+  'h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15.5px] font-semibold text-fg transition-colors hover:bg-bg disabled:cursor-not-allowed disabled:text-hint'
 
 const GHOST_BUTTON =
   'h-11 cursor-pointer rounded-ui bg-transparent text-[13.5px] font-medium text-hint transition-colors hover:text-muted'
@@ -23,19 +30,19 @@ const GHOST_BUTTON =
  * <p>화면을 옮기지 않고 그 자리에서 묻는다. 저장은 결과를 확인하다가 곁들이는 행동이지
  * 새 화면으로 넘어갈 만큼 큰 일이 아니다.
  *
- * <p><b>로그인 여부에 따라 묻는 내용이 다르다.</b>
- * <ul>
- *   <li>게스트 — 로그인을 권하되 막지 않는다. "이 기기에만 저장"이 가운데 있는 이유다</li>
- *   <li>회원 — 로그인하라고 다시 말하지 않는다. 이미 한 일을 또 시키는 화면이 된다</li>
- * </ul>
+ * <p><b>이름은 목적지와 무관하게 한 번만 묻는다.</b> 기기에 저장하든 계정에 저장하든
+ * 나중에 목록에서 알아볼 이름이 필요한 것은 같다. 기본값을 미리 채워 두는 것이 중요한데,
+ * 빈칸으로 두면 "이름 짓기"가 저장을 막는 관문이 된다.
  *
- * <p>회원인데도 기기 저장만 되는 것은 <b>계정 저장 API가 아직 없기 때문이다.</b>
- * 그 사실을 감추지 않고 문구로 밝힌다. {@code POST /api/courses}가 생기면
- * 회원 쪽 버튼만 그 호출로 바꾸면 된다.
+ * <p>로그인 여부에 따라 묻는 내용이 다르다. 게스트에게는 로그인을 권하되 막지 않고,
+ * 회원에게는 이미 한 일을 다시 시키지 않는다.
  */
-export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
+export function GuestSaveSheet({ defaultName, onClose, onSaveToDevice, onSaveToAccount }: Props) {
   const { member } = useAuth()
+  const [name, setName] = useState(defaultName)
   const [phase, setPhase] = useState<Phase>('asking')
+  const [saving, setSaving] = useState(false)
+  const [failure, setFailure] = useState<string | null>(null)
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
@@ -55,29 +62,59 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
     }
   }, [onClose])
 
+  const trimmedName = name.trim()
+  const nameIsValid = trimmedName.length > 0 && trimmedName.length <= NAME_MAX_LENGTH
+
   function handleSaveToDevice() {
-    setPhase(onSaveToDevice() ? 'saved' : 'failed')
+    if (!nameIsValid) {
+      return
+    }
+    setFailure(null)
+    setPhase(onSaveToDevice(trimmedName) ? 'savedToDevice' : 'failed')
   }
 
-  const title =
-    phase === 'saved'
-      ? '이 기기에 저장했어요'
-      : phase === 'failed'
-        ? '저장하지 못했어요'
-        : member
-          ? '코스를 저장할까요?'
-          : null
+  async function handleSaveToAccount() {
+    if (!nameIsValid) {
+      return
+    }
+    setFailure(null)
+    setSaving(true)
+    try {
+      await onSaveToAccount(trimmedName)
+      setPhase('savedToAccount')
+    } catch (error: unknown) {
+      // 서버가 이유를 준다(저장 개수 초과 등). 그대로 보여주는 편이 친절하다.
+      setFailure(error instanceof Error ? error.message : '저장하지 못했어요.')
+      setPhase('failed')
+    } finally {
+      setSaving(false)
+    }
+  }
 
-  const description =
-    phase === 'saved'
-      ? member
+  const done = phase === 'savedToDevice' || phase === 'savedToAccount'
+
+  const title = done
+    ? phase === 'savedToAccount'
+      ? '계정에 저장했어요'
+      : '이 기기에 저장했어요'
+    : phase === 'failed'
+      ? '저장하지 못했어요'
+      : member
+        ? '코스를 저장할까요?'
+        : null
+
+  const description = done
+    ? phase === 'savedToAccount'
+      ? '어느 기기에서 로그인해도 이 코스를 다시 열어볼 수 있어요.'
+      : member
         ? '다음에 들어오면 첫 화면에서 이어서 볼 수 있어요.'
         : '다음에 들어오면 첫 화면에서 이어서 볼 수 있어요. 계정을 만들면 다른 기기에서도 열리고요.'
-      : phase === 'failed'
-        ? '브라우저가 저장을 막고 있어요. 시크릿 모드이거나 저장 공간이 가득 찼을 수 있습니다.'
-        : member
-          ? '계정에 담아두는 기능은 준비 중이에요. 지금은 이 기기에 저장해두고 다음에 이어서 볼 수 있어요.'
-          : '계정이 있으면 다른 기기에서도 이어서 볼 수 있고, 여행 날짜가 가까워지면 혼잡도 변화를 알려드려요.'
+    : phase === 'failed'
+      ? (failure ??
+        '브라우저가 저장을 막고 있어요. 시크릿 모드이거나 저장 공간이 가득 찼을 수 있습니다.')
+      : member
+        ? '이름을 붙여 계정에 담아두면 나중에 다른 코스와 나란히 볼 수 있어요.'
+        : '계정이 있으면 다른 기기에서도 이어서 볼 수 있고, 여행 날짜가 가까워지면 혼잡도 변화를 알려드려요.'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
@@ -125,7 +162,32 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
             <p className="m-0 text-sm leading-[1.65] text-pretty">{description}</p>
           </div>
 
-          {phase !== 'failed' && (
+          {/* 저장을 마치면 이름을 고칠 자리가 아니다. 목록에서 바꾸는 것이 맞다. */}
+          {!done && (
+            <div className="flex flex-col gap-1.75">
+              <div className="flex items-baseline justify-between gap-2">
+                <label htmlFor="course-name" className="text-muted text-[12.5px] font-semibold">
+                  여행 이름
+                </label>
+                <span
+                  className={`text-xs ${trimmedName.length > NAME_MAX_LENGTH ? 'text-crowded-deep' : 'text-hint'}`}
+                >
+                  {trimmedName.length}/{NAME_MAX_LENGTH}
+                </span>
+              </div>
+              <input
+                id="course-name"
+                type="text"
+                className={TEXT_INPUT}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                maxLength={NAME_MAX_LENGTH}
+                placeholder="예: 한적한 경주 첫 여행"
+              />
+            </div>
+          )}
+
+          {!done && phase !== 'failed' && (
             <div className="bg-moderate-tint flex items-start gap-2.75 rounded-[16px] px-3.75 py-3.5">
               <span
                 className="bg-moderate-soft text-moderate-deep mt-px grid h-4.5 w-4.5 flex-none place-items-center rounded-full text-[11px] font-bold"
@@ -135,17 +197,17 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
               </span>
               <div className="flex flex-col gap-0.75">
                 <span className="text-moderate-deep text-[13.5px] font-semibold">
-                  {phase === 'saved' ? '이 기기에만 저장됐어요' : '지금은 이 기기에만 저장됩니다'}
+                  {member ? '계정에 저장하면 어디서든 열려요' : '이 기기에만 저장하면'}
                 </span>
                 <span className="text-moderate-deep/85 text-[12.5px] leading-[1.6]">
-                  브라우저 데이터를 지우면 코스가 사라져요.
+                  브라우저 데이터를 지우면 기기에 저장한 코스는 사라져요.
                 </span>
               </div>
             </div>
           )}
 
           <div className="flex flex-col gap-2.25">
-            {phase === 'saved' ? (
+            {done ? (
               <>
                 {/* 회원에게는 권할 계정이 이미 있다. 가입하라고 다시 말하지 않는다. */}
                 {!member && (
@@ -163,8 +225,21 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
             ) : member ? (
               <>
                 {/* 이미 로그인한 사람에게 로그인 버튼을 다시 보여주지 않는다. */}
-                <button type="button" className={PRIMARY_BUTTON} onClick={handleSaveToDevice}>
-                  {phase === 'failed' ? '다시 시도' : '이 기기에 저장'}
+                <button
+                  type="button"
+                  className={PRIMARY_BUTTON}
+                  onClick={handleSaveToAccount}
+                  disabled={!nameIsValid || saving}
+                >
+                  {saving ? '저장 중…' : '계정에 저장'}
+                </button>
+                <button
+                  type="button"
+                  className={OUTLINE_BUTTON}
+                  onClick={handleSaveToDevice}
+                  disabled={!nameIsValid || saving}
+                >
+                  이 기기에만 저장
                 </button>
                 <button type="button" className={GHOST_BUTTON} onClick={onClose}>
                   나중에 할게요
@@ -178,8 +253,13 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
                 >
                   로그인하고 저장하기
                 </Link>
-                <button type="button" className={OUTLINE_BUTTON} onClick={handleSaveToDevice}>
-                  {phase === 'failed' ? '다시 시도' : '이 기기에만 저장'}
+                <button
+                  type="button"
+                  className={OUTLINE_BUTTON}
+                  onClick={handleSaveToDevice}
+                  disabled={!nameIsValid}
+                >
+                  이 기기에만 저장
                 </button>
                 <button type="button" className={GHOST_BUTTON} onClick={onClose}>
                   나중에 할게요

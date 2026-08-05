@@ -9,6 +9,9 @@ import type {
   DateAlternatives,
   LoginRequest,
   Place,
+  SaveCourseRequest,
+  SavedCourseDetail,
+  SavedCourseSummary,
   SignupRequest,
 } from '../types/api'
 
@@ -39,7 +42,7 @@ export class ApiRequestError extends Error {
 
 interface RequestOptions {
   signal?: AbortSignal
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'DELETE'
   body?: unknown
 }
 
@@ -154,6 +157,37 @@ export function diagnoseCourse(
     body: course,
     signal,
   })
+}
+
+/**
+ * POST /api/courses — 코스를 계정에 저장한다.
+ *
+ * totalQuietness는 진단에서 받은 값을 그대로 싣는다. 서버가 방금 내려준 답이라
+ * 저장할 때 다시 계산하지 않는다.
+ */
+export function saveCourse(
+  request: SaveCourseRequest,
+  signal?: AbortSignal,
+): Promise<SavedCourseDetail> {
+  return apiRequest<SavedCourseDetail>('/courses', { method: 'POST', body: request, signal })
+}
+
+/** GET /api/courses — 내가 저장한 코스 목록. 최근 저장한 것이 먼저 온다 */
+export function fetchSavedCourses(signal?: AbortSignal): Promise<SavedCourseSummary[]> {
+  return apiRequest<SavedCourseSummary[]>('/courses', { signal })
+}
+
+/** GET /api/courses/{id} — 담긴 장소까지. 남의 코스를 물으면 NOT_FOUND */
+export function fetchSavedCourse(
+  courseId: number,
+  signal?: AbortSignal,
+): Promise<SavedCourseDetail> {
+  return apiRequest<SavedCourseDetail>(`/courses/${courseId}`, { signal })
+}
+
+/** DELETE /api/courses/{id} */
+export function deleteSavedCourse(courseId: number, signal?: AbortSignal): Promise<void> {
+  return apiRequest<void>(`/courses/${courseId}`, { method: 'DELETE', signal })
 }
 
 /**
