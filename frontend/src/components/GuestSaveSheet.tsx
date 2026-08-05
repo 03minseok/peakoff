@@ -209,14 +209,23 @@ export function GuestSaveSheet({ defaultName, onClose, onSaveToDevice, onSaveToA
           <div className="flex flex-col gap-2.25">
             {done ? (
               <>
-                {/* 회원에게는 권할 계정이 이미 있다. 가입하라고 다시 말하지 않는다. */}
-                {!member && (
+                {/* 계정에 담았으면 그것을 볼 곳으로 보낸다. 게스트에게는 계정을 권한다. */}
+                {phase === 'savedToAccount' ? (
                   <Link
-                    to="/signup"
+                    to="/my"
                     className={`${PRIMARY_BUTTON} grid place-items-center no-underline`}
                   >
-                    계정에도 저장하기
+                    마이페이지에서 보기
                   </Link>
+                ) : (
+                  !member && (
+                    <Link
+                      to="/signup"
+                      className={`${PRIMARY_BUTTON} grid place-items-center no-underline`}
+                    >
+                      계정에도 저장하기
+                    </Link>
+                  )
                 )}
                 <button type="button" className={OUTLINE_BUTTON} onClick={onClose}>
                   닫기

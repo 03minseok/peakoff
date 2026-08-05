@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { CoursePage } from './routes/CoursePage'
 import { DiagnosisPage } from './routes/DiagnosisPage'
 import { HomePage } from './routes/HomePage'
+import { MyPage } from './routes/MyPage'
 import { LoginPage } from './routes/LoginPage'
 import { NotFoundPage } from './routes/NotFoundPage'
 import { PlanPage } from './routes/PlanPage'
@@ -35,6 +36,9 @@ function App() {
             <Route path="course" element={<CoursePage />} />
             <Route path="diagnosis" element={<DiagnosisPage />} />
             <Route path="result" element={<ResultPage />} />
+            {/* 로그인 확인은 화면 안에서 한다. 라우트에서 막으면 확인이 끝나기 전에
+                로그인 화면이 한 번 스쳐 지나간다. */}
+            <Route path="my" element={<MyPage />} />
             {/* 개발용. 화면 구현이 끝나면 이 줄과 PreviewPage를 함께 지운다. */}
             <Route path="preview" element={<PreviewPage />} />
 
