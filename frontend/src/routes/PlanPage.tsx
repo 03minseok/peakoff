@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router'
-import { CARD_RAISED, FORM_COLUMN, PRIMARY_BUTTON } from '../components/styles'
+import { useLocation, useNavigate } from 'react-router'
+import { CARD_RAISED, FORM_COLUMN, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS } from '../constants/regions'
 import { useTrip } from '../state/tripContext'
 import { daysFromToday, formatDateRange, formatKoreanDate, today } from '../utils/date'
@@ -50,12 +50,21 @@ const CARD_TITLE = 'text-fg text-sm font-semibold'
 
 export function PlanPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { state, setPlan } = useTrip()
+
+  /*
+   * 홈의 "이 날로 코스 짜기"가 실어 보낸 날짜.
+   *
+   * 전역 상태에 미리 써두지 않고 라우터 state로 넘긴다. 사용자가 아직 아무것도
+   * 확정하지 않은 시점이라, 여기서 되돌아 나가면 흔적이 남지 않아야 한다.
+   */
+  const suggestedDate = (location.state as { startDate?: string } | null)?.startDate
 
   // 이전에 입력한 값이 있으면 그것부터 보여준다 (뒤로 왔을 때 다시 채우지 않게).
   const [region, setRegion] = useState(state.plan?.region ?? DEFAULT_REGION)
   const [startDate, setStartDate] = useState(
-    state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
+    suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
   )
   const [nights, setNights] = useState(state.plan?.nights ?? 1)
 
@@ -81,9 +90,9 @@ export function PlanPage() {
           <br />
           피해서 가요
         </h1>
-        <p className="max-w-[300px] text-[15.5px] leading-[1.65] text-pretty">
-          날짜만 정하면 {regionName}의 각 장소가 그날 얼마나 붐빌지 미리 알려드려요. 가입 없이
-          바로 시작할 수 있어요.
+        <p className="min-w-[300px] text-[15.5px] leading-[1.65] text-pretty">
+          날짜만 정하면 {regionName}의 각 장소가 그날 얼마나 붐빌지 미리 알려드려요.<br/> 
+          가입 없이 바로 시작할 수 있어요.
         </p>
       </section>
 
@@ -116,7 +125,7 @@ export function PlanPage() {
           <legend className={`${CARD_TITLE} p-0`}>언제 떠나요</legend>
           <input
             type="date"
-            className="border-line bg-surface text-fg focus-visible:border-brand rounded-ui h-13 w-full border px-3.5 font-sans text-base"
+            className={TEXT_INPUT}
             value={startDate}
             min={today()}
             onChange={(event) => setStartDate(event.target.value)}

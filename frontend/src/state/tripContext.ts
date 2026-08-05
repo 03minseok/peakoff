@@ -26,6 +26,8 @@ export interface TripContextValue {
   replacePlace: (day: number, index: number, placeId: string) => void
   /** 진단에 들어가며 지금 코스를 원안으로 찍는다. 이후 비교의 기준이 된다 */
   markBaseline: () => void
+  /** 기기에 저장해둔 코스를 흐름에 다시 올린다. 원안 기준은 초기화된다 */
+  restore: (plan: TripPlan, days: string[][]) => void
   reset: () => void
 }
 

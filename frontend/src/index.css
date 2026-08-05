@@ -132,3 +132,49 @@
     outline-offset: 2px;
   }
 }
+
+@layer components {
+  /*
+   * 불러오는 중 자리를 채우는 회색 덩어리.
+   *
+   * 빈 화면 대신 <b>들어올 내용과 같은 모양</b>을 미리 깔아두면, 데이터가 도착했을 때
+   * 화면이 튀지 않는다. 홈은 API 응답을 두 번 기다리므로 이 효과가 특히 크다.
+   *
+   * 스피너를 쓰지 않은 이유: 스피너는 "무언가 돌고 있다"만 알려주고 무엇이 올지는 알려주지 않는다.
+   */
+  .skeleton {
+    background: linear-gradient(90deg, #eef2f1 0px, #f7f9f9 140px, #eef2f1 280px);
+    background-size: 320px 100%;
+    animation: pk-shimmer 1.2s linear infinite;
+    border-radius: 6px;
+  }
+
+  /*
+   * 가로로 미는 목록에서 스크롤바를 감춘다.
+   *
+   * 주간 예보처럼 카드가 옆으로 이어지는 자리에서 쓴다. 막대가 카드 아래에 걸리면
+   * 카드 높이가 들쭉날쭉해 보이고, 모바일에서는 어차피 스크롤바가 뜨지 않는다.
+   */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes pk-shimmer {
+  0% {
+    background-position: -320px 0;
+  }
+  100% {
+    background-position: 320px 0;
+  }
+}
+
+/* 움직임을 줄여달라고 설정한 사용자에게는 반짝임을 멈춘다. 자리 표시 역할은 그대로 남는다. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

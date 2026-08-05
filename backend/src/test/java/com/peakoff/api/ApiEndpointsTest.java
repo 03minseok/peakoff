@@ -9,15 +9,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.peakoff.place.mock.GyeongjuMockCatalog;
+import com.peakoff.support.IntegrationTest;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@IntegrationTest
 class ApiEndpointsTest {
 
 	@Autowired
@@ -66,7 +64,7 @@ class ApiEndpointsTest {
 	class Alternatives {
 
 		@Test
-		@DisplayName("대안 후보에 한적도·추천도·근거가 모두 담긴다")
+		@DisplayName("대안 후보에 한적도·추천도·근거·구성 내역이 모두 담긴다")
 		void returnsAlternativesWithReason() throws Exception {
 			mockMvc.perform(get("/api/places/mock-bulguksa/alternatives")
 					.param("date", "2026-09-16")
@@ -77,7 +75,12 @@ class ApiEndpointsTest {
 					.andExpect(jsonPath("$.data[0].recommendation").isNumber())
 					.andExpect(jsonPath("$.data[0].levelLabel").isNotEmpty())
 					.andExpect(jsonPath("$.data[0].reason")
-							.value(org.hamcrest.Matchers.startsWith("불국사 방문객이 함께 많이 찾는 곳 · ")));
+							.value(org.hamcrest.Matchers.startsWith("불국사에서 가까운 같은 분류(")))
+					// 추천도가 어떻게 나왔는지 화면에서 설명할 수 있어야 한다.
+					.andExpect(jsonPath("$.data[0].factors[0].label").value("한적도"))
+					.andExpect(jsonPath("$.data[0].factors[0].score").isNumber())
+					.andExpect(jsonPath("$.data[0].factors[0].weightPercent").isNumber())
+					.andExpect(jsonPath("$.data[0].factors[0].detail").isNotEmpty());
 		}
 
 		@Test
