@@ -1,4 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router'
+import { useAuth } from '../state/authContext'
 
 /**
  * 모든 페이지가 공유하는 껍데기.
@@ -9,6 +10,8 @@ import { Link, NavLink, Outlet } from 'react-router'
  * 라우트의 부모로 두면 페이지를 옮겨도 헤더가 다시 그려지지 않는다.
  */
 export function Layout() {
+  const { member, loading, logout } = useAuth()
+
   return (
     <div className="flex min-h-svh flex-col">
       <header className="bg-surface border-line sticky top-0 z-10 h-14 border-b">
@@ -40,13 +43,33 @@ export function Layout() {
           {/*
             로그인은 구석에 작게 둔다. 버튼처럼 강조하면 게스트가
             "먼저 로그인해야 하나" 하고 멈칫한다.
+
+            확인이 끝나기 전에는 아무것도 그리지 않는다. "로그인"을 먼저 띄웠다가
+            닉네임으로 바뀌면 헤더가 깜빡인다.
           */}
-          <NavLink
-            to="/login"
-            className="text-hint hover:text-fg -mr-2 flex-none rounded-chip p-2 text-[13px] font-medium no-underline"
-          >
-            로그인
-          </NavLink>
+          {loading ? (
+            <span className="h-4 w-12 flex-none" aria-hidden="true" />
+          ) : member ? (
+            <div className="flex flex-none items-center gap-2">
+              <span className="text-fg max-w-24 truncate text-[13px] font-semibold">
+                {member.nickname}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-hint hover:text-fg rounded-chip -mr-2 cursor-pointer bg-transparent p-2 text-[13px] font-medium"
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <NavLink
+              to="/login"
+              className="text-hint hover:text-fg -mr-2 flex-none rounded-chip p-2 text-[13px] font-medium no-underline"
+            >
+              로그인
+            </NavLink>
+          )}
         </div>
       </header>
 
