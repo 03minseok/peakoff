@@ -5,6 +5,7 @@ import { CARD, CARD_RAISED, SECONDARY_BUTTON } from '../components/styles'
 import { DEFAULT_REGION, REGIONS } from '../constants/regions'
 import { useHomeData } from '../hooks/useHomeData'
 import type { ForecastDay, HeadlineSpot, QuietSpot } from '../hooks/useHomeData'
+import { useAuth } from '../state/authContext'
 import { clearSavedCourse, loadSavedCourse } from '../state/savedCourse'
 import { useTrip } from '../state/tripContext'
 import { formatCompactDate, formatDateRange, formatKoreanDate, formatWeekday, today } from '../utils/date'
@@ -168,6 +169,7 @@ function ForecastCard({ day, best }: { day: ForecastDay; best: boolean }) {
 export function HomePage() {
   const navigate = useNavigate()
   const { restore } = useTrip()
+  const { member, loading: authLoading, logout } = useAuth()
   const state = useHomeData(DEFAULT_REGION)
 
   const [savedCourse, setSavedCourse] = useState(loadSavedCourse)
@@ -190,12 +192,30 @@ export function HomePage() {
             붐비는 곳은 피해요, 한적한 곳들로 떠나는 {regionName}
           </p>
         </div>
-        <Link
-          to="/login"
-          className="text-hint hover:text-fg flex-none px-0.5 py-1.5 text-[13px] font-medium whitespace-nowrap"
-        >
-          로그인
-        </Link>
+        {/* 확인이 끝나기 전에는 비워 둔다. "로그인"이 떴다가 닉네임으로 바뀌면 눈에 거슬린다. */}
+        {authLoading ? (
+          <span className="h-4 w-12 flex-none" aria-hidden="true" />
+        ) : member ? (
+          <div className="flex flex-none items-center gap-2">
+            <span className="text-fg max-w-24 truncate text-[13px] font-semibold">
+              {member.nickname}
+            </span>
+            <button
+              type="button"
+              onClick={logout}
+              className="text-hint hover:text-fg cursor-pointer bg-transparent px-0.5 py-1.5 text-[13px] font-medium"
+            >
+              로그아웃
+            </button>
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            className="text-hint hover:text-fg flex-none px-0.5 py-1.5 text-[13px] font-medium whitespace-nowrap"
+          >
+            로그인
+          </Link>
+        )}
       </header>
 
       {/* 2. 주 진입점 — 화면에서 가장 큰 덩어리. 여기부터 서비스가 시작된다. */}

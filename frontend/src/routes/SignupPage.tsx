@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { AuthField } from '../components/AuthField'
 import { AuthShell } from '../components/AuthShell'
 import { PRIMARY_BUTTON } from '../components/styles'
+import { ApiRequestError } from '../services/api'
+import { useAuth } from '../state/authContext'
 import { useTrip } from '../state/tripContext'
 import { passwordStrength } from '../utils/passwordStrength'
 import { validateEmail, validatePassword } from '../utils/validation'
@@ -39,6 +41,8 @@ interface Errors {
 }
 
 export function SignupPage() {
+  const navigate = useNavigate()
+  const auth = useAuth()
   const { state } = useTrip()
 
   const [email, setEmail] = useState('')
@@ -48,6 +52,9 @@ export function SignupPage() {
   const [agreed, setAgreed] = useState<Agreed>(NO_AGREEMENT)
   const [errors, setErrors] = useState<Errors>({})
   const [notice, setNotice] = useState<string | null>(null)
+  /** 서버가 거절한 이유. 이메일 중복처럼 화면에서 미리 알 수 없는 것들이다 */
+  const [failure, setFailure] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const strength = passwordStrength(password)
 
@@ -78,7 +85,7 @@ export function SignupPage() {
     setAgreed((current) => ({ ...current, [id]: !current[id] }))
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
 
     /*
@@ -90,15 +97,38 @@ export function SignupPage() {
       password: validatePassword(password),
     }
     setErrors(next)
+    setFailure(null)
 
     if (next.email || next.password) {
       return
     }
 
-    // TODO(2층): POST /api/auth/signup 을 호출한다. 동의 항목도 함께 보낸다.
-    setNotice(
-      '계정 기능은 준비 중이에요. 지금은 가입 없이도 코스 편집·진단·대안 추천까지 모두 이용할 수 있어요.',
-    )
+    setSubmitting(true)
+    try {
+      /*
+       * 확인란과 동의 여부를 서버에도 그대로 보낸다.
+       *
+       * 화면에서 이미 걸렀는데 또 보내는 이유: 화면 검증은 편의일 뿐이고,
+       * API를 직접 부르면 얼마든지 건너뛸 수 있다. 판정은 서버가 한 번 더 한다.
+       */
+      await auth.signup({
+        email: email.trim(),
+        password,
+        passwordConfirm: confirm,
+        nickname: nickname.trim(),
+        termsAgreed: requiredAgreed,
+      })
+      // 가입하면 곧바로 로그인 상태가 된다. 방금 만든 계정으로 다시 로그인시키지 않는다.
+      navigate('/', { replace: true })
+    } catch (error: unknown) {
+      setFailure(
+        error instanceof ApiRequestError
+          ? error.message
+          : '가입하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -117,9 +147,9 @@ export function SignupPage() {
             type="submit"
             form="signup-form"
             className={PRIMARY_BUTTON}
-            disabled={!canSubmit}
+            disabled={!canSubmit || submitting}
           >
-            {hasCourse ? '가입하고 코스 저장하기' : '가입하기'}
+            {submitting ? '가입 중…' : hasCourse ? '가입하고 코스 저장하기' : '가입하기'}
           </button>
           <Link to="/" className="text-hint hover:text-muted text-center text-[13.5px] font-medium">
             로그인 없이 둘러보기
@@ -258,6 +288,15 @@ export function SignupPage() {
             </div>
           ))}
         </div>
+
+        {failure && (
+          <div
+            className="bg-crowded-tint rounded-ui text-crowded-deep px-3.5 py-3 text-xs leading-[1.65]"
+            role="alert"
+          >
+            {failure}
+          </div>
+        )}
 
         {notice && (
           <div

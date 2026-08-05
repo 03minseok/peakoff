@@ -5,7 +5,14 @@
  */
 
 /** 서버 ErrorCode enum과 같은 값. 문구가 아니라 이 코드로 분기한다. */
-export type ApiErrorCode = 'INVALID_REQUEST' | 'NOT_FOUND' | 'INTERNAL_ERROR'
+export type ApiErrorCode =
+  | 'INVALID_REQUEST'
+  | 'NOT_FOUND'
+  | 'INTERNAL_ERROR'
+  /** 로그인이 필요하거나 토큰이 만료됐다. 비밀번호가 틀린 경우도 여기다 */
+  | 'UNAUTHORIZED'
+  /** 이미 가입된 이메일 */
+  | 'CONFLICT'
 
 /** 서버 CongestionLevel enum과 같은 값. */
 export type CongestionLevel = 'CROWDED' | 'MODERATE' | 'QUIET'
@@ -108,6 +115,37 @@ export interface DateOption {
   levelLabel: string
   /** 선택 날짜 대비 한적도 증가폭. 클수록 덜 붐빈다 */
   improvement: number
+}
+
+/** 서버 MemberResponse. 비밀번호 관련 값은 어떤 형태로도 내려오지 않는다. */
+export interface AuthMember {
+  id: number
+  email: string
+  nickname: string
+  /** ISO-8601 시각 */
+  createdAt: string
+  termsAgreedAt: string
+}
+
+/** 서버 AuthResponse. 가입과 로그인이 같은 모양을 돌려준다. */
+export interface AuthResult {
+  token: string
+  /** 토큰 유효 기간(초). 만료 시각을 계산해 미리 로그아웃 처리하는 데 쓴다 */
+  expiresInSeconds: number
+  member: AuthMember
+}
+
+export interface SignupRequest {
+  email: string
+  password: string
+  passwordConfirm: string
+  nickname: string
+  termsAgreed: boolean
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
 }
 
 export interface DateAlternatives {

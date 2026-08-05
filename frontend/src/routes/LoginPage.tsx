@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { AuthField } from '../components/AuthField'
 import { AuthShell } from '../components/AuthShell'
 import { PRIMARY_BUTTON } from '../components/styles'
+import { ApiRequestError } from '../services/api'
+import { useAuth } from '../state/authContext'
 import { validateEmail, validatePasswordPresence } from '../utils/validation'
 
 interface Errors {
@@ -16,10 +18,16 @@ const SOCIAL_BUTTON =
   'flex h-13 w-full cursor-pointer items-center justify-center gap-2.25 rounded-ui border-0 text-[15.5px] font-semibold transition-opacity hover:opacity-90'
 
 export function LoginPage() {
+  const navigate = useNavigate()
+  const auth = useAuth()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Errors>({})
   const [notice, setNotice] = useState<string | null>(null)
+  /** 서버가 거절한 이유. 특정 칸의 문제가 아니라 조합의 문제라 폼 전체에 붙인다 */
+  const [failure, setFailure] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   /**
    * 입력을 고치면 그 칸의 오류 문구를 즉시 지운다.
@@ -31,10 +39,11 @@ export function LoginPage() {
       setter(value)
       setErrors((current) => ({ ...current, [field]: undefined }))
       setNotice(null)
+      setFailure(null)
     }
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
 
     const next: Errors = {
@@ -42,15 +51,24 @@ export function LoginPage() {
       password: validatePasswordPresence(password),
     }
     setErrors(next)
+    setFailure(null)
 
     if (next.email || next.password) {
       return
     }
 
-    // TODO(2층): POST /api/auth/login 을 호출하고 받은 토큰을 보관한다.
-    setNotice(
-      '계정 기능은 준비 중이에요. 지금은 로그인 없이도 코스 편집·진단·대안 추천까지 모두 이용할 수 있어요.',
-    )
+    setSubmitting(true)
+    try {
+      await auth.login({ email: email.trim(), password })
+      // 로그인 전에 보던 화면으로 돌려보낸다. 계정 만들기는 목적이 아니라 거쳐가는 단계다.
+      navigate(-1)
+    } catch (error: unknown) {
+      setFailure(
+        error instanceof ApiRequestError ? error.message : '로그인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -117,6 +135,15 @@ export function LoginPage() {
           }
         />
 
+        {failure && (
+          <div
+            className="bg-crowded-tint rounded-ui text-crowded-deep px-3.5 py-3 text-xs leading-[1.65]"
+            role="alert"
+          >
+            {failure}
+          </div>
+        )}
+
         {notice && (
           <div
             className="bg-brand-tint rounded-ui text-brand-deep px-3.5 py-3 text-xs leading-[1.65]"
@@ -126,8 +153,8 @@ export function LoginPage() {
           </div>
         )}
 
-        <button type="submit" className={`${PRIMARY_BUTTON} mt-1`}>
-          로그인
+        <button type="submit" className={`${PRIMARY_BUTTON} mt-1`} disabled={submitting}>
+          {submitting ? '로그인 중…' : '로그인'}
         </button>
 
         <p className="text-hint m-0 pt-0.5 text-center text-[13.5px]">
