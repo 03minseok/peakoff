@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { useAuth } from '../state/authContext'
 import { PRIMARY_BUTTON } from './styles'
 
 interface Props {
@@ -10,17 +11,30 @@ interface Props {
 
 type Phase = 'asking' | 'saved' | 'failed'
 
+const OUTLINE_BUTTON =
+  'h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15.5px] font-semibold text-fg transition-colors hover:bg-bg'
+
+const GHOST_BUTTON =
+  'h-11 cursor-pointer rounded-ui bg-transparent text-[13.5px] font-medium text-hint transition-colors hover:text-muted'
+
 /**
  * 코스를 저장하려 할 때 아래에서 올라오는 시트.
  *
- * 화면을 옮기지 않고 그 자리에서 묻는다. 저장은 결과를 확인하다가 곁들이는 행동이지
- * 새 화면으로 넘어갈 만큼 큰 일이 아니다. 뒤에 최종 비교 결과가 비쳐 보이는 것도
- * "지금 이 코스를 저장하는 중"이라는 맥락을 유지해준다.
+ * <p>화면을 옮기지 않고 그 자리에서 묻는다. 저장은 결과를 확인하다가 곁들이는 행동이지
+ * 새 화면으로 넘어갈 만큼 큰 일이 아니다.
  *
- * 선택지를 셋으로 나눈 것이 핵심이다. 로그인만 걸어두면 계정을 만들기 싫은 사람은
- * 저장을 아예 못 한다. 그래서 "이 기기에만 저장"이 가운데 있다 — 로그인은 권하되 막지는 않는다.
+ * <p><b>로그인 여부에 따라 묻는 내용이 다르다.</b>
+ * <ul>
+ *   <li>게스트 — 로그인을 권하되 막지 않는다. "이 기기에만 저장"이 가운데 있는 이유다</li>
+ *   <li>회원 — 로그인하라고 다시 말하지 않는다. 이미 한 일을 또 시키는 화면이 된다</li>
+ * </ul>
+ *
+ * <p>회원인데도 기기 저장만 되는 것은 <b>계정 저장 API가 아직 없기 때문이다.</b>
+ * 그 사실을 감추지 않고 문구로 밝힌다. {@code POST /api/courses}가 생기면
+ * 회원 쪽 버튼만 그 호출로 바꾸면 된다.
  */
 export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
+  const { member } = useAuth()
   const [phase, setPhase] = useState<Phase>('asking')
 
   useEffect(() => {
@@ -44,6 +58,26 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
   function handleSaveToDevice() {
     setPhase(onSaveToDevice() ? 'saved' : 'failed')
   }
+
+  const title =
+    phase === 'saved'
+      ? '이 기기에 저장했어요'
+      : phase === 'failed'
+        ? '저장하지 못했어요'
+        : member
+          ? '코스를 저장할까요?'
+          : null
+
+  const description =
+    phase === 'saved'
+      ? member
+        ? '다음에 들어오면 첫 화면에서 이어서 볼 수 있어요.'
+        : '다음에 들어오면 첫 화면에서 이어서 볼 수 있어요. 계정을 만들면 다른 기기에서도 열리고요.'
+      : phase === 'failed'
+        ? '브라우저가 저장을 막고 있어요. 시크릿 모드이거나 저장 공간이 가득 찼을 수 있습니다.'
+        : member
+          ? '계정에 담아두는 기능은 준비 중이에요. 지금은 이 기기에 저장해두고 다음에 이어서 볼 수 있어요.'
+          : '계정이 있으면 다른 기기에서도 이어서 볼 수 있고, 여행 날짜가 가까워지면 혼잡도 변화를 알려드려요.'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
@@ -80,11 +114,7 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
               id="guest-save-title"
               className="text-fg m-0 text-[22px] leading-[1.35] font-bold tracking-[-0.02em] text-pretty"
             >
-              {phase === 'saved' ? (
-                '이 기기에 저장했어요'
-              ) : phase === 'failed' ? (
-                '저장하지 못했어요'
-              ) : (
+              {title ?? (
                 <>
                   코스를 저장하려면
                   <br />
@@ -92,13 +122,7 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
                 </>
               )}
             </h2>
-            <p className="m-0 text-sm leading-[1.65] text-pretty">
-              {phase === 'saved'
-                ? '다음에 들어오면 첫 화면에서 이어서 볼 수 있어요. 계정을 만들면 다른 기기에서도 열리고요.'
-                : phase === 'failed'
-                  ? '브라우저가 저장을 막고 있어요. 시크릿 모드이거나 저장 공간이 가득 찼을 수 있습니다.'
-                  : '계정이 있으면 다른 기기에서도 이어서 볼 수 있고, 여행 날짜가 가까워지면 혼잡도 변화를 알려드려요.'}
-            </p>
+            <p className="m-0 text-sm leading-[1.65] text-pretty">{description}</p>
           </div>
 
           {phase !== 'failed' && (
@@ -123,18 +147,27 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
           <div className="flex flex-col gap-2.25">
             {phase === 'saved' ? (
               <>
-                <Link
-                  to="/signup"
-                  className={`${PRIMARY_BUTTON} grid place-items-center no-underline`}
-                >
-                  계정에도 저장하기
-                </Link>
-                <button
-                  type="button"
-                  className="border-line bg-surface text-fg hover:bg-bg rounded-ui h-13 cursor-pointer border text-[15.5px] font-semibold transition-colors"
-                  onClick={onClose}
-                >
+                {/* 회원에게는 권할 계정이 이미 있다. 가입하라고 다시 말하지 않는다. */}
+                {!member && (
+                  <Link
+                    to="/signup"
+                    className={`${PRIMARY_BUTTON} grid place-items-center no-underline`}
+                  >
+                    계정에도 저장하기
+                  </Link>
+                )}
+                <button type="button" className={OUTLINE_BUTTON} onClick={onClose}>
                   닫기
+                </button>
+              </>
+            ) : member ? (
+              <>
+                {/* 이미 로그인한 사람에게 로그인 버튼을 다시 보여주지 않는다. */}
+                <button type="button" className={PRIMARY_BUTTON} onClick={handleSaveToDevice}>
+                  {phase === 'failed' ? '다시 시도' : '이 기기에 저장'}
+                </button>
+                <button type="button" className={GHOST_BUTTON} onClick={onClose}>
+                  나중에 할게요
                 </button>
               </>
             ) : (
@@ -145,18 +178,10 @@ export function GuestSaveSheet({ onClose, onSaveToDevice }: Props) {
                 >
                   로그인하고 저장하기
                 </Link>
-                <button
-                  type="button"
-                  className="border-line bg-surface text-fg hover:bg-bg rounded-ui h-13 cursor-pointer border text-[15.5px] font-semibold transition-colors"
-                  onClick={handleSaveToDevice}
-                >
+                <button type="button" className={OUTLINE_BUTTON} onClick={handleSaveToDevice}>
                   {phase === 'failed' ? '다시 시도' : '이 기기에만 저장'}
                 </button>
-                <button
-                  type="button"
-                  className="text-hint hover:text-muted rounded-ui h-11 cursor-pointer bg-transparent text-[13.5px] font-medium transition-colors"
-                  onClick={onClose}
-                >
+                <button type="button" className={GHOST_BUTTON} onClick={onClose}>
                   나중에 할게요
                 </button>
               </>
