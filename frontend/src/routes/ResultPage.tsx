@@ -495,6 +495,15 @@ export function ResultPage() {
             )}
           </section>
 
+          {/*
+            버튼 문구는 그 버튼이 실제로 하는 일만 말한다.
+
+            앞서 쓰던 "원안 유지"는 되돌리는 동작을 약속하는 이름인데, 실제로는 진단 화면으로
+            돌아가기만 했다. 교체한 장소가 그대로 남아 있으니 이름이 거짓말을 한 셈이다.
+            "개선안으로 저장하기"도 마찬가지로, 아무것도 안 바꾼 코스까지 개선안이라고 불렀다.
+
+            두 버튼 다 무엇을 바꿨는지와 무관하게 뜻이 같으므로 문구를 고정한다.
+          */}
           <section className="flex flex-col items-center gap-3 pb-2">
             <div className="flex w-full flex-col gap-2.5 sm:flex-row-reverse">
               <button
@@ -502,13 +511,13 @@ export function ResultPage() {
                 className={PRIMARY_BUTTON}
                 onClick={() => setShowSavePrompt(true)}
               >
-                개선안으로 코스 저장하기
+                저장하기
               </button>
               <Link
                 to="/diagnosis"
                 className={`${SECONDARY_BUTTON} grid flex-none place-items-center px-5.5 no-underline sm:w-auto`}
               >
-                원안 유지
+                돌아가기
               </Link>
             </div>
           </section>
