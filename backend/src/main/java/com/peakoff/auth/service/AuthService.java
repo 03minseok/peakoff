@@ -3,6 +3,7 @@ package com.peakoff.auth.service;
 import java.time.Clock;
 import java.time.Instant;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,8 @@ import com.peakoff.member.domain.MemberRepository;
  * 이미 가입된 이메일인지, 비밀번호가 맞는지.
  */
 @Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AuthService {
 
 	private final MemberRepository memberRepository;
@@ -38,16 +41,6 @@ public class AuthService {
 	 * {@code Instant.now()}를 직접 부르면 "가입 시각과 약관 동의 시각이 같은가" 같은 것을
 	 * 검증할 방법이 사라진다.
 	 */
-	public AuthService(
-			MemberRepository memberRepository,
-			PasswordEncoder passwordEncoder,
-			JwtProvider jwtProvider,
-			Clock clock) {
-		this.memberRepository = memberRepository;
-		this.passwordEncoder = passwordEncoder;
-		this.jwtProvider = jwtProvider;
-		this.clock = clock;
-	}
 
 	@Transactional
 	public AuthResponse signup(SignupRequest request) {
@@ -84,7 +77,6 @@ public class AuthService {
 	 * <p>이메일이 없든 비밀번호가 틀리든 <b>같은 메시지</b>를 돌려준다.
 	 * 나눠 알려주면 "이 이메일은 가입돼 있다"는 사실을 확인하는 통로가 된다.
 	 */
-	@Transactional(readOnly = true)
 	public AuthResponse login(LoginRequest request) {
 		Member member = memberRepository.findByEmail(Member.normalizeEmail(request.email()))
 				.orElseThrow(() -> new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다."));
@@ -97,7 +89,6 @@ public class AuthService {
 	}
 
 	/** 토큰이 가리키는 회원의 지금 정보. 닉네임이 바뀌었을 수도 있어 DB에서 다시 읽는다. */
-	@Transactional(readOnly = true)
 	public MemberResponse findById(Long memberId) {
 		Member member = memberRepository.findById(memberId)
 				// 토큰은 유효한데 회원이 없다 — 탈퇴했거나 DB가 초기화된 경우다.
