@@ -12,7 +12,12 @@ import type { TripPlan } from './tripTypes'
  */
 const STORAGE_KEY = 'peakoff.savedCourse'
 
+/** 이름 기능이 생기기 전에 저장된 값에 붙일 이름. 지우지 않고 이걸로 채운다 */
+const FALLBACK_NAME = '저장한 코스'
+
 export interface SavedCourse {
+  /** 사용자가 붙인 여행 이름 */
+  name: string
   /** 저장 시각 (ISO). "언제 저장한 코스인지" 화면에 보여주기 위한 값 */
   savedAt: string
   plan: TripPlan
@@ -37,6 +42,7 @@ function isValidPlan(value: unknown): boolean {
  * localStorage는 sessionStorage와 달리 <b>몇 달 전 값이 남아 있을 수 있다.</b>
  * 그 사이 상태 구조를 바꿨다면 그대로 읽어 쓰는 순간 화면이 깨진다. 모양이 다르면 없는 것으로 친다.
  */
+/** name은 나중에 생긴 필드라 여기서 요구하지 않는다. 없으면 {@link loadSavedCourse}가 채운다. */
 function isValidSavedCourse(value: unknown): value is SavedCourse {
   if (typeof value !== 'object' || value === null) {
     return false
@@ -59,7 +65,14 @@ export function loadSavedCourse(): SavedCourse | null {
       return null
     }
     const parsed: unknown = JSON.parse(raw)
-    return isValidSavedCourse(parsed) ? parsed : null
+    if (!isValidSavedCourse(parsed)) {
+      return null
+    }
+    /*
+     * 이름은 나중에 생긴 필드다. 없다고 값을 버리면 그 전에 저장해둔 코스가 사라진다.
+     * 모양이 어긋난 것과 필드가 늘어난 것은 다르게 다뤄야 한다.
+     */
+    return { ...parsed, name: parsed.name?.trim() ? parsed.name : FALLBACK_NAME }
   } catch {
     // 저장소를 못 쓰는 환경(사파리 시크릿 모드 등)에서도 앱은 돌아가야 한다.
     return null
@@ -67,9 +80,10 @@ export function loadSavedCourse(): SavedCourse | null {
 }
 
 /** @returns 저장에 성공했는지. 실패하면 화면에서 "저장하지 못했어요"로 알려야 한다 */
-export function saveCourseToDevice(plan: TripPlan, days: string[][]): boolean {
+export function saveCourseToDevice(name: string, plan: TripPlan, days: string[][]): boolean {
   try {
     const saved: SavedCourse = {
+      name: name.trim() || FALLBACK_NAME,
       savedAt: new Date().toISOString(),
       plan,
       days,
