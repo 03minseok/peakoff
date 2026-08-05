@@ -22,10 +22,24 @@ dependencies {
 	// 요청 DTO의 모양 검증(@NotBlank, @Min 등). 업무 규칙 검증은 도메인 생성자가 계속 맡는다.
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+
+	// 회원 저장. 공사 OpenAPI 데이터는 여기에 적재하지 않는다 — 회원 정보 전용이다.
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly 'com.h2database:h2'
+
+	// 비밀번호 해시(BCrypt)와 인증 필터 체인.
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// JWT 발급·검증. api만 컴파일에 노출하고 구현체는 런타임에만 둔다 —
+	// 애플리케이션 코드가 구현 클래스에 직접 손대지 못하게 막는 배치다.
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.security:spring-security-test'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'

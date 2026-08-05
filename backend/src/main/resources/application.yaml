@@ -9,6 +9,32 @@ spring:
     # 목업 데이터로 동작한다. 공공데이터 API 구현이 붙으면 이 값을 바꿔 교체한다.
     active: mock
 
+  # 회원 정보만 담는 저장소다.
+  # 공사 OpenAPI로 받은 한적도·장소 데이터는 여기 적재하지 않는다 — 실시간 호출 규칙 위반이다.
+  datasource:
+    # 파일 모드 H2. 서버를 껐다 켜도 가입한 회원이 남는다(메모리 모드면 사라진다).
+    # 배포처를 정하고 나면 이 한 줄만 PostgreSQL URL로 바꾸면 된다.
+    url: jdbc:h2:file:./data/peakoff;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      # 파일럿 단계라 엔티티 변경을 스키마에 자동 반영한다.
+      # 회원 테이블 하나뿐이고 마이그레이션 도구를 얹을 만큼 스키마가 움직이지 않는다.
+      ddl-auto: update
+    open-in-view: false
+
+peakoff:
+  jwt:
+    # 반드시 환경변수로 넣는다. 코드나 저장소에 값을 두지 않는다.
+    # 로컬에서는 application-local.yml(.gitignore 대상)에 적어도 된다.
+    # 비어 있으면 서버가 임의 키를 만들어 뜨고, 재시작할 때마다 토큰이 무효가 된다.
+    secret: ${PEAKOFF_JWT_SECRET:}
+    # 토큰 유효 기간. 심사 중 데모가 도중에 끊기지 않을 만큼 길게 둔다.
+    validity: 7d
+
 springdoc:
   swagger-ui:
     # http://localhost:8080/docs 로 연다. 기본 경로(/swagger-ui.html)보다 기억하기 쉽다.

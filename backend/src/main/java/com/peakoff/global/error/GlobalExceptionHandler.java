@@ -32,6 +32,16 @@ public class GlobalExceptionHandler {
 		return toResponse(ErrorCode.NOT_FOUND, e.getMessage());
 	}
 
+	@ExceptionHandler(UnauthorizedException.class)
+	public ResponseEntity<ApiResponse<Void>> handleUnauthorized(UnauthorizedException e) {
+		return toResponse(ErrorCode.UNAUTHORIZED, e.getMessage());
+	}
+
+	@ExceptionHandler(ConflictException.class)
+	public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException e) {
+		return toResponse(ErrorCode.CONFLICT, e.getMessage());
+	}
+
 	/**
 	 * 요청 본문(@RequestBody)의 검증 실패.
 	 *

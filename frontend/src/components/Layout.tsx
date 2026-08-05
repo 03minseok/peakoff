@@ -1,7 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router'
-import { REGIONS } from '../constants/regions'
-import { useTrip } from '../state/tripContext'
-import { formatDateRange, formatDuration } from '../utils/date'
+import { useAuth } from '../state/authContext'
 
 /**
  * 모든 페이지가 공유하는 껍데기.
@@ -12,9 +10,7 @@ import { formatDateRange, formatDuration } from '../utils/date'
  * 라우트의 부모로 두면 페이지를 옮겨도 헤더가 다시 그려지지 않는다.
  */
 export function Layout() {
-  const { state } = useTrip()
-  const plan = state.plan
-  const regionName = REGIONS.find((region) => region.slug === plan?.region)?.name
+  const { member, loading, logout } = useAuth()
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -42,29 +38,38 @@ export function Layout() {
               화면을 옮겨 다니는 동안 날짜를 다시 확인하러 뒤로 갈 일이 없어진다.
               좁은 화면에서는 자리가 없어 감춘다.
             */}
-            {plan && regionName && (
-              <div className="hidden min-w-0 items-center gap-2.5 sm:flex">
-                <span className="bg-line h-4 w-px flex-none" aria-hidden="true" />
-                <span className="text-fg truncate text-sm font-semibold">
-                  {regionName} {formatDuration(plan.nights)}
-                </span>
-                <span className="text-hint flex-none font-mono text-[12.5px]">
-                  {formatDateRange(plan.startDate, plan.nights)}
-                </span>
-              </div>
-            )}
           </div>
 
           {/*
             로그인은 구석에 작게 둔다. 버튼처럼 강조하면 게스트가
             "먼저 로그인해야 하나" 하고 멈칫한다.
+
+            확인이 끝나기 전에는 아무것도 그리지 않는다. "로그인"을 먼저 띄웠다가
+            닉네임으로 바뀌면 헤더가 깜빡인다.
           */}
-          <NavLink
-            to="/login"
-            className="text-hint hover:text-fg -mr-2 flex-none rounded-chip p-2 text-[13px] font-medium no-underline"
-          >
-            로그인
-          </NavLink>
+          {loading ? (
+            <span className="h-4 w-12 flex-none" aria-hidden="true" />
+          ) : member ? (
+            <div className="flex flex-none items-center gap-2">
+              <span className="text-fg max-w-24 truncate text-[13px] font-semibold">
+                {member.nickname}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-hint hover:text-fg rounded-chip -mr-2 cursor-pointer bg-transparent p-2 text-[13px] font-medium"
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <NavLink
+              to="/login"
+              className="text-hint hover:text-fg -mr-2 flex-none rounded-chip p-2 text-[13px] font-medium no-underline"
+            >
+              로그인
+            </NavLink>
+          )}
         </div>
       </header>
 

@@ -35,6 +35,25 @@ export const NOTICE =
   'rounded-card bg-surface p-4 text-center text-[13px] shadow-rest'
 
 /**
+ * 글자를 직접 입력받는 칸. 날짜·이메일·비밀번호가 같은 높이로 선다.
+ *
+ * 높이 52px은 주요 버튼(54px)보다 살짝 낮다. 같은 높이로 두면 폼 맨 아래에서
+ * 입력칸과 버튼이 한 덩어리로 붙어 보여, 누를 곳이 어디인지 한눈에 안 들어온다.
+ */
+export const TEXT_INPUT =
+  'h-13 w-full rounded-ui border border-line bg-surface px-3.5 font-sans text-base text-fg transition-colors focus-visible:border-brand'
+
+/**
+ * 값이 규칙에 어긋난 칸.
+ *
+ * 테두리만 바꾸고 배경은 건드리지 않는다 — 입력한 글자가 계속 잘 읽혀야 한다.
+ * 진한 붉은색(crowded) 대신 옅은 값(crowded-soft)을 쓴다. 입력칸 전체를 강한 색으로
+ * 두르면 "붐빔" 배지와 같은 무게로 보여, 화면에서 어느 쪽이 위험 신호인지 헷갈린다.
+ */
+export const TEXT_INPUT_INVALID =
+  'h-13 w-full rounded-ui border border-crowded-soft bg-surface px-3.5 font-sans text-base text-fg transition-colors focus-visible:border-crowded'
+
+/**
  * 화면 껍데기 안에서 본문을 다시 좁히는 열.
  *
  * 껍데기는 1180px까지 넓지만 본문까지 따라 넓히지는 않는다.

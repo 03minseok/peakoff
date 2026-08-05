@@ -2,10 +2,14 @@ import type {
   Alternative,
   ApiErrorCode,
   ApiResponse,
+  AuthMember,
+  AuthResult,
   CourseDiagnosis,
   CourseDiagnosisRequest,
   DateAlternatives,
+  LoginRequest,
   Place,
+  SignupRequest,
 } from '../types/api'
 
 /**
@@ -40,20 +44,44 @@ interface RequestOptions {
 }
 
 /**
+ * 지금 로그인한 사용자의 토큰.
+ *
+ * 모듈 변수로 둔 이유: 토큰을 호출마다 인자로 넘기면 화면 곳곳에서 그 값을 들고 다녀야 하고,
+ * 한 군데라도 빠뜨리면 "가끔 로그인이 안 먹는" 상태가 된다. 여기 한 곳에 두면
+ * 모든 요청이 자동으로 실어 보낸다.
+ *
+ * 저장소에서 읽고 쓰는 일은 {@link ../state/authStorage} 가 맡는다. 이 파일은 값을 들고만 있다.
+ */
+let authToken: string | null = null
+
+/** 로그인·로그아웃 시 호출한다. null을 넣으면 이후 요청에 토큰이 실리지 않는다. */
+export function setAuthToken(token: string | null): void {
+  authToken = token
+}
+
+/**
  * 공통 호출 처리.
  *
  * 성공하면 `data`만 꺼내 돌려주고, 실패하면 {@link ApiRequestError}를 던진다.
  * 호출하는 쪽이 매번 `success`를 확인하지 않아도 되게 하려는 것이다.
  */
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { signal, method = 'GET', body } = options
+
+  const headers: Record<string, string> = {}
+  if (body) {
+    headers['Content-Type'] = 'application/json'
+  }
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`
+  }
 
   let response: Response
   try {
     response = await fetch(`${BASE_URL}${path}`, {
       method,
       signal,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     })
   } catch (error) {
@@ -78,9 +106,28 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return payload.data
 }
 
+/** POST /api/auth/signup — 가입 즉시 로그인 상태가 된다(토큰이 함께 온다). */
+export function signup(request: SignupRequest, signal?: AbortSignal): Promise<AuthResult> {
+  return apiRequest<AuthResult>('/auth/signup', { method: 'POST', body: request, signal })
+}
+
+/** POST /api/auth/login */
+export function login(request: LoginRequest, signal?: AbortSignal): Promise<AuthResult> {
+  return apiRequest<AuthResult>('/auth/login', { method: 'POST', body: request, signal })
+}
+
+/**
+ * GET /api/auth/me — 저장해둔 토큰이 아직 살아 있는지 확인하는 자리이기도 하다.
+ *
+ * 만료됐으면 UNAUTHORIZED로 실패하므로, 화면을 열 때 한 번 불러 로그아웃 처리하면 된다.
+ */
+export function fetchMe(signal?: AbortSignal): Promise<AuthMember> {
+  return apiRequest<AuthMember>('/auth/me', { signal })
+}
+
 /** GET /api/places?region=gyeongju */
 export function fetchPlaces(region: string, signal?: AbortSignal): Promise<Place[]> {
-  return request<Place[]>(`/places?region=${encodeURIComponent(region)}`, { signal })
+  return apiRequest<Place[]>(`/places?region=${encodeURIComponent(region)}`, { signal })
 }
 
 /** GET /api/places/{placeId}/alternatives?date=&limit= */
@@ -91,7 +138,7 @@ export function fetchAlternatives(
   signal?: AbortSignal,
 ): Promise<Alternative[]> {
   const query = new URLSearchParams({ date, limit: String(limit) })
-  return request<Alternative[]>(
+  return apiRequest<Alternative[]>(
     `/places/${encodeURIComponent(placeId)}/alternatives?${query}`,
     { signal },
   )
@@ -102,7 +149,7 @@ export function diagnoseCourse(
   course: CourseDiagnosisRequest,
   signal?: AbortSignal,
 ): Promise<CourseDiagnosis> {
-  return request<CourseDiagnosis>('/courses/diagnose', {
+  return apiRequest<CourseDiagnosis>('/courses/diagnose', {
     method: 'POST',
     body: course,
     signal,
@@ -123,5 +170,5 @@ export function fetchDateAlternatives(
 ): Promise<DateAlternatives> {
   const query = new URLSearchParams({ date, range: String(range) })
   placeIds.forEach((placeId) => query.append('placeId', placeId))
-  return request<DateAlternatives>(`/dates/alternatives?${query}`, { signal })
+  return apiRequest<DateAlternatives>(`/dates/alternatives?${query}`, { signal })
 }
