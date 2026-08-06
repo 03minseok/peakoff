@@ -197,15 +197,8 @@ export function MyPage() {
               >
                 취소
               </button>
-              {/* 데스크톱에서는 헤더에 두고, 모바일에서는 아래 고정 바에 둔다 */}
-              <button
-                type="button"
-                disabled={selected.length < COMPARE_COUNT}
-                onClick={() => setOpened(selected)}
-                className="bg-brand disabled:bg-line disabled:text-hint hidden h-9.5 cursor-pointer rounded-[12px] px-4 text-[13.5px] font-semibold text-white disabled:cursor-not-allowed md:block"
-              >
-                나란히 비교
-              </button>
+              {/* 비교 실행 버튼은 아래 고정 바 한 곳에만 둔다.
+                  헤더에도 같은 버튼을 두면 어느 것을 눌러야 하는지 갈린다. */}
             </>
           ) : (
             <>
@@ -314,11 +307,14 @@ export function MyPage() {
         </button>
       </section>
 
-      {/* 모바일 비교 CTA. 목록을 훑으며 고르는 동안 버튼이 따라온다 */}
+      {/*
+        모바일 비교 CTA. 목록을 훑으며 고르는 동안 버튼이 따라온다.
+        bottom-15로 BottomNav(60px) 바로 위에 얹는다 — 겹치면 둘 다 못 누른다.
+      */}
       {selecting && (
-        <div className="fixed right-0 bottom-0 left-0 z-40 md:hidden">
+        <div className="fixed right-0 bottom-15 left-0 z-40 md:bottom-0">
           <div className="from-bg/0 to-bg h-6 bg-linear-to-b" aria-hidden="true" />
-          <div className="bg-bg px-4 pb-5.5">
+          <div className="bg-bg px-4 pb-3">
             <button
               type="button"
               disabled={selected.length < COMPARE_COUNT}
