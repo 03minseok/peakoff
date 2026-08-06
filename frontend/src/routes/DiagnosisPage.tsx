@@ -422,7 +422,8 @@ export function DiagnosisPage() {
             )
           })}
 
-          <div className="from-bg/0 to-bg sticky bottom-0 mt-1 bg-gradient-to-b to-[30%] pt-3.5 pb-5">
+          {/* bottom-15: BottomNav(60px) 위에 얹는다. 막대가 사라지는 md부터는 바닥으로 내려온다. */}
+          <div className="from-bg/0 to-bg sticky bottom-15 mt-1 bg-gradient-to-b to-[30%] pt-3.5 pb-5 md:bottom-0">
             <button type="button" className={PRIMARY_BUTTON} onClick={() => navigate('/result')}>
               최종 코스 확인하기
             </button>
