@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router'
+import { BottomNav, HeaderNav } from '../components/BottomNav'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID, LEVEL_TINT } from '../components/levelStyles'
 import { CARD, CARD_RAISED, SECONDARY_BUTTON } from '../components/styles'
@@ -178,7 +179,8 @@ export function HomePage() {
   const data = state.phase === 'loaded' ? state.data : null
 
   return (
-    <div className="flex min-h-svh flex-col pb-10">
+    // pb-26: 아래 고정된 BottomNav가 마지막 버튼을 가리지 않게 한다. md부터는 막대가 사라진다.
+    <div className="flex min-h-svh flex-col pb-26 md:pb-10">
       {/* 1. 상단 — 서비스가 무엇인지 한 줄로 말하고, 로그인은 구석에 작게 둔다. */}
       <header className={`${COLUMN} flex items-start justify-between gap-4 px-5 pt-4.5`}>
         <div className="flex flex-col gap-1.75">
@@ -192,29 +194,32 @@ export function HomePage() {
             붐비는 곳은 피해요, 한적한 곳들로 떠나는 {regionName}
           </p>
         </div>
-        {/* 확인이 끝나기 전에는 비워 둔다. "로그인"이 떴다가 닉네임으로 바뀌면 눈에 거슬린다. */}
-        {authLoading ? (
-          <span className="h-4 w-12 flex-none" aria-hidden="true" />
-        ) : member ? (
-          /* 닉네임이 마이페이지로 가는 문이다. 로그아웃은 그 안에 있다. */
-          <Link
-            to="/my"
-            className="text-fg hover:text-brand flex max-w-32 flex-none items-center gap-1.5 px-0.5 py-1.5 text-[13px] font-semibold whitespace-nowrap"
-          >
-            <span className="truncate">{member.nickname}</span>
-            <span className="text-hint" aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        ) : (
-          <Link
-            to="/login"
-            className="text-hint hover:text-fg flex-none px-0.5 py-1.5 text-[13px] font-medium whitespace-nowrap"
-          >
-            로그인
-          </Link>
-        )}
+        {/*
+          홈은 Layout을 쓰지 않아 헤더를 직접 그린다. 그래서 HeaderNav도 여기 직접 넣어야 한다 —
+          빠뜨리면 넓은 화면에서 이동 수단이 통째로 사라진다(BottomNav는 md에서 숨으므로).
+        */}
+        <div className="flex flex-none items-center gap-5">
+          <HeaderNav />
+
+          {/*
+            로그인한 뒤에는 이 자리를 비운다. 마이페이지로 가는 길은 이미 나란히 서 있는
+            HeaderNav에 있어서, 닉네임까지 링크로 두면 같은 곳으로 가는 문이 두 개가 된다.
+
+            확인이 끝나기 전에도 비워 둔다. "로그인"이 떴다가 사라지면 눈에 거슬린다.
+          */}
+          {authLoading ? (
+            <span className="h-4 w-12 flex-none" aria-hidden="true" />
+          ) : member ? null : (
+            <Link
+              to="/login"
+              className="text-hint hover:text-fg flex-none px-0.5 py-1.5 text-[13px] font-medium whitespace-nowrap"
+            >
+              로그인
+            </Link>
+          )}
+        </div>
       </header>
+      <BottomNav />
 
       {/* 2. 주 진입점 — 화면에서 가장 큰 덩어리. 여기부터 서비스가 시작된다. */}
       <div className={`${COLUMN} px-4 pt-5.5`}>
@@ -223,14 +228,29 @@ export function HomePage() {
           onClick={() => navigate('/plan')}
           className="bg-fg relative w-full cursor-pointer overflow-hidden rounded-[24px] px-6 pt-6.5 pb-6 text-left text-white shadow-[0_8px_26px_rgb(22_33_31/0.18)]"
         >
+          {/*
+            장식 원을 잘라내는 층.
+
+            버튼에도 overflow-hidden이 걸려 있지만 그것만으로는 잘리지 않는다.
+            <button>은 폼 컨트롤이라 브라우저가 자체 렌더링 규칙을 얹어, 절대 위치 자식이
+            기대대로 잘리지 않는다. 그래서 잘라내는 일은 평범한 span에 맡긴다.
+
+            안 하면 이렇게 된다 — 원이 버튼 오른쪽으로 항상 40px 삐져나가는데,
+            열(max-w-430)이 가운데 정렬이라 화면이 510px보다 넓으면 양옆 여백에 묻힌다.
+            그보다 좁아지는 순간 화면 밖으로 나가 페이지 전체에 가로 스크롤이 생긴다.
+
+            같은 장식이 결과 화면(section)과 로그인 화면(aside)에도 있는데 거기는 멀쩡하다.
+            일반 요소에서는 overflow-hidden이 그대로 먹기 때문이다.
+
+            모서리는 버튼과 같은 값으로 깎아야 둥근 부분 밖으로 색이 비치지 않는다.
+          */}
           <span
-            className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(14_124_134/0.3)]"
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]"
             aria-hidden="true"
-          />
-          <span
-            className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(14_124_134/0.16)]"
-            aria-hidden="true"
-          />
+          >
+            <span className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(14_124_134/0.3)]" />
+            <span className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(14_124_134/0.16)]" />
+          </span>
           <span className="relative flex flex-col gap-3">
             <span className="text-quiet-soft text-[11.5px] font-semibold tracking-[0.1em]">
               START PLANNING
@@ -361,9 +381,17 @@ export function HomePage() {
           </section>
 
           {/* 5. 이번 주 한적한 날 — 장소가 아니라 날짜로 혼잡을 피하는 경로 */}
-          <section className="flex flex-col gap-3 pt-7.5">
-            <div className={`${COLUMN} flex items-baseline justify-between gap-3 px-5`}>
-              <div className="flex flex-col gap-0.75">
+          {/*
+            폭을 COLUMN으로 못박는다. 다른 두 섹션과 같은 구조다.
+
+            앞서 이 섹션만 폭 클래스를 빼고 부모가 늘려주기를 기대했는데, 그러면 안에 든
+            스크롤 상자의 폭도 확정되지 않는다. 폭이 확정되지 않은 스크롤 상자는 내용
+            (카드 7장 ≈ 820px)만큼 벌어지고, 그만큼이 그대로 페이지 가로 스크롤이 됐다.
+          */}
+          <section className={`${COLUMN} flex flex-col gap-3 px-4 pt-7.5`}>
+            <div className="flex items-baseline justify-between gap-3 px-1">
+              {/* 옆의 칩이 flex-none이라 줄어들지 않는다. min-w-0이 없으면 이쪽이 밀려 넘칠 수 있다. */}
+              <div className="flex min-w-0 flex-col gap-0.75">
                 <h2 className={SECTION_TITLE}>이번 주 한적한 날</h2>
                 <span className="text-hint text-[12.5px]">앞으로 7일 예상 혼잡</span>
               </div>
@@ -378,28 +406,36 @@ export function HomePage() {
             {/*
               가로 스크롤. 7일을 세로로 쌓으면 화면을 다 잡아먹고, 억지로 줄이면
               막대가 짧아져 날짜별 차이가 안 보인다. 옆으로 미는 편이 비교하기 좋다.
+
+              스크롤 상자는 폭이 확정된 섹션 안의 평범한 블록이라 섹션 폭을 그대로 받는다.
+              안쪽 트랙만 w-max로 내용만큼 넓어져 그 안에서 밀린다.
+
+              트랙에 mx-auto를 걸지 않는다. 내용이 상자보다 넓을 때 auto 여백이 음수가 되어
+              왼쪽으로도 삐져나간다 — 그쪽은 스크롤로 닿지도 않는다.
             */}
-            <div className={`${COLUMN} no-scrollbar flex gap-2.5 overflow-x-auto px-4 pb-3`}>
-              {data
-                ? data.forecast.map((day) => (
-                    <ForecastCard
-                      key={day.date}
-                      day={day}
-                      best={day.date === data.bestDay.date}
-                    />
-                  ))
-                : Array.from({ length: 7 }, (_, index) => (
-                    <div
-                      key={index}
-                      className="bg-surface shadow-rest box-border flex h-39.5 w-26 flex-none flex-col gap-2.5 rounded-[18px] p-3.5"
-                    >
-                      <span className="skeleton h-3 w-10" />
-                      <span className="skeleton w-full flex-1 rounded-[8px]" />
-                    </div>
-                  ))}
+            <div className="no-scrollbar overflow-x-auto">
+              <div className="flex w-max gap-2.5 pb-3">
+                {data
+                  ? data.forecast.map((day) => (
+                      <ForecastCard
+                        key={day.date}
+                        day={day}
+                        best={day.date === data.bestDay.date}
+                      />
+                    ))
+                  : Array.from({ length: 7 }, (_, index) => (
+                      <div
+                        key={index}
+                        className="bg-surface shadow-rest box-border flex h-39.5 w-26 flex-none flex-col gap-2.5 rounded-[18px] p-3.5"
+                      >
+                        <span className="skeleton h-3 w-10" />
+                        <span className="skeleton w-full flex-1 rounded-[8px]" />
+                      </div>
+                    ))}
+              </div>
             </div>
 
-            <div className={`${COLUMN} px-5`}>
+            <div className="px-1">
               <button
                 type="button"
                 className={`${SECONDARY_BUTTON} w-full`}

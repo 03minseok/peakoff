@@ -120,6 +120,20 @@
     color: var(--color-muted);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+
+    /*
+     * 페이지가 옆으로 밀리는 것을 막는 최후 방어선.
+     *
+     * 어떤 요소가 실수로 화면보다 넓어져도(장식 원, 폭이 확정되지 않은 스크롤 상자 등)
+     * 문서 전체에 가로 스크롤이 생기지 않는다. 가로로 넘치는 내용은 각자
+     * overflow-x-auto 상자 안에서 스크롤해야 한다 — 주간 예보 스트립처럼.
+     *
+     * hidden이 아니라 clip인 이유: clip은 스크롤 컨테이너를 만들지 않아
+     * position: sticky(헤더, 하단 CTA)가 계속 동작한다. hidden은 sticky를 깨뜨린다.
+     *
+     * 이것은 증상을 가리는 안전망이지 면죄부가 아니다. 넘치는 요소는 계속 찾아서 고친다.
+     */
+    overflow-x: clip;
   }
 
   #root {

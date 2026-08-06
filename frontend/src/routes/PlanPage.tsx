@@ -90,8 +90,13 @@ export function PlanPage() {
           <br />
           피해서 가요
         </h1>
-        <p className="min-w-[300px] text-[15.5px] leading-[1.65] text-pretty">
-          날짜만 정하면 {regionName}의 각 장소가 그날 얼마나 붐빌지 미리 알려드려요.<br/> 
+        {/*
+          min-w를 걸지 않는다. 폭을 강제하면 화면이 그보다 좁을 때 문단이 밖으로 삐져나가
+          페이지 전체에 가로 스크롤이 생긴다. 줄바꿈은 text-pretty에 맡긴다.
+        */}
+        <p className="text-[15.5px] leading-[1.65] text-pretty">
+          날짜만 정하면 {regionName}의 각 장소가 그날 얼마나 붐빌지 미리 알려드려요.
+          <br />
           가입 없이 바로 시작할 수 있어요.
         </p>
       </section>
