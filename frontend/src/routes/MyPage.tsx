@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
+import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { SavedCourseCard } from '../components/SavedCourseCard'
-import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
-import { deleteSavedCourse, fetchSavedCourses } from '../services/api'
+import { SECONDARY_BUTTON } from '../components/styles'
+import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
 import { useAuth } from '../state/authContext'
 import { useTrip } from '../state/tripContext'
 import type { SavedCourseDetail, SavedCourseSummary } from '../types/api'
@@ -29,9 +30,21 @@ export function MyPage() {
   const [selected, setSelected] = useState<number[]>([])
   /** 겹창에 펼칠 코스. 비어 있으면 닫힌 상태 */
   const [opened, setOpened] = useState<number[]>([])
+  /** 지울지 묻고 있는 코스. null이면 확인 시트가 닫힌 상태 */
+  const [pendingDelete, setPendingDelete] = useState<SavedCourseSummary | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  /** 삭제 실패 같은 일회성 알림. 창을 띄우지 않고 목록 위에 띠로 보여준다 */
+  const [notice, setNotice] = useState<string | null>(null)
 
-  const load = useCallback((signal?: AbortSignal) => {
-    setList({ status: 'loading' })
+  /**
+   * @param silent 스켈레톤을 띄우지 않고 조용히 다시 읽는다.
+   *               삭제 직후처럼 이미 목록이 그려져 있을 때 쓴다 — 카드 하나를 지웠는데
+   *               화면 전체가 스켈레톤으로 깜빡이면 뭐가 일어났는지 알 수 없다.
+   */
+  const load = useCallback((signal?: AbortSignal, silent = false) => {
+    if (!silent) {
+      setList({ status: 'loading' })
+    }
     fetchSavedCourses(signal)
       .then((courses) => setList({ status: 'loaded', courses }))
       .catch((error: unknown) => {
@@ -56,17 +69,30 @@ export function MyPage() {
    * list를 의존성으로 둔다. courses를 렌더 중에 만들면(로딩 중에는 새 빈 배열)
    * 매 렌더 참조가 바뀌어 useMemo가 무의미해진다.
    */
+  /**
+   * 프로필 옆(넓은 화면)과 아래(좁은 화면)가 함께 쓰는 통계.
+   *
+   * <p>list를 의존성으로 둔다. courses를 렌더 중에 만들면(로딩 중에는 새 빈 배열)
+   * 매 렌더 참조가 바뀌어 useMemo가 무의미해진다.
+   */
   const stats = useMemo(() => {
     const loaded = list.status === 'loaded' ? list.courses : []
     if (loaded.length === 0) {
-      return { count: 0, average: '—', past: 0 }
+      return [
+        { label: '저장한 코스', value: '0' },
+        { label: '평균 한적 지수', value: '—' },
+        { label: '다녀온 여행', value: '0' },
+      ]
     }
     const total = loaded.reduce((sum, course) => sum + course.totalQuietness, 0)
-    return {
-      count: loaded.length,
-      average: String(Math.round(total / loaded.length)),
-      past: loaded.filter((course) => isPastDate(course.endDate)).length,
-    }
+    return [
+      { label: '저장한 코스', value: String(loaded.length) },
+      { label: '평균 한적 지수', value: String(Math.round(total / loaded.length)) },
+      {
+        label: '다녀온 여행',
+        value: String(loaded.filter((course) => isPastDate(course.endDate)).length),
+      },
+    ]
   }, [list])
 
   const courses = list.status === 'loaded' ? list.courses : []
@@ -82,17 +108,27 @@ export function MyPage() {
     })
   }
 
-  async function handleDelete(course: SavedCourseSummary) {
-    if (!window.confirm(`"${course.name}"을(를) 지울까요? 되돌릴 수 없어요.`)) {
+  async function handleDelete() {
+    if (!pendingDelete) {
       return
     }
+    setDeleting(true)
+    setNotice(null)
     try {
-      await deleteSavedCourse(course.id)
+      await deleteSavedCourse(pendingDelete.id)
+      setSelected((current) => current.filter((id) => id !== pendingDelete.id))
+      setPendingDelete(null)
       // 서버가 지운 뒤 목록을 다시 읽는다. 화면에서만 지우면 실제로 지워졌는지 알 수 없다.
-      setSelected((current) => current.filter((id) => id !== course.id))
-      load()
-    } catch {
-      window.alert('코스를 지우지 못했어요. 잠시 후 다시 시도해 주세요.')
+      load(undefined, true)
+    } catch (error: unknown) {
+      setPendingDelete(null)
+      setNotice(
+        error instanceof ApiRequestError
+          ? error.message
+          : '코스를 지우지 못했어요. 잠시 후 다시 시도해 주세요.',
+      )
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -139,11 +175,7 @@ export function MyPage() {
 
         {/* 넓은 화면에서는 통계가 프로필 옆에 선다. 좁으면 아래로 내려간다 */}
         <div className="hidden flex-none gap-3.5 md:flex">
-          {[
-            { label: '저장한 코스', value: String(stats.count) },
-            { label: '평균 한적 지수', value: stats.average },
-            { label: '다녀온 여행', value: String(stats.past) },
-          ].map((stat) => (
+          {stats.map((stat) => (
             <div key={stat.label} className="flex min-w-16 flex-col items-center gap-0.5">
               <span className={STAT_VALUE}>{stat.value}</span>
               <span className="text-hint text-[11.5px]">{stat.label}</span>
@@ -152,12 +184,13 @@ export function MyPage() {
         </div>
       </section>
 
+      {/*
+        좁은 화면용 통계. 위와 같은 stats를 돌린다 — 목록을 두 벌로 적으면
+        항목을 하나 더할 때 한쪽만 고쳐져 화면 크기에 따라 다른 내용이 나온다.
+        배치만 다르고(옆줄 vs 카드 3칸) 내용은 한 곳에서 온다.
+      */}
       <div className="grid grid-cols-3 gap-2 md:hidden">
-        {[
-          { label: '저장한 코스', value: String(stats.count) },
-          { label: '평균 한적 지수', value: stats.average },
-          { label: '다녀온 여행', value: String(stats.past) },
-        ].map((stat) => (
+        {stats.map((stat) => (
           <div
             key={stat.label}
             className="bg-surface shadow-rest flex flex-col items-center gap-0.75 rounded-[14px] p-3"
@@ -237,6 +270,24 @@ export function MyPage() {
         </p>
       )}
 
+      {/* 일회성 알림. 창을 띄우는 대신 목록 위에 띠로 두어 화면 흐름을 끊지 않는다 */}
+      {notice && (
+        <div
+          className="bg-crowded-tint rounded-card flex items-center justify-between gap-3 p-3.5"
+          role="alert"
+        >
+          <span className="text-crowded-deep text-[13px]">{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            aria-label="알림 닫기"
+            className="text-crowded-deep/70 hover:text-crowded-deep grid h-7 w-7 flex-none cursor-pointer place-items-center rounded-full bg-transparent text-sm"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {list.status === 'loading' && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }, (_, index) => (
@@ -259,7 +310,7 @@ export function MyPage() {
               selected={selected.includes(course.id)}
               onOpen={() => setOpened([course.id])}
               onToggleSelect={() => toggleSelect(course.id)}
-              onDelete={() => void handleDelete(course)}
+              onDelete={() => setPendingDelete(course)}
             />
           ))}
         </div>
@@ -279,9 +330,14 @@ export function MyPage() {
               한적한 경주 여행을 계획하고 저장하면 여기에 모여요.
             </span>
           </div>
+          {/*
+            PRIMARY_BUTTON을 쓰지 않는다. 거기엔 w-full이 들어 있어서 w-auto를 덧붙이면
+            둘 중 무엇이 이길지가 Tailwind의 출력 순서에 달린다 —
+            클래스를 적은 순서가 아니라 스타일시트 순서로 정해지기 때문이다.
+          */}
           <Link
             to="/plan"
-            className={`${PRIMARY_BUTTON} mt-1 grid w-auto place-items-center px-6 no-underline`}
+            className="bg-brand hover:bg-brand-hover shadow-cta rounded-ui mt-1 grid h-13.5 place-items-center px-6 text-base font-semibold text-white no-underline transition-colors"
           >
             코스 짜러 가기
           </Link>
@@ -334,6 +390,19 @@ export function MyPage() {
           courseIds={opened}
           onClose={() => setOpened([])}
           onOpenInFlow={openInFlow}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmSheet
+          title={`"${pendingDelete.name}"을(를) 지울까요?`}
+          description="지운 코스는 되돌릴 수 없어요. 계정에서 완전히 사라집니다."
+          confirmLabel="지우기"
+          cancelLabel="그대로 두기"
+          danger
+          busy={deleting}
+          onConfirm={() => void handleDelete()}
+          onCancel={() => setPendingDelete(null)}
         />
       )}
     </div>
