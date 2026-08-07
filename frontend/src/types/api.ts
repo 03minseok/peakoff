@@ -151,12 +151,18 @@ export interface SavedCourseSummary {
   createdAt: string
 }
 
-/** 저장된 장소 한 줄. place가 null이면 저장 이후 그 장소가 목록에서 사라진 것이다 */
+/**
+ * 저장된 장소 한 줄.
+ *
+ * placeName은 저장 시점의 이름이다. 서버가 매번 장소 API에 다시 묻지 않으므로
+ * 바깥에서 그 id의 내용이 바뀌어도 저장된 코스는 흔들리지 않는다.
+ * placeId는 표시에 쓰지 않는다 — "이어서 보기"로 코스를 흐름에 올릴 때 필요하다.
+ */
 export interface SavedPlace {
   day: number
   order: number
   placeId: string
-  place: Place | null
+  placeName: string
 }
 
 /** 서버 SavedCourseDetail. 요약에 장소들이 붙은 모양 */

@@ -3,12 +3,10 @@ package com.peakoff.course.dto;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 import com.peakoff.congestion.domain.CongestionLevel;
 import com.peakoff.course.domain.SavedCourse;
 import com.peakoff.place.domain.SupportedRegion;
-import com.peakoff.place.dto.PlaceResponse;
 
 /**
  * 저장된 코스 하나의 전체 내용. 목록 항목에 장소들이 붙은 모양이다.
@@ -37,18 +35,17 @@ public record SavedCourseDetail(
 	/**
 	 * 저장된 장소 한 줄.
 	 *
-	 * @param place 장소 정보. <b>null일 수 있다</b> — 저장 이후 그 장소가 목록에서 사라진 경우다.
-	 *              그때 전체 조회를 실패시키면 코스 하나가 통째로 안 열리므로,
-	 *              자리는 남기고 화면이 "정보를 찾을 수 없는 장소"로 그리게 한다
+	 * @param placeName 저장 시점의 이름. <b>화면에 보이는 것은 이 값이다.</b>
+	 *                  매번 장소 API에 다시 묻지 않으므로, 바깥에서 그 id의 내용이 바뀌어도
+	 *                  저장된 코스는 흔들리지 않는다
+	 * @param placeId   식별자. 표시에는 쓰지 않는다 — "이어서 보기"로 코스를 흐름에 올려
+	 *                  다시 진단할 때 필요하다
 	 */
-	public record SavedPlace(int day, int order, String placeId, PlaceResponse place) {
+	public record SavedPlace(int day, int order, String placeId, String placeName) {
 	}
 
-	/**
-	 * @param placesById 장소 정보를 미리 찾아둔 표. 서비스가 한 번에 조회해 넘긴다 —
-	 *                   여기서 장소마다 조회하면 장소 수만큼 질의가 나간다
-	 */
-	public static SavedCourseDetail of(SavedCourse course, Map<String, PlaceResponse> placesById) {
+	/** 저장된 내용만으로 만든다. 장소 쪽에 묻지 않는다. */
+	public static SavedCourseDetail from(SavedCourse course) {
 		CongestionLevel level = CongestionLevel.fromQuietness(course.totalQuietness());
 
 		List<SavedPlace> places = course.places().stream()
@@ -56,7 +53,7 @@ public record SavedCourseDetail(
 						place.day(),
 						place.visitOrder(),
 						place.placeId(),
-						placesById.get(place.placeId())))
+						place.placeName()))
 				.toList();
 
 		return new SavedCourseDetail(

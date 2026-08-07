@@ -181,13 +181,12 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
                         <span className="text-hint w-7 flex-none font-mono text-[11px]">
                           {saved.day}-{saved.order}
                         </span>
-                        <span
-                          className={`truncate text-[13.5px] font-medium ${
-                            saved.place ? 'text-fg' : 'text-hint italic'
-                          }`}
-                        >
-                          {/* 저장 이후 목록에서 사라진 장소. 자리는 남겨 코스 구성이 보이게 한다 */}
-                          {saved.place?.name ?? '정보를 찾을 수 없는 장소'}
+                        {/*
+                          저장 시점의 이름을 그대로 쓴다. 장소 API에 다시 묻지 않으므로
+                          "정보를 찾을 수 없는 장소"가 나올 일이 없다 — 이름을 우리가 갖고 있다.
+                        */}
+                        <span className="text-fg truncate text-[13.5px] font-medium">
+                          {saved.placeName}
                         </span>
                       </li>
                     ))}

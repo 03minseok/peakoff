@@ -51,14 +51,37 @@ public class SavedCoursePlace {
 	@Column(name = "visit_order", nullable = false)
 	private int visitOrder;
 
+	/**
+	 * 장소 식별자.
+	 *
+	 * <p>표시에는 쓰지 않는다. "이어서 보기"로 코스를 다시 흐름에 올려 진단할 때,
+	 * 그리고 나중에 장소 상세로 이어줄 때 필요하다.
+	 */
 	@Column(nullable = false, length = 64)
 	private String placeId;
+
+	/**
+	 * 저장 시점의 장소 이름. <b>화면에 보이는 것은 이 값이다.</b>
+	 *
+	 * <p>이름을 저장하지 않고 매번 {@code placeId}로 장소 API에 물으면, 바깥에서 그 id의
+	 * 내용이 바뀌는 순간 <b>저장된 코스가 사용자 몰래 달라진다.</b> 표기가 바뀌는 정도면
+	 * 넘어갈 수 있지만, id가 다른 장소에 재할당되면 불국사를 담아둔 코스에 식당이 들어간다.
+	 * 공공데이터의 식별자는 우리가 통제하는 값이 아니라 그 위에 기록을 세울 수 없다.
+	 *
+	 * <p>저장된 코스는 살아 있는 질의가 아니라 <b>문서</b>다. 문서는 쓴 대로 남아야 한다.
+	 * 최신 정보가 필요하면 "이어서 보기"로 흐름에 올려 다시 진단하면 된다 —
+	 * 거기서는 살아 있는 값을 쓰는 것이 맞다.
+	 *
+	 * <p>총점을 저장한 것과 같은 논리다.
+	 */
+	@Column(name = "place_name", nullable = false, length = 100)
+	private String placeName;
 
 	/** JPA가 프록시를 만들 때 쓴다. 애플리케이션 코드에서 부르지 않는다. */
 	protected SavedCoursePlace() {
 	}
 
-	SavedCoursePlace(SavedCourse savedCourse, int day, int visitOrder, String placeId) {
+	SavedCoursePlace(SavedCourse savedCourse, int day, int visitOrder, String placeId, String placeName) {
 		if (day < 1) {
 			throw new IllegalArgumentException("일차는 1 이상이어야 합니다. 입력값: " + day);
 		}
@@ -69,6 +92,7 @@ public class SavedCoursePlace {
 		this.day = day;
 		this.visitOrder = visitOrder;
 		this.placeId = Texts.requireNotBlank(placeId, "장소");
+		this.placeName = Texts.requireNotBlank(placeName, "장소 이름");
 	}
 
 	public Long id() {
@@ -85,5 +109,9 @@ public class SavedCoursePlace {
 
 	public String placeId() {
 		return placeId;
+	}
+
+	public String placeName() {
+		return placeName;
 	}
 }

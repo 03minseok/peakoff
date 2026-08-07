@@ -60,8 +60,27 @@ public class SavedCourseService {
 							.formatted(SavedCourse.MAX_PER_MEMBER));
 		}
 
+		/*
+		 * 장소 이름을 여기서 찾아 함께 저장한다.
+		 *
+		 * 저장은 자주 일어나는 일이 아니다. 여기서 한 번 조회해두면 이후 목록·상세를
+		 * 열 때마다 하던 조회가 통째로 사라진다 — 자주 도는 쪽에서 비용을 걷어내고
+		 * 가끔 도는 쪽에 한 번 두는 맞바꿈이다.
+		 *
+		 * 요청에서 이름을 받지 않는 이유: 화면에 남을 이름을 클라이언트가 정하게 두면
+		 * 저장된 코스가 실제 장소와 다른 것을 가리킬 수 있다. 출처가 서버여야 믿을 수 있다.
+		 */
 		List<PlaceEntry> entries = request.slots().stream()
-				.map(slot -> new PlaceEntry(slot.day(), slot.order(), slot.placeId()))
+				.map(slot -> new PlaceEntry(
+						slot.day(),
+						slot.order(),
+						slot.placeId(),
+						placeProvider.findById(slot.placeId())
+								// 없는 장소가 섞인 코스를 저장하면 열 때마다 빈칸이 남는다.
+								// 진단도 같은 이유로 거절하므로 여기서도 막는다.
+								.orElseThrow(() -> new NotFoundException(
+										"존재하지 않는 장소입니다: " + slot.placeId()))
+								.name()))
 				.toList();
 
 		Instant now = Instant.now(clock);
@@ -107,22 +126,12 @@ public class SavedCourseService {
 	}
 
 	/**
-	 * 장소 정보를 한 번에 찾아 붙인다.
+	 * 저장된 내용만으로 응답을 만든다. <b>장소 쪽에 묻지 않는다.</b>
 	 *
-	 * <p>저장된 것은 {@code placeId}뿐이라 이름·좌표는 매번 장소 쪽에서 가져온다.
-	 * 저장 시점에 베껴두면 두 벌이 되어 언젠가 어긋난다.
-	 *
-	 * <p>찾지 못한 장소는 표에 넣지 않는다. {@code SavedPlace.place}가 null이 되어
-	 * 화면이 "정보를 찾을 수 없는 장소"로 그린다 — 코스 하나가 통째로 안 열리는 것보다 낫다.
+	 * <p>이름을 저장 시점에 남겨두었기 때문이다. 매번 다시 물으면 바깥에서 그 id의 내용이
+	 * 바뀌는 순간 저장된 코스가 사용자 몰래 달라지고, 코스에 담긴 장소 수만큼 조회가 나간다.
 	 */
 	private SavedCourseDetail toDetail(SavedCourse course) {
-		Map<String, PlaceResponse> placesById = course.places().stream()
-				.map(SavedCoursePlace::placeId)
-				.distinct()
-				.map(placeProvider::findById)
-				.flatMap(Optional::stream)
-				.collect(Collectors.toMap(Place::id, PlaceResponse::from, (a, b) -> a));
-
-		return SavedCourseDetail.of(course, placesById);
+		return SavedCourseDetail.from(course);
 	}
 }
