@@ -37,13 +37,12 @@ export const LEVEL_COLOR_VAR: Record<CongestionLevel, string> = {
   CROWDED: 'var(--c-crowded)',
 }
 
-/**
- * 카드 왼쪽에 세우는 띠.
+/*
+ * 카드 왼쪽 색 띠(LEVEL_EDGE)는 뺐다.
  *
- * 배지를 끝까지 읽지 않아도 목록을 훑는 것만으로 어디가 붐비는지 보이게 한다.
+ * 진단 카드는 등급을 이미 세 번 말한다 — 순서 번호 원의 색(LEVEL_SOLID),
+ * 한적도 배지, 그리고 붐빌 때만 채워지는 대안 버튼. 띠는 네 번째였고 새 정보가 없었다.
+ *
+ * 특히 번호 원이 카드 왼쪽 끝에 있는 색 신호라, "목록을 훑으면 붐비는 곳이 보인다"는
+ * 띠의 역할을 그대로 한다. 같은 말을 한 번 더 하는 색은 정보가 아니라 장식으로 읽힌다.
  */
-export const LEVEL_EDGE: Record<CongestionLevel, string> = {
-  QUIET: 'border-l-4 border-l-quiet',
-  MODERATE: 'border-l-4 border-l-moderate',
-  CROWDED: 'border-l-4 border-l-crowded',
-}

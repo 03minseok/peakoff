@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { AlternativeSheet } from '../components/AlternativeSheet'
 import { CongestionBadge } from '../components/CongestionBadge'
-import { LEVEL_COLOR_VAR, LEVEL_EDGE, LEVEL_SOLID } from '../components/levelStyles'
+import { LEVEL_COLOR_VAR, LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON, READ_COLUMN } from '../components/styles'
 import { useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchDateAlternatives } from '../services/api'
@@ -352,7 +352,7 @@ export function DiagnosisPage() {
                   {daySlots.map((slot) => (
                     <li
                       key={`${slot.day}-${slot.order}`}
-                      className={`${CARD} ${LEVEL_EDGE[slot.level]} flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-3.5`}
+                      className={`${CARD} flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-3.5`}
                     >
                       <div className="flex min-w-0 items-start gap-3">
                         <span
@@ -360,7 +360,7 @@ export function DiagnosisPage() {
                         >
                           {slot.order}
                         </span>
-                        <div className="flex min-w-0 flex-col gap-0.5">
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-fg m-0 text-base font-semibold tracking-[-0.01em]">
                               {slot.place.name}
@@ -375,15 +375,45 @@ export function DiagnosisPage() {
                             {slot.place.categoryName}
                           </p>
                         </div>
+
+                        {/*
+                          한적도 배지는 카드 오른쪽 끝에 세운다.
+
+                          아래 행동 줄에 있을 때는 대안 버튼과 나란히 서서 두 번째 버튼처럼
+                          읽혔다. 배지는 누르는 것이 아니라 이 장소를 설명하는 값이다.
+
+                          이름 바로 옆에 붙이면 이름 길이에 따라 배지 위치가 카드마다 달라져
+                          목록을 훑을 때 눈이 매번 다른 자리를 찾아야 한다. 오른쪽 끝에 고정하면
+                          <b>세로로 한 줄</b>이 되어 위아래로 비교된다.
+                        */}
+                        <span className="flex-none">
+                          <CongestionBadge
+                            level={slot.level}
+                            label={slot.levelLabel}
+                            quietness={slot.quietness}
+                            size="sm"
+                          />
+                        </span>
                       </div>
 
-                      <div className="flex flex-none items-center gap-3 sm:ml-auto">
-                        <CongestionBadge
-                          level={slot.level}
-                          label={slot.levelLabel}
-                          quietness={slot.quietness}
-                          size="sm"
-                        />
+                      {/* 아래 줄은 "얼마나(막대)"와 "무엇을 할까(버튼)"만 남는다 */}
+                      <div className="flex items-center gap-3 sm:flex-none sm:ml-auto">
+                        {/*
+                          한적도 막대. 좁은 화면에서만 선다.
+
+                          배지가 위로 올라가 이 줄은 버튼 하나만 남았다. 빈자리를 장식으로
+                          메우는 대신 <b>읽을 것</b>을 넣는다 — 막대 길이는 숫자를 읽기 전에
+                          카드끼리의 차이를 보여준다. 바로 아래 날짜 목록이 쓰는 것과 같은
+                          패턴이라 두 목록을 같은 방식으로 훑게 된다.
+
+                          넓은 화면에서는 버튼이 오른쪽 끝에 붙어 남는 자리가 없다.
+                        */}
+                        <div className="bg-line h-1.5 flex-1 overflow-hidden rounded-full sm:hidden">
+                          <div
+                            className={`h-full rounded-full ${LEVEL_SOLID[slot.level]}`}
+                            style={{ width: `${slot.quietness}%` }}
+                          />
+                        </div>
                         {/*
                           대안은 모든 자리에서 열 수 있다. 한적하다고 판단된 곳도
                           사용자가 더 나은 후보를 직접 보고 판단할 수 있어야 한다.
@@ -395,7 +425,7 @@ export function DiagnosisPage() {
                         */}
                         <button
                           type="button"
-                          className={`rounded-chip ml-auto h-10 cursor-pointer px-4 text-sm font-semibold whitespace-nowrap transition-colors sm:ml-0 ${
+                          className={`rounded-chip h-10 flex-none cursor-pointer px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
                             slot.level === 'CROWDED'
                               ? 'bg-crowded hover:bg-crowded-deep text-white shadow-[0_4px_12px_rgb(206_81_56/0.22)]'
                               : 'border-line bg-surface text-muted hover:border-brand hover:text-brand-deep border'
