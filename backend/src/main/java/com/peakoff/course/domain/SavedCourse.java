@@ -58,8 +58,14 @@ public class SavedCourse {
 	 */
 	public static final int MAX_PER_MEMBER = 50;
 
-	/** 저장할 때 넘기는 장소 한 줄. 도메인이 요청 DTO를 알지 않게 하려고 여기 둔다. */
-	public record PlaceEntry(int day, int order, String placeId) {
+	/**
+	 * 저장할 때 넘기는 장소 한 줄. 도메인이 요청 DTO를 알지 않게 하려고 여기 둔다.
+	 *
+	 * @param placeName 저장 시점의 장소 이름. <b>서비스가 장소 쪽에서 찾아 채운다.</b>
+	 *                  요청에서 그대로 받지 않는 이유: 화면에 남을 이름을 클라이언트가
+	 *                  정하게 두면 저장된 코스가 실제 장소와 다른 것을 가리킬 수 있다
+	 */
+	public record PlaceEntry(int day, int order, String placeId, String placeName) {
 	}
 
 	@Id
@@ -170,7 +176,8 @@ public class SavedCourse {
 				throw new IllegalArgumentException(
 						"%d박 %d일 일정에 %d일차 장소가 있습니다.".formatted(nights, days(), entry.day()));
 			}
-			places.add(new SavedCoursePlace(this, entry.day(), entry.order(), entry.placeId()));
+			places.add(new SavedCoursePlace(
+					this, entry.day(), entry.order(), entry.placeId(), entry.placeName()));
 		}
 	}
 
