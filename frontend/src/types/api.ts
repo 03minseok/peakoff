@@ -5,7 +5,14 @@
  */
 
 /** 서버 ErrorCode enum과 같은 값. 문구가 아니라 이 코드로 분기한다. */
-export type ApiErrorCode = 'INVALID_REQUEST' | 'NOT_FOUND' | 'INTERNAL_ERROR'
+export type ApiErrorCode =
+  | 'INVALID_REQUEST'
+  | 'NOT_FOUND'
+  | 'INTERNAL_ERROR'
+  /** 로그인이 필요하거나 토큰이 만료됐다. 비밀번호가 틀린 경우도 여기다 */
+  | 'UNAUTHORIZED'
+  /** 이미 가입된 이메일 */
+  | 'CONFLICT'
 
 /** 서버 CongestionLevel enum과 같은 값. */
 export type CongestionLevel = 'CROWDED' | 'MODERATE' | 'QUIET'
@@ -108,6 +115,117 @@ export interface DateOption {
   levelLabel: string
   /** 선택 날짜 대비 한적도 증가폭. 클수록 덜 붐빈다 */
   improvement: number
+}
+
+/** POST /api/courses 요청. 총점은 진단에서 받은 값을 그대로 싣는다 */
+export interface SaveCourseRequest {
+  name: string
+  region: string
+  startDate: string
+  nights: number
+  totalQuietness: number
+  slots: CourseSlotRequest[]
+}
+
+/**
+ * 서버 SavedCourseSummary. 마이페이지 목록 한 줄.
+ *
+ * 장소 목록이 없고 개수(placeCount)만 온다. 카드에 필요한 것이 그것뿐이라
+ * 코스 10개의 장소를 전부 실어 보내면 응답만 커진다.
+ */
+export interface SavedCourseSummary {
+  id: number
+  name: string
+  region: string
+  regionName: string
+  startDate: string
+  endDate: string
+  nights: number
+  days: number
+  totalQuietness: number
+  level: CongestionLevel
+  levelLabel: string
+  placeCount: number
+  /** 그 점수를 매긴 시각 (ISO). 저장 시점의 판단이라는 것을 화면에서 밝힐 수 있다 */
+  scoredAt: string
+  createdAt: string
+}
+
+/**
+ * 저장된 장소 한 줄.
+ *
+ * placeName은 저장 시점의 이름이다. 서버가 매번 장소 API에 다시 묻지 않으므로
+ * 바깥에서 그 id의 내용이 바뀌어도 저장된 코스는 흔들리지 않는다.
+ * placeId는 표시에 쓰지 않는다 — "이어서 보기"로 코스를 흐름에 올릴 때 필요하다.
+ */
+export interface SavedPlace {
+  day: number
+  order: number
+  placeId: string
+  placeName: string
+}
+
+/** 서버 SavedCourseDetail. 요약에 장소들이 붙은 모양 */
+export interface SavedCourseDetail extends Omit<SavedCourseSummary, 'placeCount'> {
+  places: SavedPlace[]
+}
+
+/** 서버 MemberResponse. 비밀번호 관련 값은 어떤 형태로도 내려오지 않는다. */
+export interface AuthMember {
+  id: number
+  email: string
+  nickname: string
+  /** ISO-8601 시각 */
+  createdAt: string
+  termsAgreedAt: string
+}
+
+/** 서버 AuthResponse. 가입과 로그인이 같은 모양을 돌려준다. */
+export interface AuthResult {
+  token: string
+  /** 토큰 유효 기간(초). 만료 시각을 계산해 미리 로그아웃 처리하는 데 쓴다 */
+  expiresInSeconds: number
+  member: AuthMember
+}
+
+export interface SignupRequest {
+  email: string
+  password: string
+  passwordConfirm: string
+  nickname: string
+  termsAgreed: boolean
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+/**
+ * 닉네임 변경. 비밀번호를 묻지 않는다 — 언제든 되돌릴 수 있는 변경이다.
+ *
+ * 응답은 AuthResult다. 토큰 안에 닉네임이 들어 있어 새로 발급받아야 하고,
+ * 받은 토큰으로 갈아끼우지 않으면 새로고침할 때 옛 닉네임이 되살아난다.
+ */
+export interface ChangeNicknameRequest {
+  nickname: string
+}
+
+/**
+ * 비밀번호 변경. 현재 비밀번호를 함께 보낸다.
+ *
+ * 토큰은 "이 브라우저가 언젠가 로그인했다"는 증거일 뿐이라, 되돌릴 수 없는 일 앞에서는
+ * 지금 앉아 있는 사람이 본인인지 한 번 더 확인한다.
+ */
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+  newPasswordConfirm: string
+}
+
+/** 회원 탈퇴. 계정과 저장한 코스가 함께 사라진다 */
+export interface DeleteAccountRequest {
+  password: string
 }
 
 export interface DateAlternatives {

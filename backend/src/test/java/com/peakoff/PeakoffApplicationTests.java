@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
+import com.peakoff.support.IntegrationTest;
 import com.peakoff.congestion.domain.CongestionProvider;
 import com.peakoff.congestion.mock.MockCongestionProvider;
 import com.peakoff.place.domain.PlaceProvider;
@@ -15,7 +15,7 @@ import com.peakoff.place.mock.MockPlaceProvider;
 import com.peakoff.recommendation.domain.RecommendationProvider;
 import com.peakoff.recommendation.mock.MockRecommendationProvider;
 
-@SpringBootTest
+@IntegrationTest
 class PeakoffApplicationTests {
 
 	@Autowired
