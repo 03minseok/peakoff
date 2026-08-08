@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
+import { AccountSheets } from '../components/AccountSheets'
+import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { SavedCourseCard } from '../components/SavedCourseCard'
-import { SECONDARY_BUTTON } from '../components/styles'
+import { CARD } from '../components/styles'
 import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
 import { useAuth } from '../state/authContext'
 import { useTrip } from '../state/tripContext'
@@ -20,6 +23,38 @@ const COMPARE_COUNT = 2
 
 const STAT_VALUE = 'text-fg font-mono text-[19px] font-semibold'
 
+/** 계정 정보 줄의 오른쪽에 서는 작은 버튼 */
+const ROW_ACTION =
+  'border-line bg-surface text-fg hover:bg-bg h-9 flex-none cursor-pointer rounded-[11px] border px-3.5 text-[13px] font-semibold transition-colors'
+
+/**
+ * 계정 정보 한 줄.
+ *
+ * <p>값과 변경 버튼이 같은 줄에 선다. 항목마다 카드를 따로 떼면 카드 세 장이 나란히 서서
+ * 화면이 무거워지는데, 여기서 하는 일은 대부분 "지금 값 확인"이지 변경이 아니다.
+ * 자주 하지 않는 일에 큰 자리를 주지 않는다.
+ */
+function AccountRow({
+  label,
+  value,
+  action,
+  last = false,
+}: {
+  label: string
+  value: string
+  action?: ReactNode
+  last?: boolean
+}) {
+  return (
+    <div className={`flex min-h-15 items-center gap-3 ${last ? '' : 'border-line/60 border-b'}`}>
+      <span className="text-hint w-16 flex-none text-[12.5px] font-semibold">{label}</span>
+      {/* min-w-0 + truncate — 긴 이메일이 버튼을 밀어내지 않게 한다 */}
+      <span className="text-fg min-w-0 flex-1 truncate text-[14.5px]">{value}</span>
+      {action}
+    </div>
+  )
+}
+
 export function MyPage() {
   const navigate = useNavigate()
   const { member, loading: authLoading, logout } = useAuth()
@@ -33,8 +68,17 @@ export function MyPage() {
   /** 지울지 묻고 있는 코스. null이면 확인 시트가 닫힌 상태 */
   const [pendingDelete, setPendingDelete] = useState<SavedCourseSummary | null>(null)
   const [deleting, setDeleting] = useState(false)
-  /** 삭제 실패 같은 일회성 알림. 창을 띄우지 않고 목록 위에 띠로 보여준다 */
-  const [notice, setNotice] = useState<string | null>(null)
+
+  /**
+   * 일회성 알림. 창을 띄우지 않고 목록 위에 띠로 보여준다.
+   *
+   * <p>성공과 실패가 같은 자리를 쓴다. 자리를 나누면 알림 칸이 둘 생기고 대부분의 시간 동안
+   * 둘 다 비어 있다. {@code tone}으로 색과 역할(alert/status)만 가른다.
+   */
+  const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+
+  /** 열려 있는 계정 시트. 입력값과 처리 상태는 AccountSheets가 들고 있다 */
+  const [accountSheet, setAccountSheet] = useState<AccountSheet | null>(null)
 
   /**
    * @param silent 스켈레톤을 띄우지 않고 조용히 다시 읽는다.
@@ -122,11 +166,13 @@ export function MyPage() {
       load(undefined, true)
     } catch (error: unknown) {
       setPendingDelete(null)
-      setNotice(
-        error instanceof ApiRequestError
-          ? error.message
-          : '코스를 지우지 못했어요. 잠시 후 다시 시도해 주세요.',
-      )
+      setNotice({
+        tone: 'error',
+        text:
+          error instanceof ApiRequestError
+            ? error.message
+            : '코스를 지우지 못했어요. 잠시 후 다시 시도해 주세요.',
+      })
     } finally {
       setDeleting(false)
     }
@@ -270,18 +316,36 @@ export function MyPage() {
         </p>
       )}
 
-      {/* 일회성 알림. 창을 띄우는 대신 목록 위에 띠로 두어 화면 흐름을 끊지 않는다 */}
+      {/*
+        일회성 알림. 창을 띄우는 대신 띠로 두어 화면 흐름을 끊지 않는다.
+
+        role이 tone에 따라 다르다. 실패는 alert(하던 일을 끊고 읽어야 한다),
+        성공은 status(방해하지 않고 알린다). 성공에까지 alert를 쓰면 화면 낭독기가
+        매번 사용자를 멈춰 세운다.
+      */}
       {notice && (
         <div
-          className="bg-crowded-tint rounded-card flex items-center justify-between gap-3 p-3.5"
-          role="alert"
+          className={`rounded-card flex items-center justify-between gap-3 p-3.5 ${
+            notice.tone === 'error' ? 'bg-crowded-tint' : 'bg-quiet-tint'
+          }`}
+          role={notice.tone === 'error' ? 'alert' : 'status'}
         >
-          <span className="text-crowded-deep text-[13px]">{notice}</span>
+          <span
+            className={`text-[13px] ${
+              notice.tone === 'error' ? 'text-crowded-deep' : 'text-brand-deep'
+            }`}
+          >
+            {notice.text}
+          </span>
           <button
             type="button"
             onClick={() => setNotice(null)}
             aria-label="알림 닫기"
-            className="text-crowded-deep/70 hover:text-crowded-deep grid h-7 w-7 flex-none cursor-pointer place-items-center rounded-full bg-transparent text-sm"
+            className={`grid h-7 w-7 flex-none cursor-pointer place-items-center rounded-full bg-transparent text-sm ${
+              notice.tone === 'error'
+                ? 'text-crowded-deep/70 hover:text-crowded-deep'
+                : 'text-brand-deep/70 hover:text-brand-deep'
+            }`}
           >
             ×
           </button>
@@ -346,27 +410,65 @@ export function MyPage() {
 
       {/*
         계정.
-        여기에는 로그아웃과 계정 관리로 가는 문만 둔다. 닉네임 변경·비밀번호 변경·회원탈퇴는
-        성격이 달라(되돌리기 어렵거나 확인이 필요한 일) /my/account로 따로 묶었다.
-        코스를 훑다가 탈퇴 버튼을 지나치는 일이 없게 하려는 것이다.
+
+        계정 관리 화면을 따로 두지 않고 여기로 합쳤다. 화면을 하나 더 거치게 할 만큼
+        내용이 많지 않고, 로그아웃·탈퇴와 같은 자리에서 끝나는 편이 찾기 쉽다.
+
+        "로그인 정보"라는 작은 제목은 붙이지 않았다. 바로 위에 "계정"이 이미 서 있어
+        라벨이 두 줄로 겹친다.
       */}
       <section className="border-line flex flex-col gap-3 border-t pt-5">
         <span className="text-hint text-[12.5px] font-semibold">계정</span>
 
-        <Link
-          to="/my/account"
-          className="bg-surface shadow-rest hover:bg-bg rounded-card flex min-h-14 items-center gap-3 px-4 no-underline transition-colors"
-        >
-          <span className="text-fg flex-1 text-[14.5px] font-semibold">계정 관리</span>
-          <span className="text-hint text-[12.5px]">닉네임 · 비밀번호 · 탈퇴</span>
-          <span className="text-hint flex-none text-[15px]" aria-hidden="true">
-            ›
-          </span>
-        </Link>
+        {/*
+          이메일에는 변경 버튼이 없다. 이메일이 곧 로그인 아이디라 바꾸려면
+          "그 주소가 정말 본인 것인가"를 메일로 확인하는 절차가 따라와야 한다.
+          그 절차 없이 바꾸게 두면 남의 주소를 적어 계정을 잠글 수 있다.
+        */}
+        <div className={`${CARD} flex flex-col px-4`}>
+          <AccountRow label="이메일" value={member.email} />
+          <AccountRow
+            label="닉네임"
+            value={member.nickname}
+            action={
+              <button
+                type="button"
+                className={ROW_ACTION}
+                onClick={() => setAccountSheet('nickname')}
+              >
+                변경
+              </button>
+            }
+          />
+          <AccountRow
+            label="비밀번호"
+            value="••••••••"
+            last
+            action={
+              <button
+                type="button"
+                className={ROW_ACTION}
+                onClick={() => setAccountSheet('password')}
+              >
+                변경
+              </button>
+            }
+          />
+        </div>
 
+        {/*
+          붉은 기를 <b>테두리와 글자에만</b> 준다. 채워버리면 탈퇴 같은 되돌릴 수 없는 일과
+          같은 무게가 되는데, 로그아웃은 다시 들어오면 그만인 일이다.
+
+          <b>SECONDARY_BUTTON에 색을 덧붙이지 않고 클래스를 다시 적었다.</b>
+          덧붙이면 border-line·text-fg와 같은 속성을 두 클래스가 다투는데, 이길 쪽은
+          class에 적은 순서가 아니라 Tailwind가 CSS를 뽑아낸 순서로 정해진다.
+          실제로 확인해보니 .border-crowded-soft가 .border-line보다 앞에 있어
+          회색 테두리가 이겼다 — 눌러보기 전에는 멀쩡해 보이는 종류의 어긋남이다.
+        */}
         <button
           type="button"
-          className={`${SECONDARY_BUTTON} w-full md:w-auto md:px-6`}
+          className="border-crowded-soft text-crowded-deep hover:bg-crowded-tint rounded-ui bg-surface min-h-13 w-full cursor-pointer border text-[15px] font-semibold transition-colors"
           onClick={() => {
             logout()
             navigate('/')
@@ -374,6 +476,27 @@ export function MyPage() {
         >
           로그아웃
         </button>
+
+        {/*
+          탈퇴는 맨 아래 마지막 줄이다. 되돌릴 수 없는 일이 목록 가운데 끼어 있으면
+          다른 것을 누르러 왔다가 손이 스친다.
+
+          로그아웃보다 <b>조용하게</b> 둔다. 테두리 없이 글자만 남겨, 위험한 쪽이
+          더 눈에 띄는 역전이 생기지 않게 한다. 누르면 비밀번호를 한 번 더 묻는
+          시트가 떠서 바로 사라지지는 않는다.
+        */}
+        <button
+          type="button"
+          className="text-crowded-deep hover:bg-crowded-tint rounded-ui min-h-11 w-full cursor-pointer bg-transparent text-[13.5px] font-medium transition-colors"
+          onClick={() => setAccountSheet('delete')}
+        >
+          회원 탈퇴
+        </button>
+
+        <p className="text-muted m-0 px-1 text-[12px] leading-[1.6]">
+          탈퇴하면 저장한 코스가 함께 사라지고 되돌릴 수 없어요. 저장 기능만 필요 없다면
+          로그아웃으로 충분해요.
+        </p>
       </section>
 
       {/*
@@ -405,6 +528,12 @@ export function MyPage() {
           onOpenInFlow={openInFlow}
         />
       )}
+
+      <AccountSheets
+        open={accountSheet}
+        onClose={() => setAccountSheet(null)}
+        onDone={(text) => setNotice({ tone: 'ok', text })}
+      />
 
       {pendingDelete && (
         <ConfirmSheet

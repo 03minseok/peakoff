@@ -1,5 +1,4 @@
-import { Route, Routes } from 'react-router'
-import { AccountPage } from './routes/AccountPage'
+import { Navigate, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
 import { CoursePage } from './routes/CoursePage'
 import { DiagnosisPage } from './routes/DiagnosisPage'
@@ -40,8 +39,11 @@ function App() {
             {/* 로그인 확인은 화면 안에서 한다. 라우트에서 막으면 확인이 끝나기 전에
                 로그인 화면이 한 번 스쳐 지나간다. */}
             <Route path="my" element={<MyPage />} />
-            {/* 마이페이지 아래에 둔다. 주소만 봐도 어디서 갈라져 나온 화면인지 읽힌다 */}
-            <Route path="my/account" element={<AccountPage />} />
+            {/*
+              계정 관리는 마이페이지로 합쳤다. 주소를 그냥 없애면 저장해둔 링크가 404가 되므로
+              옮겨 보낸다. 히스토리를 남기지 않아(replace) 뒤로가기가 이 주소를 다시 밟지 않는다.
+            */}
+            <Route path="my/account" element={<Navigate to="/my" replace />} />
             {/* 개발용. 화면 구현이 끝나면 이 줄과 PreviewPage를 함께 지운다. */}
             <Route path="preview" element={<PreviewPage />} />
 
