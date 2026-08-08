@@ -88,9 +88,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMember(null)
   }, [])
 
+  /**
+   * 닉네임 변경.
+   *
+   * 서버가 새 토큰을 함께 주므로 가입·로그인과 똑같이 {@link accept}를 지난다.
+   * 여기서 setMember만 하고 토큰을 그대로 두면, 화면은 바로 바뀌지만
+   * 새로고침하는 순간 저장된 옛 토큰에서 옛 닉네임이 되살아난다.
+   */
+  const changeNickname = useCallback(
+    async (nickname: string) => {
+      accept(await api.changeNickname({ nickname }))
+    },
+    [accept],
+  )
+
+  /**
+   * 회원 탈퇴.
+   *
+   * 성공한 뒤에만 로그아웃한다. 미리 지우면 비밀번호가 틀려 실패했을 때
+   * 계정은 그대로인데 화면만 튕겨 나간다.
+   */
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      await api.deleteAccount({ password })
+      logout()
+    },
+    [logout],
+  )
+
   const value = useMemo<AuthContextValue>(
-    () => ({ member, loading, signup, login, logout }),
-    [member, loading, signup, login, logout],
+    () => ({ member, loading, signup, login, logout, changeNickname, deleteAccount }),
+    [member, loading, signup, login, logout, changeNickname, deleteAccount],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

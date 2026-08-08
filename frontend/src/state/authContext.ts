@@ -20,6 +20,17 @@ export interface AuthContextValue {
   signup: (request: SignupRequest) => Promise<void>
   login: (request: LoginRequest) => Promise<void>
   logout: () => void
+
+  /*
+   * 계정 관리 중 여기 있는 것은 둘뿐이다. 비밀번호 변경은 로그인 상태를 바꾸지 않아서
+   * 화면이 api를 직접 부른다 — 상태를 건드리지 않는 일까지 통과시키면 이 Context가
+   * "인증 상태를 들고 있는 곳"이 아니라 "인증 API 목록"이 된다.
+   */
+
+  /** 닉네임 변경. 새 토큰을 받아 저장까지 여기서 끝낸다 */
+  changeNickname: (nickname: string) => Promise<void>
+  /** 회원 탈퇴. 성공하면 곧바로 로그아웃 상태가 된다 */
+  deleteAccount: (password: string) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

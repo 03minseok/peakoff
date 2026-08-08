@@ -33,4 +33,14 @@ public interface SavedCourseRepository extends JpaRepository<SavedCourse, Long> 
 
 	/** 저장 상한을 넘었는지 확인할 때 쓴다. */
 	long countByMemberId(Long memberId);
+
+	/**
+	 * 그 회원의 코스를 전부 지운다. 탈퇴할 때 쓴다.
+	 *
+	 * <p>파생 삭제 메서드는 <b>엔티티를 읽어 하나씩 지운다.</b> 그래서
+	 * {@code SavedCourse.places}의 {@code cascade}·{@code orphanRemoval}이 그대로 걸려
+	 * 담긴 장소도 함께 사라진다. {@code deleteAllInBatch} 같은 일괄 삭제로 바꾸면
+	 * 그 연쇄가 건너뛰어져 장소만 남고 외래키 제약에 걸린다.
+	 */
+	void deleteByMemberId(Long memberId);
 }

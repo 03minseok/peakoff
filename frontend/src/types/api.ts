@@ -201,6 +201,33 @@ export interface LoginRequest {
   password: string
 }
 
+/**
+ * 닉네임 변경. 비밀번호를 묻지 않는다 — 언제든 되돌릴 수 있는 변경이다.
+ *
+ * 응답은 AuthResult다. 토큰 안에 닉네임이 들어 있어 새로 발급받아야 하고,
+ * 받은 토큰으로 갈아끼우지 않으면 새로고침할 때 옛 닉네임이 되살아난다.
+ */
+export interface ChangeNicknameRequest {
+  nickname: string
+}
+
+/**
+ * 비밀번호 변경. 현재 비밀번호를 함께 보낸다.
+ *
+ * 토큰은 "이 브라우저가 언젠가 로그인했다"는 증거일 뿐이라, 되돌릴 수 없는 일 앞에서는
+ * 지금 앉아 있는 사람이 본인인지 한 번 더 확인한다.
+ */
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+  newPasswordConfirm: string
+}
+
+/** 회원 탈퇴. 계정과 저장한 코스가 함께 사라진다 */
+export interface DeleteAccountRequest {
+  password: string
+}
+
 export interface DateAlternatives {
   selectedDate: string
   selectedQuietness: number

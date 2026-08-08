@@ -345,12 +345,25 @@ export function MyPage() {
       )}
 
       {/*
-        계정 관리.
-        여기에는 로그아웃만 둔다. 닉네임 변경·비밀번호 변경·회원탈퇴는 성격이 달라
-        (되돌리기 어렵거나 확인이 필요한 일) 계정 관리 화면으로 따로 묶는다.
+        계정.
+        여기에는 로그아웃과 계정 관리로 가는 문만 둔다. 닉네임 변경·비밀번호 변경·회원탈퇴는
+        성격이 달라(되돌리기 어렵거나 확인이 필요한 일) /my/account로 따로 묶었다.
+        코스를 훑다가 탈퇴 버튼을 지나치는 일이 없게 하려는 것이다.
       */}
       <section className="border-line flex flex-col gap-3 border-t pt-5">
         <span className="text-hint text-[12.5px] font-semibold">계정</span>
+
+        <Link
+          to="/my/account"
+          className="bg-surface shadow-rest hover:bg-bg rounded-card flex min-h-14 items-center gap-3 px-4 no-underline transition-colors"
+        >
+          <span className="text-fg flex-1 text-[14.5px] font-semibold">계정 관리</span>
+          <span className="text-hint text-[12.5px]">닉네임 · 비밀번호 · 탈퇴</span>
+          <span className="text-hint flex-none text-[15px]" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+
         <button
           type="button"
           className={`${SECONDARY_BUTTON} w-full md:w-auto md:px-6`}

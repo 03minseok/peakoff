@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router'
+import { AccountPage } from './routes/AccountPage'
 import { Layout } from './components/Layout'
 import { CoursePage } from './routes/CoursePage'
 import { DiagnosisPage } from './routes/DiagnosisPage'
@@ -39,6 +40,8 @@ function App() {
             {/* 로그인 확인은 화면 안에서 한다. 라우트에서 막으면 확인이 끝나기 전에
                 로그인 화면이 한 번 스쳐 지나간다. */}
             <Route path="my" element={<MyPage />} />
+            {/* 마이페이지 아래에 둔다. 주소만 봐도 어디서 갈라져 나온 화면인지 읽힌다 */}
+            <Route path="my/account" element={<AccountPage />} />
             {/* 개발용. 화면 구현이 끝나면 이 줄과 PreviewPage를 함께 지운다. */}
             <Route path="preview" element={<PreviewPage />} />
 
