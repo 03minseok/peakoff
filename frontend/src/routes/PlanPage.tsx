@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router'
-import { CARD_RAISED, FORM_COLUMN, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
+import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS } from '../constants/regions'
 import { useTrip } from '../state/tripContext'
 import { daysFromToday, formatDateRange, formatKoreanDate, today } from '../utils/date'
@@ -82,10 +82,17 @@ export function PlanPage() {
   }
 
   return (
-    // 입력 폼은 넓힐수록 오히려 쓰기 어렵다. 껍데기가 넓어져도 본문은 가운데로 모은다.
-    <div className={FORM_COLUMN}>
-      <section className="flex flex-col gap-3.5 pt-6 pb-7 lg:pt-10">
-        <h1 className="text-fg text-[34px] leading-[1.25] font-bold tracking-[-0.025em]">
+    /*
+      입력 폼은 넓힐수록 오히려 쓰기 어렵다. 그래서 <b>폼은 넓히지 않고</b>, 넓은 화면에서
+      남는 왼쪽을 설명으로 채운다. 입력칸을 1180px까지 늘리는 것보다 이쪽이 낫다 —
+      칸이 넓다고 고르기 쉬워지지 않고, 눈은 오히려 라벨과 값 사이를 멀리 오간다.
+
+      좁은 화면에서는 지금까지처럼 설명이 폼 위에 오는 한 줄이다.
+    */
+    <div className="mx-auto w-full max-w-form lg:grid lg:max-w-app lg:grid-cols-12 lg:items-start lg:gap-10">
+      {/* 폼을 채우는 동안 왼쪽 설명이 따라와 무엇을 하는 화면인지가 계속 남는다 */}
+      <section className="flex flex-col gap-3.5 pt-6 pb-7 lg:sticky lg:top-18 lg:col-span-5 lg:pt-10 lg:pb-0">
+        <h1 className="text-fg text-[34px] leading-[1.25] font-bold tracking-[-0.025em] lg:text-[40px]">
           붐비는 곳을
           <br />
           피해서 가요
@@ -99,9 +106,33 @@ export function PlanPage() {
           <br />
           가입 없이 바로 시작할 수 있어요.
         </p>
+
+        {/*
+          넓은 화면에서만 편다. 좁은 화면에서는 이 세 줄을 읽느라 정작 입력칸이
+          화면 밖으로 밀려난다 — 여기서 할 일은 읽는 것이 아니라 고르는 것이다.
+
+          내용은 실제 다음 화면들이 하는 일 그대로다. 없는 기능을 약속하지 않는다.
+        */}
+        <ol className="mt-3 hidden list-none flex-col gap-4 p-0 lg:flex">
+          {[
+            '지도에서 갈 곳을 순서대로 담아요',
+            '날짜별로 얼마나 붐빌지 계산해요',
+            '붐비는 곳은 한적한 대안으로 바꿔요',
+          ].map((step, index) => (
+            <li key={step} className="flex items-center gap-3">
+              <span
+                className="bg-brand-tint text-brand-deep grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold"
+                aria-hidden="true"
+              >
+                {index + 1}
+              </span>
+              <span className="text-muted text-[14px] leading-[1.5]">{step}</span>
+            </li>
+          ))}
+        </ol>
       </section>
 
-      <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-3.5 lg:col-span-7 lg:pt-10" onSubmit={handleSubmit}>
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
           <div className="flex items-baseline justify-between">
             <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
