@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { AuthField } from '../components/AuthField'
 import { AuthShell } from '../components/AuthShell'
 import { PRIMARY_BUTTON } from '../components/styles'
@@ -19,7 +19,17 @@ const SOCIAL_BUTTON =
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const auth = useAuth()
+
+  /**
+   * 로그인을 마친 뒤 돌아갈 곳. 저장 시트가 넘겨준다.
+   *
+   * <p>없으면 지금까지처럼 뒤로 한 걸음 물러난다. 다만 가입 화면을 거쳐 왔다면 그 한 걸음이
+   * 가입 화면이라, 이미 로그인한 사람에게 가입 폼을 다시 보여주게 된다. 그래서 이 값이 있으면
+   * 그쪽을 우선한다.
+   */
+  const from = (location.state as { from?: string } | null)?.from
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -61,7 +71,11 @@ export function LoginPage() {
     try {
       await auth.login({ email: email.trim(), password })
       // 로그인 전에 보던 화면으로 돌려보낸다. 계정 만들기는 목적이 아니라 거쳐가는 단계다.
-      navigate(-1)
+      if (from) {
+        navigate(from, { replace: true })
+      } else {
+        navigate(-1)
+      }
     } catch (error: unknown) {
       setFailure(
         error instanceof ApiRequestError ? error.message : '로그인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
@@ -159,7 +173,7 @@ export function LoginPage() {
 
         <p className="text-hint m-0 pt-0.5 text-center text-[13.5px]">
           계정이 없으신가요?{' '}
-          <Link to="/signup" className="text-brand font-semibold">
+          <Link to="/signup" state={location.state} className="text-brand font-semibold">
             회원가입
           </Link>
         </p>
