@@ -98,6 +98,31 @@ public class Member {
 		return Texts.requireNotBlank(email, "이메일").toLowerCase();
 	}
 
+	/**
+	 * 닉네임을 바꾼다.
+	 *
+	 * <p>가입 때와 <b>같은 검사</b>를 통과한다. 세터를 열어두고 서비스에서 길이를 확인하는 방식이면
+	 * 검사가 두 곳에 생기고, 새로 부르는 자리가 늘 때마다 빠뜨릴 자리도 함께 는다.
+	 */
+	public void changeNickname(String nickname) {
+		this.nickname = validateNickname(nickname);
+	}
+
+	/**
+	 * 비밀번호를 바꾼다.
+	 *
+	 * <p>{@link #register}와 같은 이유로 <b>해시만</b> 받는다. 평문을 받으면 이 클래스가
+	 * 인코더를 알아야 하고, 그 순간 원문이 엔티티까지 흘러든다.
+	 *
+	 * <p>이 메서드는 <b>본인 확인을 하지 않는다.</b> "현재 비밀번호가 맞는가"는 인코더가 있어야
+	 * 판단할 수 있어 {@code AuthService}가 먼저 확인하고 부른다.
+	 *
+	 * @param passwordHash 이미 해싱된 새 비밀번호
+	 */
+	public void changePassword(String passwordHash) {
+		this.passwordHash = Texts.requireNotBlank(passwordHash, "비밀번호 해시");
+	}
+
 	private static String validateNickname(String nickname) {
 		String trimmed = Texts.requireNotBlank(nickname, "닉네임");
 		if (trimmed.length() > NICKNAME_MAX_LENGTH) {
