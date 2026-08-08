@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
-import { GuestSaveSheet } from '../components/GuestSaveSheet'
+import { SaveCourseSheet } from '../components/SaveCourseSheet'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import {
   CARD_RAISED,
@@ -13,7 +13,6 @@ import {
 import { REGIONS } from '../constants/regions'
 import { toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchPlaces, saveCourse } from '../services/api'
-import { saveCourseToDevice } from '../state/savedCourse'
 import { useTrip } from '../state/tripContext'
 import type { CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
 import { formatCompactDate, formatKoreanDate } from '../utils/date'
@@ -367,8 +366,17 @@ export function ResultPage() {
             />
           </div>
 
+          {/*
+            "무엇을 바꿨나(변경 내역)"와 "그래서 어디를 도나(최종 동선)"를 나란히 놓는다.
+            세로로 쌓으면 지도를 보는 동안 바꾼 목록이 화면 밖으로 나가, 둘을 번갈아
+            확인하려면 계속 스크롤해야 한다. 발표에서 함께 가리키게 되는 두 장이다.
+
+            변경 내역은 아무것도 안 바꾸면 통째로 사라진다. 그때 지도가 5칸 자리에
+            그대로 서 있으면 오른쪽 절반이 빈다 — 지도 폭을 그 유무에 맞춰 정한다.
+          */}
+          <div className="flex flex-col gap-4.5 lg:grid lg:grid-cols-12 lg:items-start lg:gap-4">
           {(movedDate || changes.length > 0) && (
-            <section className={`${CARD_RAISED} flex flex-col gap-3.5 p-4.5`}>
+            <section className={`${CARD_RAISED} flex min-w-0 flex-col gap-3.5 p-4.5 lg:col-span-5`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-fg text-[15px] font-semibold">변경 내역</h2>
                 <span className="text-hint text-[12.5px]">
@@ -451,7 +459,11 @@ export function ResultPage() {
             </section>
           )}
 
-          <section className={CARD_RAISED}>
+          <section
+            className={`${CARD_RAISED} min-w-0 ${
+              movedDate || changes.length > 0 ? 'lg:col-span-7' : 'lg:col-span-12'
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2 px-4.5 pt-4 pb-3">
               <h2 className="text-fg text-[15px] font-semibold">최종 동선</h2>
 
@@ -505,6 +517,7 @@ export function ResultPage() {
               </p>
             )}
           </section>
+          </div>
 
           {/*
             버튼 문구는 그 버튼이 실제로 하는 일만 말한다.
@@ -515,22 +528,51 @@ export function ResultPage() {
 
             두 버튼 다 무엇을 바꿨는지와 무관하게 뜻이 같으므로 문구를 고정한다.
           */}
-          <section className="flex flex-col items-center gap-3 pb-2">
-            <div className="flex w-full flex-col gap-2.5 sm:flex-row-reverse">
+          {/*
+            나가는 길이 셋이다. 무게를 다르게 준다.
+
+            돌아가기·저장하기는 한 줄에 두고, "홈으로"는 그 아래 조용한 버튼으로 둔다.
+            셋을 같은 굵기로 늘어놓으면 어느 것이 이 화면의 결론인지가 사라진다.
+
+            홈으로가 필요한 이유: 진단만 보고 <b>저장도 수정도 하지 않을</b> 사람이 있다.
+            그때 이 화면에서 나갈 길이 "진단으로 되돌아가기"뿐이면 막다른 길이 된다.
+            게스트가 로그인 없이 서비스 전체를 한 바퀴 도는 흐름의 마지막 문이다.
+          */}
+          <section className="flex flex-col items-center gap-2.5 pb-2">
+            {/* 넓은 화면에서 버튼을 1180px까지 늘리지 않는다. 누르는 자리가 넓다고 잘 눌리지 않는다 */}
+            <div className="flex w-full gap-2.5 lg:mx-auto lg:max-w-read">
+              {/*
+                DOM 순서가 곧 화면 순서다(왼쪽 돌아가기, 오른쪽 저장하기).
+                앞서 쓰던 flex-row-reverse는 좁은 화면에서 세로로 쌓을 때 저장하기를
+                위로 올리려던 장치인데, 이제 항상 한 줄이라 순서를 뒤집을 이유가 없다.
+                뒤집힌 채로 두면 키보드로 훑는 차례와 눈에 보이는 차례가 어긋난다.
+              */}
+              <Link
+                to="/diagnosis"
+                className={`${SECONDARY_BUTTON} grid flex-none place-items-center px-5.5 no-underline`}
+              >
+                돌아가기
+              </Link>
+              {/* 이 화면의 결론. 남는 폭을 다 가져가 가장 크게 선다 */}
               <button
                 type="button"
-                className={PRIMARY_BUTTON}
+                className={`${PRIMARY_BUTTON} flex-1`}
                 onClick={() => setShowSavePrompt(true)}
               >
                 저장하기
               </button>
-              <Link
-                to="/diagnosis"
-                className={`${SECONDARY_BUTTON} grid flex-none place-items-center px-5.5 no-underline sm:w-auto`}
-              >
-                돌아가기
-              </Link>
             </div>
+
+            {/*
+              테두리도 배경도 없는 조용한 버튼. 그래도 높이는 넉넉히 준다 —
+              눈에 덜 띄어야 하는 것과 누르기 어려워야 하는 것은 다른 이야기다.
+            */}
+            <Link
+              to="/"
+              className="text-hint hover:bg-surface hover:text-fg rounded-ui grid min-h-11 w-full place-items-center text-[14px] font-medium no-underline transition-colors lg:mx-auto lg:max-w-read"
+            >
+              홈으로
+            </Link>
           </section>
 
           {/*
@@ -538,11 +580,10 @@ export function ResultPage() {
             뒤에 비교 결과가 비쳐 보이는 편이 맥락을 유지해준다.
           */}
           {showSavePrompt && (
-            <GuestSaveSheet
+            <SaveCourseSheet
               defaultName={defaultCourseName}
               onClose={() => setShowSavePrompt(false)}
-              onSaveToDevice={(name) => saveCourseToDevice(name, plan, state.days)}
-              onSaveToAccount={async (name) => {
+              onSave={async (name) => {
                 await saveCourse({
                   name,
                   region: plan.region,

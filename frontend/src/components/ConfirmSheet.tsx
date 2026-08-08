@@ -20,7 +20,7 @@ interface Props {
  * 바깥에 있다. 글꼴·색·모서리 어느 것도 우리가 정할 수 없고, 브라우저마다 모양이 다르며,
  * 버튼 문구가 "확인/취소"로 고정돼 무엇이 일어나는지 말해주지 못한다.
  *
- * <p>모양은 {@code GuestSaveSheet}·{@code CourseDetailOverlay}와 맞춘다 — 이 서비스에서
+ * <p>모양은 {@code SaveCourseSheet}·{@code CourseDetailOverlay}와 맞춘다 — 이 서비스에서
  * "아래에서 올라오는 면"은 곧 "지금 답해야 하는 것"이라는 뜻이 되게 한다.
  */
 export function ConfirmSheet({

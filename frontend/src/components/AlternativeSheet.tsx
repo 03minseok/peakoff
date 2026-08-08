@@ -98,7 +98,7 @@ export function AlternativeSheet({
      * 잠그지 않으면 그 부분을 밀 때 배경이 시트 밑에서 따로 스크롤되어,
      * 시트가 화면에서 떨어져 나온 것처럼 보인다.
      *
-     * 다른 시트들(GuestSaveSheet·ConfirmSheet·CourseDetailOverlay)과 같은 처리다.
+     * 다른 시트들(SaveCourseSheet·ConfirmSheet·CourseDetailOverlay)과 같은 처리다.
      */
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
