@@ -90,7 +90,23 @@ export function AlternativeSheet({
       }
     }
     document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
+
+    /*
+     * 시트가 떠 있는 동안 뒤 페이지가 움직이지 않게 잠근다.
+     *
+     * 이 시트는 화면을 다 덮지 않아서(max-h-84svh) 아래로 뒤 화면이 비친다.
+     * 잠그지 않으면 그 부분을 밀 때 배경이 시트 밑에서 따로 스크롤되어,
+     * 시트가 화면에서 떨어져 나온 것처럼 보인다.
+     *
+     * 다른 시트들(SaveCourseSheet·ConfirmSheet·CourseDetailOverlay)과 같은 처리다.
+     */
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+      document.body.style.overflow = previousOverflow
+    }
   }, [onClose])
 
   return (
@@ -103,10 +119,16 @@ export function AlternativeSheet({
         키보드 사용자는 Escape로 닫으므로 이 div에는 역할을 주지 않는다.
 
         화면을 다 덮지 않는다 — 뒤에 있는 코스가 조금 보여야 맥락을 잃지 않는다.
+
+        overflow-hidden: 안쪽 내용을 둥근 모서리에 맞춰 자른다.
+        없으면 헤더(bg-surface)의 각진 위 모서리가 패널의 둥근 윤곽 밖으로 삐져나온다.
+        넓은 화면에서는 헤더에도 lg:rounded-t가 걸려 가려졌지만, 그 아래에서는
+        손잡이 표시 바로 다음에 각진 흰 면이 시작돼 그대로 드러났다.
+        모서리를 자식마다 맞추는 대신 부모가 한 번 자르게 한다 — 자식이 늘어도 따라온다.
       */}
       <div
         ref={panelRef}
-        className="bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col rounded-t-[24px] shadow-[0_-10px_40px_rgb(22_33_31/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(22_33_31/0.28)]"
+        className="bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] shadow-[0_-10px_40px_rgb(22_33_31/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(22_33_31/0.28)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"
@@ -151,7 +173,8 @@ export function AlternativeSheet({
           </p>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 lg:px-5">
+        {/* overscroll-contain: 목록을 끝까지 내려도 스크롤이 뒤 페이지로 넘어가지 않는다 */}
+        <div className="overscroll-contain flex-1 overflow-y-auto px-4 py-4 lg:px-5">
           {load.phase === 'loading' && (
             <p className="py-6 text-center text-sm">후보를 찾는 중…</p>
           )}

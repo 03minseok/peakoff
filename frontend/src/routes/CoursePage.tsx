@@ -73,7 +73,7 @@ export function CoursePage() {
 
   /* 조건 없이 들어온 경우. 편집할 기준이 없으므로 첫 화면으로 돌려보낸다. */
   if (!plan) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/plan" replace />
   }
 
   const totalDays = plan.nights + 1
@@ -276,7 +276,9 @@ export function CoursePage() {
           목록이 길어 스크롤이 생기므로 버튼을 아래에 붙여둔다.
           끝까지 내려야 진단 버튼을 만나는 구조면 다 담고도 뭘 해야 할지 모른다.
         */}
-        <div className="from-bg/0 to-bg sticky bottom-0 mt-auto bg-gradient-to-b to-[30%] pt-3.5 pb-5">
+        {/* bottom-15: BottomNav(60px) 위에 얹는다. 막대가 사라지는 md부터는 바닥으로 내려온다. */}
+        {/* z-30 — 진단 화면과 같은 이유다. 값이 없으면 지도와 겹치는 구간에서 뒤로 숨는다 */}
+        <div className="from-bg/0 to-bg sticky bottom-15 z-30 mt-auto bg-gradient-to-b to-[30%] pt-3.5 pb-5 md:bottom-0">
           {!allDaysFilled && emptyDays.length > 0 && (
             <p className="mb-2.5 text-center text-[13px]">
               {emptyDays.map((day) => `Day ${day}`).join(', ')}에 장소를 담아주세요.

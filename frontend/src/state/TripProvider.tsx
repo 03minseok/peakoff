@@ -22,6 +22,7 @@ type TripAction =
   | { type: 'MOVE_PLACE'; day: number; index: number; direction: -1 | 1 }
   | { type: 'REPLACE_PLACE'; day: number; index: number; placeId: string }
   | { type: 'MARK_BASELINE' }
+  | { type: 'RESTORE'; plan: TripPlan; days: string[][] }
   | { type: 'RESET' }
 
 /** day는 1부터 시작한다. 배열 인덱스로 바꿔 쓴다. */
@@ -112,6 +113,17 @@ function reducer(state: TripState, action: TripAction): TripState {
       }
       return { ...state, baseline: { plan: state.plan, days: state.days } }
 
+    case 'RESTORE':
+      /*
+       * 기기에 저장해둔 코스를 다시 불러온다.
+       *
+       * baseline을 null로 두는 것이 중요하다. 저장된 것은 "완성된 코스" 한 벌뿐이고,
+       * 그때의 원안이 무엇이었는지는 남아 있지 않다. 불러온 코스를 원안이라고 우기면
+       * 최종 비교 화면이 "아무것도 개선되지 않았다"는 거짓 결과를 보여준다.
+       * 다시 진단에 들어가는 순간 이 코스가 새 원안으로 찍힌다.
+       */
+      return { plan: action.plan, days: action.days, baseline: null }
+
     case 'RESET':
       return EMPTY_TRIP_STATE
   }
@@ -137,6 +149,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
       replacePlace: (day, index, placeId) =>
         dispatch({ type: 'REPLACE_PLACE', day, index, placeId }),
       markBaseline: () => dispatch({ type: 'MARK_BASELINE' }),
+      restore: (plan, days) => dispatch({ type: 'RESTORE', plan, days }),
       reset: () => dispatch({ type: 'RESET' }),
     }),
     [state],

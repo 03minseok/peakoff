@@ -1,11 +1,22 @@
 import { useEffect, useRef } from 'react'
 import { useKakaoSdk } from '../hooks/useKakaoSdk'
+import { LEVEL_SOLID } from './levelStyles'
 import type { KakaoCustomOverlay, KakaoMap, KakaoPolyline } from '../types/kakao'
-import type { Place } from '../types/api'
+import type { CongestionLevel, Place } from '../types/api'
 
 interface Props {
   /** 지도에 찍을 장소 전체 */
   places: Place[]
+  /**
+   * 장소별 한적도 등급. 담긴 마커의 색이 브랜드색 대신 등급색이 된다.
+   *
+   * <p>진단 화면에서만 넘긴다. 편집 화면에는 <b>넘기면 안 된다</b> —
+   * 첫 코스는 사용자의 의도를 존중하기로 했고, 마커 색으로 점수를 미리 흘리면
+   * "직접 짠 코스"가 아니라 시스템이 유도한 코스가 되어 진단의 의미가 사라진다.
+   *
+   * <p>없으면 지금까지처럼 전부 브랜드색이다.
+   */
+  levels?: Record<string, CongestionLevel>
   /**
    * 순서대로 이을 경로. 하나의 배열이 하루치다.
    *
@@ -28,7 +39,17 @@ interface Props {
 /** 경주 시내 근처. 장소를 받기 전 잠깐 보여줄 초기 중심점 */
 const FALLBACK_CENTER = { lat: 35.8397, lng: 129.2124 }
 
-const MAP_BOX = 'h-[290px] w-full overflow-hidden rounded-card border border-line'
+/*
+ * isolate(= isolation: isolate)가 있어야 한다.
+ *
+ * 카카오 지도는 안쪽 요소에 z-index를 직접 매긴다(타일·오버레이·컨트롤). 이 상자가
+ * 쌓임 맥락을 만들지 않으면 그 값들이 <b>페이지 최상위로 새어나가</b>, z-index를 주지 않은
+ * 바깥 요소 위로 올라온다. overflow-hidden은 보이는 범위만 자를 뿐 쌓임 순서와는 무관하다.
+ *
+ * 실제로 진단 화면에서 아래에 붙어 따라오는 "최종 코스 확인하기"가 지도와 겹치는 구간에서
+ * 지도 뒤로 숨었다. isolate로 안쪽 z-index를 이 상자 안에 가둔다.
+ */
+const MAP_BOX = 'isolate h-[290px] w-full overflow-hidden rounded-card border border-line'
 
 /*
  * 마커는 React가 아니라 document.createElement로 만들어 카카오 오버레이에 넣는다.
@@ -42,8 +63,16 @@ const PIN_WRAP = 'flex flex-col items-center gap-1'
 const PIN_BASE = 'grid place-items-center box-border rounded-full font-mono'
 const PIN_DOT =
   'h-3.5 w-3.5 bg-muted shadow-[0_0_0_2px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
-const PIN_MARKED =
-  'h-7 w-auto min-w-7 px-1.5 text-[13px] font-semibold leading-none text-white bg-brand shadow-[0_0_0_3px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
+/*
+ * 담긴 장소의 마커. 색만 떼어 두 갈래로 쓴다.
+ *
+ * 조립한 문자열이지만 Tailwind가 놓치지 않는다 — 붙이는 조각(`bg-brand`, `bg-quiet` …)이
+ * 저마다 소스에 글자 그대로 적혀 있기 때문이다. 금지된 것은 `bg-${level}`처럼
+ * <b>어디에도 온전히 적혀 있지 않은</b> 이름을 만들어내는 쪽이다.
+ */
+const PIN_MARKED_SHAPE =
+  'h-7 w-auto min-w-7 px-1.5 text-[13px] font-semibold leading-none text-white shadow-[0_0_0_3px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
+const PIN_MARKED = `${PIN_MARKED_SHAPE} bg-brand`
 const PIN_CLICKABLE = 'cursor-pointer hover:bg-brand-hover'
 /** 담긴 장소에만 붙는 이름표. 번호만으로는 어디가 어디인지 알 수 없다. */
 const PIN_LABEL =
@@ -60,7 +89,7 @@ function findInRoutes(routes: string[][], placeId: string) {
   return null
 }
 
-export function CourseMap({ places, routes, onSelect, className = '' }: Props) {
+export function CourseMap({ places, routes, levels, onSelect, className = '' }: Props) {
   const status = useKakaoSdk()
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -129,10 +158,17 @@ export function CourseMap({ places, routes, onSelect, className = '' }: Props) {
         pin.addEventListener('click', () => onSelectRef.current?.(place.id))
         pin.setAttribute('aria-label', `${place.name} 코스에 추가`)
       }
+      // 등급을 받은 곳만 등급색이다. 담기지 않은 주변 장소는 여전히 회색 점이다.
+      const level = levels?.[place.id]
       pin.className = [
         PIN_BASE,
-        isMarked ? PIN_MARKED : PIN_DOT,
-        clickable ? PIN_CLICKABLE : '',
+        isMarked
+          ? level
+            ? `${PIN_MARKED_SHAPE} ${LEVEL_SOLID[level]}`
+            : PIN_MARKED
+          : PIN_DOT,
+        // 등급색 마커에 hover로 브랜드색을 덧씌우면 색이 뜻하는 바가 흔들린다.
+        clickable && !level ? PIN_CLICKABLE : '',
       ].join(' ')
       // 여러 날을 함께 그릴 때는 "2-1"처럼 일차를 붙여야 같은 번호가 겹치지 않는다.
       pin.textContent = found
@@ -207,7 +243,8 @@ export function CourseMap({ places, routes, onSelect, className = '' }: Props) {
       map.setBounds(bounds)
       hasFittedRef.current = true
     }
-  }, [places, routes, status, interactive])
+    // levels가 빠져 있으면 장소 교체 없이 점수만 바뀐 경우(날짜 이동) 마커 색이 낡은 채 남는다.
+  }, [places, routes, levels, status, interactive])
 
   // 대체 화면도 같은 크기로 그린다. 지도를 못 불러왔을 때 자리가 줄어들면
   // 옆 칸까지 따라 움직여 화면이 흔들린다.
