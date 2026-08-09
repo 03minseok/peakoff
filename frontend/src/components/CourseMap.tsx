@@ -71,8 +71,16 @@ const PIN_DOT =
  * <b>어디에도 온전히 적혀 있지 않은</b> 이름을 만들어내는 쪽이다.
  */
 const PIN_MARKED_SHAPE =
-  'h-7 w-auto min-w-7 px-1.5 text-[13px] font-semibold leading-none text-white shadow-[0_0_0_3px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
-const PIN_MARKED = `${PIN_MARKED_SHAPE} bg-brand`
+  'h-7 w-auto min-w-7 px-1.5 text-[13px] font-semibold leading-none shadow-[0_0_0_3px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
+/*
+ * 글자색이 두 갈래인 이유.
+ *
+ * 등급색(청록·앰버·레드)은 어두워서 흰 글자를 받지만, 브랜드 노랑은 밝아서 검정을 받는다.
+ * 예전에는 PIN_MARKED_SHAPE에 text-white가 박혀 있었는데, 브랜드가 노랑이 되면서
+ * 편집 화면 마커의 번호가 노랑 위 흰 글자(1.2:1)로 사라졌다.
+ */
+const PIN_MARKED = `${PIN_MARKED_SHAPE} bg-brand text-fg`
+const PIN_LEVEL_INK = 'text-white'
 const PIN_CLICKABLE = 'cursor-pointer hover:bg-brand-hover'
 /** 담긴 장소에만 붙는 이름표. 번호만으로는 어디가 어디인지 알 수 없다. */
 const PIN_LABEL =
@@ -164,7 +172,7 @@ export function CourseMap({ places, routes, levels, onSelect, className = '' }: 
         PIN_BASE,
         isMarked
           ? level
-            ? `${PIN_MARKED_SHAPE} ${LEVEL_SOLID[level]}`
+            ? `${PIN_MARKED_SHAPE} ${PIN_LEVEL_INK} ${LEVEL_SOLID[level]}`
             : PIN_MARKED
           : PIN_DOT,
         // 등급색 마커에 hover로 브랜드색을 덧씌우면 색이 뜻하는 바가 흔들린다.

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Close } from './icons'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import { fetchSavedCourse } from '../services/api'
 import type { SavedCourseDetail } from '../types/api'
@@ -101,7 +102,7 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
             aria-label="닫기"
             className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 cursor-pointer place-items-center rounded-[11px] bg-transparent text-base transition-colors"
           >
-            ×
+            <Close />
           </button>
         </div>
 

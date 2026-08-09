@@ -288,7 +288,7 @@ export function AlternativeSheet({
 
                   <button
                     type="button"
-                    className="bg-brand hover:bg-brand-hover rounded-ui h-11 cursor-pointer text-[14.5px] font-semibold text-white transition-colors"
+                    className="bg-brand hover:bg-brand-hover rounded-ui h-11 cursor-pointer text-[14.5px] font-semibold text-fg transition-colors"
                     onClick={() => onSelect(alternative.place.id)}
                   >
                     이 장소로 교체
