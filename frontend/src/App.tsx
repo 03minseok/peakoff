@@ -7,6 +7,7 @@ import { MyPage } from './routes/MyPage'
 import { LoginPage } from './routes/LoginPage'
 import { NotFoundPage } from './routes/NotFoundPage'
 import { PlanPage } from './routes/PlanPage'
+import { RecommendPage } from './routes/RecommendPage'
 import { PreviewPage } from './routes/PreviewPage'
 import { ResultPage } from './routes/ResultPage'
 import { SignupPage } from './routes/SignupPage'
@@ -33,6 +34,8 @@ function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="plan" element={<PlanPage />} />
+            {/* 설문 기반 코스 추천. 아직 안내 화면뿐이다 — 홈의 진입점과 함께 완성하거나 함께 감춘다 */}
+            <Route path="recommend" element={<RecommendPage />} />
             <Route path="course" element={<CoursePage />} />
             <Route path="diagnosis" element={<DiagnosisPage />} />
             <Route path="result" element={<ResultPage />} />
