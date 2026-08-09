@@ -5,14 +5,19 @@ import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON } from '../components/styles'
-import { useDiagnosis } from '../hooks/useDiagnosis'
+import { currentDiagnosis, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchDateAlternatives } from '../services/api'
 import { useTrip } from '../state/tripContext'
-import type { CongestionLevel, DateAlternatives } from '../types/api'
-import { formatCompactDate, formatKoreanDate, formatWeekday } from '../utils/date'
+import type { CongestionLevel, DateAlternatives, DateOption } from '../types/api'
+import { formatCompactDate, formatKoreanDate, formatWeekday, today } from '../utils/date'
 
-/** 며칠 앞까지 더 한적한 날짜를 찾아볼지 */
-const DATE_SEARCH_RANGE = 14
+/**
+ * 기준 날짜 앞뒤로 며칠씩 살펴볼지. 3이면 창은 7일이다.
+ *
+ * <p>넓게 열면 "두 주 뒤가 가장 한적합니다" 같은, 실행할 수 없는 제안이 위로 올라온다.
+ * 여행 날짜를 옮길 수 있는 폭은 보통 주말 하나를 넘지 않는다.
+ */
+const DATE_SEARCH_RANGE = 3
 
 interface SheetTarget {
   day: number
@@ -25,14 +30,20 @@ interface SheetTarget {
   level: CongestionLevel
 }
 
-/** 날짜 목록의 한 줄. 현재 날짜와 대안을 같은 모양으로 다루기 위한 형태 */
+/** 날짜 목록의 한 줄. 원안·적용된 날짜·나머지 후보를 같은 모양으로 다루기 위한 형태 */
 interface DateRow {
   date: string
   quietness: number
   level: CongestionLevel
   levelLabel: string
+  /** 원안 날짜 대비 한적도 증가폭. 음수면 그날이 더 붐빈다 */
   improvement: number
+  /** 지금 코스에 적용된 날짜 */
   current: boolean
+  /** 사용자가 처음 고른 날짜 */
+  base?: boolean
+  /** 여행 날짜로 고를 수 있는가. 지난 날짜는 false */
+  selectable?: boolean
 }
 
 export function DiagnosisPage() {
@@ -71,7 +82,7 @@ export function DiagnosisPage() {
    * 훅은 매 렌더 같은 순서로 불려야 하는데, 반환문 아래에 두면 plan이 없는 렌더에서만
    * 건너뛰어져 순서가 어긋난다. 그래서 diagnosis도 여기서 미리 꺼낸다.
    */
-  const diagnosis = current.phase === 'loaded' ? current.diagnosis : null
+  const diagnosis = currentDiagnosis(current)
 
   /*
    * 지도에 넘길 것들.
@@ -110,19 +121,29 @@ export function DiagnosisPage() {
     [diagnosis],
   )
 
+  /**
+   * 날짜 창의 한가운데. <b>원안 날짜</b>이지 지금 적용된 날짜가 아니다.
+   *
+   * <p>적용된 날짜를 기준으로 삼으면 옮길 때마다 창이 따라 움직인다. 두 번 옮기면
+   * 원래 날짜가 창 밖으로 나가 되돌아갈 방법이 사라진다. 원안에 고정하면 후보가 늘 같아서
+   * 몇 번을 옮겨도 되돌아갈 수 있고, 개선폭도 "원안 대비"라는 하나의 기준으로 읽힌다.
+   */
+  const baseDate = state.baseline?.plan.startDate ?? plan?.startDate ?? null
+
   useEffect(() => {
-    if (!plan || uniquePlaceIds.length === 0) {
+    if (!baseDate || uniquePlaceIds.length === 0) {
       return
     }
     const controller = new AbortController()
 
-    fetchDateAlternatives(uniquePlaceIds, plan.startDate, DATE_SEARCH_RANGE, controller.signal)
+    fetchDateAlternatives(uniquePlaceIds, baseDate, DATE_SEARCH_RANGE, controller.signal)
       .then(setDates)
       // 날짜 제안은 곁들이는 정보다. 실패해도 진단 결과까지 막지 않는다.
       .catch(() => setDates(null))
 
     return () => controller.abort()
-  }, [plan, uniquePlaceIds])
+    // 적용 날짜(plan.startDate)는 의존성이 아니다 — 옮겨도 창이 움직이면 안 된다.
+  }, [baseDate, uniquePlaceIds])
 
   if (!plan) {
     return <Navigate to="/plan" replace />
@@ -138,9 +159,11 @@ export function DiagnosisPage() {
     state.baseline !== null && state.baseline.plan.startDate !== plan.startDate
 
   /*
-    현재 날짜도 대안과 같은 줄로 그린다. 따로 떼어놓으면 "지금이 몇 점인지"를
-    비교 대상 없이 봐야 해서, 제안된 날짜가 얼마나 나은지 가늠이 안 된다.
+    원안 날짜도 같은 줄로 그린다. 서버는 창에서 기준일을 빼고 보내므로 여기서 도로 넣는다.
+    이게 곧 <b>되돌아갈 줄</b>이다 — 따로 "되돌리기" 버튼을 만들지 않고 목록 안에 둔다.
+    같은 일을 하는 조작이 화면 두 곳에 있으면 어느 쪽이 진짜인지 흔들린다.
   */
+  const todayDate = today()
   const dateRows: DateRow[] = dates
     ? [
         {
@@ -149,32 +172,46 @@ export function DiagnosisPage() {
           level: dates.selectedLevel,
           levelLabel: dates.selectedLevelLabel,
           improvement: 0,
-          current: true,
+          current: false,
         },
         ...dates.options.map((option) => ({ ...option, current: false })),
       ]
+        .map((row) => ({
+          ...row,
+          /** 지금 코스에 적용된 날짜 */
+          current: row.date === plan?.startDate,
+          /** 사용자가 처음 고른 날짜. 여기로 돌아올 수 있어야 한다 */
+          base: row.date === dates.selectedDate,
+          /** 지난 날짜는 보여주되 고를 수 없다 — 이미 지나간 날로 여행을 갈 수는 없다 */
+          selectable: row.date >= todayDate,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date))
     : []
 
   /**
    * 접을 만한 날짜 목록이 있을 때만 그 값, 아니면 null.
    *
-   * <p>불리언이 아니라 값으로 두는 이유: 아래에서 {@code toggleableDates.options.length}를
-   * 읽는데, 불리언 변수로는 타입스크립트가 dates가 null이 아님을 알지 못한다.
+   * <p>불리언이 아니라 값으로 두는 이유: 타입스크립트가 dates의 null 여부를
+   * 불리언 변수로는 좁히지 못한다.
    */
-  const toggleableDates =
-    dates && !dates.alreadyQuietest && dates.options.length > 0 ? dates : null
+  const toggleableDates = dates && dates.options.length > 0 ? dates : null
 
   /**
    * 가장 많이 좋아지는 날. 접혀 있을 때 한 줄로 보여준다.
    *
    * <p>서버 정렬을 믿지 않고 직접 고른다. 목록 순서가 바뀌어도 이 문장은 계속 맞아야 한다 —
    * 화면에 "가장"이라고 적어놓고 실제로는 첫 번째를 집는 것은 거짓말이 된다.
+   *
+   * <p>이제 목록에 <b>더 붐비는 날도 들어 있어</b> 개선폭이 음수일 수 있다. 갈 수 있고
+   * 실제로 나아지는 날만 고른다 — 아니면 "옮기면 −8" 같은 문장이 요약 자리에 오른다.
    */
-  const bestDate = toggleableDates
-    ? toggleableDates.options.reduce((best, option) =>
-        option.improvement > best.improvement ? option : best,
-      )
-    : null
+  const bestDate =
+    dates?.options
+      .filter((option) => option.improvement > 0 && option.date >= todayDate)
+      .reduce<DateOption | null>(
+        (best, option) => (best === null || option.improvement > best.improvement ? option : best),
+        null,
+      ) ?? null
 
   // 원안과 같은 자리(일차·순서)에 다른 장소가 들어갔으면 교체된 것이다.
   function isSwapped(day: number, order: number, placeId: string) {
@@ -337,7 +374,8 @@ export function DiagnosisPage() {
               </div>
             </div>
 
-            {current.phase === 'loading' && (
+            {/* refreshing이라야 뜬다. loading일 때는 이 블록 자체가 화면에 없다 */}
+            {current.phase === 'refreshing' && (
               <p className="text-hint text-xs">다시 계산 중…</p>
             )}
           </section>
@@ -376,19 +414,23 @@ export function DiagnosisPage() {
                   aria-controls="date-alternatives"
                   onClick={() => setDatesOpen((open) => !open)}
                 >
-                  {datesOpen ? '접기' : `${toggleableDates.options.length}개 보기`}
+                  {datesOpen ? '접기' : '날짜 비교'}
                 </button>
               ) : null}
 
               <span className="text-hint hidden text-[12.5px] lg:inline">
-                같은 코스를 다른 날짜로 계산했어요
+                같은 코스를 앞뒤 3일로 계산했어요
               </span>
             </div>
 
             {!dates && <p className="text-[13px]">날짜 정보를 불러오지 못했어요.</p>}
+            {/*
+              이 안내가 목록을 대신하지 않는다. 더 나은 날이 없어도 <b>되돌아갈 줄</b>은
+              보여야 하고, "왜 없는지"는 옆에 늘어선 점수들이 스스로 말한다.
+            */}
             {dates?.alreadyQuietest && (
               <p className="text-[13px]">
-                고르신 {formatKoreanDate(dates.selectedDate)}이 이 코스에서 가장 한적한 날이에요.
+                고르신 {formatKoreanDate(dates.selectedDate)}이 앞뒤 3일 중 가장 한적한 날이에요.
               </p>
             )}
 
@@ -404,7 +446,7 @@ export function DiagnosisPage() {
               </p>
             )}
 
-            {dates && !dates.alreadyQuietest && (
+            {dates && (
               <>
                 {/*
                   hidden은 좁은 화면에서 접혔을 때만이다. lg:flex가 미디어 쿼리 안에 있어
@@ -420,7 +462,10 @@ export function DiagnosisPage() {
                       className={`rounded-ui flex items-center gap-3 border px-3.5 py-3 ${
                         row.current
                           ? 'border-quiet-soft bg-quiet-tint/50'
-                          : 'border-line bg-bg'
+                          : row.selectable
+                            ? 'border-line bg-bg'
+                            : /* 지난 날짜. 자리는 지키되 뒤로 물린다 */
+                              'border-line/50 bg-bg/50 opacity-60'
                       }`}
                     >
                       {/*
@@ -438,13 +483,31 @@ export function DiagnosisPage() {
                           <span className="text-hint text-[11.5px]">
                             {formatWeekday(row.date)}
                           </span>
-                          <span
-                            className={`text-[11.5px] font-semibold ${
-                              row.current ? 'text-hint' : 'text-quiet-deep'
-                            }`}
-                          >
-                            {row.current ? '현재 날짜' : `+${row.improvement}`}
-                          </span>
+                          {/*
+                            원안과 적용됨은 서로 다른 것이다. 날짜를 옮기면 두 표시가
+                            다른 줄에 붙고, 되돌리면 한 줄에 겹친다. 겹칠 때 둘 다
+                            적으면 장황해서 "원안 · 적용됨"으로 합쳐 보인다.
+                          */}
+                          {row.base && (
+                            <span className="bg-line/70 text-muted rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold">
+                              원안
+                            </span>
+                          )}
+                          {row.current && (
+                            <span className="bg-quiet-soft/50 text-quiet-deep rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold">
+                              적용됨
+                            </span>
+                          )}
+                          {/* 원안 대비 증감. 0이면(=원안 줄) 적을 것이 없다 */}
+                          {row.improvement !== 0 && (
+                            <span
+                              className={`text-[11.5px] font-semibold ${
+                                row.improvement > 0 ? 'text-quiet-deep' : 'text-crowded-deep'
+                              }`}
+                            >
+                              {row.improvement > 0 ? `+${row.improvement}` : row.improvement}
+                            </span>
+                          )}
                         </div>
 
                         {/* 막대는 점수를 눈으로 비교하는 장치다. 숫자만 있으면 줄마다 다시 읽어야 한다. */}
@@ -464,18 +527,32 @@ export function DiagnosisPage() {
                         {row.quietness}
                       </span>
 
+                      {/*
+                        누르면 코스 전체가 그 날짜로 옮겨진다. 장소는 그대로 둔다.
+
+                        원안 줄의 문구만 <b>되돌리기</b>다. 하는 일은 같지만 사용자가
+                        읽는 뜻이 다르다 — "다른 날로 옮긴다"와 "원래대로 돌린다"는
+                        같은 버튼이어도 결심의 무게가 다르다.
+                      */}
                       {row.current ? (
-                        <span className="text-hint rounded-chip bg-line/70 h-9 flex-none px-3 text-center text-[12.5px] leading-9 font-semibold whitespace-nowrap">
-                          적용됨
+                        <span className="text-quiet-deep bg-quiet-tint rounded-chip h-9 flex-none px-3 text-center text-[12.5px] leading-9 font-semibold whitespace-nowrap">
+                          적용 중
+                        </span>
+                      ) : !row.selectable ? (
+                        <span className="text-hint bg-line/50 rounded-chip h-9 flex-none px-3 text-center text-[12.5px] leading-9 font-medium whitespace-nowrap">
+                          지난 날
                         </span>
                       ) : (
-                        /* 누르면 코스 전체가 그 날짜로 옮겨진다. 장소는 그대로 둔다. */
                         <button
                           type="button"
-                          className="bg-fg rounded-chip hover:bg-fg/85 h-9 flex-none cursor-pointer px-3.5 text-[12.5px] font-semibold whitespace-nowrap text-white transition-colors"
+                          className={`rounded-chip h-9 flex-none cursor-pointer px-3.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                            row.base
+                              ? 'border-line bg-surface text-fg hover:bg-bg border'
+                              : 'bg-fg hover:bg-fg/85 text-white'
+                          }`}
                           onClick={() => changeStartDate(row.date)}
                         >
-                          이 날짜로
+                          {row.base ? '되돌리기' : '이 날짜로'}
                         </button>
                       )}
                     </li>
