@@ -25,8 +25,13 @@ import { today } from '../utils/date'
 /** 서버 분류 이름. 실제 API로 바꿀 때 신분류 코드 체계에 맞춰 이 값만 고치면 된다. */
 const TOURIST_CATEGORY = '관광지'
 
-/** "오늘의 경주"에 세우는 곳 수. */
-const HEADLINE_COUNT = 5
+/**
+ * "오늘의 OO"에 세우는 곳 수. 붐비는 쪽과 한적한 쪽을 <b>같은 수로</b> 뽑는다.
+ *
+ * <p>한쪽만 보여주면 "그래서 어쩌라고"가 된다. 붐비는 곳 옆에 한적한 곳이 같은 수로
+ * 서 있어야 이 서비스가 하려는 말(피할 곳과 갈 곳)이 한 카드 안에서 완성된다.
+ */
+const HEADLINE_PER_SIDE = 3
 
 /** "지금 한적한 곳" 카드 수. */
 const QUIET_COUNT = 4
@@ -74,7 +79,14 @@ export interface ForecastDay {
 }
 
 export interface HomeData {
-  headline: HeadlineSpot[]
+  /**
+   * "오늘의 OO" 한 장. 붐비는 쪽과 한적한 쪽을 같은 수로 담는다.
+   *
+   * <p>두 목록으로 나눠 두는 이유: 화면이 둘 사이에 구분선과 소제목을 넣어야 하는데,
+   * 한 배열로 주면 어디까지가 붐빔인지 화면이 개수를 세어 짐작해야 한다.
+   * 그 개수는 장소가 모자랄 때 달라진다.
+   */
+  headline: { crowded: HeadlineSpot[]; quiet: HeadlineSpot[] }
   quiet: QuietSpot[]
   forecast: ForecastDay[]
   /** 예보 기간에서 가장 한적한 날 */
@@ -172,18 +184,39 @@ export function useHomeData(region: string): HomeState {
       // 붐비는 순. 한적도가 낮을수록 앞에 온다.
       const byCrowded = [...todayDiagnosis.slots].sort((a, b) => a.quietness - b.quietness)
 
-      const headline: HeadlineSpot[] = byCrowded.slice(0, HEADLINE_COUNT).map((slot) => ({
+      const toHeadline = (slot: (typeof byCrowded)[number]): HeadlineSpot => ({
         place: slot.place,
         quietness: slot.quietness,
         level: slot.level,
         levelLabel: slot.levelLabel,
-      }))
+      })
+
+      /*
+       * 양 끝에서 같은 수만큼 가져온다.
+       *
+       * <b>가운데에서 만나면 안 된다.</b> 장소가 6곳보다 적으면 앞 3개와 뒤 3개가 겹쳐,
+       * 같은 곳이 "붐빌 것"과 "한적할 것"에 동시에 뜬다. 화면이 스스로 모순되는데
+       * 오류는 나지 않는 종류라, 여기서 반씩 나눠 자른다.
+       */
+      const perSide = Math.min(HEADLINE_PER_SIDE, Math.floor(byCrowded.length / 2))
+      const headlineCrowded = byCrowded.slice(0, perSide).map(toHeadline)
+      const headlineQuiet = [...byCrowded].reverse().slice(0, perSide).map(toHeadline)
 
       // 근거 문구의 비교 대상. 오늘 가장 붐비는 곳이다.
       const busiest = byCrowded[0]
 
+      /*
+       * 아래 카드 목록은 위 headline에 이미 선 곳을 건너뛴다.
+       *
+       * 같은 이름이 한 화면에 두 번 나오면 두 번째는 읽히지 않고, "왜 또 나오지"만 남는다.
+       * 위는 훑는 목록이고 아래는 사진·근거까지 붙는 자세한 카드라 역할이 다른데,
+       * 대상까지 같으면 그 차이가 전해지지 않는다.
+       */
+      const shownIds = new Set(headlineQuiet.map((spot) => spot.place.id))
+
       const quiet: QuietSpot[] = [...byCrowded]
         .reverse()
+        .filter((slot) => !shownIds.has(slot.place.id))
         .slice(0, QUIET_COUNT)
         .map((slot) => ({
           place: slot.place,
@@ -227,7 +260,15 @@ export function useHomeData(region: string): HomeState {
         day.quietness > best.quietness ? day : best,
       )
 
-      setState({ phase: 'loaded', data: { headline, quiet, forecast, bestDay } })
+      setState({
+        phase: 'loaded',
+        data: {
+          headline: { crowded: headlineCrowded, quiet: headlineQuiet },
+          quiet,
+          forecast,
+          bestDay,
+        },
+      })
     }
 
     setState({ phase: 'loading' })
