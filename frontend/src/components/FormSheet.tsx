@@ -121,8 +121,10 @@ export function FormSheet({
             <button
               type="submit"
               disabled={!canSubmit || busy}
-              className={`rounded-ui disabled:bg-line disabled:text-hint h-13 cursor-pointer text-[15.5px] font-semibold text-white transition-colors disabled:cursor-not-allowed ${
-                danger ? 'bg-crowded hover:bg-crowded-deep' : 'bg-brand hover:bg-brand-hover'
+              className={`rounded-ui disabled:bg-line disabled:text-hint h-13 cursor-pointer text-[15.5px] font-semibold transition-colors disabled:cursor-not-allowed ${
+                danger
+                  ? 'bg-crowded hover:bg-crowded-deep text-white'
+                  : 'bg-brand hover:bg-brand-hover text-fg'
               }`}
             >
               {busy ? '처리 중…' : submitLabel}

@@ -24,24 +24,42 @@
 
   --c-fg: #16211f;
   --c-muted: #5f706e;
-  --c-hint: #8a9997;
+  /* 흰 카드에서 2.96:1이라 본문 기준(4.5)에 못 미쳤다. 색조는 그대로 두고 밝기만 내렸다 */
+  --c-hint: #667170;
 
-  --c-brand: #0e7c86;
-  --c-brand-deep: #0a5a61;
-  --c-brand-hover: #0a5f67;
-  --c-brand-tint: #e2f1f1;
+  /*
+   * 브랜드 = 노랑. 초록은 트래킹 앱, 파랑은 금융 앱으로 읽혀서 그 중간을 잡았다.
+   *
+   * <b>이 색은 밝다. 그래서 위에 올리는 글자가 흰색이 아니라 검정(--c-fg)이다.</b>
+   * 흰 글자를 얹으면 1.2:1이라 아예 안 보인다. 노랑을 어둡게 내려 흰 글자를 받게 하면
+   * 노랑이 아니라 카키가 된다 — 밝게 두고 글자를 어둡게 하는 쪽이 이 색을 살리는 길이다.
+   *
+   * 그래서 브랜드색과 한적색이 <b>처음으로 갈라졌다.</b> 한적/보통/붐빔 3단계는
+   * 신호등처럼 읽혀야 해서 청록·앰버·레드를 그대로 둔다. 노랑은 버튼·로고·강조 전용이다.
+   *
+   *   tint  #fff8e1  옅은 배경 (칩·안내 상자)
+   *   point #feeb8f  버튼·로고·강조        ← 지정색
+   *   hover #fbdf6b  point 위에 손을 올렸을 때
+   *   deep  #7a6402  글자·테두리용. point는 글자색으로 쓸 수 없다
+   */
+  --c-brand: #feeb8f;
+  --c-brand-deep: #7a6402;
+  --c-brand-hover: #fbdf6b;
+  --c-brand-tint: #fff8e1;
 
   --c-quiet: #0e7c86;
   --c-quiet-deep: #0a5a61;
   --c-quiet-tint: #e2f1f1;
   --c-quiet-soft: #8cc7c6;
 
-  --c-moderate: #c08329;
+  /* 흰 글자를 받는 채움색이다(순서 번호 원·지도 마커). 옛 값은 3.22:1이었다 */
+  --c-moderate: #9d6b22;
   --c-moderate-deep: #8c5d17;
   --c-moderate-tint: #faf0de;
   --c-moderate-soft: #e4be7e;
 
-  --c-crowded: #ce5138;
+  /* 같은 이유로 4.32 → 4.62. 색조는 그대로다 */
+  --c-crowded: #c64e36;
   --c-crowded-deep: #9b3320;
   --c-crowded-tint: #fbe8e2;
   --c-crowded-soft: #eba48f;
@@ -104,8 +122,14 @@
   --shadow-rest: 0 1px 2px rgb(22 33 31 / 0.05);
   --shadow-raised:
     0 1px 2px rgb(22 33 31 / 0.05), 0 8px 24px rgb(22 33 31 / 0.06);
-  /* 주요 버튼 전용. 브랜드색을 머금은 그림자라 버튼이 배경에서 확실히 떠오른다. */
-  --shadow-cta: 0 6px 18px rgb(14 124 134 / 0.22);
+  /*
+   * 주요 버튼 전용.
+   *
+   * 예전에는 브랜드색을 머금은 그림자였다. 브랜드가 밝은 노랑이 되면서 흰 배경 위에
+   * 노란 그림자가 보이지 않게 되어, 중립적인 어두운 그림자로 바꿨다.
+   * 밝은 버튼일수록 바닥에서 떠 있다는 신호가 그림자 말고는 없다.
+   */
+  --shadow-cta: 0 6px 18px rgb(22 33 31 / 0.14);
 }
 
 @layer base {
@@ -140,9 +164,10 @@
     min-height: 100svh;
   }
 
-  /* 키보드 이동 시 초점이 어디 있는지 항상 보이게 한다. */
+  /* 키보드 이동 시 초점이 어디 있는지 항상 보이게 한다.
+     brand가 아니라 brand-deep인 이유: 밝은 노랑 테두리는 흰 배경에서 1.2:1이라 안 보인다. */
   :focus-visible {
-    outline: 2px solid var(--color-brand);
+    outline: 2px solid var(--color-brand-deep);
     outline-offset: 2px;
   }
 }

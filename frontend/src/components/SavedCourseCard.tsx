@@ -1,4 +1,5 @@
 import { LEVEL_TINT } from './levelStyles'
+import { ChevronRight, Close } from './icons'
 import type { SavedCourseSummary } from '../types/api'
 import { formatDateRange, formatNights, formatRelativeTime, isPastDate } from '../utils/date'
 
@@ -77,7 +78,7 @@ export function SavedCourseCard({
         {selecting ? (
           <span
             className={`grid h-6.5 w-6.5 flex-none place-items-center rounded-full text-[13px] font-bold ${
-              selected ? 'bg-brand text-white' : 'border-line text-line border-[1.5px]'
+              selected ? 'bg-brand text-fg' : 'border-line text-line border-[1.5px]'
             }`}
             aria-hidden="true"
           >
@@ -91,7 +92,7 @@ export function SavedCourseCard({
             aria-label={`${course.name} 삭제`}
             className="text-line hover:bg-crowded-tint hover:text-crowded relative z-10 grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-[10px] bg-transparent text-[15px] transition-colors"
           >
-            ×
+            <Close />
           </button>
         )}
       </div>
@@ -123,8 +124,8 @@ export function SavedCourseCard({
       <div className="flex items-center justify-between">
         <span className="text-hint text-xs">{formatRelativeTime(course.createdAt)} 저장</span>
         {!selecting && (
-          <span className="text-brand text-[13px] font-semibold" aria-hidden="true">
-            상세 보기 ›
+          <span className="text-brand-deep text-[13px] font-semibold" aria-hidden="true">
+            상세 보기 <ChevronRight size={13} />
           </span>
         )}
       </div>

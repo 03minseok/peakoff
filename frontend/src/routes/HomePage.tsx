@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router'
+import { ChevronRight } from '../components/icons'
 import { BottomNav, HeaderNav } from '../components/BottomNav'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID, LEVEL_TINT } from '../components/levelStyles'
@@ -254,7 +255,7 @@ export function HomePage() {
         <div className="flex flex-col gap-1.75">
           <div className="flex items-center gap-2">
             <span className="bg-brand relative h-5.5 w-5.5 rounded-[8px]" aria-hidden="true">
-              <span className="bg-bg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
+              <span className="bg-fg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
             </span>
             <span className="text-fg text-[13px] font-bold tracking-[0.16em]">PEAKOFF</span>
           </div>
@@ -353,8 +354,8 @@ export function HomePage() {
             <span className="max-w-62.5 text-sm leading-[1.6] text-white/60">
               날짜를 정하면 각 장소가 그날 얼마나 붐빌지 미리 계산해 드려요.
             </span>
-            <span className="bg-brand rounded-ui mt-1.5 inline-flex h-11.5 items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold">
-              시작하기 <span aria-hidden="true">›</span>
+            <span className="bg-brand text-fg rounded-ui mt-1.5 inline-flex h-11.5 items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold">
+              시작하기 <ChevronRight />
             </span>
           </span>
         </button>

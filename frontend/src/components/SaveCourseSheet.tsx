@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ArrowDownToLine } from './icons'
 import { Link, useLocation } from 'react-router'
 import { useAuth } from '../state/authContext'
 import { PRIMARY_BUTTON, TEXT_INPUT } from './styles'
@@ -144,7 +145,7 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
               className="bg-brand-tint text-brand-deep grid h-11.5 w-11.5 place-items-center rounded-[16px] text-xl"
               aria-hidden="true"
             >
-              ↓
+              <ArrowDownToLine />
             </span>
             <h2
               id="save-course-title"

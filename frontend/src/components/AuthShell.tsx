@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router'
+import { ChevronLeft, ChevronRight } from './icons'
 import type { ReactNode } from 'react'
 
 interface Props {
@@ -80,7 +81,7 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
           to="/"
           className="text-quiet-soft relative inline-flex items-center gap-1.75 text-sm font-semibold no-underline"
         >
-          로그인 없이 둘러보기 <span aria-hidden="true">›</span>
+          로그인 없이 둘러보기 <ChevronRight size={15} />
         </Link>
       </aside>
 
@@ -95,7 +96,7 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
             className="text-muted hover:bg-line/50 grid h-9.5 w-9.5 cursor-pointer place-items-center rounded-chip bg-transparent text-[17px] transition-colors"
             aria-label="뒤로 가기"
           >
-            ‹
+            <ChevronLeft />
           </button>
           <Link to="/" className="text-hint hover:text-fg p-2 text-[13.5px] font-medium">
             닫기

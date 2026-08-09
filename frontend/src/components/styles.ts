@@ -14,7 +14,7 @@
  * 엄지로 누를 때 빗나가지 않게 한다.
  */
 export const PRIMARY_BUTTON =
-  'min-h-13.5 w-full cursor-pointer rounded-ui bg-brand text-base font-semibold text-white shadow-cta transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-hint disabled:shadow-none'
+  'min-h-13.5 w-full cursor-pointer rounded-ui bg-brand text-base font-semibold text-fg shadow-cta transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-hint disabled:shadow-none'
 
 /** 주요 버튼 옆에 서는 보조 버튼. 테두리만 두고 배경은 카드와 같게 둔다. */
 export const SECONDARY_BUTTON =

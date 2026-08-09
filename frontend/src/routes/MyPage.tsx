@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowDownToLine, Close } from '../components/icons'
 import type { ReactNode } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { AccountSheets } from '../components/AccountSheets'
@@ -293,7 +294,7 @@ export function MyPage() {
               )}
               <Link
                 to="/plan"
-                className="bg-brand hover:bg-brand-hover grid h-9.5 cursor-pointer place-items-center rounded-[12px] px-4 text-[13.5px] font-semibold text-white no-underline transition-colors"
+                className="bg-brand hover:bg-brand-hover grid h-9.5 cursor-pointer place-items-center rounded-[12px] px-4 text-[13.5px] font-semibold text-fg no-underline transition-colors"
               >
                 새 코스 짜기
               </Link>
@@ -347,7 +348,7 @@ export function MyPage() {
                 : 'text-brand-deep/70 hover:text-brand-deep'
             }`}
           >
-            ×
+            <Close />
           </button>
         </div>
       )}
@@ -386,7 +387,7 @@ export function MyPage() {
             className="bg-brand-tint text-brand-deep grid h-14 w-14 place-items-center rounded-[18px] text-2xl"
             aria-hidden="true"
           >
-            ↓
+            <ArrowDownToLine size={24} />
           </span>
           <div className="flex flex-col gap-1.5">
             <span className="text-fg text-[16.5px] font-bold">아직 저장한 코스가 없어요</span>
@@ -401,7 +402,7 @@ export function MyPage() {
           */}
           <Link
             to="/plan"
-            className="bg-brand hover:bg-brand-hover shadow-cta rounded-ui mt-1 grid h-13.5 place-items-center px-6 text-base font-semibold text-white no-underline transition-colors"
+            className="bg-brand hover:bg-brand-hover shadow-cta rounded-ui mt-1 grid h-13.5 place-items-center px-6 text-base font-semibold text-fg no-underline transition-colors"
           >
             코스 짜러 가기
           </Link>
@@ -511,7 +512,7 @@ export function MyPage() {
               type="button"
               disabled={selected.length < COMPARE_COUNT}
               onClick={() => setOpened(selected)}
-              className="bg-brand shadow-cta disabled:bg-line disabled:text-hint disabled:shadow-none mx-auto flex h-13 w-full max-w-[430px] cursor-pointer items-center justify-center rounded-ui text-base font-semibold text-white disabled:cursor-not-allowed"
+              className="bg-brand shadow-cta disabled:bg-line disabled:text-hint disabled:shadow-none mx-auto flex h-13 w-full max-w-[430px] cursor-pointer items-center justify-center rounded-ui text-base font-semibold text-fg disabled:cursor-not-allowed"
             >
               {selected.length < COMPARE_COUNT
                 ? `2개를 선택하세요 (${selected.length}/2)`

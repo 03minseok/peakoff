@@ -41,7 +41,7 @@ const DEFAULT_DAYS_AHEAD = 7
 const SEGMENT_BASE =
   'flex h-11 cursor-pointer items-center justify-center rounded-ui px-3 text-[15px] font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand'
 
-const REGION_SEGMENT = `${SEGMENT_BASE} border border-line bg-surface text-muted peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-white`
+const REGION_SEGMENT = `${SEGMENT_BASE} border border-line bg-surface text-muted peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-fg`
 
 const DURATION_SEGMENT = `${SEGMENT_BASE} border border-line bg-surface text-muted peer-checked:border-fg peer-checked:bg-fg peer-checked:font-semibold peer-checked:text-white`
 

@@ -98,7 +98,7 @@ export function BottomNav() {
             end={item.end}
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center justify-center gap-1 text-[11px] no-underline transition-colors ${
-                isActive ? 'text-brand font-semibold' : 'text-hint hover:text-muted font-medium'
+                isActive ? 'text-brand-deep font-semibold' : 'text-hint hover:text-muted font-medium'
               }`
             }
           >

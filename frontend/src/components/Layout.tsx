@@ -29,7 +29,7 @@ export function Layout() {
             >
               {/* 로고 마크. 붐빔 속 한 점의 여백 — 서비스 이름과 같은 뜻이다. */}
               <span className="bg-brand relative h-5 w-5 rounded-[7px]" aria-hidden="true">
-                <span className="bg-surface absolute top-1.5 left-1.5 h-2 w-2 rounded-full" />
+                <span className="bg-fg absolute top-1.5 left-1.5 h-2 w-2 rounded-full" />
               </span>
               <span className="text-fg text-xs font-bold tracking-[0.16em]">PEAKOFF</span>
             </Link>
