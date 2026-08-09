@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronRight } from '../components/icons'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { AuthField } from '../components/AuthField'
@@ -72,7 +73,8 @@ export function LoginPage() {
       await auth.login({ email: email.trim(), password })
       // 로그인 전에 보던 화면으로 돌려보낸다. 계정 만들기는 목적이 아니라 거쳐가는 단계다.
       if (from) {
-        navigate(from, { replace: true })
+        // 저장하러 온 사람은 돌아간 화면에서 시트가 다시 열려야 한다
+        navigate(from, { replace: true, state: { resumeSave: true } })
       } else {
         navigate(-1)
       }
@@ -99,7 +101,7 @@ export function LoginPage() {
       {/* 데스크톱에서는 좌측 패널이 로고를 들고 있다. 두 번 보일 이유가 없다. */}
       <div className="flex items-center gap-2 pt-2 lg:hidden">
         <span className="bg-brand relative h-5.5 w-5.5 rounded-[8px]" aria-hidden="true">
-          <span className="bg-bg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
+          <span className="bg-fg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
         </span>
         <span className="text-fg text-xs font-bold tracking-[0.16em]">PEAKOFF</span>
       </div>
@@ -173,7 +175,7 @@ export function LoginPage() {
 
         <p className="text-hint m-0 pt-0.5 text-center text-[13.5px]">
           계정이 없으신가요?{' '}
-          <Link to="/signup" state={location.state} className="text-brand font-semibold">
+          <Link to="/signup" state={location.state} className="text-brand-deep font-semibold">
             회원가입
           </Link>
         </p>
@@ -229,7 +231,7 @@ export function LoginPage() {
           to="/"
           className="rounded-ui text-muted hover:text-fg flex h-12.5 w-full items-center justify-center gap-1.5 bg-[#EDF1F0] text-[14.5px] font-semibold no-underline transition-colors"
         >
-          로그인 없이 둘러보기 <span aria-hidden="true">›</span>
+          로그인 없이 둘러보기 <ChevronRight size={15} />
         </Link>
       </div>
     </AuthShell>
