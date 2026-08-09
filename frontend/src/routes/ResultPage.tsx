@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate } from 'react-router'
+import { ArrowRight } from '../components/icons'
+import { Link, Navigate, useLocation } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { SaveCourseSheet } from '../components/SaveCourseSheet'
@@ -11,7 +12,7 @@ import {
   SECONDARY_BUTTON,
 } from '../components/styles'
 import { REGIONS } from '../constants/regions'
-import { toSlots, useDiagnosis } from '../hooks/useDiagnosis'
+import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchPlaces, saveCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type { CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
@@ -162,7 +163,14 @@ export function ResultPage() {
   const improved = useDiagnosis(plan, state.days)
 
   const [places, setPlaces] = useState<Place[]>([])
-  const [showSavePrompt, setShowSavePrompt] = useState(false)
+  /*
+   * 로그인·가입을 마치고 돌아온 경우 시트를 연 채로 시작한다.
+   * 그 화면들이 "돌아와 바로 저장할 수 있어요"라고 약속하고 보냈다.
+   */
+  const location = useLocation()
+  const [showSavePrompt, setShowSavePrompt] = useState(
+    () => (location.state as { resumeSave?: boolean } | null)?.resumeSave === true,
+  )
   /** 지도에 어느 일차를 그릴지. 'all'이면 전체 일정을 한 번에 */
   const [mapDay, setMapDay] = useState<number | 'all'>('all')
 
@@ -206,8 +214,8 @@ export function ResultPage() {
     return <Navigate to="/course" replace />
   }
 
-  const beforeDiagnosis = original.phase === 'loaded' ? original.diagnosis : null
-  const afterDiagnosis = improved.phase === 'loaded' ? improved.diagnosis : null
+  const beforeDiagnosis = currentDiagnosis(original)
+  const afterDiagnosis = currentDiagnosis(improved)
   const ready = beforeDiagnosis !== null && afterDiagnosis !== null
 
   const changes = ready ? diffCourses(beforeDiagnosis, afterDiagnosis) : []
@@ -285,9 +293,7 @@ export function ResultPage() {
                 />
               </div>
 
-              <span className="mt-3.5 text-[26px] leading-none text-white/30" aria-hidden="true">
-                →
-              </span>
+              <ArrowRight size={26} className="mt-3.5 text-white/30" />
 
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[12.5px] font-medium text-white/60">개선안</span>
@@ -392,9 +398,7 @@ export function ResultPage() {
                       <span className="text-muted text-[15px] line-through">
                         {formatKoreanDate(movedDate.from)}
                       </span>
-                      <span className="text-line text-[15px]" aria-hidden="true">
-                        →
-                      </span>
+                      <ArrowRight size={15} className="text-line" />
                       <span className="text-fg text-[15px] font-semibold">
                         {formatKoreanDate(movedDate.to)}
                       </span>
@@ -436,9 +440,7 @@ export function ResultPage() {
                         </span>
                       </span>
 
-                      <span className="text-line flex-none text-[15px]" aria-hidden="true">
-                        →
-                      </span>
+                      <ArrowRight size={15} className="text-line flex-none" />
 
                       <span className="flex min-w-0 items-center gap-2">
                         <span
