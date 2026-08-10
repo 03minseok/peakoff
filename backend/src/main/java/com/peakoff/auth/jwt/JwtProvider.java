@@ -32,6 +32,24 @@ public class JwtProvider {
 	/** 닉네임을 담는 클레임 이름. 화면 인사말에 쓰려고 함께 싣는다. */
 	private static final String NICKNAME_CLAIM = "nickname";
 
+	/**
+	 * 토큰의 용도. <b>이 서비스가 서명한 것이라고 다 로그인 토큰은 아니다.</b>
+	 *
+	 * <p>소셜 계정 연결에 쓰는 티켓도 같은 키로 서명한다. 용도를 적어두지 않으면 그 티켓을
+	 * Authorization 헤더에 실어 보냈을 때 서명이 맞으니 통과해, <b>비밀번호를 확인하기도 전에
+	 * 로그인한 셈</b>이 된다. 연결 확인을 넣은 이유가 통째로 사라지는 구멍이다.
+	 */
+	private static final String TYPE_CLAIM = "typ";
+	private static final String TYPE_ACCESS = "access";
+	private static final String TYPE_LINK = "link";
+
+	/** 연결 티켓의 수명. 비밀번호를 입력할 시간이면 충분하고, 주워도 오래 쓰지 못할 만큼 짧다. */
+	private static final long LINK_TICKET_VALIDITY_SECONDS = 300;
+
+	private static final String MEMBER_ID_CLAIM = "memberId";
+	private static final String PROVIDER_CLAIM = "provider";
+	private static final String PROVIDER_USER_ID_CLAIM = "providerUserId";
+
 	/** HS256이 요구하는 최소 키 길이(바이트). 이보다 짧은 비밀값은 거부된다. */
 	private static final int MIN_SECRET_BYTES = 32;
 
@@ -74,10 +92,83 @@ public class JwtProvider {
 		return Jwts.builder()
 				.subject(String.valueOf(memberId))
 				.claim(NICKNAME_CLAIM, nickname)
+				.claim(TYPE_CLAIM, TYPE_ACCESS)
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(now.plusSeconds(validitySeconds)))
 				.signWith(key)
 				.compact();
+	}
+
+	/**
+	 * 소셜 계정 연결을 위한 <b>짧은 수명의 티켓</b>을 만든다.
+	 *
+	 * <p>왜 필요한가: 카카오 인가 코드는 <b>한 번만</b> 쓸 수 있다. 그런데 "이 이메일로 가입한
+	 * 계정이 있으니 비밀번호를 확인하겠다"는 화면을 한 번 거치면, 사용자가 비밀번호를 입력해
+	 * 돌아왔을 때 그 코드는 이미 써버린 뒤다. 그렇다고 카카오 인증을 다시 시키면 사용자는
+	 * 같은 동의 절차를 두 번 겪는다. 그래서 "카카오 인증은 끝났다"는 사실만 서명해 건네고,
+	 * 화면이 그것을 비밀번호와 함께 돌려보낸다.
+	 *
+	 * <p>이 티켓은 <b>로그인 토큰이 아니다.</b> 그래서 두 겹으로 막는다.
+	 * <ul>
+	 *   <li>용도를 {@code typ=link}로 박는다 — {@link #parse}가 이 값을 보고 거절한다</li>
+	 *   <li>subject를 숫자가 아닌 문자열로 둔다 — 설령 용도 검사를 빠져나가도
+	 *       회원 번호로 해석되지 않아 남의 계정이 되지 않는다</li>
+	 * </ul>
+	 *
+	 * @param memberId 연결 대상 계정. <b>아직 이 사람의 것이라고 확인되지 않았다</b> —
+	 *                 확인은 비밀번호가 한다
+	 */
+	public String createLinkTicket(Long memberId, String provider, String providerUserId) {
+		Instant now = Instant.now();
+		return Jwts.builder()
+				.subject("link:" + providerUserId)
+				.claim(TYPE_CLAIM, TYPE_LINK)
+				.claim(MEMBER_ID_CLAIM, memberId)
+				.claim(PROVIDER_CLAIM, provider)
+				.claim(PROVIDER_USER_ID_CLAIM, providerUserId)
+				.issuedAt(Date.from(now))
+				.expiration(Date.from(now.plusSeconds(LINK_TICKET_VALIDITY_SECONDS)))
+				.signWith(key)
+				.compact();
+	}
+
+	/**
+	 * 연결 티켓을 검증하고 내용을 꺼낸다.
+	 *
+	 * <p>{@link #parse}와 거울처럼 반대다 — 여기서는 <b>{@code typ=link}가 아니면 거절</b>한다.
+	 * 로그인 토큰을 연결 요청에 실어 보내 비밀번호 확인을 건너뛰지 못하게 하려는 것이다.
+	 *
+	 * @return 유효하면 내용, 아니면 null
+	 */
+	public LinkTicket parseLinkTicket(String ticket) {
+		try {
+			Claims claims = Jwts.parser()
+					.verifyWith(key)
+					.build()
+					.parseSignedClaims(ticket)
+					.getPayload();
+
+			if (!TYPE_LINK.equals(claims.get(TYPE_CLAIM, String.class))) {
+				return null;
+			}
+			return new LinkTicket(
+					claims.get(MEMBER_ID_CLAIM, Long.class),
+					claims.get(PROVIDER_CLAIM, String.class),
+					claims.get(PROVIDER_USER_ID_CLAIM, String.class));
+		} catch (JwtException | IllegalArgumentException e) {
+			// 만료가 흔한 경우다(5분). 사용자 실수에 가까워 로그를 남기지 않는다.
+			return null;
+		}
+	}
+
+	/**
+	 * 연결 티켓에 담긴 내용.
+	 *
+	 * @param memberId       연결할 계정
+	 * @param provider       어느 소셜 제공자인가
+	 * @param providerUserId 그쪽이 매긴 고유 번호
+	 */
+	public record LinkTicket(Long memberId, String provider, String providerUserId) {
 	}
 
 	/**
@@ -95,6 +186,20 @@ public class JwtProvider {
 					.build()
 					.parseSignedClaims(token)
 					.getPayload();
+
+			/*
+			 * 로그인 토큰이 아닌 것을 걸러낸다.
+			 *
+			 * 연결 티켓도 같은 키로 서명하므로 서명 검사만으로는 통과한다. 그대로 두면
+			 * 비밀번호를 확인하기 전에 받은 티켓으로 로그인이 되어, 연결 확인 절차가 무력해진다.
+			 *
+			 * 값이 없는 토큰은 받아준다 — 이 클레임을 넣기 전에 발급된 토큰이 아직 살아 있다.
+			 * 유효기간이 7일이라, 막으면 지금 로그인해 있는 사람들이 이유 없이 튕겨 나간다.
+			 */
+			String type = claims.get(TYPE_CLAIM, String.class);
+			if (type != null && !TYPE_ACCESS.equals(type)) {
+				return null;
+			}
 
 			return new AuthenticatedMember(
 					Long.valueOf(claims.getSubject()), claims.get(NICKNAME_CLAIM, String.class));

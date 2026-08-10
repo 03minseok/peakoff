@@ -40,6 +40,12 @@ public class SecurityConfig {
 			"/api/health",
 			"/api/auth/signup",
 			"/api/auth/login",
+			/*
+			 * 소셜 로그인. 로그인하기 <b>전에</b> 부르는 경로라 당연히 열려 있어야 한다.
+			 * 연결(/link)도 여기 포함된다 — 그 요청의 본인 확인은 토큰이 아니라
+			 * 티켓과 비밀번호가 한다.
+			 */
+			"/api/auth/oauth/**",
 			"/api/places/**",
 			"/api/courses/diagnose",
 			"/api/dates/**" };
