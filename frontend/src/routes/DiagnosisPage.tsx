@@ -321,8 +321,9 @@ export function DiagnosisPage() {
                   level={diagnosis.totalLevel}
                   label={diagnosis.totalLevelLabel}
                 />
+                {/* 출처 표기(절대 규칙 4). 공사 이름 대신 중립 표현 — 숫자가 서는 화면마다 한 번은 말한다 */}
                 <span className="text-hint text-[13px]">
-                  {formatKoreanDate(plan.startDate)} 기준
+                  {formatKoreanDate(plan.startDate)} 기준 · 공공데이터 기반 예측
                 </span>
               </div>
 
