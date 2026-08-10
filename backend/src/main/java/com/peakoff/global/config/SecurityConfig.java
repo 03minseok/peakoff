@@ -14,6 +14,7 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import com.peakoff.auth.jwt.JwtAuthenticationFilter;
 import com.peakoff.auth.jwt.JwtProperties;
+import com.peakoff.auth.oauth.OAuthProperties;
 import com.peakoff.global.error.UnauthorizedException;
 
 import jakarta.servlet.DispatcherType;
@@ -30,7 +31,8 @@ import jakarta.servlet.DispatcherType;
  * 남의 코스가 조용히 공개된다. 실수했을 때 닫히는 쪽이 안전하다.
  */
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+// 인증에 쓰는 설정 묶음을 함께 켠다. JWT는 우리 토큰, OAuth는 소셜 제공자 인증키다.
+@EnableConfigurationProperties({ JwtProperties.class, OAuthProperties.class })
 public class SecurityConfig {
 
 	/** 로그인 없이 쓸 수 있는 경로. 게스트가 서비스 전체를 체험하는 데 필요한 것들이다. */

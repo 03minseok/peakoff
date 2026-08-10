@@ -5,6 +5,15 @@ server:
 spring:
   application:
     name: peakoff
+
+  # 인증키를 담는 로컬 전용 파일. 저장소에 올라가지 않는다(.gitignore).
+  #
+  # optional: 을 붙여 파일이 없어도 서버가 뜨게 한다. 팀원이 내려받은 저장소나 CI에는
+  # 그 파일이 없는데, 없다고 기동이 막히면 로그인과 상관없는 작업까지 멈춘다.
+  # 배포 환경에서는 이 파일 대신 환경변수로 같은 값을 넣는다.
+  config:
+    import: optional:classpath:application-local.yml
+
   profiles:
     # 목업 데이터로 동작한다. 공공데이터 API 구현이 붙으면 이 값을 바꿔 교체한다.
     active: mock
@@ -43,6 +52,19 @@ peakoff:
     secret: ${PEAKOFF_JWT_SECRET:}
     # 토큰 유효 기간. 심사 중 데모가 도중에 끊기지 않을 만큼 길게 둔다.
     validity: 7d
+
+  # 소셜 로그인. 값은 application-local.yml이나 환경변수로 넣는다 — 여기 적지 않는다.
+  oauth:
+    kakao:
+      # 카카오 개발자 콘솔 > 앱 설정 > 앱 키 > REST API 키.
+      # 지도에 쓰는 JavaScript 키와 다른 값이다. 비어 있으면 로그인 버튼이 "준비 중"으로 답한다.
+      client-id: ${KAKAO_CLIENT_ID:}
+      # 콘솔에서 Client Secret을 켠 경우에만 넣는다. 카카오에서 선택 기능이라,
+      # 켜지 않았다면 비워두는 것이 맞다 — 빈 값을 실어 보내면 오히려 거절당한다.
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+      # 카카오가 사용자를 되돌려 보낼 주소. 콘솔에 등록한 값과 한 글자도 달라선 안 된다.
+      # 배포하면 배포 도메인 주소로 바꾸고, 콘솔에도 같은 값을 추가한다.
+      redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/oauth/callback/kakao}
 
 springdoc:
   swagger-ui:
