@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.peakoff.global.error.UnauthorizedException;
@@ -34,6 +35,8 @@ public class KakaoLoginClient implements SocialLoginClient {
 
 	private static final Logger log = LoggerFactory.getLogger(KakaoLoginClient.class);
 
+	/** 사용자를 보내는 로그인·동의 화면. */
+	private static final String AUTHORIZE_URI = "https://kauth.kakao.com/oauth/authorize";
 	/** 인가 코드를 토큰으로 바꾸는 곳. 로그인 창을 띄우는 도메인(kauth)이다. */
 	private static final String TOKEN_URI = "https://kauth.kakao.com/oauth/token";
 	/** 토큰으로 사용자를 조회하는 곳. 자료를 읽는 도메인(kapi)이라 주소가 다르다. */
@@ -65,6 +68,28 @@ public class KakaoLoginClient implements SocialLoginClient {
 	@Override
 	public boolean isConfigured() {
 		return registration.isConfigured();
+	}
+
+	/**
+	 * 로그인 창 주소.
+	 *
+	 * <p>{@code UriComponentsBuilder}로 만드는 이유: 값을 문자열로 이어 붙이면 주소에 못 들어가는
+	 * 문자(콜론·슬래시 등)를 손으로 바꿔야 한다. redirect_uri에는 그런 문자가 잔뜩 들어 있어,
+	 * 한 번 빠뜨리면 카카오가 다른 주소로 읽고 거절한다.
+	 *
+	 * <p>{@code scope}를 적지 않는다. 무엇을 받을지는 <b>콘솔의 동의항목</b>이 정하고 있어,
+	 * 여기 또 적으면 두 곳이 어긋날 수 있다. 콘솔에서 닉네임만 켜뒀으므로 닉네임만 온다.
+	 */
+	@Override
+	public String authorizeUrl(String state) {
+		return UriComponentsBuilder.fromUriString(AUTHORIZE_URI)
+				.queryParam("client_id", registration.clientId())
+				.queryParam("redirect_uri", registration.redirectUri())
+				.queryParam("response_type", "code")
+				.queryParam("state", state)
+				.encode(StandardCharsets.UTF_8)
+				.build()
+				.toUriString();
 	}
 
 	@Override

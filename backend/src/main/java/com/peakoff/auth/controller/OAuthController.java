@@ -2,13 +2,16 @@ package com.peakoff.auth.controller;
 
 import java.util.Locale;
 
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peakoff.auth.dto.AuthResponse;
+import com.peakoff.auth.dto.AuthorizeUrlResponse;
 import com.peakoff.auth.dto.SocialLinkRequest;
 import com.peakoff.auth.dto.SocialLoginRequest;
 import com.peakoff.auth.dto.SocialLoginResponse;
@@ -36,6 +39,25 @@ public class OAuthController {
 
 	public OAuthController(SocialLoginService socialLoginService) {
 		this.socialLoginService = socialLoginService;
+	}
+
+	@Operation(
+			summary = "로그인 창 주소",
+			description = """
+					사용자를 보낼 제공자 로그인 화면 주소를 만들어 준다. 화면은 이 주소로 이동만 한다.
+
+					화면이 직접 조립하지 않는 이유: 주소에 들어가는 client_id·redirect_uri가
+					서버 설정과 화면 코드 두 곳에 존재하게 되고, 배포하면서 한쪽만 바뀌면
+					제공자가 KOE006(Redirect URI 불일치)으로 거절한다.
+
+					state는 화면이 만든 임의의 값이다. 돌아올 때 같은 값인지 확인해
+					남이 시작한 로그인이 아님을 가린다.""")
+	@GetMapping("/{provider}/authorize")
+	public ApiResponse<AuthorizeUrlResponse> authorizeUrl(
+			@PathVariable String provider, @RequestParam String state) {
+
+		return ApiResponse.ok(
+				new AuthorizeUrlResponse(socialLoginService.authorizeUrl(toProvider(provider), state)));
 	}
 
 	@Operation(

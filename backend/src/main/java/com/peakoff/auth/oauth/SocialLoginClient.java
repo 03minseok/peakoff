@@ -24,6 +24,19 @@ public interface SocialLoginClient {
 	boolean isConfigured();
 
 	/**
+	 * 사용자를 보낼 로그인 창 주소를 만든다.
+	 *
+	 * <p>화면이 이 주소를 직접 조립하지 않게 하려고 서버가 만든다. 주소에는 {@code client_id}와
+	 * {@code redirect_uri}가 들어가는데, 화면에서 조립하면 <b>같은 값이 두 곳에 존재</b>하게 된다.
+	 * 배포하면서 한쪽만 바꾸면 카카오가 KOE006(Redirect URI 불일치)으로 거절하고,
+	 * 원인이 설정 파일과 화면 코드 중 어디인지 찾느라 시간을 쓴다. 값은 한 곳에만 둔다.
+	 *
+	 * @param state 화면이 만든 임의의 값. 돌아올 때 같은 값인지 확인해
+	 *              <b>남이 시작한 로그인</b>이 아님을 가린다
+	 */
+	String authorizeUrl(String state);
+
+	/**
 	 * 인가 코드를 사용자 정보로 바꾼다.
 	 *
 	 * <p>두 번의 통신이 이 안에서 끝난다. 코드를 토큰으로 바꾸고, 토큰으로 사용자를 조회한다.

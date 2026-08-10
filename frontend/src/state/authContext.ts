@@ -1,5 +1,12 @@
 import { createContext, useContext } from 'react'
-import type { AuthMember, LoginRequest, SignupRequest } from '../types/api'
+import type {
+  AuthMember,
+  LoginRequest,
+  SignupRequest,
+  SocialLinkCandidate,
+  SocialLinkRequest,
+  SocialProvider,
+} from '../types/api'
 
 /**
  * Context 정의와 훅.
@@ -20,6 +27,23 @@ export interface AuthContextValue {
   signup: (request: SignupRequest) => Promise<void>
   login: (request: LoginRequest) => Promise<void>
   logout: () => void
+
+  /**
+   * 소셜 로그인 마무리. 제공자가 돌려준 인가 코드를 로그인으로 바꾼다.
+   *
+   * 끝이 둘이라 반환값으로 가른다.
+   * - `null`: 로그인이 끝났다. 화면은 돌아갈 곳으로 이동하면 된다
+   * - 후보 객체: 같은 이메일의 기존 계정이 있다. 비밀번호를 받아 {@link linkSocial}을 불러야 한다
+   *
+   * 인가 코드는 한 번만 쓸 수 있으므로 <b>같은 코드로 두 번 부르면 안 된다.</b>
+   */
+  completeSocialLogin: (
+    provider: SocialProvider,
+    code: string,
+  ) => Promise<SocialLinkCandidate | null>
+
+  /** 비밀번호를 확인해 소셜 계정을 기존 계정에 연결한다. 성공하면 곧바로 로그인 상태가 된다 */
+  linkSocial: (request: SocialLinkRequest) => Promise<void>
 
   /*
    * 계정 관리 중 여기 있는 것은 둘뿐이다. 비밀번호 변경은 로그인 상태를 바꾸지 않아서

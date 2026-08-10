@@ -6,6 +6,7 @@ import { AuthField } from '../components/AuthField'
 import { AuthShell } from '../components/AuthShell'
 import { PRIMARY_BUTTON } from '../components/styles'
 import { ApiRequestError } from '../services/api'
+import { startSocialLogin } from '../services/socialLogin'
 import { useAuth } from '../state/authContext'
 import { validateEmail, validatePasswordPresence } from '../utils/validation'
 
@@ -39,6 +40,33 @@ export function LoginPage() {
   /** 서버가 거절한 이유. 특정 칸의 문제가 아니라 조합의 문제라 폼 전체에 붙인다 */
   const [failure, setFailure] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  /** 카카오로 넘어가는 중. 주소를 서버에서 받아오는 사이 두 번 눌리는 것을 막는다 */
+  const [socialPending, setSocialPending] = useState(false)
+
+  /**
+   * 카카오 로그인 시작.
+   *
+   * 성공하면 이 페이지를 떠나므로 <b>끝나고 정리하는 코드가 없다.</b> 실패했을 때만
+   * 다시 누를 수 있게 되돌린다 — 인증키가 없는 배포이거나 서버가 꺼져 있는 경우다.
+   *
+   * 돌아올 곳으로 {@link from}을 넘긴다. 저장하려다 로그인하러 온 사람이 카카오를 거쳐
+   * 돌아왔을 때, 보던 화면이 아니라 홈으로 떨어지면 저장하려던 것을 다시 찾아가야 한다.
+   */
+  async function handleKakao() {
+    setSocialPending(true)
+    setNotice(null)
+    setFailure(null)
+    try {
+      await startSocialLogin('kakao', from ?? '/')
+    } catch (error: unknown) {
+      setSocialPending(false)
+      setFailure(
+        error instanceof ApiRequestError
+          ? error.message
+          : '카카오 로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.',
+      )
+    }
+  }
 
   /**
    * 입력을 고치면 그 칸의 오류 문구를 즉시 지운다.
@@ -188,15 +216,19 @@ export function LoginPage() {
       </div>
 
       {/*
-        카카오·네이버는 자리만 잡아둔다. 소셜 로그인은 외부 개발자 등록과 검수가 필요해
-        마감 일정상 마지막 순서다. 화면을 먼저 완성해두면 나중에 이 버튼의
-        onClick만 바꿔 끼우면 된다.
+        카카오는 동작하고 네이버는 아직이다. 둘을 나란히 두되 <b>모양은 같게</b> 둔다 —
+        준비 안 된 쪽을 흐리게 처리하면 "고장 난 버튼"으로 읽히고, 눌렀을 때 이유를
+        말해주는 편이 짧다.
+
+        버튼을 누르면 카카오로 <b>화면이 통째로 넘어간다.</b> 그래서 이동 중 상태를 화면에
+        오래 남길 필요가 없다 — 다만 주소를 받아오는 사이(수백 ms) 두 번 눌리는 것은 막는다.
       */}
       <div className="flex flex-col gap-2.25 lg:flex-row">
         <button
           type="button"
           className={`${SOCIAL_BUTTON} bg-[#FEE500] text-[#191600]`}
-          onClick={() => setNotice('간편 로그인은 준비 중이에요. 이메일로 먼저 이용해 주세요.')}
+          disabled={socialPending}
+          onClick={handleKakao}
         >
           <span
             className="grid h-4.75 w-4.75 place-items-center rounded-full bg-[#191600] text-[11px] font-bold text-[#FEE500]"
@@ -204,12 +236,12 @@ export function LoginPage() {
           >
             K
           </span>
-          카카오로 계속하기
+          {socialPending ? '카카오로 이동 중…' : '카카오로 계속하기'}
         </button>
         <button
           type="button"
           className={`${SOCIAL_BUTTON} bg-[#03C75A] text-white`}
-          onClick={() => setNotice('간편 로그인은 준비 중이에요. 이메일로 먼저 이용해 주세요.')}
+          onClick={() => setNotice('네이버 로그인은 준비 중이에요. 카카오나 이메일로 이용해 주세요.')}
         >
           <span
             className="grid h-4.75 w-4.75 place-items-center rounded-[5px] bg-white text-xs font-extrabold text-[#03C75A]"
@@ -220,7 +252,6 @@ export function LoginPage() {
           네이버로 계속하기
         </button>
       </div>
-      <p className="text-hint pt-2.5 text-center text-xs">간편 로그인은 준비 중이에요</p>
 
       {/*
         mt-auto로 화면 아래에 붙인다. 데스크톱에서는 좌측 패널이 같은 링크를 들고 있어 감춘다.

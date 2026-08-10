@@ -16,6 +16,9 @@ import type {
   SavedCourseDetail,
   SavedCourseSummary,
   SignupRequest,
+  SocialLinkRequest,
+  SocialLoginResult,
+  SocialProvider,
 } from '../types/api'
 
 /**
@@ -120,6 +123,54 @@ export function signup(request: SignupRequest, signal?: AbortSignal): Promise<Au
 /** POST /api/auth/login */
 export function login(request: LoginRequest, signal?: AbortSignal): Promise<AuthResult> {
   return apiRequest<AuthResult>('/auth/login', { method: 'POST', body: request, signal })
+}
+
+/**
+ * GET /api/auth/oauth/{provider}/authorize — 사용자를 보낼 로그인 창 주소를 받는다.
+ *
+ * 주소를 화면에서 조립하지 않는 이유: client_id와 redirect_uri가 서버 설정과 화면 코드
+ * 두 곳에 존재하게 된다. 배포하면서 한쪽만 바뀌면 카카오가 KOE006으로 거절하는데,
+ * 그때 원인이 어느 쪽인지 찾느라 시간을 쓴다. 값은 서버 한 곳에만 둔다.
+ */
+export function fetchAuthorizeUrl(
+  provider: SocialProvider,
+  state: string,
+  signal?: AbortSignal,
+): Promise<{ authorizeUrl: string }> {
+  return apiRequest<{ authorizeUrl: string }>(
+    `/auth/oauth/${provider}/authorize?state=${encodeURIComponent(state)}`,
+    { signal },
+  )
+}
+
+/**
+ * POST /api/auth/oauth/{provider} — 인가 코드를 로그인으로 바꾼다.
+ *
+ * 인가 코드는 <b>한 번만</b> 쓸 수 있다. 같은 코드로 두 번 부르면 두 번째는 실패하므로,
+ * 호출하는 쪽이 중복 호출을 막아야 한다(개발 모드의 이중 실행 포함).
+ */
+export function socialLogin(
+  provider: SocialProvider,
+  code: string,
+  signal?: AbortSignal,
+): Promise<SocialLoginResult> {
+  return apiRequest<SocialLoginResult>(`/auth/oauth/${provider}`, {
+    method: 'POST',
+    body: { code },
+    signal,
+  })
+}
+
+/**
+ * POST /api/auth/oauth/link — 비밀번호를 확인하고 기존 계정에 연결한다.
+ *
+ * 성공하면 그대로 로그인 상태가 된다(토큰이 온다).
+ */
+export function linkSocialAccount(
+  request: SocialLinkRequest,
+  signal?: AbortSignal,
+): Promise<AuthResult> {
+  return apiRequest<AuthResult>('/auth/oauth/link', { method: 'POST', body: request, signal })
 }
 
 /**
