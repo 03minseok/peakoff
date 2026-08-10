@@ -3,13 +3,13 @@ import { Close } from './icons'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import { fetchSavedCourse } from '../services/api'
 import type { SavedCourseDetail } from '../types/api'
-import { formatDateRange, formatNights } from '../utils/date'
+import { formatDateRange, formatNights, isPastDate } from '../utils/date'
 
 interface Props {
   /** 펼쳐 볼 코스. 1개면 상세, 2개면 나란히 비교 */
   courseIds: number[]
   onClose: () => void
-  /** 코스를 흐름으로 불러와 이어서 보기. 1개일 때만 쓴다 */
+  /** 코스를 흐름에 올려 다시 진단한다. 1개일 때, 지난 여행이 아닐 때만 쓴다 */
   onOpenInFlow: (course: SavedCourseDetail) => void
 }
 
@@ -32,7 +32,7 @@ type Phase =
  * 돌려야 하는데, 지난 여행은 예측 데이터가 없어 값이 나오지 않는다. 목록에 지난 여행이
  * 섞여 있는 화면에서 어떤 카드는 점수가 뜨고 어떤 카드는 안 뜨면 더 헷갈린다.
  * 여기서는 저장 시점의 총점과 담긴 장소만 보여주고, 장소별 진단은
- * "이어서 보기"로 흐름에 올려 진단 화면에서 본다.
+ * "다시 진단하기"로 흐름에 올려 진단 화면에서 본다.
  */
 export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props) {
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
@@ -193,15 +193,29 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
                     ))}
                   </ul>
 
-                  {!comparing && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenInFlow(course)}
-                      className="border-line bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border text-sm font-semibold transition-colors"
-                    >
-                      이어서 보기
-                    </button>
-                  )}
+                  {/*
+                    재계산은 <b>사용자가 누를 때만</b> 한다. 예측 데이터가 갱신되므로 열 때마다
+                    자동으로 다시 돌리면 저장해둔 숫자가 열 때마다 흔들린다 — 위에 보이는 것은
+                    항상 저장 시점의 스냅샷이고, 이 버튼이 유일한 재계산 입구다.
+
+                    지난 여행에는 버튼을 두지 않는다. 예측 데이터가 미래만 다루므로
+                    지난 날짜로 다시 진단하면 값이 나오지 않는다. 버튼을 비활성으로 두는 대신
+                    문장으로 이유를 말한다 — 잠긴 버튼은 "왜 안 되는지"를 설명하지 못한다.
+                  */}
+                  {!comparing &&
+                    (isPastDate(course.endDate) ? (
+                      <p className="bg-bg text-hint rounded-ui m-0 mt-1 px-3.5 py-3 text-center text-[12.5px] leading-[1.6]">
+                        지난 여행이에요. 저장할 때의 진단 결과를 보여드리고 있어요.
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onOpenInFlow(course)}
+                        className="border-line bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border text-sm font-semibold transition-colors"
+                      >
+                        수정하기
+                      </button>
+                    ))}
                 </article>
               ))}
             </div>

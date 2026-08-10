@@ -1,5 +1,5 @@
 import { LEVEL_TINT } from './levelStyles'
-import { ChevronRight, Close } from './icons'
+import { Close } from './icons'
 import type { SavedCourseSummary } from '../types/api'
 import { formatDateRange, formatNights, formatRelativeTime, isPastDate } from '../utils/date'
 
@@ -125,7 +125,7 @@ export function SavedCourseCard({
         <span className="text-hint text-xs">{formatRelativeTime(course.createdAt)} 저장</span>
         {!selecting && (
           <span className="text-brand-deep text-[13px] font-semibold" aria-hidden="true">
-            상세 보기 <ChevronRight size={13} />
+            상세 보기
           </span>
         )}
       </div>

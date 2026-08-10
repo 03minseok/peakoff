@@ -190,7 +190,13 @@ export function MyPage() {
       { region: course.region, startDate: course.startDate, nights: course.nights },
       days,
     )
-    navigate('/course')
+    /*
+     * 편집 화면이 아니라 진단 화면으로 간다. 버튼 이름이 "다시 진단하기"다 —
+     * 편집 화면에 내려주면 사용자가 진단 버튼을 한 번 더 찾아 눌러야 하고,
+     * 그 사이 화면은 이름이 약속한 것과 다른 곳에 서 있다.
+     * 재계산은 이 경로뿐이다. 열람은 스냅샷으로 끝난다(CLAUDE.md 저장 코스 처리).
+     */
+    navigate('/diagnosis')
   }
 
   // 확인이 끝나기 전에 튕겨내면 새로고침할 때마다 로그인 화면이 스쳐 지나간다.
