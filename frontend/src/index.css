@@ -3,10 +3,10 @@
 /*
  * 디자인 토큰. 값은 전부 디자인 시안(PEAKOFF Design System)에서 그대로 옮겼다.
  *
- * 색 의미는 서비스 정체성과 맞춘다.
- *   한적 = 청록  (이 서비스가 사용자를 데려가려는 방향)
- *   보통 = 앰버
- *   붐빔 = 주황  (피해야 할 방향)
+ * 색 의미는 서비스 정체성과 맞춘다. (CLAUDE.md 디자인 규칙과 같은 말이어야 한다)
+ *   한적 = 그린 #2ba88c  (이 서비스가 사용자를 데려가려는 방향)
+ *   보통 = 주황 #e8913a  (앰버 금지 — 브랜드 노랑과 구분되지 않는다)
+ *   붐빔 = 레드 #d6425c  (피해야 할 방향)
  *
  * 단계마다 solid / deep / tint / soft 네 가지를 둔다.
  *   solid — 점·막대·마커처럼 색 자체가 신호인 자리
@@ -47,22 +47,38 @@
   --c-brand-hover: #fbdf6b;
   --c-brand-tint: #fff8e1;
 
-  --c-quiet: #0e7c86;
+  /*
+   * 혼잡 3단계. 보통과 붐빔이 색조만으로 구분되지 않아 명도까지 벌린 값이다 —
+   * 상대 휘도가 보통 0.38 > 한적 0.30 > 붐빔 0.19로 갈라진다.
+   *
+   * ⚠️ 이 solid들은 밝아서 <b>흰 글자를 받지 못한다</b>(2.5~4.4:1).
+   * 글자가 얹히는 자리는 tint 배경 + deep 글자 조합을 쓴다.
+   * 지도 위에서는 대비가 죽으므로 아래 --c-marker-* 진한 값을 쓴다.
+   */
+  --c-quiet: #2ba88c;
   --c-quiet-deep: #0a5a61;
-  --c-quiet-tint: #e2f1f1;
+  --c-quiet-tint: #e0f5ef;
   --c-quiet-soft: #8cc7c6;
 
-  /* 흰 글자를 받는 채움색이다(순서 번호 원·지도 마커). 옛 값은 3.22:1이었다 */
-  --c-moderate: #9d6b22;
-  --c-moderate-deep: #8c5d17;
-  --c-moderate-tint: #faf0de;
-  --c-moderate-soft: #e4be7e;
+  /* 보통 = 주황. 앰버는 브랜드 노랑(#feeb8f)과 구분되지 않아 금지다 */
+  --c-moderate: #e8913a;
+  --c-moderate-deep: #8a4404;
+  --c-moderate-tint: #fdeedc;
+  --c-moderate-soft: #f0b183;
 
-  /* 같은 이유로 4.32 → 4.62. 색조는 그대로다 */
-  --c-crowded: #c64e36;
+  --c-crowded: #d6425c;
   --c-crowded-deep: #9b3320;
-  --c-crowded-tint: #fbe8e2;
+  --c-crowded-tint: #fce4e8;
   --c-crowded-soft: #eba48f;
+
+  /*
+   * 지도 마커 전용. 지도 타일 위에서는 본문용 solid의 대비가 죽으므로
+   * 같은 색조를 한 단계 진하게 내린 값을 쓴다. 마커에는 흰 테두리를 둘러
+   * 배경이 무엇이든 경계가 서게 한다.
+   */
+  --c-marker-quiet: #1f8f76;
+  --c-marker-moderate: #d67b22;
+  --c-marker-crowded: #be2f49;
 }
 
 @theme inline {
@@ -97,6 +113,11 @@
   --color-crowded-deep: var(--c-crowded-deep);
   --color-crowded-tint: var(--c-crowded-tint);
   --color-crowded-soft: var(--c-crowded-soft);
+
+  /* 지도 마커 전용 (bg-marker-quiet 등). 본문 solid와 지도 색을 따로 조정할 수 있게 분리 */
+  --color-marker-quiet: var(--c-marker-quiet);
+  --color-marker-moderate: var(--c-marker-moderate);
+  --color-marker-crowded: var(--c-marker-crowded);
 
   --font-sans: Pretendard, -apple-system, system-ui, 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;

@@ -276,7 +276,7 @@ export function ResultPage() {
           */}
           <section className="bg-fg rounded-card relative flex flex-col gap-5 overflow-hidden px-5 py-7 text-white lg:flex-row lg:items-center lg:gap-11 lg:px-10 lg:py-9">
             <div
-              className="absolute -top-20 -right-22 h-85 w-85 rounded-full bg-[rgb(14_124_134/0.28)]"
+              className="absolute -top-20 -right-22 h-85 w-85 rounded-full bg-[rgb(254_235_143/0.13)]"
               aria-hidden="true"
             />
 

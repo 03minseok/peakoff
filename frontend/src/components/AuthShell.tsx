@@ -52,11 +52,11 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
       */}
       <aside className="bg-fg relative hidden overflow-hidden px-8.5 py-9.5 text-white lg:flex lg:w-100 lg:flex-none lg:flex-col lg:justify-between">
         <div
-          className="absolute -top-17.5 -right-22.5 h-70 w-70 rounded-full bg-[rgb(14_124_134/0.28)]"
+          className="absolute -top-17.5 -right-22.5 h-70 w-70 rounded-full bg-[rgb(254_235_143/0.13)]"
           aria-hidden="true"
         />
         <div
-          className="absolute -bottom-22.5 -left-15 h-55 w-55 rounded-full bg-[rgb(14_124_134/0.14)]"
+          className="absolute -bottom-22.5 -left-15 h-55 w-55 rounded-full bg-[rgb(254_235_143/0.07)]"
           aria-hidden="true"
         />
 
