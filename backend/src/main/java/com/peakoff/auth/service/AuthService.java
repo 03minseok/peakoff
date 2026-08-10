@@ -22,6 +22,7 @@ import com.peakoff.global.error.ConflictException;
 import com.peakoff.global.error.UnauthorizedException;
 import com.peakoff.member.domain.Member;
 import com.peakoff.member.domain.MemberRepository;
+import com.peakoff.member.domain.SocialAccountRepository;
 
 /**
  * 가입·로그인과 계정 관리.
@@ -43,6 +44,19 @@ import com.peakoff.member.domain.MemberRepository;
 @Transactional(readOnly = true)
 public class AuthService {
 
+	/**
+	 * 로그인 실패에 쓰는 <b>단 하나의</b> 문구.
+	 *
+	 * <p>이메일이 없든, 비밀번호가 틀렸든, 소셜로만 가입해 비밀번호가 아예 없든 같은 말을 한다.
+	 * 나눠 알려주면 "이 이메일은 가입돼 있다"를 확인하는 통로가 된다.
+	 *
+	 * <p>뒤 문장은 <b>누구에게나 똑같이</b> 나가므로 아무것도 알려주지 않는다. 대신 카카오로
+	 * 가입해놓고 이메일 로그인을 시도한 사람에게는 나갈 길을 알려준다 — 그 사람은 여기서
+	 * 막히면 맞는 비밀번호가 존재하지 않는 화면을 계속 두드리게 된다.
+	 */
+	private static final String LOGIN_FAILED =
+			"이메일 또는 비밀번호가 올바르지 않습니다. 간편 로그인으로 가입하셨다면 카카오·네이버 버튼을 이용해 주세요.";
+
 	private final MemberRepository memberRepository;
 	/*
 	 * 탈퇴할 때 저장된 코스를 함께 지우려고 참조한다.
@@ -51,6 +65,8 @@ public class AuthService {
 	 * 지금 그렇게 하면 삭제 순서가 코드에서 사라져 추적하기 어려워진다. 대상이 늘면 그때 옮긴다.
 	 */
 	private final SavedCourseRepository savedCourseRepository;
+	/* 탈퇴할 때 연결된 소셜 수단도 함께 지운다. 남겨두면 사라진 회원을 가리키는 행이 된다. */
+	private final SocialAccountRepository socialAccountRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtProvider jwtProvider;
 	private final Clock clock;
@@ -98,10 +114,16 @@ public class AuthService {
 	 */
 	public AuthResponse login(LoginRequest request) {
 		Member member = memberRepository.findByEmail(Member.normalizeEmail(request.email()))
-				.orElseThrow(() -> new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다."));
+				.orElseThrow(() -> new UnauthorizedException(LOGIN_FAILED));
 
-		if (!passwordEncoder.matches(request.password(), member.passwordHash())) {
-			throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다.");
+		/*
+		 * 소셜로만 가입한 계정은 비밀번호가 없다.
+		 *
+		 * 이 갈래가 없으면 matches(입력, null)이 그냥 false를 돌려주어 "비밀번호가 틀렸다"가 된다.
+		 * 사용자는 맞는 비밀번호를 영영 찾지 못한 채 같은 화면을 반복한다.
+		 */
+		if (!member.hasPassword() || !passwordEncoder.matches(request.password(), member.passwordHash())) {
+			throw new UnauthorizedException(LOGIN_FAILED);
 		}
 
 		return toAuthResponse(member);
@@ -162,6 +184,12 @@ public class AuthService {
 		verifyPassword(member, request.password());
 
 		savedCourseRepository.deleteByMemberId(memberId);
+		/*
+		 * 연결된 소셜 수단도 함께 지운다. 남겨두면 사라진 회원을 가리키는 행이 되어
+		 * 외래키 제약에 걸리고, 설령 지워지더라도 그 카카오 계정으로 다시 로그인했을 때
+		 * 없는 회원을 가리키는 수단을 타고 들어오게 된다.
+		 */
+		socialAccountRepository.deleteByMemberId(memberId);
 		memberRepository.delete(member);
 	}
 
@@ -178,6 +206,16 @@ public class AuthService {
 	 * (비밀번호 변경·탈퇴) 앞에서는 그것으로 부족하다.
 	 */
 	private void verifyPassword(Member member, String rawPassword) {
+		/*
+		 * 비밀번호가 없는 계정(소셜 전용)은 이 방법으로 본인을 확인할 수 없다.
+		 *
+		 * 여기서 막지 않으면 "비밀번호가 올바르지 않습니다"가 나가는데, 그 계정에는 맞는
+		 * 비밀번호가 존재하지 않으므로 사용자는 탈퇴할 방법을 잃는다. 확인 수단을 다른 것으로
+		 * 바꿔주기 전까지는 <b>왜 안 되는지</b>를 말한다.
+		 */
+		if (!member.hasPassword()) {
+			throw new UnauthorizedException("간편 로그인으로 가입한 계정이라 비밀번호로 확인할 수 없어요.");
+		}
 		if (!passwordEncoder.matches(rawPassword, member.passwordHash())) {
 			throw new UnauthorizedException("비밀번호가 올바르지 않습니다.");
 		}
