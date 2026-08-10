@@ -60,6 +60,56 @@ export function formatDuration(nights: number): string {
   return `${nights + 1}일`
 }
 
+/**
+ * 박 수를 "2박 3일" 형태로. 당일치기는 "당일치기".
+ *
+ * {@link formatDuration}("3일")과 쓰임이 다르다. 좁은 칩에는 일수만, 코스 이름이나
+ * 카드 정보줄처럼 자리가 있는 곳에는 박까지 적는 편이 여행 기간으로 읽힌다.
+ */
+export function formatNights(nights: number): string {
+  return nights === 0 ? '당일치기' : `${nights}박 ${nights + 1}일`
+}
+
+/**
+ * 지난 시각을 "2일 전"처럼 어림잡아 적는다.
+ *
+ * 정확한 시각(2026-08-03 14:22)은 "언제 저장했더라"에 답하지 않는다.
+ * 목록을 훑을 때 필요한 것은 최근인지 오래됐는지뿐이다.
+ */
+export function formatRelativeTime(isoInstant: string): string {
+  const elapsedMs = Date.now() - new Date(isoInstant).getTime()
+  const minutes = Math.floor(elapsedMs / 60_000)
+
+  if (minutes < 1) {
+    return '방금 전'
+  }
+  if (minutes < 60) {
+    return `${minutes}분 전`
+  }
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) {
+    return `${hours}시간 전`
+  }
+
+  const days = Math.floor(hours / 24)
+  if (days < 7) {
+    return `${days}일 전`
+  }
+  if (days < 30) {
+    return `${Math.floor(days / 7)}주 전`
+  }
+  if (days < 365) {
+    return `${Math.floor(days / 30)}개월 전`
+  }
+  return `${Math.floor(days / 365)}년 전`
+}
+
+/** "2026-09-16" → 그 날짜가 오늘보다 앞인지. 지난 여행을 가려낼 때 쓴다 */
+export function isPastDate(isoDate: string): boolean {
+  return isoDate < today()
+}
+
 /** 시작일과 박 수로 "9.12 → 9.14"를 만든다. */
 export function formatDateRange(startDate: string, nights: number): string {
   const [year, month, day] = startDate.split('-').map(Number)

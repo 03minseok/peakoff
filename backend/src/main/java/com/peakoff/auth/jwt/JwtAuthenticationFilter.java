@@ -3,6 +3,7 @@ package com.peakoff.auth.jwt;
 import java.io.IOException;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -22,16 +23,13 @@ import jakarta.servlet.http.HttpServletResponse;
  * 이 서비스는 로그인 없이도 전체 흐름이 돌아야 한다.
  */
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private static final String HEADER = "Authorization";
 	private static final String PREFIX = "Bearer ";
 
 	private final JwtProvider jwtProvider;
-
-	public JwtAuthenticationFilter(JwtProvider jwtProvider) {
-		this.jwtProvider = jwtProvider;
-	}
 
 	@Override
 	protected void doFilterInternal(

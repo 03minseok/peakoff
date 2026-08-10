@@ -1,9 +1,12 @@
 package com.peakoff.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -217,19 +220,50 @@ class ApiEndpointsTest {
 	class DateAlternatives {
 
 		@Test
-		@DisplayName("선택 날짜보다 한적한 날짜를 개선폭과 함께 제안한다")
-		void suggestsQuieterDates() throws Exception {
-			// 토요일을 고르면 평일이 더 한적하다고 나와야 한다
+		@DisplayName("기준 날짜 앞뒤 range일을 날짜순으로 돌려준다 — 지난 날짜도 포함")
+		void returnsWindowAroundDate() throws Exception {
+			// range=3이면 앞 3일 + 뒤 3일 = 7일 창에서 기준일을 뺀 6개
 			mockMvc.perform(get("/api/dates/alternatives")
 					.param("placeId", "mock-bulguksa")
 					.param("date", "2026-09-12")
-					.param("range", "10"))
+					.param("range", "3"))
 					.andExpect(status().isOk())
 					.andExpect(jsonPath("$.data.selectedDate").value("2026-09-12"))
+					.andExpect(jsonPath("$.data.options.length()").value(6))
+					// 날짜순이라 첫 줄이 기준일보다 3일 <b>앞</b>이어야 한다
+					.andExpect(jsonPath("$.data.options[0].date").value("2026-09-09"))
+					.andExpect(jsonPath("$.data.options[5].date").value("2026-09-15"));
+		}
+
+		@Test
+		@DisplayName("더 붐비는 날도 담는다 — 되돌아갈 날짜와 비교 대상이 목록에 있어야 한다")
+		void includesWorseDates() throws Exception {
+			// 수요일(평일 보정을 받은 날)을 기준으로 잡으면 주말이 창에 들어와 개선폭이 음수가 된다
+			String body = mockMvc.perform(get("/api/dates/alternatives")
+					.param("placeId", "mock-bulguksa")
+					.param("date", "2026-09-16")
+					.param("range", "3"))
+					.andExpect(status().isOk())
+					.andReturn().getResponse().getContentAsString();
+
+			assertThat(body).contains("\"improvement\":-");
+		}
+
+		@Test
+		@DisplayName("토요일을 고르면 더 한적한 평일이 창 안에 있다")
+		void suggestsQuieterDates() throws Exception {
+			String body = mockMvc.perform(get("/api/dates/alternatives")
+					.param("placeId", "mock-bulguksa")
+					.param("date", "2026-09-12")
+					.param("range", "3"))
+					.andExpect(status().isOk())
 					.andExpect(jsonPath("$.data.alreadyQuietest").value(false))
-					.andExpect(jsonPath("$.data.options.length()").value(org.hamcrest.Matchers.greaterThan(0)))
-					.andExpect(jsonPath("$.data.options[0].improvement")
-							.value(org.hamcrest.Matchers.greaterThan(0)));
+					.andReturn().getResponse().getContentAsString();
+
+			List<Integer> improvements =
+					com.jayway.jsonpath.JsonPath.read(body, "$.data.options[*].improvement");
+
+			assertThat(improvements).anyMatch(value -> value > 0);
 		}
 
 		@Test
@@ -244,17 +278,27 @@ class ApiEndpointsTest {
 					.andExpect(jsonPath("$.data.selectedQuietness").isNumber());
 		}
 
+		/**
+		 * 예전에는 "빈 목록 = 더 나은 날 없음"이었다. 서버가 개선되는 날만 걸러 보냈기 때문이다.
+		 * 이제는 창 안의 모든 날을 보내므로 목록이 비지 않는다 — 특정 날짜의 결과를 못박는 대신
+		 * <b>두 값이 어긋나지 않는다</b>는 규칙 자체를 검증한다.
+		 */
 		@Test
-		@DisplayName("이미 가장 한적한 날이면 빈 목록과 함께 alreadyQuietest가 true")
-		void alreadyQuietestWhenNoBetterDate() throws Exception {
-			// 수요일은 평일 보정을 이미 받으므로 같은 주 안에 더 나은 날이 없다
-			mockMvc.perform(get("/api/dates/alternatives")
+		@DisplayName("alreadyQuietest는 창 안에 개선되는 날이 없을 때만 true다 — 목록은 그래도 채워진다")
+		void alreadyQuietestReflectsWindow() throws Exception {
+			String body = mockMvc.perform(get("/api/dates/alternatives")
 					.param("placeId", "mock-bulguksa")
 					.param("date", "2026-09-16")
-					.param("range", "4"))
+					.param("range", "3"))
 					.andExpect(status().isOk())
-					.andExpect(jsonPath("$.data.alreadyQuietest").value(true))
-					.andExpect(jsonPath("$.data.options.length()").value(0));
+					.andReturn().getResponse().getContentAsString();
+
+			boolean alreadyQuietest = com.jayway.jsonpath.JsonPath.read(body, "$.data.alreadyQuietest");
+			List<Integer> improvements =
+					com.jayway.jsonpath.JsonPath.read(body, "$.data.options[*].improvement");
+
+			assertThat(improvements).isNotEmpty();
+			assertThat(alreadyQuietest).isEqualTo(improvements.stream().noneMatch(value -> value > 0));
 		}
 
 		@Test

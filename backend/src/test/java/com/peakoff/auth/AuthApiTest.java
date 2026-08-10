@@ -1,7 +1,9 @@
 package com.peakoff.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import com.peakoff.course.domain.SavedCourseRepository;
 import com.peakoff.member.domain.Member;
 import com.peakoff.member.domain.MemberRepository;
 import com.peakoff.support.IntegrationTest;
@@ -30,6 +33,9 @@ class AuthApiTest {
 	private MemberRepository memberRepository;
 
 	@Autowired
+	private SavedCourseRepository savedCourseRepository;
+
+	@Autowired
 	private PasswordEncoder passwordEncoder;
 
 	/**
@@ -37,9 +43,13 @@ class AuthApiTest {
 	 *
 	 * <p>이걸 빼면 "이미 가입된 이메일" 테스트가 앞선 테스트의 계정에 걸려
 	 * <b>실제로 검증하려던 것과 다른 이유로</b> 통과한다. 통과하는데 의미가 없는 테스트가 된다.
+	 *
+	 * <p>코스를 먼저 지운다. 코스가 회원을 가리키고 있어서 순서를 바꾸면 외래키 제약에 걸린다 —
+	 * 탈퇴 서비스가 지키는 순서와 같다.
 	 */
 	@BeforeEach
 	void clearMembers() {
+		savedCourseRepository.deleteAll();
 		memberRepository.deleteAll();
 	}
 
@@ -331,6 +341,162 @@ class AuthApiTest {
 			String token = signupAndGetToken("raw@peakoff.kr");
 
 			mockMvc.perform(get("/api/auth/me").header("Authorization", token))
+					.andExpect(status().isUnauthorized());
+		}
+	}
+
+	@Nested
+	@DisplayName("계정 관리 (닉네임·비밀번호·탈퇴)")
+	class AccountManagement {
+
+		@Test
+		@DisplayName("닉네임을 바꾸면 새 토큰이 함께 온다 — 그 토큰에 새 닉네임이 들어 있다")
+		void reissuesTokenOnNicknameChange() throws Exception {
+			String token = signupAndGetToken("nick@peakoff.kr");
+
+			MvcResult result = mockMvc.perform(patch("/api/auth/me/nickname")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"nickname":"한적러"}"""))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.member.nickname").value("한적러"))
+					.andReturn();
+
+			/*
+			 * 응답의 닉네임만 보면 부족하다. 토큰이 그대로면 새로고침할 때 옛 닉네임이 되살아나므로,
+			 * 새 토큰으로 조회했을 때도 바뀐 이름이 나오는지까지 확인한다.
+			 */
+			String reissued = com.jayway.jsonpath.JsonPath.read(
+					result.getResponse().getContentAsString(), "$.data.token");
+
+			mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + reissued))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.nickname").value("한적러"));
+		}
+
+		@Test
+		@DisplayName("로그인하지 않으면 계정을 건드릴 수 없다 — SecurityConfig가 막는다")
+		void requiresLogin() throws Exception {
+			mockMvc.perform(patch("/api/auth/me/nickname")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"nickname":"몰래"}"""))
+					.andExpect(status().isUnauthorized());
+
+			mockMvc.perform(delete("/api/auth/me")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"password":"peakoff123"}"""))
+					.andExpect(status().isUnauthorized());
+		}
+
+		@Test
+		@DisplayName("현재 비밀번호가 틀리면 비밀번호를 바꿀 수 없다")
+		void rejectsPasswordChangeWithWrongCurrent() throws Exception {
+			String token = signupAndGetToken("pwc@peakoff.kr");
+
+			mockMvc.perform(patch("/api/auth/me/password")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"currentPassword":"wrongpassword","newPassword":"peakoff999",
+							 "newPasswordConfirm":"peakoff999"}"""))
+					.andExpect(status().isUnauthorized());
+
+			// 실제로 안 바뀌었는지까지 본다. 401만 보면 "거절했지만 이미 바꿨다"를 놓친다.
+			Member unchanged = memberRepository.findByEmail("pwc@peakoff.kr").orElseThrow();
+			assertThat(passwordEncoder.matches("peakoff123", unchanged.passwordHash())).isTrue();
+		}
+
+		@Test
+		@DisplayName("비밀번호를 바꾸면 옛 비밀번호로는 로그인할 수 없다")
+		void changesPassword() throws Exception {
+			String token = signupAndGetToken("pwok@peakoff.kr");
+
+			mockMvc.perform(patch("/api/auth/me/password")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"currentPassword":"peakoff123","newPassword":"peakoff999",
+							 "newPasswordConfirm":"peakoff999"}"""))
+					.andExpect(status().isOk());
+
+			mockMvc.perform(post("/api/auth/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"email":"pwok@peakoff.kr","password":"peakoff123"}"""))
+					.andExpect(status().isUnauthorized());
+
+			mockMvc.perform(post("/api/auth/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"email":"pwok@peakoff.kr","password":"peakoff999"}"""))
+					.andExpect(status().isOk());
+		}
+
+		@Test
+		@DisplayName("비밀번호가 틀리면 탈퇴할 수 없다")
+		void rejectsDeletionWithWrongPassword() throws Exception {
+			String token = signupAndGetToken("keep@peakoff.kr");
+
+			mockMvc.perform(delete("/api/auth/me")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"password":"wrongpassword"}"""))
+					.andExpect(status().isUnauthorized());
+
+			assertThat(memberRepository.findByEmail("keep@peakoff.kr")).isPresent();
+		}
+
+		/**
+		 * 이 테스트가 이 묶음의 핵심이다.
+		 *
+		 * <p>저장된 코스는 회원을 가리키고, 코스에 담긴 장소는 다시 코스를 가리킨다.
+		 * 회원만 지우면 외래키 제약에 걸려 500이 나간다 — 코스를 하나도 저장하지 않고
+		 * 시험하면 그 사고가 보이지 않는다.
+		 */
+		@Test
+		@DisplayName("탈퇴하면 저장한 코스도 함께 사라진다")
+		void deletesAccountWithSavedCourses() throws Exception {
+			String token = signupAndGetToken("bye@peakoff.kr");
+			String placeId = com.peakoff.place.mock.GyeongjuMockCatalog.places().get(0).id();
+
+			mockMvc.perform(post("/api/courses")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"name":"탈퇴 시험","region":"gyeongju","startDate":"2026-09-16","nights":0,
+							 "totalQuietness":70,"slots":[{"day":1,"order":1,"placeId":"%s"}]}"""
+							.formatted(placeId)))
+					.andExpect(status().isCreated());
+
+			mockMvc.perform(delete("/api/auth/me")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"password":"peakoff123"}"""))
+					.andExpect(status().isOk());
+
+			assertThat(memberRepository.findByEmail("bye@peakoff.kr")).isEmpty();
+			assertThat(savedCourseRepository.count()).isZero();
+		}
+
+		@Test
+		@DisplayName("탈퇴한 뒤에는 그 토큰이 통하지 않는다 — 서버가 토큰을 취소하지 않아도 막힌다")
+		void invalidatesTokenAfterDeletion() throws Exception {
+			String token = signupAndGetToken("gone@peakoff.kr");
+
+			mockMvc.perform(delete("/api/auth/me")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"password":"peakoff123"}"""))
+					.andExpect(status().isOk());
+
+			// 토큰 서명은 여전히 유효하다. 가리키는 회원이 없어서 막히는 것이다.
+			mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
 					.andExpect(status().isUnauthorized());
 		}
 	}

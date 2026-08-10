@@ -3,10 +3,10 @@
 /*
  * 디자인 토큰. 값은 전부 디자인 시안(PEAKOFF Design System)에서 그대로 옮겼다.
  *
- * 색 의미는 서비스 정체성과 맞춘다.
- *   한적 = 청록  (이 서비스가 사용자를 데려가려는 방향)
- *   보통 = 앰버
- *   붐빔 = 주황  (피해야 할 방향)
+ * 색 의미는 서비스 정체성과 맞춘다. (CLAUDE.md 디자인 규칙과 같은 말이어야 한다)
+ *   한적 = 그린 #2ba88c  (이 서비스가 사용자를 데려가려는 방향)
+ *   보통 = 주황 #e8913a  (앰버 금지 — 브랜드 노랑과 구분되지 않는다)
+ *   붐빔 = 레드 #d6425c  (피해야 할 방향)
  *
  * 단계마다 solid / deep / tint / soft 네 가지를 둔다.
  *   solid — 점·막대·마커처럼 색 자체가 신호인 자리
@@ -24,27 +24,61 @@
 
   --c-fg: #16211f;
   --c-muted: #5f706e;
-  --c-hint: #8a9997;
+  /* 흰 카드에서 2.96:1이라 본문 기준(4.5)에 못 미쳤다. 색조는 그대로 두고 밝기만 내렸다 */
+  --c-hint: #667170;
 
-  --c-brand: #0e7c86;
-  --c-brand-deep: #0a5a61;
-  --c-brand-hover: #0a5f67;
-  --c-brand-tint: #e2f1f1;
+  /*
+   * 브랜드 = 노랑. 초록은 트래킹 앱, 파랑은 금융 앱으로 읽혀서 그 중간을 잡았다.
+   *
+   * <b>이 색은 밝다. 그래서 위에 올리는 글자가 흰색이 아니라 검정(--c-fg)이다.</b>
+   * 흰 글자를 얹으면 1.2:1이라 아예 안 보인다. 노랑을 어둡게 내려 흰 글자를 받게 하면
+   * 노랑이 아니라 카키가 된다 — 밝게 두고 글자를 어둡게 하는 쪽이 이 색을 살리는 길이다.
+   *
+   * 그래서 브랜드색과 한적색이 <b>처음으로 갈라졌다.</b> 한적/보통/붐빔 3단계는
+   * 신호등처럼 읽혀야 해서 청록·앰버·레드를 그대로 둔다. 노랑은 버튼·로고·강조 전용이다.
+   *
+   *   tint  #fff8e1  옅은 배경 (칩·안내 상자)
+   *   point #feeb8f  버튼·로고·강조        ← 지정색
+   *   hover #fbdf6b  point 위에 손을 올렸을 때
+   *   deep  #7a6402  글자·테두리용. point는 글자색으로 쓸 수 없다
+   */
+  --c-brand: #feeb8f;
+  --c-brand-deep: #7a6402;
+  --c-brand-hover: #fbdf6b;
+  --c-brand-tint: #fff8e1;
 
-  --c-quiet: #0e7c86;
+  /*
+   * 혼잡 3단계. 보통과 붐빔이 색조만으로 구분되지 않아 명도까지 벌린 값이다 —
+   * 상대 휘도가 보통 0.38 > 한적 0.30 > 붐빔 0.19로 갈라진다.
+   *
+   * ⚠️ 이 solid들은 밝아서 <b>흰 글자를 받지 못한다</b>(2.5~4.4:1).
+   * 글자가 얹히는 자리는 tint 배경 + deep 글자 조합을 쓴다.
+   * 지도 위에서는 대비가 죽으므로 아래 --c-marker-* 진한 값을 쓴다.
+   */
+  --c-quiet: #2ba88c;
   --c-quiet-deep: #0a5a61;
-  --c-quiet-tint: #e2f1f1;
+  --c-quiet-tint: #e0f5ef;
   --c-quiet-soft: #8cc7c6;
 
-  --c-moderate: #c08329;
-  --c-moderate-deep: #8c5d17;
-  --c-moderate-tint: #faf0de;
-  --c-moderate-soft: #e4be7e;
+  /* 보통 = 주황. 앰버는 브랜드 노랑(#feeb8f)과 구분되지 않아 금지다 */
+  --c-moderate: #e8913a;
+  --c-moderate-deep: #8a4404;
+  --c-moderate-tint: #fdeedc;
+  --c-moderate-soft: #f0b183;
 
-  --c-crowded: #ce5138;
+  --c-crowded: #d6425c;
   --c-crowded-deep: #9b3320;
-  --c-crowded-tint: #fbe8e2;
+  --c-crowded-tint: #fce4e8;
   --c-crowded-soft: #eba48f;
+
+  /*
+   * 지도 마커 전용. 지도 타일 위에서는 본문용 solid의 대비가 죽으므로
+   * 같은 색조를 한 단계 진하게 내린 값을 쓴다. 마커에는 흰 테두리를 둘러
+   * 배경이 무엇이든 경계가 서게 한다.
+   */
+  --c-marker-quiet: #1f8f76;
+  --c-marker-moderate: #d67b22;
+  --c-marker-crowded: #be2f49;
 }
 
 @theme inline {
@@ -80,6 +114,11 @@
   --color-crowded-tint: var(--c-crowded-tint);
   --color-crowded-soft: var(--c-crowded-soft);
 
+  /* 지도 마커 전용 (bg-marker-quiet 등). 본문 solid와 지도 색을 따로 조정할 수 있게 분리 */
+  --color-marker-quiet: var(--c-marker-quiet);
+  --color-marker-moderate: var(--c-marker-moderate);
+  --color-marker-crowded: var(--c-marker-crowded);
+
   --font-sans: Pretendard, -apple-system, system-ui, 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
 
@@ -104,8 +143,14 @@
   --shadow-rest: 0 1px 2px rgb(22 33 31 / 0.05);
   --shadow-raised:
     0 1px 2px rgb(22 33 31 / 0.05), 0 8px 24px rgb(22 33 31 / 0.06);
-  /* 주요 버튼 전용. 브랜드색을 머금은 그림자라 버튼이 배경에서 확실히 떠오른다. */
-  --shadow-cta: 0 6px 18px rgb(14 124 134 / 0.22);
+  /*
+   * 주요 버튼 전용.
+   *
+   * 예전에는 브랜드색을 머금은 그림자였다. 브랜드가 밝은 노랑이 되면서 흰 배경 위에
+   * 노란 그림자가 보이지 않게 되어, 중립적인 어두운 그림자로 바꿨다.
+   * 밝은 버튼일수록 바닥에서 떠 있다는 신호가 그림자 말고는 없다.
+   */
+  --shadow-cta: 0 6px 18px rgb(22 33 31 / 0.14);
 }
 
 @layer base {
@@ -113,6 +158,25 @@
     /* 시안이 밝은 화면 하나만 정의한다. 다크 모드 값을 임의로 만들면
        심사 환경(브라우저 설정에 따라)에서 시안과 다른 화면이 나온다. */
     color-scheme: light;
+
+    /*
+     * 세로 스크롤바를 <b>스크롤할 것이 없을 때도</b> 띄운다. 자리를 늘 차지하게 하려는 것이다.
+     *
+     * 없으면 이런 일이 생긴다: 홈처럼 긴 화면에는 스크롤바가 뜨고, 코스 짜기처럼
+     * 한 화면에 들어가는 폼에는 뜨지 않는다. 스크롤바 너비(데스크톱 16px)만큼 표시 영역이
+     * 달라지므로, mx-auto로 가운데 정렬한 헤더·본문이 화면을 옮길 때마다 그 절반(8px)씩
+     * 밀린다. 헤더는 두 화면이 <b>같은 클래스를 쓰는데도</b> "코스 짜기로 가면 로고가
+     * 오른쪽으로 조금 움직이는" 것으로 보인다. 고정 헤더는 화면이 바뀌어도 픽셀 하나
+     * 안 움직여야 같은 헤더로 읽힌다.
+     *
+     * 원래는 자리만 비우는 scrollbar-gutter: stable이 더 깔끔하다(빈 막대가 안 보인다).
+     * 그런데 크로미움에서 <b>뷰포트에는 적용되지 않는다</b> — 실제 브라우저에서 재어 보니
+     * 계산값은 stable인데 확보된 자리는 0px이었다(일반 스크롤 상자에서는 16px 확보됨).
+     * body의 overflow-x: clip과는 무관하게 그랬다. 그래서 확실히 동작하는 쪽을 쓴다.
+     *
+     * 모바일은 겹침형 스크롤바라 애초에 자리를 차지하지 않아 이 규칙의 영향이 없다.
+     */
+    overflow-y: scroll;
   }
 
   body {
@@ -120,15 +184,30 @@
     color: var(--color-muted);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+
+    /*
+     * 페이지가 옆으로 밀리는 것을 막는 최후 방어선.
+     *
+     * 어떤 요소가 실수로 화면보다 넓어져도(장식 원, 폭이 확정되지 않은 스크롤 상자 등)
+     * 문서 전체에 가로 스크롤이 생기지 않는다. 가로로 넘치는 내용은 각자
+     * overflow-x-auto 상자 안에서 스크롤해야 한다 — 주간 예보 스트립처럼.
+     *
+     * hidden이 아니라 clip인 이유: clip은 스크롤 컨테이너를 만들지 않아
+     * position: sticky(헤더, 하단 CTA)가 계속 동작한다. hidden은 sticky를 깨뜨린다.
+     *
+     * 이것은 증상을 가리는 안전망이지 면죄부가 아니다. 넘치는 요소는 계속 찾아서 고친다.
+     */
+    overflow-x: clip;
   }
 
   #root {
     min-height: 100svh;
   }
 
-  /* 키보드 이동 시 초점이 어디 있는지 항상 보이게 한다. */
+  /* 키보드 이동 시 초점이 어디 있는지 항상 보이게 한다.
+     brand가 아니라 brand-deep인 이유: 밝은 노랑 테두리는 흰 배경에서 1.2:1이라 안 보인다. */
   :focus-visible {
-    outline: 2px solid var(--color-brand);
+    outline: 2px solid var(--color-brand-deep);
     outline-offset: 2px;
   }
 }

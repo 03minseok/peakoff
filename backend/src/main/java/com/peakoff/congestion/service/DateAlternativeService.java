@@ -1,7 +1,6 @@
 package com.peakoff.congestion.service;
 
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -24,8 +23,6 @@ import com.peakoff.place.service.PlaceService;
 @Service
 public class DateAlternativeService {
 
-	private static final int MAX_OPTIONS = 5;
-
 	private final PlaceService placeService;
 	private final CongestionProvider congestionProvider;
 
@@ -34,23 +31,44 @@ public class DateAlternativeService {
 		this.congestionProvider = congestionProvider;
 	}
 
-	/** 목록이 비어 있지 않은지와 기간 범위는 컨트롤러의 검증 애노테이션이 이미 걸렀다. */
+	/**
+	 * 기준 날짜 <b>앞뒤</b>로 살펴 그 창 안의 모든 날짜를 돌려준다.
+	 *
+	 * <h3>왜 앞뒤인가</h3>
+	 * 앞으로만 보면 사용자가 날짜를 옮긴 뒤 <b>원래 날짜로 돌아갈 수 없다.</b> 옮긴 날짜를
+	 * 기준으로 다시 물으면 이전 날짜는 창 밖(과거)이라 목록에 영영 나오지 않는다.
+	 * 앞뒤로 열어두면 되돌아갈 날짜가 늘 목록 안에 있다.
+	 *
+	 * <h3>왜 더 붐비는 날도 주는가</h3>
+	 * 예전에는 {@code improvement > 0}인 날만 걸러 보냈다. 그때는 "더 나은 날 추천"이
+	 * 전부였지만, 지금은 화면이 <b>날짜를 고르는 표</b>로 쓰인다 — 되돌아갈 날짜와
+	 * 비교 대상이 함께 있어야 "왜 이 날이 나은지"가 성립한다.
+	 * 걸러내는 판단은 화면이 한다(더 나은 날만 강조). 서버는 사실만 내려보낸다.
+	 *
+	 * <h3>지난 날짜</h3>
+	 * 창에 걸리면 지난 날짜도 그대로 담는다. 비교 맥락으로 쓸모가 있어서다.
+	 * 다만 <b>여행 날짜로 고를 수는 없다</b> — 그 판단은 화면이 한다.
+	 *
+	 * <p><b>날짜순으로 나간다.</b> 개선폭 순으로 주면 화면이 달력처럼 읽히지 않고,
+	 * 어느 날이 어제이고 내일인지 매번 다시 헤아려야 한다.
+	 * 이 순서는 {@code datesUntil}이 오름차순 스트림이라 <b>거저 얻는다</b> —
+	 * 따로 정렬하지 않는다. 개선폭 순이 필요해지면 그때 정렬을 넣어야 한다.
+	 *
+	 * <p>목록이 비어 있지 않은지와 기간 범위는 컨트롤러의 검증 애노테이션이 이미 걸렀다.
+	 */
 	public DateAlternativeResponse suggest(List<String> placeIds, LocalDate selectedDate, int rangeDays) {
 		placeIds.forEach(this::ensureHasData);
 
 		int selectedQuietness = averageQuietness(placeIds, selectedDate);
 
-		List<DateOption> better = selectedDate.datesUntil(selectedDate.plusDays(rangeDays))
+		// datesUntil이 이미 날짜 오름차순이고 filter·map은 순서를 보존한다. 다시 정렬할 것이 없다.
+		List<DateOption> window = selectedDate.minusDays(rangeDays)
+				.datesUntil(selectedDate.plusDays(rangeDays + 1))
 				.filter(date -> !date.equals(selectedDate))
 				.map(date -> DateOption.of(date, averageQuietness(placeIds, date), selectedQuietness))
-				// 더 한적한 날만 제안한다. 더 붐비는 날을 보여줄 이유가 없다.
-				.filter(option -> option.improvement() > 0)
-				.sorted(Comparator.comparingInt(DateOption::improvement).reversed()
-						.thenComparing(DateOption::date))
-				.limit(MAX_OPTIONS)
 				.toList();
 
-		return DateAlternativeResponse.of(selectedDate, selectedQuietness, better);
+		return DateAlternativeResponse.of(selectedDate, selectedQuietness, window);
 	}
 
 	/** 코스 전체를 물었을 때는 장소들의 평균으로 그 날짜를 대표한다. */

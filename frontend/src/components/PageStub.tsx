@@ -15,7 +15,7 @@ export function PageStub({ step, title, description }: Props) {
   return (
     <section className="flex flex-col gap-2.5 py-7">
       {step && (
-        <p className="text-brand m-0 text-xs font-semibold tracking-[0.12em]">{step}</p>
+        <p className="text-brand-deep m-0 text-xs font-semibold tracking-[0.12em]">{step}</p>
       )}
       <h1 className="text-fg m-0 text-[26px] font-bold tracking-[-0.02em]">{title}</h1>
       <p className="m-0 text-sm leading-[1.65] text-pretty">{description}</p>

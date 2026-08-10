@@ -14,7 +14,7 @@
  * 엄지로 누를 때 빗나가지 않게 한다.
  */
 export const PRIMARY_BUTTON =
-  'min-h-13.5 w-full cursor-pointer rounded-ui bg-brand text-base font-semibold text-white shadow-cta transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-hint disabled:shadow-none'
+  'min-h-13.5 w-full cursor-pointer rounded-ui bg-brand text-base font-semibold text-fg shadow-cta transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-hint disabled:shadow-none'
 
 /** 주요 버튼 옆에 서는 보조 버튼. 테두리만 두고 배경은 카드와 같게 둔다. */
 export const SECONDARY_BUTTON =
@@ -40,8 +40,15 @@ export const NOTICE =
  * 높이 52px은 주요 버튼(54px)보다 살짝 낮다. 같은 높이로 두면 폼 맨 아래에서
  * 입력칸과 버튼이 한 덩어리로 붙어 보여, 누를 곳이 어디인지 한눈에 안 들어온다.
  */
+/*
+ * 초점이 오면 <b>테두리와 링이 같은 색</b>으로 함께 선다.
+ *
+ * 링만 남겨봤더니 회색 테두리 밖에 링이 떠서 입력칸과 따로 노는 느낌이 났고,
+ * 테두리를 brand(노랑)로 바꿔봤더니 어두운 링과 색이 갈려 두 겹으로 보였다.
+ * 청록 시절이 자연스러웠던 이유는 <b>둘이 한 색</b>이어서다 — 그 구조를 brand-deep으로 재현한다.
+ */
 export const TEXT_INPUT =
-  'h-13 w-full rounded-ui border border-line bg-surface px-3.5 font-sans text-base text-fg transition-colors focus-visible:border-brand'
+  'h-13 w-full rounded-ui border border-line bg-surface px-3.5 font-sans text-base text-fg transition-colors'
 
 /**
  * 값이 규칙에 어긋난 칸.
@@ -50,8 +57,9 @@ export const TEXT_INPUT =
  * 진한 붉은색(crowded) 대신 옅은 값(crowded-soft)을 쓴다. 입력칸 전체를 강한 색으로
  * 두르면 "붐빔" 배지와 같은 무게로 보여, 화면에서 어느 쪽이 위험 신호인지 헷갈린다.
  */
+/* 틀린 칸은 테두리·링을 함께 붉게 — 위와 같은 한 색 구조를 경고색으로 반복한다 */
 export const TEXT_INPUT_INVALID =
-  'h-13 w-full rounded-ui border border-crowded-soft bg-surface px-3.5 font-sans text-base text-fg transition-colors focus-visible:border-crowded'
+  'h-13 w-full rounded-ui border border-crowded-soft bg-surface px-3.5 font-sans text-base text-fg transition-colors focus-visible:border-crowded focus-visible:outline-crowded'
 
 /**
  * 화면 껍데기 안에서 본문을 다시 좁히는 열.
