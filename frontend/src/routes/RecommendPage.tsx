@@ -20,7 +20,8 @@ export function RecommendPage() {
   const regionName = REGIONS.find((option) => option.slug === DEFAULT_REGION)?.name ?? ''
 
   return (
-    <div className="mx-auto flex w-full max-w-form flex-col gap-5 pt-8 pb-10 lg:pt-12">
+    // 위 여백을 더 얹지 않는다 — Layout이 이미 준다. /plan과 같은 이유다
+    <div className="mx-auto flex w-full max-w-form flex-col gap-5 pb-10">
       <div className="flex flex-col gap-2.5">
         <span className="bg-brand-tint text-brand-deep w-fit rounded-full px-2.5 py-1 text-[12px] font-semibold">
           준비 중
@@ -43,9 +44,11 @@ export function RecommendPage() {
       <section className={`${CARD} flex flex-col gap-3 p-4.5`}>
         <span className="text-fg text-sm font-semibold">이런 것들을 여쭤볼 거예요</span>
         <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+          {/* CLAUDE.md 필수 기능 6의 4~5문항과 같은 축이어야 한다: 스타일·활동량·동행·혼잡 민감도 */}
           {[
             '어떤 곳을 좋아하는지 — 유적·자연·먹거리',
             '하루에 몇 곳쯤 돌고 싶은지',
+            '누구와 함께 가는지 — 혼자·둘이서·가족',
             '사람 많은 곳도 괜찮은지, 조용한 곳이 좋은지',
           ].map((item, index) => (
             <li key={item} className="flex items-start gap-2.5">

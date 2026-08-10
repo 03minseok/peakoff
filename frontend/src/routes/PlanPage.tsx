@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS } from '../constants/regions'
 import { useTrip } from '../state/tripContext'
@@ -39,7 +39,8 @@ const DEFAULT_DAYS_AHEAD = 7
  */
 // 기간은 네 칸이 한 줄에 들어가야 해서 좌우 여백을 좁게 잡는다.
 const SEGMENT_BASE =
-  'flex h-11 cursor-pointer items-center justify-center rounded-ui px-3 text-[15px] font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand'
+  // 초점링은 brand-deep이다. brand(노랑)는 흰 배경에서 1.2:1이라 링으로는 보이지 않는다
+  'flex h-11 cursor-pointer items-center justify-center rounded-ui px-3 text-[15px] font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-deep'
 
 const REGION_SEGMENT = `${SEGMENT_BASE} border border-line bg-surface text-muted peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-fg`
 
@@ -91,7 +92,12 @@ export function PlanPage() {
     */
     <div className="mx-auto w-full max-w-form lg:grid lg:max-w-app lg:grid-cols-12 lg:items-start lg:gap-10">
       {/* 폼을 채우는 동안 왼쪽 설명이 따라와 무엇을 하는 화면인지가 계속 남는다 */}
-      <section className="flex flex-col gap-3.5 pt-6 pb-7 lg:sticky lg:top-18 lg:col-span-5 lg:pt-10 lg:pb-0">
+      {/*
+        위 여백을 여기서 더 얹지 않는다. Layout이 이미 본문 위 여백(pt-6/lg:pt-8)을 주는데
+        그 위에 pt-6/lg:pt-10을 또 쌓으니, 홈에서 넘어오는 순간 내용이 훅 내려앉았다 —
+        화면마다 헤더~첫 내용 거리가 다르면 이동할 때마다 시선이 다시 자리를 찾는다.
+      */}
+      <section className="flex flex-col gap-3.5 pb-7 lg:sticky lg:top-18 lg:col-span-5 lg:pb-0">
         <h1 className="text-fg text-[34px] leading-[1.25] font-bold tracking-[-0.025em] lg:text-[40px]">
           붐비는 곳을
           <br />
@@ -106,6 +112,18 @@ export function PlanPage() {
           <br />
           가입 없이 바로 시작할 수 있어요.
         </p>
+
+        {/*
+          지역을 모르는 사람의 갈림길. 서비스 흐름 1단계가 이 갈래를 약속한다 —
+          여기 없으면 홈을 지나쳐 들어온 사람은 30개 목록 앞에서 처음 막힌다.
+          조용한 링크로 둔다. 이 화면의 주인공은 직접 짜는 흐름이다.
+        */}
+        <Link
+          to="/recommend"
+          className="text-brand-deep -mx-1 w-fit rounded-chip px-1 py-0.5 text-[13.5px] font-semibold no-underline hover:underline"
+        >
+          {regionName}이 처음이라면? 몇 가지 답하고 코스 추천받기
+        </Link>
 
         {/*
           넓은 화면에서만 편다. 좁은 화면에서는 이 세 줄을 읽느라 정작 입력칸이
@@ -132,7 +150,7 @@ export function PlanPage() {
         </ol>
       </section>
 
-      <form className="flex flex-col gap-3.5 lg:col-span-7 lg:pt-10" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
           <div className="flex items-baseline justify-between">
             <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
