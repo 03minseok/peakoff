@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { AuthField } from '../components/AuthField'
 import { AuthShell } from '../components/AuthShell'
 import { PRIMARY_BUTTON } from '../components/styles'
@@ -32,7 +32,7 @@ const NO_AGREEMENT: Agreed = { age: false, tos: false, privacy: false, marketing
 
 const CHECKBOX_BASE =
   'grid h-5.5 w-5.5 flex-none place-items-center rounded-[7px] text-xs font-bold'
-const CHECKBOX_ON = `${CHECKBOX_BASE} bg-brand text-white`
+const CHECKBOX_ON = `${CHECKBOX_BASE} bg-brand text-fg`
 const CHECKBOX_OFF = `${CHECKBOX_BASE} bg-[#EDF1F0] text-[#CBD6D5]`
 
 interface Errors {
@@ -42,8 +42,17 @@ interface Errors {
 
 export function SignupPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const auth = useAuth()
   const { state } = useTrip()
+
+  /**
+   * 가입을 마친 뒤 돌아갈 곳. 저장 시트가 넘겨준다.
+   *
+   * <p>로그인 화면과 서로 오갈 때도 이 값을 함께 넘긴다. 안 그러면 "이미 계정이 있으신가요?"를
+   * 한 번 누른 순간 돌아갈 곳이 사라져, 결과 화면 대신 홈으로 떨어진다.
+   */
+  const from = (location.state as { from?: string } | null)?.from
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -118,8 +127,21 @@ export function SignupPage() {
         nickname: nickname.trim(),
         termsAgreed: requiredAgreed,
       })
-      // 가입하면 곧바로 로그인 상태가 된다. 방금 만든 계정으로 다시 로그인시키지 않는다.
-      navigate('/', { replace: true })
+      /*
+       * 가입하면 곧바로 로그인 상태가 된다. 방금 만든 계정으로 다시 로그인시키지 않는다.
+       *
+       * 저장하러 온 사람은 결과 화면으로 돌려보낸다(from). 그게 없을 때만 홈이다 —
+       * 홈으로 떨궈두면 방금 짠 코스가 sessionStorage에 남아 있어도 <b>돌아오는 길이 없어</b>
+       * 사용자는 날아갔다고 여긴다.
+       */
+      /*
+       * resumeSave — 돌아간 화면에서 저장 시트를 다시 연다.
+       *
+       * 이게 없으면 버튼에 "가입하고 코스 저장하기"라고 적어놓고 실제로는 가입만 하고 만다.
+       * 돌아간 결과 화면의 시트 상태는 그 화면의 지역 변수라 기본값(닫힘)으로 초기화되어,
+       * 사용자는 "돌아와 바로 저장할 수 있어요"를 읽고도 아무 일 없는 화면을 마주한다.
+       */
+      navigate(from ?? '/', { replace: true, state: hasCourse ? { resumeSave: true } : undefined })
     } catch (error: unknown) {
       setFailure(
         error instanceof ApiRequestError
@@ -309,7 +331,7 @@ export function SignupPage() {
 
         <p className="text-hint m-0 pt-1 pb-2 text-center text-[13.5px]">
           이미 계정이 있으신가요?{' '}
-          <Link to="/login" className="text-brand font-semibold">
+          <Link to="/login" state={location.state} className="text-brand-deep font-semibold">
             로그인
           </Link>
         </p>

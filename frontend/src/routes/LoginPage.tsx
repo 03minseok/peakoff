@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { ChevronRight } from '../components/icons'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { AuthField } from '../components/AuthField'
 import { AuthShell } from '../components/AuthShell'
 import { PRIMARY_BUTTON } from '../components/styles'
@@ -19,7 +20,17 @@ const SOCIAL_BUTTON =
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const auth = useAuth()
+
+  /**
+   * 로그인을 마친 뒤 돌아갈 곳. 저장 시트가 넘겨준다.
+   *
+   * <p>없으면 지금까지처럼 뒤로 한 걸음 물러난다. 다만 가입 화면을 거쳐 왔다면 그 한 걸음이
+   * 가입 화면이라, 이미 로그인한 사람에게 가입 폼을 다시 보여주게 된다. 그래서 이 값이 있으면
+   * 그쪽을 우선한다.
+   */
+  const from = (location.state as { from?: string } | null)?.from
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -61,7 +72,12 @@ export function LoginPage() {
     try {
       await auth.login({ email: email.trim(), password })
       // 로그인 전에 보던 화면으로 돌려보낸다. 계정 만들기는 목적이 아니라 거쳐가는 단계다.
-      navigate(-1)
+      if (from) {
+        // 저장하러 온 사람은 돌아간 화면에서 시트가 다시 열려야 한다
+        navigate(from, { replace: true, state: { resumeSave: true } })
+      } else {
+        navigate(-1)
+      }
     } catch (error: unknown) {
       setFailure(
         error instanceof ApiRequestError ? error.message : '로그인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
@@ -85,7 +101,7 @@ export function LoginPage() {
       {/* 데스크톱에서는 좌측 패널이 로고를 들고 있다. 두 번 보일 이유가 없다. */}
       <div className="flex items-center gap-2 pt-2 lg:hidden">
         <span className="bg-brand relative h-5.5 w-5.5 rounded-[8px]" aria-hidden="true">
-          <span className="bg-bg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
+          <span className="bg-fg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
         </span>
         <span className="text-fg text-xs font-bold tracking-[0.16em]">PEAKOFF</span>
       </div>
@@ -159,7 +175,7 @@ export function LoginPage() {
 
         <p className="text-hint m-0 pt-0.5 text-center text-[13.5px]">
           계정이 없으신가요?{' '}
-          <Link to="/signup" className="text-brand font-semibold">
+          <Link to="/signup" state={location.state} className="text-brand-deep font-semibold">
             회원가입
           </Link>
         </p>
@@ -215,7 +231,7 @@ export function LoginPage() {
           to="/"
           className="rounded-ui text-muted hover:text-fg flex h-12.5 w-full items-center justify-center gap-1.5 bg-[#EDF1F0] text-[14.5px] font-semibold no-underline transition-colors"
         >
-          로그인 없이 둘러보기 <span aria-hidden="true">›</span>
+          로그인 없이 둘러보기 <ChevronRight size={15} />
         </Link>
       </div>
     </AuthShell>

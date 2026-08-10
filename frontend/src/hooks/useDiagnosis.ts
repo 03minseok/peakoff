@@ -17,9 +17,29 @@ export function toSlots(days: string[][]): CourseSlotRequest[] {
 export type DiagnosisState =
   /** 진단할 코스가 없다 (조건 미입력, 원안 미확정 등) */
   | { phase: 'idle' }
+  /** 첫 진단. 보여줄 이전 결과가 아직 없다 */
   | { phase: 'loading' }
+  /**
+   * 다시 진단 중인데 <b>이전 결과를 들고 있다.</b>
+   *
+   * <p>이 상태가 없으면 장소를 교체할 때마다 화면이 통째로 사라진다.
+   * 이 앱의 핵심 루프가 "붐비는 곳 → 교체 → 총점이 오르는 걸 확인"인데,
+   * 교체하는 순간 비교 대상이던 총점이 눈앞에서 없어지면 확인할 것이 남지 않는다.
+   * 스크롤도 맨 위로 튀고, 지도는 새 인스턴스로 다시 그려진다.
+   */
+  | { phase: 'refreshing'; diagnosis: CourseDiagnosis }
   | { phase: 'loaded'; diagnosis: CourseDiagnosis }
   | { phase: 'error'; message: string }
+
+/**
+ * 지금 화면에 그릴 수 있는 진단 결과. 없으면 null.
+ *
+ * <p>{@code loaded}와 {@code refreshing}을 같게 다룬다 — 다시 계산하는 동안에도
+ * 직전 결과는 여전히 유효한 화면이다.
+ */
+export function currentDiagnosis(state: DiagnosisState): CourseDiagnosis | null {
+  return state.phase === 'loaded' || state.phase === 'refreshing' ? state.diagnosis : null
+}
 
 /**
  * 코스 하나를 진단한다.
@@ -42,7 +62,15 @@ export function useDiagnosis(plan: TripPlan | null, days: string[][] | null): Di
     }
 
     const controller = new AbortController()
-    setState({ phase: 'loading' })
+    /*
+     * 이미 결과가 있으면 그것을 든 채 refreshing으로 넘어간다.
+     * 여기서 loading으로 덮으면 화면이 비므로, 첫 진단일 때만 loading이다.
+     */
+    setState((previous) =>
+      previous.phase === 'loaded' || previous.phase === 'refreshing'
+        ? { phase: 'refreshing', diagnosis: previous.diagnosis }
+        : { phase: 'loading' },
+    )
 
     diagnoseCourse(
       { region: plan.region, startDate: plan.startDate, nights: plan.nights, slots },

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp } from '../components/icons'
 import { Navigate, useNavigate } from 'react-router'
 import { CourseMap } from '../components/CourseMap'
 import { CARD, CHIP_BUTTON, NOTICE, PRIMARY_BUTTON } from '../components/styles'
@@ -125,9 +126,16 @@ export function CoursePage() {
           아무것도 바뀌지 않아 오히려 헷갈린다.
 
           일차가 늘어나면 가로로 넘칠 수 있어 이 줄만 스크롤되게 둔다.
+
+          <b>shrink-0이 없으면 넓은 화면에서 이 줄이 통째로 사라진다.</b>
+          overflow-x-auto가 이 요소를 스크롤 컨테이너로 만드는데, 플렉스 항목의
+          자동 최소 크기(min-height: auto)는 스크롤 컨테이너에 적용되지 않는다.
+          즉 0까지 눌릴 수 있다. 데스크톱에서는 오른쪽 패널 높이가 화면에 고정돼 있고
+          아래 장소 목록이 길어서, 줄어들 수 있는 유일한 항목인 이 줄이 먼저 눌렸다.
+          모바일은 높이 제한이 없어 증상이 안 보였다.
         */}
         <nav
-          className={`gap-2 overflow-x-auto pb-1 ${totalDays > 1 ? 'flex' : 'hidden'}`}
+          className={`shrink-0 gap-2 overflow-x-auto pb-1 ${totalDays > 1 ? 'flex' : 'hidden'}`}
           aria-label="일차 선택"
         >
           {Array.from({ length: totalDays }, (_, index) => index + 1).map((day) => {
@@ -185,7 +193,7 @@ export function CoursePage() {
                     key={placeId}
                     className={`${CARD} flex items-center gap-3 py-3 pr-3 pl-3.5`}
                   >
-                    <span className="bg-brand grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold text-white">
+                    <span className="bg-brand grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold text-fg">
                       {index + 1}
                     </span>
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -204,7 +212,7 @@ export function CoursePage() {
                         disabled={index === 0}
                         aria-label={`${place?.name ?? ''} 위로 옮기기`}
                       >
-                        ↑
+                        <ArrowUp />
                       </button>
                       <button
                         type="button"
@@ -213,7 +221,7 @@ export function CoursePage() {
                         disabled={index === currentDayPlaceIds.length - 1}
                         aria-label={`${place?.name ?? ''} 아래로 옮기기`}
                       >
-                        ↓
+                        <ArrowDown />
                       </button>
                       <button
                         type="button"
@@ -276,7 +284,9 @@ export function CoursePage() {
           목록이 길어 스크롤이 생기므로 버튼을 아래에 붙여둔다.
           끝까지 내려야 진단 버튼을 만나는 구조면 다 담고도 뭘 해야 할지 모른다.
         */}
-        <div className="from-bg/0 to-bg sticky bottom-0 mt-auto bg-gradient-to-b to-[30%] pt-3.5 pb-5">
+        {/* bottom-15: BottomNav(60px) 위에 얹는다. 막대가 사라지는 md부터는 바닥으로 내려온다. */}
+        {/* z-30 — 진단 화면과 같은 이유다. 값이 없으면 지도와 겹치는 구간에서 뒤로 숨는다 */}
+        <div className="from-bg/0 to-bg sticky bottom-15 z-30 mt-auto bg-gradient-to-b to-[30%] pt-3.5 pb-5 md:bottom-0">
           {!allDaysFilled && emptyDays.length > 0 && (
             <p className="mb-2.5 text-center text-[13px]">
               {emptyDays.map((day) => `Day ${day}`).join(', ')}에 장소를 담아주세요.

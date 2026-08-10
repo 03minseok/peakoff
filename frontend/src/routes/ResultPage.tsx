@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate } from 'react-router'
+import { ArrowRight } from '../components/icons'
+import { Link, Navigate, useLocation } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
-import { GuestSaveSheet } from '../components/GuestSaveSheet'
+import { SaveCourseSheet } from '../components/SaveCourseSheet'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import {
   CARD_RAISED,
@@ -10,9 +11,9 @@ import {
   PRIMARY_BUTTON,
   SECONDARY_BUTTON,
 } from '../components/styles'
-import { useDiagnosis } from '../hooks/useDiagnosis'
-import { fetchPlaces } from '../services/api'
-import { saveCourseToDevice } from '../state/savedCourse'
+import { REGIONS } from '../constants/regions'
+import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
+import { fetchPlaces, saveCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type { CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
 import { formatCompactDate, formatKoreanDate } from '../utils/date'
@@ -162,7 +163,14 @@ export function ResultPage() {
   const improved = useDiagnosis(plan, state.days)
 
   const [places, setPlaces] = useState<Place[]>([])
-  const [showSavePrompt, setShowSavePrompt] = useState(false)
+  /*
+   * 로그인·가입을 마치고 돌아온 경우 시트를 연 채로 시작한다.
+   * 그 화면들이 "돌아와 바로 저장할 수 있어요"라고 약속하고 보냈다.
+   */
+  const location = useLocation()
+  const [showSavePrompt, setShowSavePrompt] = useState(
+    () => (location.state as { resumeSave?: boolean } | null)?.resumeSave === true,
+  )
   /** 지도에 어느 일차를 그릴지. 'all'이면 전체 일정을 한 번에 */
   const [mapDay, setMapDay] = useState<number | 'all'>('all')
 
@@ -206,8 +214,8 @@ export function ResultPage() {
     return <Navigate to="/course" replace />
   }
 
-  const beforeDiagnosis = original.phase === 'loaded' ? original.diagnosis : null
-  const afterDiagnosis = improved.phase === 'loaded' ? improved.diagnosis : null
+  const beforeDiagnosis = currentDiagnosis(original)
+  const afterDiagnosis = currentDiagnosis(improved)
   const ready = beforeDiagnosis !== null && afterDiagnosis !== null
 
   const changes = ready ? diffCourses(beforeDiagnosis, afterDiagnosis) : []
@@ -219,6 +227,16 @@ export function ResultPage() {
     state.baseline !== null && state.baseline.plan.startDate !== plan.startDate
       ? { from: state.baseline.plan.startDate, to: plan.startDate }
       : null
+
+  /*
+   * 저장 시트의 이름 기본값.
+   *
+   * 빈칸으로 두면 "이름 짓기"가 저장을 막는 관문이 된다. 지역과 기간으로 무난한 이름을
+   * 미리 채워두고, 고치고 싶은 사람만 고치게 한다.
+   */
+  const defaultCourseName = `${
+    REGIONS.find((option) => option.slug === plan.region)?.name ?? ''
+  } ${plan.nights === 0 ? '당일치기' : `${plan.nights}박 ${plan.nights + 1}일`}`.trim()
 
   const crowdedBefore = beforeDiagnosis
     ? beforeDiagnosis.slots.filter((slot) => slot.level === 'CROWDED').length
@@ -258,7 +276,7 @@ export function ResultPage() {
           */}
           <section className="bg-fg rounded-card relative flex flex-col gap-5 overflow-hidden px-5 py-7 text-white lg:flex-row lg:items-center lg:gap-11 lg:px-10 lg:py-9">
             <div
-              className="absolute -top-20 -right-22 h-85 w-85 rounded-full bg-[rgb(14_124_134/0.28)]"
+              className="absolute -top-20 -right-22 h-85 w-85 rounded-full bg-[rgb(254_235_143/0.13)]"
               aria-hidden="true"
             />
 
@@ -275,9 +293,7 @@ export function ResultPage() {
                 />
               </div>
 
-              <span className="mt-3.5 text-[26px] leading-none text-white/30" aria-hidden="true">
-                →
-              </span>
+              <ArrowRight size={26} className="mt-3.5 text-white/30" />
 
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[12.5px] font-medium text-white/60">개선안</span>
@@ -356,8 +372,17 @@ export function ResultPage() {
             />
           </div>
 
+          {/*
+            "무엇을 바꿨나(변경 내역)"와 "그래서 어디를 도나(최종 동선)"를 나란히 놓는다.
+            세로로 쌓으면 지도를 보는 동안 바꾼 목록이 화면 밖으로 나가, 둘을 번갈아
+            확인하려면 계속 스크롤해야 한다. 발표에서 함께 가리키게 되는 두 장이다.
+
+            변경 내역은 아무것도 안 바꾸면 통째로 사라진다. 그때 지도가 5칸 자리에
+            그대로 서 있으면 오른쪽 절반이 빈다 — 지도 폭을 그 유무에 맞춰 정한다.
+          */}
+          <div className="flex flex-col gap-4.5 lg:grid lg:grid-cols-12 lg:items-start lg:gap-4">
           {(movedDate || changes.length > 0) && (
-            <section className={`${CARD_RAISED} flex flex-col gap-3.5 p-4.5`}>
+            <section className={`${CARD_RAISED} flex min-w-0 flex-col gap-3.5 p-4.5 lg:col-span-5`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="text-fg text-[15px] font-semibold">변경 내역</h2>
                 <span className="text-hint text-[12.5px]">
@@ -373,9 +398,7 @@ export function ResultPage() {
                       <span className="text-muted text-[15px] line-through">
                         {formatKoreanDate(movedDate.from)}
                       </span>
-                      <span className="text-line text-[15px]" aria-hidden="true">
-                        →
-                      </span>
+                      <ArrowRight size={15} className="text-line" />
                       <span className="text-fg text-[15px] font-semibold">
                         {formatKoreanDate(movedDate.to)}
                       </span>
@@ -417,9 +440,7 @@ export function ResultPage() {
                         </span>
                       </span>
 
-                      <span className="text-line flex-none text-[15px]" aria-hidden="true">
-                        →
-                      </span>
+                      <ArrowRight size={15} className="text-line flex-none" />
 
                       <span className="flex min-w-0 items-center gap-2">
                         <span
@@ -440,7 +461,11 @@ export function ResultPage() {
             </section>
           )}
 
-          <section className={CARD_RAISED}>
+          <section
+            className={`${CARD_RAISED} min-w-0 ${
+              movedDate || changes.length > 0 ? 'lg:col-span-7' : 'lg:col-span-12'
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2 px-4.5 pt-4 pb-3">
               <h2 className="text-fg text-[15px] font-semibold">최종 동선</h2>
 
@@ -494,23 +519,62 @@ export function ResultPage() {
               </p>
             )}
           </section>
+          </div>
 
-          <section className="flex flex-col items-center gap-3 pb-2">
-            <div className="flex w-full flex-col gap-2.5 sm:flex-row-reverse">
-              <button
-                type="button"
-                className={PRIMARY_BUTTON}
-                onClick={() => setShowSavePrompt(true)}
-              >
-                개선안으로 코스 저장하기
-              </button>
+          {/*
+            버튼 문구는 그 버튼이 실제로 하는 일만 말한다.
+
+            앞서 쓰던 "원안 유지"는 되돌리는 동작을 약속하는 이름인데, 실제로는 진단 화면으로
+            돌아가기만 했다. 교체한 장소가 그대로 남아 있으니 이름이 거짓말을 한 셈이다.
+            "개선안으로 저장하기"도 마찬가지로, 아무것도 안 바꾼 코스까지 개선안이라고 불렀다.
+
+            두 버튼 다 무엇을 바꿨는지와 무관하게 뜻이 같으므로 문구를 고정한다.
+          */}
+          {/*
+            나가는 길이 셋이다. 무게를 다르게 준다.
+
+            돌아가기·저장하기는 한 줄에 두고, "홈으로"는 그 아래 조용한 버튼으로 둔다.
+            셋을 같은 굵기로 늘어놓으면 어느 것이 이 화면의 결론인지가 사라진다.
+
+            홈으로가 필요한 이유: 진단만 보고 <b>저장도 수정도 하지 않을</b> 사람이 있다.
+            그때 이 화면에서 나갈 길이 "진단으로 되돌아가기"뿐이면 막다른 길이 된다.
+            게스트가 로그인 없이 서비스 전체를 한 바퀴 도는 흐름의 마지막 문이다.
+          */}
+          <section className="flex flex-col items-center gap-2.5 pb-2">
+            {/* 넓은 화면에서 버튼을 1180px까지 늘리지 않는다. 누르는 자리가 넓다고 잘 눌리지 않는다 */}
+            <div className="flex w-full gap-2.5 lg:mx-auto lg:max-w-read">
+              {/*
+                DOM 순서가 곧 화면 순서다(왼쪽 돌아가기, 오른쪽 저장하기).
+                앞서 쓰던 flex-row-reverse는 좁은 화면에서 세로로 쌓을 때 저장하기를
+                위로 올리려던 장치인데, 이제 항상 한 줄이라 순서를 뒤집을 이유가 없다.
+                뒤집힌 채로 두면 키보드로 훑는 차례와 눈에 보이는 차례가 어긋난다.
+              */}
               <Link
                 to="/diagnosis"
-                className={`${SECONDARY_BUTTON} grid flex-none place-items-center px-5.5 no-underline sm:w-auto`}
+                className={`${SECONDARY_BUTTON} grid flex-none place-items-center px-5.5 no-underline`}
               >
-                원안 유지
+                돌아가기
               </Link>
+              {/* 이 화면의 결론. 남는 폭을 다 가져가 가장 크게 선다 */}
+              <button
+                type="button"
+                className={`${PRIMARY_BUTTON} flex-1`}
+                onClick={() => setShowSavePrompt(true)}
+              >
+                저장하기
+              </button>
             </div>
+
+            {/*
+              테두리도 배경도 없는 조용한 버튼. 그래도 높이는 넉넉히 준다 —
+              눈에 덜 띄어야 하는 것과 누르기 어려워야 하는 것은 다른 이야기다.
+            */}
+            <Link
+              to="/"
+              className="text-hint hover:bg-surface hover:text-fg rounded-ui grid min-h-11 w-full place-items-center text-[14px] font-medium no-underline transition-colors lg:mx-auto lg:max-w-read"
+            >
+              홈으로
+            </Link>
           </section>
 
           {/*
@@ -518,9 +582,20 @@ export function ResultPage() {
             뒤에 비교 결과가 비쳐 보이는 편이 맥락을 유지해준다.
           */}
           {showSavePrompt && (
-            <GuestSaveSheet
+            <SaveCourseSheet
+              defaultName={defaultCourseName}
               onClose={() => setShowSavePrompt(false)}
-              onSaveToDevice={() => saveCourseToDevice(plan, state.days)}
+              onSave={async (name) => {
+                await saveCourse({
+                  name,
+                  region: plan.region,
+                  startDate: plan.startDate,
+                  nights: plan.nights,
+                  // 방금 진단에서 받은 총점을 그대로 싣는다. 서버가 다시 계산하지 않는다.
+                  totalQuietness: afterDiagnosis.totalQuietness,
+                  slots: toSlots(state.days),
+                })
+              }}
             />
           )}
         </>

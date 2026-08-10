@@ -4,11 +4,17 @@ import type {
   ApiResponse,
   AuthMember,
   AuthResult,
+  ChangeNicknameRequest,
+  ChangePasswordRequest,
   CourseDiagnosis,
   CourseDiagnosisRequest,
   DateAlternatives,
+  DeleteAccountRequest,
   LoginRequest,
   Place,
+  SaveCourseRequest,
+  SavedCourseDetail,
+  SavedCourseSummary,
   SignupRequest,
 } from '../types/api'
 
@@ -39,7 +45,7 @@ export class ApiRequestError extends Error {
 
 interface RequestOptions {
   signal?: AbortSignal
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
 }
 
@@ -125,6 +131,44 @@ export function fetchMe(signal?: AbortSignal): Promise<AuthMember> {
   return apiRequest<AuthMember>('/auth/me', { signal })
 }
 
+/**
+ * PATCH /api/auth/me/nickname
+ *
+ * 새 토큰이 함께 온다. 호출한 쪽은 반드시 그 토큰으로 갈아끼워야 한다 —
+ * 옛 토큰에는 옛 닉네임이 박혀 있어서, 그대로 두면 새로고침할 때 되살아난다.
+ */
+export function changeNickname(
+  request: ChangeNicknameRequest,
+  signal?: AbortSignal,
+): Promise<AuthResult> {
+  return apiRequest<AuthResult>('/auth/me/nickname', {
+    method: 'PATCH',
+    body: request,
+    signal,
+  })
+}
+
+/**
+ * PATCH /api/auth/me/password
+ *
+ * 토큰은 바뀌지 않는다. 담긴 내용(회원 번호·닉네임)이 그대로이기 때문이다.
+ * 현재 비밀번호가 틀리면 UNAUTHORIZED로 실패한다.
+ */
+export function changePassword(
+  request: ChangePasswordRequest,
+  signal?: AbortSignal,
+): Promise<void> {
+  return apiRequest<void>('/auth/me/password', { method: 'PATCH', body: request, signal })
+}
+
+/** DELETE /api/auth/me — 계정과 저장한 코스를 함께 지운다. 되돌릴 수 없다 */
+export function deleteAccount(
+  request: DeleteAccountRequest,
+  signal?: AbortSignal,
+): Promise<void> {
+  return apiRequest<void>('/auth/me', { method: 'DELETE', body: request, signal })
+}
+
 /** GET /api/places?region=gyeongju */
 export function fetchPlaces(region: string, signal?: AbortSignal): Promise<Place[]> {
   return apiRequest<Place[]>(`/places?region=${encodeURIComponent(region)}`, { signal })
@@ -154,6 +198,37 @@ export function diagnoseCourse(
     body: course,
     signal,
   })
+}
+
+/**
+ * POST /api/courses — 코스를 계정에 저장한다.
+ *
+ * totalQuietness는 진단에서 받은 값을 그대로 싣는다. 서버가 방금 내려준 답이라
+ * 저장할 때 다시 계산하지 않는다.
+ */
+export function saveCourse(
+  request: SaveCourseRequest,
+  signal?: AbortSignal,
+): Promise<SavedCourseDetail> {
+  return apiRequest<SavedCourseDetail>('/courses', { method: 'POST', body: request, signal })
+}
+
+/** GET /api/courses — 내가 저장한 코스 목록. 최근 저장한 것이 먼저 온다 */
+export function fetchSavedCourses(signal?: AbortSignal): Promise<SavedCourseSummary[]> {
+  return apiRequest<SavedCourseSummary[]>('/courses', { signal })
+}
+
+/** GET /api/courses/{id} — 담긴 장소까지. 남의 코스를 물으면 NOT_FOUND */
+export function fetchSavedCourse(
+  courseId: number,
+  signal?: AbortSignal,
+): Promise<SavedCourseDetail> {
+  return apiRequest<SavedCourseDetail>(`/courses/${courseId}`, { signal })
+}
+
+/** DELETE /api/courses/{id} */
+export function deleteSavedCourse(courseId: number, signal?: AbortSignal): Promise<void> {
+  return apiRequest<void>(`/courses/${courseId}`, { method: 'DELETE', signal })
 }
 
 /**

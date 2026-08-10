@@ -22,9 +22,18 @@ spring:
   jpa:
     hibernate:
       # 파일럿 단계라 엔티티 변경을 스키마에 자동 반영한다.
-      # 회원 테이블 하나뿐이고 마이그레이션 도구를 얹을 만큼 스키마가 움직이지 않는다.
+      # 마이그레이션 도구를 얹을 만큼 스키마가 크지 않다.
       ddl-auto: update
     open-in-view: false
+    properties:
+      hibernate:
+        # 스키마 생성이 실패하면 서버를 띄우지 않는다.
+        #
+        # 기본값은 경고만 남기고 그냥 뜬다. 그러면 테이블이 없는 채로 서비스가 돌다가
+        # 첫 INSERT에서 500이 나고, 로그를 뒤지기 전까지 원인을 알 수 없다.
+        # 실제로 컬럼명 하나(day — SQL 예약어)로 이 사고가 났다.
+        hbm2ddl:
+          halt_on_error: true
 
 peakoff:
   jwt:
