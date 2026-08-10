@@ -201,6 +201,38 @@ export interface LoginRequest {
   password: string
 }
 
+/** 지금 붙어 있는 소셜 로그인. 주소(/oauth/callback/kakao)와 API 경로에 그대로 쓰인다 */
+export type SocialProvider = 'kakao' | 'naver'
+
+/**
+ * 소셜 로그인 결과. 끝이 둘이다.
+ *
+ * `status`로 갈라 읽는다. `auth`의 유무로 추측하지 않는 이유는 서버 쪽 주석과 같다 —
+ * 상태가 하나 늘 때 화면의 판단 기준이 조용히 어긋난다.
+ */
+export type SocialLoginResult =
+  | { status: 'LOGGED_IN'; auth: AuthResult; link: null }
+  | { status: 'LINK_REQUIRED'; auth: null; link: SocialLinkCandidate }
+
+/**
+ * 같은 이메일로 가입한 계정이 이미 있을 때 받는 정보.
+ *
+ * 이 단계에서는 <b>아직 로그인이 아니다.</b> 비밀번호를 확인해야 연결되고, 그때 로그인된다.
+ */
+export interface SocialLinkCandidate {
+  /** 기존 계정의 이메일. 어느 계정과 잇는지 화면에 보여준다 */
+  email: string
+  /** "카카오"처럼 사람이 읽는 이름. 문구에 그대로 쓴다 */
+  provider: string
+  /** 비밀번호와 함께 돌려보낼 5분짜리 티켓. 이것만으로는 로그인되지 않는다 */
+  linkTicket: string
+}
+
+export interface SocialLinkRequest {
+  linkTicket: string
+  password: string
+}
+
 /**
  * 닉네임 변경. 비밀번호를 묻지 않는다 — 언제든 되돌릴 수 있는 변경이다.
  *

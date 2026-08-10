@@ -6,6 +6,7 @@ import { HomePage } from './routes/HomePage'
 import { MyPage } from './routes/MyPage'
 import { LoginPage } from './routes/LoginPage'
 import { NotFoundPage } from './routes/NotFoundPage'
+import { OAuthCallbackPage } from './routes/OAuthCallbackPage'
 import { PlanPage } from './routes/PlanPage'
 import { RecommendPage } from './routes/RecommendPage'
 import { PreviewPage } from './routes/PreviewPage'
@@ -70,6 +71,15 @@ function App() {
           */}
           <Route path="login" element={<LoginPage />} />
           <Route path="signup" element={<SignupPage />} />
+
+          {/*
+            제공자가 사용자를 되돌려 보내는 자리.
+
+            주소를 카카오 콘솔에 등록해뒀기 때문에 <b>마음대로 바꿀 수 없다</b> —
+            바꾸려면 콘솔의 Redirect URI와 서버 설정(redirect-uri)을 함께 고쳐야 한다.
+            provider를 경로에 둔 이유는 네이버가 붙을 때 화면을 하나 더 만들지 않기 위해서다.
+          */}
+          <Route path="oauth/callback/:provider" element={<OAuthCallbackPage />} />
         </Routes>
       </TripProvider>
     </AuthProvider>

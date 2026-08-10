@@ -88,6 +88,16 @@ public class SocialLoginService {
 	}
 
 	/**
+	 * 사용자를 보낼 로그인 창 주소.
+	 *
+	 * <p>화면은 이 주소로 이동만 하면 된다. 인증키가 없는 배포라면 여기서 걸려,
+	 * 사용자가 카카오 오류 화면을 보기 전에 우리 말로 알릴 수 있다.
+	 */
+	public String authorizeUrl(SocialProvider provider, String state) {
+		return clientFor(provider).authorizeUrl(state);
+	}
+
+	/**
 	 * 인가 코드를 받아 로그인시킨다.
 	 *
 	 * @return 로그인이 끝났거나, 연결 확인이 필요하다는 답
