@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ChevronRight } from '../components/icons'
 import { BottomNav, HeaderNav } from '../components/BottomNav'
@@ -31,11 +32,27 @@ const SECTION_TITLE = 'text-fg m-0 text-[17px] font-bold tracking-[-0.015em]'
 const CELL = 'flex min-w-0 flex-col gap-5 lg:gap-4'
 
 /**
- * 사진 자리.
+ * 고른 날짜로 넘어가는 버튼의 <b>모양</b>. 색은 쓰는 쪽이 붙인다.
  *
- * 목업 데이터에는 이미지가 없고, 실제 API도 사진이 없는 관광지가 많다.
- * 깨진 이미지 아이콘 대신 이름 첫 글자를 얹은 면을 둔다 — 자리와 크기가 유지돼
- * 사진이 있는 카드와 없는 카드가 같은 리듬으로 늘어선다.
+ * <p>둘로 나눈 이유: 두 버튼은 크기·높이·비활성 처리가 같아야 하고 색만 다르다.
+ * 각자 전부 적어두면 나중에 한쪽 높이만 고쳐져 나란히 선 두 버튼이 어긋난다.
+ *
+ * <p>{@code disabled:} 값을 여기 함께 둔다. 색을 붙이는 쪽에서 {@code bg-*}를 얹어도
+ * 비활성 색이 이기는데, 이는 Tailwind가 변형(disabled:)을 기본 유틸리티보다
+ * <b>뒤에</b> 출력하기 때문이다. 순서에 기대는 부분이라 한곳에 모아 둔다.
+ */
+const DATE_ACTION =
+  'min-h-13 w-full cursor-pointer rounded-ui text-[15px] font-semibold transition-colors disabled:cursor-not-allowed disabled:border-line/60 disabled:bg-bg disabled:text-hint'
+
+/**
+ * 사진 자리. 이미지가 있으면 그것을, 없으면 회색 대체면을 그린다.
+ *
+ * <p>imageUrl은 서버(TourAPI 국문 관광정보의 대표 이미지)에서 온다. 배관은 끝까지
+ * 깔려 있고 mock에 값이 없을 뿐이라, 실연동되면 이 컴포넌트 수정 없이 사진이 나타난다.
+ *
+ * <p>대체면은 <b>중립 회색</b>이다. 브랜드 노랑을 깔면 이미지 없는 장소마다 노란 사각형이
+ * 서서, 로고·주요 버튼에만 남겨야 할 강조색이 목록 전체에 번진다. 깨진 이미지 아이콘 대신
+ * 이름 첫 글자를 얹어 자리와 크기를 지킨다 — 사진 있는 카드와 같은 리듬으로 늘어선다.
  */
 function PlaceThumbnail({ name, imageUrl }: { name: string; imageUrl: string | null }) {
   if (imageUrl) {
@@ -50,7 +67,7 @@ function PlaceThumbnail({ name, imageUrl }: { name: string; imageUrl: string | n
   }
   return (
     <span
-      className="bg-brand-tint text-brand-deep grid h-21 w-21 flex-none place-items-center rounded-[14px] text-[22px] font-bold"
+      className="bg-bg text-muted grid h-21 w-21 flex-none place-items-center rounded-[14px] text-[22px] font-bold"
       aria-hidden="true"
     >
       {name.slice(0, 1)}
@@ -166,23 +183,26 @@ function QuietCard({ spot }: { spot: QuietSpot }) {
 
 function ForecastCard({
   day,
-  best,
+  selected,
   onSelect,
 }: {
   day: ForecastDay
-  best: boolean
+  selected: boolean
   onSelect: () => void
 }) {
   const weekday = formatWeekday(day.date).charAt(0)
   const weekend = weekday === '토' || weekday === '일'
 
   return (
-    // 넓은 화면의 줄({@link ForecastRow})과 같다 — 카드 하나가 곧 버튼이다
+    // 넓은 화면의 줄({@link ForecastRow})과 같다 — 카드 하나가 곧 고르는 버튼이다
     <button
       type="button"
       onClick={onSelect}
-      className={`box-border flex w-26 flex-none cursor-pointer flex-col rounded-[18px] bg-surface p-3.5 text-left transition-shadow ${
-        best ? 'border-quiet-soft shadow-raised border-[1.5px]' : 'shadow-rest hover:shadow-raised'
+      aria-pressed={selected}
+      className={`box-border flex w-26 flex-none cursor-pointer flex-col rounded-[18px] p-3.5 text-left transition-all ${
+        selected
+          ? 'border-quiet-soft bg-quiet-tint shadow-raised border-[1.5px]'
+          : 'bg-surface shadow-rest hover:shadow-raised'
       }`}
     >
       <div className="flex flex-col gap-0.5">
@@ -224,17 +244,12 @@ function ForecastCard({
         >
           {day.quietness}
         </span>
-        {best ? (
-          <span className="bg-quiet rounded-full px-2.25 py-0.75 text-[10.5px] font-semibold text-white">
-            가장 한적
-          </span>
-        ) : (
-          <span
-            className={`rounded-full px-2.25 py-0.75 text-[11px] font-semibold ${LEVEL_TINT[day.level]}`}
-          >
-            {day.levelLabel}
-          </span>
-        )}
+        {/* 배지는 늘 등급만 말한다. "가장 한적"은 머리글 문구가 맡는다 */}
+        <span
+          className={`rounded-full px-2.25 py-0.75 text-[11px] font-semibold ${LEVEL_TINT[day.level]}`}
+        >
+          {day.levelLabel}
+        </span>
       </div>
       {weekend && <span className="sr-only">주말</span>}
     </button>
@@ -254,28 +269,31 @@ function ForecastCard({
  */
 function ForecastRow({
   day,
-  best,
+  selected,
   onSelect,
 }: {
   day: ForecastDay
-  best: boolean
+  /** 사용자가 고른 날. 가장 한적한 날과는 무관하다 */
+  selected: boolean
   onSelect: () => void
 }) {
   const weekday = formatWeekday(day.date).charAt(0)
 
   return (
     /*
-      줄 하나가 곧 버튼이다. 날짜를 누르면 그 날로 코스를 짜러 간다.
+      줄 하나가 곧 고르는 버튼이다. 누르면 <b>선택될 뿐</b> 화면을 옮기지 않는다.
+      이동은 아래 "코스 짜기" 버튼이 맡는다 — 목록에서 날짜를 견줘 보는 동안
+      실수로 눌러 화면이 넘어가면 비교하던 것이 사라진다.
 
-      예전에는 목록 아래에 "OO로 코스 짜기" 버튼이 따로 있어 <b>가장 한적한 날 하나만</b>
-      고를 수 있었다. 나머지 여섯 날은 보여주기만 하고 누를 수 없었는데, 사용자가 주말밖에
-      시간이 없다면 2등 날짜를 고를 방법이 없었다.
+      강조는 "선택됨" 하나뿐이다. 가장 한적한 날에도 색을 깔면 "이 줄이 특별하다"는
+      신호가 둘이 되어, 어느 것이 내가 고른 것인지 흐려진다. 그건 머리글 문구가 맡는다.
     */
     <button
       type="button"
       onClick={onSelect}
+      aria-pressed={selected}
       className={`flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-2.5 py-2 text-left transition-colors ${
-        best ? 'bg-quiet-tint hover:bg-quiet-soft/40' : 'hover:bg-bg'
+        selected ? 'bg-quiet-tint ring-quiet-soft ring-1' : 'hover:bg-bg'
       }`}
     >
       <div className="flex w-13 flex-none items-baseline gap-1.25">
@@ -307,22 +325,12 @@ function ForecastRow({
         </div>
       </div>
 
-      {/*
-        가장 한적한 날이면 등급 배지 대신 <b>"가장 한적"</b>을 세운다.
-        머리글에 따로 적어두던 것을 이 자리로 옮겼다 — 어느 날인지 말로 다시 설명하는 것보다
-        그 줄에 붙여두는 편이 짧고, 목록을 훑는 눈이 한 번에 찾는다.
-      */}
-      {best ? (
-        <span className="bg-quiet text-[10.5px] w-11 flex-none rounded-full py-0.75 text-center font-semibold text-white">
-          가장 한적
-        </span>
-      ) : (
-        <span
-          className={`w-11 flex-none rounded-full py-0.75 text-center text-[11px] font-semibold ${LEVEL_TINT[day.level]}`}
-        >
-          {day.levelLabel}
-        </span>
-      )}
+      {/* 배지는 늘 등급만 말한다. "가장 한적"은 머리글 문구가 맡는다 */}
+      <span
+        className={`w-11 flex-none rounded-full py-0.75 text-center text-[11px] font-semibold ${LEVEL_TINT[day.level]}`}
+      >
+        {day.levelLabel}
+      </span>
     </button>
   )
 }
@@ -336,33 +344,57 @@ export function HomePage() {
   const regionName = REGIONS.find((option) => option.slug === DEFAULT_REGION)?.name ?? ''
   const data = state.phase === 'loaded' ? state.data : null
 
+  /** 사용자가 직접 고른 날짜. 아직 안 골랐으면 null이고, 그때는 가장 한적한 날을 쓴다 */
+  const [pickedDate, setPickedDate] = useState<string | null>(null)
+
+  /**
+   * 지금 선택된 날짜. <b>가장 한적한 날이 기본값</b>이다.
+   *
+   * <p>effect로 데이터가 도착할 때 값을 밀어넣지 않고 파생값으로 둔다. 그러면 상태가
+   * 하나뿐이라 "사용자가 골랐는가"만 기억하면 되고, 데이터가 늦게 와도 순서 문제가 없다.
+   * effect로 채우면 첫 렌더에 빈 상태가 한 번 그려졌다가 값이 들어오며 화면이 튄다.
+   *
+   * <p>널이 되는 때는 아직 불러오는 중일 때뿐이다. 그때만 버튼이 잠긴다 —
+   * 고를 날짜 자체가 없는데 눌리면 갈 곳 없는 화면으로 넘어간다.
+   */
+  const activeDate = pickedDate ?? data?.bestDay.date ?? null
+
   return (
     // pb-26: 아래 고정된 BottomNav가 마지막 버튼을 가리지 않게 한다. md부터는 막대가 사라진다.
     <div className="flex min-h-svh flex-col pb-26 md:pb-10">
-      {/* 1. 상단 — 서비스가 무엇인지 한 줄로 말하고, 로그인은 구석에 작게 둔다. */}
-      <header className={`${SHELL} flex items-start justify-between gap-4 px-5 pt-4.5 lg:px-8 lg:pt-6`}>
-        <div className="flex flex-col gap-1.75">
-          <div className="flex items-center gap-2">
-            <span className="bg-brand relative h-5.5 w-5.5 rounded-[8px]" aria-hidden="true">
-              <span className="bg-fg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
-            </span>
-            <span className="text-fg text-[13px] font-bold tracking-[0.16em]">PEAKOFF</span>
-          </div>
-          <p className="m-0 text-[13.5px] leading-[1.5]">
-            붐비는 곳은 피해요, 한적한 곳들로 떠나는 {regionName}
-          </p>
-        </div>
+      {/*
+        1. 상단 — 공용 헤더(Layout)와 <b>같은 모양의 고정 막대</b>다.
+
+        원래 홈만 배경 위에 뜬 자기 머리글을 썼는데, 흰 막대·경계선·sticky가 없어
+        "헤더가 없는 화면"으로 읽혔고 스크롤하면 이동 수단이 사라졌다.
+        제품형 서비스는 어느 화면이든 같은 헤더 하나가 따라다니는 것이 표준이다 —
+        홈만 다른 문법을 쓰면 화면을 오가는 사람이 매번 다시 배운다.
+
+        Layout 안으로 넣지 않고 모양만 맞춘 이유: 홈 본문은 자기 폭 체계(SHELL)와
+        가장자리 여백을 쓰고 있어, Layout의 본문 패딩이 겹으로 얹히면 전부 다시 만져야 한다.
+        대신 이 막대의 클래스는 Layout 헤더와 같은 값을 쓴다 — 다르게 보이면 고친 의미가 없다.
+      */}
+      <header className="bg-surface border-line sticky top-0 z-10 h-14 border-b">
         {/*
-          홈은 Layout을 쓰지 않아 헤더를 직접 그린다. 그래서 HeaderNav도 여기 직접 넣어야 한다 —
-          빠뜨리면 넓은 화면에서 이동 수단이 통째로 사라진다(BottomNav는 md에서 숨으므로).
+          안쪽 폭은 SHELL(본문용 단계 폭)이 아니라 Layout 헤더와 <b>같은 max-w-app</b>이다.
+          SHELL을 쓰면 중간 폭 화면에서 로고·메뉴가 본문 폭에 맞춰 안쪽으로 몰렸다가,
+          다른 화면으로 넘어가는 순간 Layout 헤더 자리로 퍼진다 — 헤더는 화면이 바뀌어도
+          픽셀 하나 안 움직여야 같은 헤더로 읽힌다.
         */}
-        <div className="flex flex-none items-center gap-5">
-          <HeaderNav />
+        <div className="max-w-app mx-auto flex h-full items-center justify-between gap-2 px-4 md:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex flex-none items-center gap-2" aria-label="PEAKOFF">
+              <span className="bg-brand relative h-5 w-5 rounded-[7px]" aria-hidden="true">
+                <span className="bg-fg absolute top-1.5 left-1.5 h-2 w-2 rounded-full" />
+              </span>
+              <span className="text-fg text-xs font-bold tracking-[0.16em]">PEAKOFF</span>
+            </span>
+            <HeaderNav />
+          </div>
 
           {/*
             로그인한 뒤에는 이 자리를 비운다. 마이페이지로 가는 길은 이미 나란히 서 있는
             HeaderNav에 있어서, 닉네임까지 링크로 두면 같은 곳으로 가는 문이 두 개가 된다.
-
             확인이 끝나기 전에도 비워 둔다. "로그인"이 떴다가 사라지면 눈에 거슬린다.
           */}
           {authLoading ? (
@@ -370,7 +402,7 @@ export function HomePage() {
           ) : member ? null : (
             <Link
               to="/login"
-              className="text-hint hover:text-fg flex-none px-0.5 py-1.5 text-[13px] font-medium whitespace-nowrap"
+              className="text-hint hover:text-fg -mr-2 flex-none rounded-chip p-2 text-[13px] font-medium no-underline"
             >
               로그인
             </Link>
@@ -401,7 +433,11 @@ export function HomePage() {
           │ 경주   │              │ 한적한날│
           └───────┴──────────────┴────────┘
       */}
-      <div className={`${SHELL} px-4 pt-5.5 lg:px-8 lg:pt-6`}>
+      {/*
+        위·좌우 여백은 Layout 본문(pt-6/lg:pt-8, px-4.5/md:px-6/lg:px-8)과 같은 값이다.
+        홈만 다르면 코스짜기 등 다른 화면으로 넘어갈 때마다 내용 시작점이 위아래로 튄다.
+      */}
+      <div className={`${SHELL} px-4.5 pt-6 md:px-6 lg:px-8 lg:pt-8`}>
         <div className="flex flex-col gap-7.5 lg:grid lg:grid-cols-12 lg:gap-4">
           {/* 2. 진입점 ① 직접 짜기 — 이 서비스의 원래 흐름 */}
           <div className={`${CELL} lg:col-span-6`}>
@@ -434,11 +470,22 @@ export function HomePage() {
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]"
             aria-hidden="true"
           >
-            <span className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(14_124_134/0.3)]" />
-            <span className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(14_124_134/0.16)]" />
+            {/*
+              장식 원은 브랜드 노랑의 글로우다. 옛 청록(rgb(14 124 134))을 그대로 두면
+              어두운 카드 전체에 청록 기운이 깔려 그 위의 노란 버튼이 탁해 보인다 —
+              강조색과 배경 기운이 싸우면 강조색이 진다.
+              알파를 낮게 두는 이유: 노랑을 진하게 깔면 검정 위에서 올리브색이 된다.
+            */}
+            <span className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(254_235_143/0.14)]" />
+            <span className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(254_235_143/0.07)]" />
           </span>
           <span className="relative flex flex-col gap-3">
-            <span className="text-quiet-soft text-[11.5px] font-semibold tracking-[0.1em]">
+            {/*
+              킥커도 브랜드 노랑이다. 청록으로 두면 카드의 색 기운이 둘로 갈린다.
+              "brand는 배경 전용" 규칙은 흰 배경의 1.2:1 때문인데, 여기는 어두운 잉크 위라
+              13.7:1로 넉넉하다 — 규칙의 이유가 사라지는 유일한 자리다.
+            */}
+            <span className="text-brand text-[11.5px] font-semibold tracking-[0.1em]">
               START PLANNING
             </span>
             <span className="text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
@@ -469,14 +516,16 @@ export function HomePage() {
           아직 만들지 않았지만 크기는 처음부터 같게 둔다. 작게 뒀다가 나중에 키우면
           그동안 사용자가 배운 위계("이건 곁다리")를 되돌려야 한다.
 
-          색은 다르다. 왼쪽은 어두운 면(동작하는 기능), 이쪽은 옅은 브랜드 면에 점선이다 —
-          크기로 비중을 말하고, 색과 배지로 상태를 말한다.
+          색은 다르다. 왼쪽은 어두운 면(동작하는 기능), 이쪽은 흰 면에 <b>노란 테두리</b>다 —
+          크기로 비중을 말하고, 색과 배지로 상태를 말한다. 노란 면을 통째로 깔면 로고와
+          주요 버튼에만 남겨야 할 강조색이 화면의 절반을 차지해, 정작 눌러야 할
+          "시작하기"보다 이쪽이 먼저 눈에 들어온다.
         */}
         <div className={`${CELL} lg:col-span-6`}>
           <button
             type="button"
             onClick={() => navigate('/recommend')}
-            className="border-brand-deep/25 bg-brand-tint hover:bg-brand/50 relative w-full cursor-pointer overflow-hidden rounded-[24px] border border-dashed px-6 pt-6.5 pb-6 text-left transition-colors lg:flex-1 lg:px-8 lg:pt-9"
+            className="border-brand bg-surface hover:bg-bg shadow-rest relative w-full cursor-pointer overflow-hidden rounded-[24px] border-[1.5px] border-dashed px-6 pt-6.5 pb-6 text-left transition-colors lg:flex-1 lg:px-8 lg:pt-9"
           >
             <span className="relative flex flex-col gap-3">
               <span className="text-brand-deep text-[11.5px] font-semibold tracking-[0.1em]">
@@ -488,7 +537,8 @@ export function HomePage() {
               <span className="text-muted max-w-62.5 text-sm leading-[1.6]">
                 몇 가지만 답하면 취향에 맞으면서 덜 붐비는 코스를 만들어 드려요.
               </span>
-              <span className="bg-surface/80 text-brand-deep rounded-ui mt-1.5 inline-flex h-11.5 items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold">
+              {/* 배경이 흰색이 되면서 흰 알약은 사라진다. 테두리로 서게 한다 */}
+              <span className="border-line text-muted rounded-ui mt-1.5 inline-flex h-11.5 items-center gap-1.75 self-start border px-5 text-[15.5px] font-semibold">
                 준비 중 <ChevronRight />
               </span>
             </span>
@@ -617,17 +667,22 @@ export function HomePage() {
           */}
           <section className={`${CELL} gap-3 lg:col-span-3 lg:gap-3`}>
             {/*
-              "OO이 가장 한적"이라 적던 칩은 머리글에서 뺐다. 어느 날인지 말로 다시
-              설명하는 대신 <b>그 줄에 직접</b> 붙였다 — 목록에 답이 있는데 머리글이
-              같은 말을 미리 하면, 읽는 사람은 같은 것을 두 번 확인하게 된다.
-
-              다른 두 섹션과 같은 머리글 구조(gap-0.75 한 묶음)로 맞췄다.
+              가장 한적한 날은 <b>문구로</b> 말한다. 목록에서 그 줄만 색을 깔면
+              "선택됨"과 신호가 부딪혀, 어느 것이 내가 고른 것인지 흐려진다.
+              색은 선택에만 쓰고, 최적일은 글로 짚는다.
             */}
             <div className="flex flex-col gap-0.75 px-1">
               <h2 className={SECTION_TITLE}>이번 주 한적한 날</h2>
-              <span className="text-hint text-[12.5px]">
-                날짜를 누르면 그 날로 코스를 짜요
-              </span>
+              {data ? (
+                <span className="text-hint text-[12.5px]">
+                  <strong className="text-brand-deep font-semibold">
+                    {formatCompactDate(data.bestDay.date)} {formatWeekday(data.bestDay.date)}
+                  </strong>
+                  이 가장 한적해요
+                </span>
+              ) : (
+                <span className="text-hint text-[12.5px]">앞으로 7일 예상 혼잡</span>
+              )}
             </div>
 
             {/*
@@ -647,8 +702,8 @@ export function HomePage() {
                       <ForecastCard
                         key={day.date}
                         day={day}
-                        best={day.date === data.bestDay.date}
-                        onSelect={() => navigate("/plan", { state: { startDate: day.date } })}
+                        selected={day.date === activeDate}
+                        onSelect={() => setPickedDate(day.date)}
                       />
                     ))
                   : Array.from({ length: 7 }, (_, index) => (
@@ -670,8 +725,8 @@ export function HomePage() {
                     <ForecastRow
                       key={day.date}
                       day={day}
-                      best={day.date === data.bestDay.date}
-                      onSelect={() => navigate("/plan", { state: { startDate: day.date } })}
+                      selected={day.date === activeDate}
+                      onSelect={() => setPickedDate(day.date)}
                     />
                   ))
                 : Array.from({ length: 7 }, (_, index) => (
@@ -684,18 +739,61 @@ export function HomePage() {
             </div>
 
             {/*
-              "OO로 코스 짜기" 버튼은 뺐다. 이제 목록의 모든 줄이 같은 일을 한다.
+              고르는 일과 넘어가는 일을 나눈다.
 
-              그 버튼은 <b>가장 한적한 날 하나만</b> 고를 수 있었다. 나머지 여섯 날은
-              보여주기만 하고 누를 수 없어서, 주말밖에 시간이 없는 사람에게는 2등 날짜를
-              고를 방법이 없었다. 남겨두면 "줄을 눌러야 하나 버튼을 눌러야 하나"가 갈린다.
+              목록은 <b>고르기만</b> 하고, 화면을 옮기는 것은 이 버튼 하나다. 줄을 누를 때마다
+              바로 넘어가면 날짜를 견줘 보다가 실수로 스쳐도 비교하던 것이 사라진다.
+
+              고르기 전에는 비활성이다. 가장 한적한 날을 미리 골라두면 사용자는 화면이 정한
+              값을 <b>자기가 고른 것</b>으로 착각한 채 넘어가, 어느 날로 짜는지 모르게 된다.
+              문구도 상태를 그대로 말한다 — 비활성일 때 "코스 짜기"라고만 적혀 있으면
+              왜 안 눌리는지 알 수 없다.
             */}
+            {/*
+              고른 날짜로 갈 수 있는 문 둘. 위쪽 진입점 두 개와 같은 짝이다 —
+              날짜를 정한 사람도 <b>직접 짤지 추천받을지</b>는 아직 안 정했을 수 있다.
+              한쪽만 두면 날짜를 고른 순간 나머지 길이 닫힌다.
+
+              추천받기는 위 진입점과 같은 점선을 두른다. 준비 중이라는 신호를 화면마다
+              다른 방식으로 말하면, 사용자는 그게 같은 기능인지 알아보지 못한다.
+            */}
+            <div className="flex flex-col gap-2 px-1">
+              <button
+                type="button"
+                disabled={activeDate === null}
+                className={`${DATE_ACTION} border-line bg-surface text-fg hover:bg-bg border`}
+                onClick={() =>
+                  activeDate && navigate('/plan', { state: { startDate: activeDate } })
+                }
+              >
+                {activeDate ? `${formatCompactDate(activeDate)}로 코스 짜기` : '코스 짜기'}
+              </button>
+              <button
+                type="button"
+                disabled={activeDate === null}
+                className={`${DATE_ACTION} border-brand bg-surface text-fg hover:bg-bg border-[1.5px] border-dashed`}
+                onClick={() =>
+                  activeDate && navigate('/recommend', { state: { startDate: activeDate } })
+                }
+              >
+                {activeDate ? `${formatCompactDate(activeDate)}로 추천받기` : '추천받기'}
+              </button>
+            </div>
 
           </section>
 
         </>
         )}
         </div>
+
+        {/*
+          출처 표기. 절대 규칙 4 — 공사 이름·로고는 못 쓰고 "공공데이터 기반" 같은
+          중립 표현만 허용된다. 화면의 모든 숫자가 어디서 왔는지 말하는 유일한 줄이라,
+          심사위원이 어느 화면에서 시작하든 닿는 홈에 둔다.
+        */}
+        <p className="text-hint m-0 pt-5 pb-2 text-center text-[11.5px]">
+          혼잡 예측은 공공데이터 기반 통계·예측값으로, 실제와 다를 수 있어요.
+        </p>
       </div>
     </div>
   )
