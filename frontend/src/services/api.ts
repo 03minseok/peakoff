@@ -8,6 +8,8 @@ import type {
   ChangePasswordRequest,
   CourseDiagnosis,
   CourseDiagnosisRequest,
+  CourseDraft,
+  CourseRecommendRequest,
   DateAlternatives,
   DeleteAccountRequest,
   LoginRequest,
@@ -247,6 +249,26 @@ export function diagnoseCourse(
   return apiRequest<CourseDiagnosis>('/courses/diagnose', {
     method: 'POST',
     body: course,
+    signal,
+  })
+}
+
+/**
+ * POST /api/courses/recommend — 설문 답으로 코스 초안을 받는다.
+ *
+ * 게스트도 부를 수 있다. 경주를 모르는 사용자의 진입점이라 로그인 뒤에 두면
+ * 그 자체가 장벽이 된다.
+ *
+ * <b>같은 요청을 다시 보내면 다른 코스가 온다.</b> 서버가 상위 후보군에서 가중 무작위로
+ * 뽑기 때문이다. 화면의 "다시 뽑기"가 이 성질에 기대고 있다 — 캐시하면 안 된다.
+ */
+export function recommendCourse(
+  request: CourseRecommendRequest,
+  signal?: AbortSignal,
+): Promise<CourseDraft> {
+  return apiRequest<CourseDraft>('/courses/recommend', {
+    method: 'POST',
+    body: request,
     signal,
   })
 }
