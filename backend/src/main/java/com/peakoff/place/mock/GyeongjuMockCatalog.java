@@ -27,7 +27,16 @@ public final class GyeongjuMockCatalog {
 	/** 지원 지역 정의는 {@link SupportedRegion} 한 곳에만 둔다. 코드를 두 번 적으면 언젠가 어긋난다. */
 	public static final Region GYEONGJU = SupportedRegion.GYEONGJU.toRegion();
 
-	static final PlaceCategory TOURIST_SPOT = new PlaceCategory("MOCK-TOURIST", "관광지");
+	/*
+	 * 관광지를 셋으로 나눠 뒀다(역사·자연·체험). 설문의 "여행 스타일" 문항이 분류 코드로
+	 * 후보를 거르는데, 관광지가 한 덩어리면 어떤 스타일을 골라도 같은 후보가 나온다.
+	 *
+	 * 실제 신분류 코드가 붙으면 어차피 갈리는 축이라 미리 갈라 뒀다. 스타일과 코드의
+	 * 짝은 TravelStyle 한 곳에만 적혀 있으므로, 코드가 바뀌면 그 파일만 고치면 된다.
+	 */
+	static final PlaceCategory HISTORY = new PlaceCategory("MOCK-HISTORY", "역사·유적");
+	static final PlaceCategory NATURE = new PlaceCategory("MOCK-NATURE", "자연·풍경");
+	static final PlaceCategory ACTIVITY = new PlaceCategory("MOCK-ACTIVITY", "체험·액티비티");
 	static final PlaceCategory RESTAURANT = new PlaceCategory("MOCK-RESTAURANT", "음식점");
 	static final PlaceCategory CAFE = new PlaceCategory("MOCK-CAFE", "카페");
 	static final PlaceCategory STAY = new PlaceCategory("MOCK-STAY", "숙박");
@@ -43,27 +52,36 @@ public final class GyeongjuMockCatalog {
 
 	// 한적도: 0~100, 클수록 한적. 아래 값은 실측이 아니라 임시 추정치다.
 	private static final List<Entry> ENTRIES = List.of(
-			// --- 관광지: 경주 대표 명소일수록 낮게 ---
-			entry("mock-hwangnidan", "황리단길", 35.8360, 129.2100, TOURIST_SPOT, 12),
-			entry("mock-bulguksa", "불국사", 35.7900, 129.3320, TOURIST_SPOT, 15),
-			entry("mock-daereungwon", "대릉원", 35.8384, 129.2126, TOURIST_SPOT, 18),
-			entry("mock-cheomseongdae", "첨성대", 35.8348, 129.2190, TOURIST_SPOT, 20),
-			entry("mock-donggung", "동궁과 월지", 35.8349, 129.2265, TOURIST_SPOT, 22),
-			entry("mock-seokguram", "석굴암", 35.7951, 129.3490, TOURIST_SPOT, 25),
-			entry("mock-gyochon", "교촌마을", 35.8301, 129.2135, TOURIST_SPOT, 35),
-			entry("mock-museum", "국립경주박물관", 35.8288, 129.2275, TOURIST_SPOT, 40),
-			entry("mock-bomunlake", "보문호", 35.8479, 129.2790, TOURIST_SPOT, 45),
+			// --- 역사·유적: 경주 대표 명소일수록 낮게 ---
+			entry("mock-bulguksa", "불국사", 35.7900, 129.3320, HISTORY, 15),
+			entry("mock-daereungwon", "대릉원", 35.8384, 129.2126, HISTORY, 18),
+			entry("mock-cheomseongdae", "첨성대", 35.8348, 129.2190, HISTORY, 20),
+			entry("mock-donggung", "동궁과 월지", 35.8349, 129.2265, HISTORY, 22),
+			entry("mock-seokguram", "석굴암", 35.7951, 129.3490, HISTORY, 25),
+			entry("mock-gyochon", "교촌마을", 35.8301, 129.2135, HISTORY, 35),
+			entry("mock-museum", "국립경주박물관", 35.8288, 129.2275, HISTORY, 40),
 
-			// --- 관광지: 덜 알려졌거나 외곽이라 한적한 곳 ---
-			entry("mock-jusangjeolli", "양남 주상절리", 35.6479, 129.4667, TOURIST_SPOT, 58),
-			entry("mock-munmudaewang", "문무대왕릉", 35.7223, 129.4779, TOURIST_SPOT, 62),
-			entry("mock-gampo", "감포항", 35.8079, 129.5058, TOURIST_SPOT, 64),
-			entry("mock-samneung", "경주 남산 삼릉", 35.7896, 129.2247, TOURIST_SPOT, 66),
-			entry("mock-yangdong", "양동마을", 35.9987, 129.2537, TOURIST_SPOT, 68),
-			entry("mock-bunhwangsa", "분황사", 35.8392, 129.2337, TOURIST_SPOT, 70),
-			entry("mock-oreung", "오릉", 35.8281, 129.2103, TOURIST_SPOT, 72),
-			entry("mock-muyeol", "무열왕릉", 35.8424, 129.1932, TOURIST_SPOT, 74),
-			entry("mock-kimyusin", "김유신묘", 35.8478, 129.1941, TOURIST_SPOT, 78),
+			// --- 역사·유적: 덜 알려졌거나 외곽이라 한적한 곳 ---
+			entry("mock-munmudaewang", "문무대왕릉", 35.7223, 129.4779, HISTORY, 62),
+			entry("mock-samneung", "경주 남산 삼릉", 35.7896, 129.2247, HISTORY, 66),
+			entry("mock-yangdong", "양동마을", 35.9987, 129.2537, HISTORY, 68),
+			entry("mock-bunhwangsa", "분황사", 35.8392, 129.2337, HISTORY, 70),
+			entry("mock-oreung", "오릉", 35.8281, 129.2103, HISTORY, 72),
+			entry("mock-muyeol", "무열왕릉", 35.8424, 129.1932, HISTORY, 74),
+			entry("mock-kimyusin", "김유신묘", 35.8478, 129.1941, HISTORY, 78),
+
+			// --- 자연·풍경 ---
+			entry("mock-bomunlake", "보문호", 35.8479, 129.2790, NATURE, 45),
+			entry("mock-jusangjeolli", "양남 주상절리", 35.6479, 129.4667, NATURE, 58),
+			entry("mock-gampo", "감포항", 35.8079, 129.5058, NATURE, 64),
+			entry("mock-deokdong", "덕동호", 35.8300, 129.3200, NATURE, 71),
+			entry("mock-tohamsan", "토함산 자연휴양림", 35.7727, 129.3363, NATURE, 76),
+
+			// --- 체험·액티비티 ---
+			entry("mock-hwangnidan", "황리단길", 35.8360, 129.2100, ACTIVITY, 12),
+			entry("mock-gyeongjuworld", "경주월드", 35.8323, 129.2846, ACTIVITY, 30),
+			entry("mock-luge", "경주 루지", 35.8395, 129.2836, ACTIVITY, 44),
+			entry("mock-donggungwon", "동궁원", 35.8556, 129.2648, ACTIVITY, 52),
 
 			// --- 음식점 ---
 			entry("mock-hwangnambbang", "황남빵 본점", 35.8371, 129.2118, RESTAURANT, 16),

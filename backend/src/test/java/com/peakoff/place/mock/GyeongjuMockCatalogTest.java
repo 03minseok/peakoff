@@ -37,15 +37,32 @@ class GyeongjuMockCatalogTest {
 		});
 	}
 
+	/**
+	 * 설문의 "여행 스타일" 문항이 분류 코드로 후보를 거른다. 스타일 하나에 해당하는 분류가
+	 * 비어 있으면 그 답을 고른 사용자에게 코스를 만들어 줄 수 없다.
+	 */
 	@Test
-	@DisplayName("네 가지 분류가 모두 들어 있다")
+	@DisplayName("여섯 가지 분류가 모두 들어 있다 — 스타일마다 고를 후보가 있어야 한다")
 	void coversAllCategories() {
 		List<String> categoryNames = GyeongjuMockCatalog.places().stream()
 				.map(place -> place.category().name())
 				.distinct()
 				.toList();
 
-		assertThat(categoryNames).containsExactlyInAnyOrder("관광지", "음식점", "카페", "숙박");
+		assertThat(categoryNames).containsExactlyInAnyOrder(
+				"역사·유적", "자연·풍경", "체험·액티비티", "음식점", "카페", "숙박");
+	}
+
+	@Test
+	@DisplayName("스타일마다 코스를 채울 만큼의 후보가 있다")
+	void everyStyleHasEnoughCandidates() {
+		GyeongjuMockCatalog.places().stream()
+				.collect(java.util.stream.Collectors.groupingBy(place -> place.category().name()))
+				.forEach((categoryName, places) -> assertThat(places)
+						.as(categoryName + " 후보 수")
+						// 하루 최대 5슬롯을 한 분류로만 채우는 경우는 없지만,
+						// 후보가 서너 곳뿐이면 가중 무작위 추출이 사실상 고정 결과를 낸다.
+						.hasSizeGreaterThanOrEqualTo(3));
 	}
 
 	@Test
