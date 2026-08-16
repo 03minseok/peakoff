@@ -18,12 +18,20 @@ import { today } from '../utils/date'
  *
  * <h3>왜 요청을 두 번 나누는가</h3>
  * 두 번째 요청의 표본을 첫 응답에서 뽑기 때문이다. 슬롯 상한이 50개라
- * 관광지 전체를 7일치로 깔 수 없어(18곳 × 7일 = 126), 한적도 전 구간에 걸친
+ * 관광지 전체를 7일치로 깔 수 없어(23곳 × 7일 = 161), 한적도 전 구간에 걸친
  * 7곳을 골라 지역을 대표하게 한다.
  */
 
-/** 서버 분류 이름. 실제 API로 바꿀 때 신분류 코드 체계에 맞춰 이 값만 고치면 된다. */
-const TOURIST_CATEGORY = '관광지'
+/**
+ * 홈 화면에 세울 분류. 실제 API로 바꿀 때 신분류 코드 체계에 맞춰 이 목록만 고치면 된다.
+ *
+ * <p>음식점·카페·숙박은 뺀다. 홈은 "지역이 오늘 얼마나 붐비는가"를 보여주는 자리라
+ * 볼거리로 대표하는 편이 읽힌다. 식당 한적도가 섞이면 지역 지표가 흐려진다.
+ *
+ * <p>한 이름이 아니라 목록인 이유: 서버가 볼거리를 역사·자연·체험으로 나눠 갖고 있다.
+ * 설문의 "여행 스타일"이 이 분류로 후보를 고르기 때문이다.
+ */
+const SIGHTSEEING_CATEGORIES = new Set(['역사·유적', '자연·풍경', '체험·액티비티'])
 
 /**
  * "오늘의 OO"에 세우는 곳 수. 붐비는 쪽과 한적한 쪽을 <b>같은 수로</b> 뽑는다.
@@ -162,7 +170,7 @@ export function useHomeData(region: string): HomeState {
 
     async function load() {
       const places = await fetchPlaces(region, controller.signal)
-      const spots = places.filter((place) => place.categoryName === TOURIST_CATEGORY)
+      const spots = places.filter((place) => SIGHTSEEING_CATEGORIES.has(place.categoryName))
       if (spots.length === 0) {
         throw new Error('표시할 관광지가 없습니다.')
       }
