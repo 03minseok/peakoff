@@ -35,7 +35,13 @@ function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="plan" element={<PlanPage />} />
-            {/* 설문 기반 코스 추천. 아직 안내 화면뿐이다 — 홈의 진입점과 함께 완성하거나 함께 감춘다 */}
+            {/*
+              설문 기반 코스 추천. 경주를 모르는 사용자의 진입점이다.
+
+              결과(초안)는 주소를 따로 두지 않고 이 화면 안에서 편다. 같은 답을 보내도
+              매번 다른 코스가 오기 때문에(가중 무작위 추출), 주소로 다시 열어도
+              그때 그 코스가 아니다 — 주소를 나눠도 얻는 것이 없다.
+            */}
             <Route path="recommend" element={<RecommendPage />} />
             <Route path="course" element={<CoursePage />} />
             <Route path="diagnosis" element={<DiagnosisPage />} />
