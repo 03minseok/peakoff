@@ -40,6 +40,31 @@ public record Course(
 		validateSlotsWithinPeriod(slots, nights + 1);
 	}
 
+	/**
+	 * 슬롯들로 코스를 만든다. <b>총점은 여기서 계산한다.</b>
+	 *
+	 * <p>총점 = 슬롯 한적도의 평균. <b>추천도가 섞이지 않는다.</b>
+	 * 원안과 개선안을 맞대는 값이라(발표 하이라이트), 순수 한적도로 두어야 개선폭이 그대로 읽힌다.
+	 *
+	 * <p>생성자 대신 이 정적 팩터리를 두는 이유: 총점을 매기는 곳이 둘이 됐다(진단·설문 생성).
+	 * 각자 평균을 내면 나중에 "체류 시간이 긴 장소에 가중치" 같은 보정이 들어올 때
+	 * 한쪽만 고쳐져 같은 코스가 화면마다 다른 총점을 갖는다.
+	 *
+	 * <p><b>평균은 임시 규칙이다.</b> 보정 방식은 분석 검증 후 정한다.
+	 * 지금은 "원안 대비 개선폭"을 비교할 기준만 있으면 된다.
+	 */
+	public static Course of(Region region, LocalDate startDate, int nights, List<CourseSlot> slots) {
+		Objects.requireNonNull(slots, "슬롯 목록은 필수입니다.");
+		if (slots.isEmpty()) {
+			throw new IllegalArgumentException("코스에 장소가 하나 이상 있어야 총점을 낼 수 있습니다.");
+		}
+		return new Course(region, startDate, nights, slots, averageQuietness(slots));
+	}
+
+	private static int averageQuietness(List<CourseSlot> slots) {
+		return (int) Math.round(slots.stream().mapToInt(CourseSlot::quietness).average().orElseThrow());
+	}
+
 	/** 여행 기간을 벗어난 일차의 슬롯이 섞이면 화면이 조용히 깨지므로 생성 시점에 막는다. */
 	private static void validateSlotsWithinPeriod(List<CourseSlot> slots, int totalDays) {
 		for (CourseSlot slot : slots) {
