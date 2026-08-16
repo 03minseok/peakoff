@@ -48,6 +48,12 @@ public class SecurityConfig {
 			"/api/auth/oauth/**",
 			"/api/places/**",
 			"/api/courses/diagnose",
+			/*
+			 * 설문 기반 코스 추천. 경주를 모르는 사용자의 진입점이라 로그인 뒤에 두면
+			 * 진입 장벽 자체가 된다. 저장(POST /api/courses)은 여전히 로그인이 필요하다 —
+			 * 경로를 정확히 적었으므로 그쪽까지 열리지 않는다.
+			 */
+			"/api/courses/recommend",
 			"/api/dates/**" };
 
 	/** API 문서. 심사 때 화면으로 보여줘야 해서 열어 둔다. */
