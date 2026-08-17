@@ -50,7 +50,7 @@ const DATE_ACTION =
  * <p>imageUrl은 서버(TourAPI 국문 관광정보의 대표 이미지)에서 온다. 배관은 끝까지
  * 깔려 있고 mock에 값이 없을 뿐이라, 실연동되면 이 컴포넌트 수정 없이 사진이 나타난다.
  *
- * <p>대체면은 <b>중립 회색</b>이다. 브랜드 노랑을 깔면 이미지 없는 장소마다 노란 사각형이
+ * <p>대체면은 <b>중립 회색</b>이다. 브랜드 틸을 깔면 이미지 없는 장소마다 청록 사각형이
  * 서서, 로고·주요 버튼에만 남겨야 할 강조색이 목록 전체에 번진다. 깨진 이미지 아이콘 대신
  * 이름 첫 글자를 얹어 자리와 크기를 지킨다 — 사진 있는 카드와 같은 리듬으로 늘어선다.
  */
@@ -455,7 +455,7 @@ export function HomePage() {
               달고 있으면 "여기도 눌리는데?"가 되어 방금 없앤 혼란이 되돌아온다.
               대신 같은 hover에서 CTA가 함께 반응해 눌러야 할 곳을 가리킨다.
             */}
-            <div className="group bg-fg relative w-full overflow-hidden rounded-[24px] px-6 pt-6.5 pb-6 text-left text-white shadow-[0_8px_26px_rgb(22_33_31/0.18)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-[0_14px_34px_rgb(22_33_31/0.24)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
+            <div className="group bg-fg relative w-full overflow-hidden rounded-[24px] px-6 pt-6.5 pb-6 text-left text-white shadow-[0_8px_26px_rgb(42_62_84/0.18)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-[0_14px_34px_rgb(42_62_84/0.24)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
           {/*
             장식 원을 잘라내는 층.
 
@@ -470,19 +470,19 @@ export function HomePage() {
             aria-hidden="true"
           >
             {/*
-              장식 원은 브랜드 노랑의 글로우다. 옛 청록(rgb(14 124 134))을 그대로 두면
-              어두운 카드 전체에 청록 기운이 깔려 그 위의 노란 버튼이 탁해 보인다 —
-              강조색과 배경 기운이 싸우면 강조색이 진다.
-              알파를 낮게 두는 이유: 노랑을 진하게 깔면 검정 위에서 올리브색이 된다.
+              글로우 두 개가 서비스의 서사다 — 위는 틸(브랜드·행동이자 한적한 방향), 아래는 핑크(붐빔).
+              어두운 네이비 면마다 이 두 기운을 마주 놓아 "붐빔에서 한적으로"라는 방향을
+              장식에도 배게 한다. 로그인 패널·결과 히어로와 같은 문법이다.
+              알파를 낮게 두는 이유: 진하게 깔면 어두운 면 위에서 탁해진다.
             */}
-            <span className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(254_235_143/0.14)]" />
-            <span className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(254_235_143/0.07)]" />
+            <span className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(63_193_201/0.14)]" />
+            <span className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(252_81_133/0.09)]" />
           </span>
           <span className="relative flex flex-col gap-3">
             {/*
-              킥커도 브랜드 노랑이다. 청록으로 두면 카드의 색 기운이 둘로 갈린다.
-              "brand는 배경 전용" 규칙은 흰 배경의 1.2:1 때문인데, 여기는 어두운 잉크 위라
-              13.7:1로 넉넉하다 — 규칙의 이유가 사라지는 유일한 자리다.
+              킥커는 브랜드 틸이다. 다른 색을 쓰면 카드의 색 기운이 둘로 갈린다.
+              "brand는 배경 전용" 규칙은 흰 카드 위의 2.2:1 때문인데, 여기는 어두운 잉크 위라
+              5.1:1로 넉넉하다 — 규칙의 이유가 사라지는 유일한 자리다.
             */}
             <span className="text-brand text-[11.5px] font-semibold tracking-[0.1em]">
               START PLANNING

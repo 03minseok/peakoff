@@ -26,6 +26,24 @@ export const LEVEL_TINT: Record<CongestionLevel, string> = {
 }
 
 /**
+ * 색 위에 <b>글자가 얹히는</b> 자리의 배경 + 글자색 한 쌍.
+ * 지도 마커, 진단·추천 화면의 순서 번호 원, 채운 경고 버튼이 여기에 해당한다.
+ *
+ * LEVEL_SOLID를 쓰면 안 된다. solid는 명도 서열(보통>한적>붐빔)을 지켜야 해서 셋 다 밝고,
+ * 밝은 색은 흰 글자를 받지 못한다 — 실제로 순서 원의 흰 번호가 2.2~4.0:1로 묻어 있었다.
+ * 그래서 배경은 한 단계 진한 -strong을 쓴다. 지도 타일 위에서 대비가 죽는 문제도 같이 풀린다.
+ *
+ * 셋 다 흰 글자를 받는다(4.9~7.6:1). solid 단계에서는 보통이 너무 밝아 검정 글자가
+ * 필요했지만, strong까지 내리면 세 단계가 하나로 통일된다 — 그러면서도 명도 서열은
+ * 그대로다(보통 0.17 > 한적 0.15 > 붐빔 0.10).
+ */
+export const LEVEL_ON_SOLID: Record<CongestionLevel, string> = {
+  QUIET: 'bg-quiet-strong text-white',
+  MODERATE: 'bg-moderate-strong text-white',
+  CROWDED: 'bg-crowded-strong text-white',
+}
+
+/**
  * 인라인 style로 넘겨야 하는 자리(원형 게이지의 conic-gradient, 막대 너비 등).
  *
  * 값이 실행 중에 정해져 클래스로 만들 수 없다. CSS 변수를 넘기면

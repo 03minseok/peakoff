@@ -50,18 +50,23 @@ export function passwordStrength(password: string): PasswordStrength {
       textClass: 'text-moderate-deep',
     }
   }
+  /*
+   * "안전"의 색이 브랜드가 아니라 quiet인 이유: 강도 막대는 등급 신호이지 브랜드 강조가
+   * 아니다. 이 서비스에서 "좋은 방향"의 색은 quiet(그린틸)이고, 막대도 그 문법을 따른다 —
+   * 약함(핑크레드) → 보통(앰버) → 안전(그린틸)이 신호등처럼 선다.
+   */
   if (score === 3) {
     return {
       percent: 80,
       label: '안전',
-      barClass: 'bg-brand',
-      textClass: 'text-brand-deep',
+      barClass: 'bg-quiet',
+      textClass: 'text-quiet-deep',
     }
   }
   return {
     percent: 100,
     label: '매우 안전',
-    barClass: 'bg-brand',
-    textClass: 'text-brand-deep',
+    barClass: 'bg-quiet',
+    textClass: 'text-quiet-deep',
   }
 }

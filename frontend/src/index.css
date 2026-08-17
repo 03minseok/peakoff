@@ -1,90 +1,157 @@
 @import 'tailwindcss';
 
 /*
- * 디자인 토큰. 값은 전부 디자인 시안(PEAKOFF Design System)에서 그대로 옮겼다.
+ * 디자인 토큰.
  *
- * 색 의미는 서비스 정체성과 맞춘다. (CLAUDE.md 디자인 규칙과 같은 말이어야 한다)
- *   한적 = 그린 #2ba88c  (이 서비스가 사용자를 데려가려는 방향)
- *   보통 = 주황 #e8913a  (앰버 금지 — 브랜드 노랑과 구분되지 않는다)
- *   붐빔 = 레드 #d6425c  (피해야 할 방향)
+ * 팔레트의 원천은 넉 줄짜리 색 띠 한 장이다 — 네이비 · 틸 · 회백 · 핑크.
+ * 네 색에 <b>각각 자리를 하나씩</b> 주었고, 남는 색도 겹치는 색도 없다.
  *
- * 단계마다 solid / deep / tint / soft 네 가지를 둔다.
- *   solid — 점·막대·마커처럼 색 자체가 신호인 자리
- *   deep  — tint 위에 올리는 글자색 (대비 확보용)
- *   tint  — 배지·안내 상자의 옅은 배경
- *   soft  — 막대 그래프의 보조 단계
+ *   네이비 #364f6b → 잉크 (글자·어두운 면)             ← --c-fg가 이 색을 한 단계 내린 값
+ *   틸    #3fc1c9 → 브랜드 (버튼·로고·강조)           ← --c-brand에 원색 그대로 · 지정 메인 색
+ *   회백  #f5f5f5 → 화면 바탕                        ← --c-bg에 원색 그대로
+ *   핑크  #fc5185 → 붐빔                            ← 정체성 자리(띠·글로우)에 원색, 기능 단계는 파생
+ *
+ * 앞선 파스텔 세계와 달리 <b>원색들이 이미 신호가 될 만큼 진하다.</b> 그래서 램프의
+ * 방향이 바뀐다 — 파스텔 때는 원색을 soft에 두고 아래로 늘렸지만, 여기서는 원색이
+ * point·solid급이고 tint·soft를 위로 늘려 만든다.
+ *
+ * 자리별 사연:
+ *   - 잉크: 네이비 원색은 시안 버튼 위에서 3.9:1이라 본문 기준에 못 미친다.
+ *     한 단계 내린 #2a3e54를 잉크로 쓴다 — 글자와 어두운 면이 전부 네이비 기운이 된다.
+ *   - 한적: 브랜드 시안과 <b>같은 방향의 색</b>이다. 이 서비스가 미는 방향(한적)과
+ *     브랜드가 한 기운이 되는 건 서사상 맞다. 다만 등급 신호로는 갈려야 하므로
+ *     한적은 초록 쪽(그린틸)으로 밀고 명도도 내렸다. tint끼리도 시안 쪽/초록 쪽으로 벌렸다.
+ *   - 보통: 띠 밖에서 온 유일한 색(앰버). 신호등의 중간색은 앰버 말고 대안이 없고,
+ *     브랜드가 시안이라 노랑과 부딪히지 않는다.
+ *   - 붐빔: 핑크 원색은 휘도 0.28이라 한적 solid(0.27)와 명도 서열이 겹친다.
+ *     기능 단계(solid 이하)는 어둡게 내려 서열을 지키고, 원색 그대로는
+ *     띠 모티프와 어두운 면의 글로우에만 산다.
+ *
+ * 띠는 토큰으로 흩어지는 데서 끝나지 않는다. <b>띠 그 자체가 로고 다음가는 정체성이다</b> —
+ * 아래 .palette-band가 원색들을 이어 붙인 모티프이고, 헤더 상단·결과 히어로에 얇게 두른다.
+ * 심사위원이 화면을 옮겨 다녀도 같은 띠를 만난다.
+ *
+ * 단계마다 밝은 쪽에서 어두운 쪽으로 다섯 칸을 둔다.
+ *   tint   — 배지·안내 상자의 옅은 배경
+ *   soft   — 막대 그래프의 보조 단계, 어두운 면 위의 밝은 색 (여기에 띠 원색이 산다)
+ *   solid  — 점·막대처럼 <b>색 자체가 신호</b>이고 글자가 얹히지 않는 자리
+ *   strong — 색 위에 <b>글자나 번호가 얹히는</b> 자리 (지도 마커, 순서 원, 경고 버튼)
+ *            + 지도 타일처럼 어수선한 배경 위
+ *   deep   — tint·soft 위에 올리는 글자색
  * 배경 하나만 두면 그 위에 올릴 글자색을 맞출 수 없어서 쌍으로 관리한다.
+ *
+ * solid와 strong을 나눈 이유는 하나다. solid는 명도 서열(보통>한적>붐빔)을 지켜야 해서
+ * 셋 다 밝고, 밝은 색은 흰 글자를 받지 못한다. 글자를 받아야 하는 자리를 solid로 때우면
+ * 흰 번호가 색에 묻는다 — 실제로 진단·추천 화면의 순서 원에서 그렇게 되어 있었다.
  */
 :root {
-  /* 화면은 옅은 회녹색, 카드는 흰색. 카드가 배경 위로 떠 보이게 하는 조합이다.
-     반대로(흰 배경 + 회색 카드) 두면 카드 경계가 뭉개진다. */
-  --c-bg: #f4f6f5;
+  /*
+   * 화면은 띠의 회백 원색 그대로, 카드는 순백. 카드가 배경 위로 떠 보이게 하는 조합이다.
+   * 반대로(흰 배경 + 색 있는 카드) 두면 카드 경계가 뭉개진다.
+   *
+   * 카드가 크림이 아니라 <b>순백</b>인 이유: 회백 바탕은 온도가 없는 중립색이라,
+   * 크림 카드를 얹으면 카드만 누렇게 뜬다. 파스텔 세계에서 크림이 필요했던 이유
+   * (연둣빛 바탕 위에서 순백이 파랗게 식음)가 여기서는 사라졌다.
+   *
+   * wash는 body에 까는 세로 그라데이션의 시작색이다. 화면 맨 위가 옅은 시안 기운으로
+   * 밝았다가 회백으로 가라앉는다 — 메인 색이 첫 화면의 공기부터 지배하게 한다.
+   * 스크롤해 내려가면 평평한 회백이 되므로, 하단 고정 요소(CTA 띠·시트)와는 부딪히지 않는다.
+   */
+  --c-bg: #f5f5f5;
+  --c-wash-top: #e9f6f7;
   --c-surface: #ffffff;
-  --c-line: #e4e8e7;
+  --c-line: #e3e7ea;
+  /*
+   * 아무 뜻도 없는 옅은 채움. 꺼진 체크박스, 색을 쓸 이유가 없는 보조 버튼처럼
+   * "지금은 신호가 아니다"라고 말해야 하는 자리에 쓴다.
+   *
+   * 카드 위에서만 보이면 되므로 --c-bg보다 아주 조금 진하다. 대신 그 위에
+   * --c-muted 글자가 4.5:1을 넘도록 밝기를 잡았다 — 더 내리면 글자가 먼저 무너진다.
+   * 예전에는 화면마다 회색 hex를 직접 박아 두어 바탕만 바꾸면 그 자리들이 회색으로 남았다.
+   */
+  --c-fill: #edf0f2;
 
-  --c-fg: #16211f;
-  --c-muted: #5f706e;
-  /* 흰 카드에서 2.96:1이라 본문 기준(4.5)에 못 미쳤다. 색조는 그대로 두고 밝기만 내렸다 */
-  --c-hint: #667170;
+  /* 잉크 = 띠의 네이비. 원색(#364f6b)은 시안 버튼 위에서 3.9:1이라 한 단계 내렸다.
+     글자·어두운 면·그림자가 전부 이 네이비 기운을 공유한다 */
+  --c-fg: #2a3e54;
+  --c-muted: #54687d;
+  --c-hint: #5e7186;
 
   /*
-   * 브랜드 = 노랑. 초록은 트래킹 앱, 파랑은 금융 앱으로 읽혀서 그 중간을 잡았다.
+   * 브랜드 = 틸 #3fc1c9. 지정 메인 색이라 원색 그대로 point에 둔다.
    *
-   * <b>이 색은 밝다. 그래서 위에 올리는 글자가 흰색이 아니라 검정(--c-fg)이다.</b>
-   * 흰 글자를 얹으면 1.2:1이라 아예 안 보인다. 노랑을 어둡게 내려 흰 글자를 받게 하면
-   * 노랑이 아니라 카키가 된다 — 밝게 두고 글자를 어둡게 하는 쪽이 이 색을 살리는 길이다.
+   * <b>이 색은 밝다. 그래서 위에 올리는 글자가 흰색이 아니라 잉크(--c-fg)다.</b>
+   * 흰 글자를 얹으면 2.2:1이라 읽히지 않는다. 틸을 어둡게 내려 흰 글자를 받게 하면
+   * 메인 색이 탁한 청록이 된다 — 밝게 두고 글자를 어둡게 하는 쪽이 이 색을 살리는 길이다.
+   * (브랜드가 노랑·살몬이었을 때와 <b>같은 구조</b>다. 색만 바뀌고 규칙은 그대로다)
    *
-   * 그래서 브랜드색과 한적색이 <b>처음으로 갈라졌다.</b> 한적/보통/붐빔 3단계는
-   * 신호등처럼 읽혀야 해서 청록·앰버·레드를 그대로 둔다. 노랑은 버튼·로고·강조 전용이다.
-   *
-   *   tint  #fff8e1  옅은 배경 (칩·안내 상자)
-   *   point #feeb8f  버튼·로고·강조        ← 지정색
-   *   hover #fbdf6b  point 위에 손을 올렸을 때
-   *   deep  #7a6402  글자·테두리용. point는 글자색으로 쓸 수 없다
+   *   tint  #e1f5f9  옅은 배경 (칩·안내 상자). 한적 tint와 갈리게 파랑 쪽으로 밀었다
+   *   soft  #9fdee2  칩에 손을 올렸을 때. tint 글자색(deep)을 그대로 받는다
+   *   point #3fc1c9  버튼·로고·강조        ← 띠의 원색 · 지정 메인
+   *   hover #3cbac2  point 위에 손을 올렸을 때. 잉크 글자가 4.5:1을 지키는 한계까지만 내렸다
+   *   deep  #156067  글자·테두리·초점링용. point는 글자색으로 쓸 수 없다
    */
-  --c-brand: #feeb8f;
-  --c-brand-deep: #7a6402;
-  --c-brand-hover: #fbdf6b;
-  --c-brand-tint: #fff8e1;
+  --c-brand: #3fc1c9;
+  --c-brand-deep: #156067;
+  --c-brand-hover: #3cbac2;
+  --c-brand-soft: #9fdee2;
+  --c-brand-tint: #e1f5f9;
 
   /*
-   * 혼잡 3단계. 보통과 붐빔이 색조만으로 구분되지 않아 명도까지 벌린 값이다 —
-   * 상대 휘도가 보통 0.38 > 한적 0.30 > 붐빔 0.19로 갈라진다.
+   * 혼잡 3단계. 색조만으로는 색각 이상에서 갈리지 않아 <b>명도까지 벌려</b> 잡았다 —
+   * 상대 휘도가 보통 0.48 > 한적 0.27 > 붐빔 0.20으로 갈라진다.
    *
-   * ⚠️ 이 solid들은 밝아서 <b>흰 글자를 받지 못한다</b>(2.5~4.4:1).
-   * 글자가 얹히는 자리는 tint 배경 + deep 글자 조합을 쓴다.
-   * 지도 위에서는 대비가 죽으므로 아래 --c-marker-* 진한 값을 쓴다.
+   * ⚠️ 이 solid들은 밝아서 <b>흰 글자를 받지 못한다.</b>
+   * 글자가 얹히는 자리는 tint 배경 + deep 글자 조합이거나, 아래 -strong을 쓴다.
    */
-  --c-quiet: #2ba88c;
-  --c-quiet-deep: #0a5a61;
-  --c-quiet-tint: #e0f5ef;
-  --c-quiet-soft: #8cc7c6;
 
-  /* 보통 = 주황. 앰버는 브랜드 노랑(#feeb8f)과 구분되지 않아 금지다 */
-  --c-moderate: #e8913a;
-  --c-moderate-deep: #8a4404;
-  --c-moderate-tint: #fdeedc;
-  --c-moderate-soft: #f0b183;
+  /* 한적 = 그린틸. 브랜드 시안과 같은 방향의 색이지만(서비스가 미는 방향 = 브랜드),
+     등급 신호로는 갈려야 해서 초록 쪽으로 밀고 명도를 내렸다. tint도 초록 쪽이다.
+     soft는 어두운 면(로그인 좌측 패널) 위에서 로고·링크를 밝히는 데도 쓴다 — 6.7:1로 선다. */
+  --c-quiet: #14a07c;
+  --c-quiet-deep: #095b49;
+  --c-quiet-tint: #def5e4;
+  --c-quiet-soft: #7fdcbb;
 
-  --c-crowded: #d6425c;
-  --c-crowded-deep: #9b3320;
-  --c-crowded-tint: #fce4e8;
-  --c-crowded-soft: #eba48f;
+  /* 보통 = 앰버. 띠 밖에서 온 유일한 색이다 — 신호등의 중간색은 앰버 말고 대안이 없고,
+     브랜드가 시안이라 노랑과 부딪히지 않는다.
+     셋 중 가장 밝아야 하므로(명도 서열) deep을 깊게 내려 글자 대비를 확보한다. */
+  --c-moderate: #e9ae3e;
+  --c-moderate-deep: #7a5300;
+  --c-moderate-tint: #fbf0d2;
+  --c-moderate-soft: #f7cf7f;
+
+  /* 붐빔 = 핑크. 원색(#fc5185)은 휘도 0.28이라 한적 solid와 명도 서열이 겹쳐,
+     기능 단계는 전부 어둡게 내려 서열을 지켰다. 원색 그대로는 띠 모티프와
+     어두운 면의 글로우에만 산다 — "피해야 할 방향"의 색이 정체성 자리에서는
+     경고가 아니라 활력으로 일한다. */
+  --c-crowded: #e82c6e;
+  --c-crowded-deep: #99104a;
+  --c-crowded-tint: #fddfe9;
+  --c-crowded-soft: #fd86ac;
 
   /*
-   * 지도 마커 전용. 지도 타일 위에서는 본문용 solid의 대비가 죽으므로
-   * 같은 색조를 한 단계 진하게 내린 값을 쓴다. 마커에는 흰 테두리를 둘러
-   * 배경이 무엇이든 경계가 서게 한다.
+   * strong — 색 위에 글자가 얹히는 자리. 같은 색조를 solid보다 한 단계 진하게 내렸다.
+   *
+   * 쓰는 곳: 지도 마커, 진단·추천 화면의 순서 번호 원, 채운 경고 버튼.
+   * 지도 타일 위에서는 solid의 대비가 죽어 여기서도 같은 값이 필요하다
+   * (마커에는 흰 테두리를 둘러 배경이 무엇이든 경계가 서게 한다).
+   *
+   * 셋 다 흰 글자를 받는다(4.9~6.6:1). solid 단계에서는 보통이 너무 밝아 검정 글자가
+   * 필요했는데, strong까지 내리면 세 단계 모두 흰 글자로 통일된다 —
+   * 명도 서열(보통 0.17 > 한적 0.15 > 붐빔 0.11)은 여기서도 그대로 유지된다.
+   * 배경과 글자색의 짝은 levelStyles.ts의 LEVEL_ON_SOLID에 적어 둔다.
    */
-  --c-marker-quiet: #1f8f76;
-  --c-marker-moderate: #d67b22;
-  --c-marker-crowded: #be2f49;
+  --c-quiet-strong: #0e7a5f; /* 지도 경로 선도 이 값이다 — CourseMap.tsx 참고 */
+  --c-moderate-strong: #a46114;
+  --c-crowded-strong: #b3175a;
 }
 
 @theme inline {
   --color-bg: var(--c-bg);
   --color-surface: var(--c-surface);
   --color-line: var(--c-line);
+  --color-fill: var(--c-fill);
 
   --color-fg: var(--c-fg);
   --color-muted: var(--c-muted);
@@ -97,27 +164,26 @@
   --color-brand: var(--c-brand);
   --color-brand-deep: var(--c-brand-deep);
   --color-brand-hover: var(--c-brand-hover);
+  --color-brand-soft: var(--c-brand-soft);
   --color-brand-tint: var(--c-brand-tint);
 
   --color-quiet: var(--c-quiet);
   --color-quiet-deep: var(--c-quiet-deep);
   --color-quiet-tint: var(--c-quiet-tint);
   --color-quiet-soft: var(--c-quiet-soft);
+  --color-quiet-strong: var(--c-quiet-strong);
 
   --color-moderate: var(--c-moderate);
   --color-moderate-deep: var(--c-moderate-deep);
   --color-moderate-tint: var(--c-moderate-tint);
   --color-moderate-soft: var(--c-moderate-soft);
+  --color-moderate-strong: var(--c-moderate-strong);
 
   --color-crowded: var(--c-crowded);
   --color-crowded-deep: var(--c-crowded-deep);
   --color-crowded-tint: var(--c-crowded-tint);
   --color-crowded-soft: var(--c-crowded-soft);
-
-  /* 지도 마커 전용 (bg-marker-quiet 등). 본문 solid와 지도 색을 따로 조정할 수 있게 분리 */
-  --color-marker-quiet: var(--c-marker-quiet);
-  --color-marker-moderate: var(--c-marker-moderate);
-  --color-marker-crowded: var(--c-marker-crowded);
+  --color-crowded-strong: var(--c-crowded-strong);
 
   --font-sans: Pretendard, -apple-system, system-ui, 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
@@ -139,18 +205,20 @@
   --radius-chip: 11px;
 
   /* 그림자는 두 단계뿐이다. rest는 바닥에 놓인 카드, raised는 떠 있는 카드.
-     단계를 늘리면 어느 것이 더 중요한지 화면에서 읽히지 않는다. */
-  --shadow-rest: 0 1px 2px rgb(22 33 31 / 0.05);
+     단계를 늘리면 어느 것이 더 중요한지 화면에서 읽히지 않는다.
+     색은 --c-fg와 같은 rgb(42 62 84)다. 잉크가 네이비이므로 그림자도 네이비 기운을 따라간다 —
+     순수 검정 그림자는 회백 바탕 위에서 색 없는 얼룩이 된다. */
+  --shadow-rest: 0 1px 2px rgb(42 62 84 / 0.07);
   --shadow-raised:
-    0 1px 2px rgb(22 33 31 / 0.05), 0 8px 24px rgb(22 33 31 / 0.06);
+    0 1px 2px rgb(42 62 84 / 0.07), 0 8px 24px rgb(42 62 84 / 0.08);
   /*
    * 주요 버튼 전용.
    *
-   * 예전에는 브랜드색을 머금은 그림자였다. 브랜드가 밝은 노랑이 되면서 흰 배경 위에
-   * 노란 그림자가 보이지 않게 되어, 중립적인 어두운 그림자로 바꿨다.
-   * 밝은 버튼일수록 바닥에서 떠 있다는 신호가 그림자 말고는 없다.
+   * 밝은 틸 버튼이라 바닥에서 떠 있다는 신호가 그림자 말고는 없다.
+   * 브랜드색을 머금은 그림자는 쓰지 않는다 — 옅은 바탕 위에서 시안 그림자는
+   * 번짐으로 보이지 색으로 보이지 않는다.
    */
-  --shadow-cta: 0 6px 18px rgb(22 33 31 / 0.14);
+  --shadow-cta: 0 6px 18px rgb(42 62 84 / 0.16);
 }
 
 @layer base {
@@ -180,7 +248,15 @@
   }
 
   body {
-    background: var(--color-bg);
+    /*
+     * 바탕은 평평한 한 색이 아니다. 맨 위 한 화면 높이만 옅은 시안 기운이 돌다가
+     * 회백으로 가라앉는다 — 메인 색이 첫 화면의 공기부터 지배하게 한다.
+     * 660px 아래로는 완전히 --c-bg와 같으므로, 시트·하단 CTA 띠처럼
+     * bg 색을 그대로 쓰는 요소들과 어긋나는 구간이 없다.
+     */
+    background-color: var(--color-bg);
+    background-image: linear-gradient(180deg, var(--c-wash-top) 0px, var(--c-bg) 660px);
+    background-repeat: no-repeat;
     color: var(--color-muted);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -205,7 +281,7 @@
   }
 
   /* 키보드 이동 시 초점이 어디 있는지 항상 보이게 한다.
-     brand가 아니라 brand-deep인 이유: 밝은 노랑 테두리는 흰 배경에서 1.2:1이라 안 보인다. */
+     brand가 아니라 brand-deep인 이유: 밝은 틸 테두리는 흰 카드 위에서 2.2:1이라 링으로 서지 못한다. */
   :focus-visible {
     outline: 2px solid var(--color-brand-deep);
     outline-offset: 2px;
@@ -214,6 +290,27 @@
 
 @layer components {
   /*
+   * 팔레트 띠 모티프. 원천 이미지의 원색을 위→아래 순서 그대로 좌→우로 이어 붙였다.
+   *
+   * 로고 다음가는 정체성 장치다 — 헤더 맨 위, 로그인 좌측 패널, 결과 히어로처럼
+   * "이 서비스의 얼굴"인 자리에 얇게(2~3px) 두른다. 화면 어디를 열어도 같은 띠를
+   * 만나게 하는 것이 목적이므로, 목록·카드 같은 내용 영역에는 쓰지 않는다.
+   * 두꺼워지면 장식이 아니라 등급 막대처럼 읽히니 높이를 키우지 말 것.
+   *
+   * 넷 중 <b>회백은 띠에서 뺐다.</b> 그 색의 자리는 화면 바탕 그 자체가 되었고,
+   * 흰 헤더 위에 회백 조각을 넣으면 띠가 4분의 1만큼 끊긴 것처럼 보인다.
+   * 네이비·핑크는 토큰이 없는 원색이라 여기 직접 적는다(잉크·붐빔 기능색은 파생값이다).
+   */
+  .palette-band {
+    background: linear-gradient(
+      90deg,
+      #364f6b 0 33.4%,
+      var(--c-brand) 33.4% 66.7%,
+      #fc5185 66.7% 100%
+    );
+  }
+
+  /*
    * 불러오는 중 자리를 채우는 회색 덩어리.
    *
    * 빈 화면 대신 <b>들어올 내용과 같은 모양</b>을 미리 깔아두면, 데이터가 도착했을 때
@@ -221,8 +318,9 @@
    *
    * 스피너를 쓰지 않은 이유: 스피너는 "무언가 돌고 있다"만 알려주고 무엇이 올지는 알려주지 않는다.
    */
+  /* 두 값은 --c-bg와 --c-surface 사이에 놓인 청회색이다. 반짝임이 바탕에서 튀지 않게 한다. */
   .skeleton {
-    background: linear-gradient(90deg, #eef2f1 0px, #f7f9f9 140px, #eef2f1 280px);
+    background: linear-gradient(90deg, #e9edf0 0px, #f8fafb 140px, #e9edf0 280px);
     background-size: 320px 100%;
     animation: pk-shimmer 1.2s linear infinite;
     border-radius: 6px;

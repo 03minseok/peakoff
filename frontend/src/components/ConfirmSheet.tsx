@@ -54,13 +54,13 @@ export function ConfirmSheet({
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
       <div
-        className="absolute inset-0 bg-[rgb(22_33_31/0.42)]"
+        className="absolute inset-0 bg-[rgb(42_62_84/0.42)]"
         onClick={busy ? undefined : onCancel}
         aria-hidden="true"
       />
 
       <div
-        className="bg-bg relative w-full rounded-t-[26px] shadow-[0_-10px_40px_rgb(22_33_31/0.24)] lg:max-w-[400px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(22_33_31/0.28)]"
+        className="bg-bg relative w-full rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-w-[400px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-sheet-title"
@@ -89,7 +89,7 @@ export function ConfirmSheet({
               disabled={busy}
               className={`rounded-ui h-13 cursor-pointer text-[15.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:bg-line disabled:text-hint ${
                 danger
-                  ? 'bg-crowded hover:bg-crowded-deep text-white'
+                  ? 'bg-crowded-strong hover:bg-crowded-deep text-white'
                   : 'bg-brand hover:bg-brand-hover text-fg'
               }`}
             >

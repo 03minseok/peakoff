@@ -74,13 +74,13 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
       <div
-        className="absolute inset-0 bg-[rgb(22_33_31/0.42)]"
+        className="absolute inset-0 bg-[rgb(42_62_84/0.42)]"
         onClick={onClose}
         aria-hidden="true"
       />
 
       <div
-        className="bg-bg relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] shadow-[0_-10px_40px_rgb(22_33_31/0.24)] lg:max-h-[82svh] lg:max-w-[720px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(22_33_31/0.28)]"
+        className="bg-bg relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-h-[82svh] lg:max-w-[720px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="course-detail-title"

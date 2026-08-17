@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { ChevronRight } from '../components/icons'
-import { LEVEL_SOLID } from '../components/levelStyles'
+import { LEVEL_ON_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
@@ -90,7 +90,7 @@ const SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-[15px] 
 /**
  * 설명이 함께 붙는 세로 선택 (스타일·민감도·이동수단).
  *
- * 한 줄짜리 선택과 달리 <b>브랜드색으로 꽉 채우지 않는다.</b> 밝은 노랑 위에서는
+ * 한 줄짜리 선택과 달리 <b>브랜드색으로 꽉 채우지 않는다.</b> 밝은 틸 위에서는
  * 둘째 줄의 옅은 설명 글자가 3.5:1까지 떨어져 읽히지 않는다.
  * 옅은 배경(tint)에 진한 테두리(brand-deep)로 선택을 표시해 대비를 지킨다.
  */
@@ -486,9 +486,10 @@ function DraftSlotCard({ slot }: { slot: DraftSlot }) {
   return (
     <li className={`${CARD} flex flex-col gap-3 p-4`}>
       <div className="flex items-start gap-3">
-        {/* 순서 번호가 곧 등급 색이다. 목록을 훑으면 붐비는 자리가 먼저 보인다 */}
+        {/* 순서 번호가 곧 등급 색이다. 목록을 훑으면 붐비는 자리가 먼저 보인다.
+            번호가 색 안에 들어가므로 글자색까지 짝으로 오는 LEVEL_ON_SOLID를 쓴다 */}
         <span
-          className={`${LEVEL_SOLID[slot.level]} mt-0.5 grid h-6.5 w-6.5 flex-none place-items-center rounded-full font-mono text-[12px] font-semibold text-white`}
+          className={`${LEVEL_ON_SOLID[slot.level]} mt-0.5 grid h-6.5 w-6.5 flex-none place-items-center rounded-full font-mono text-[12px] font-semibold`}
           aria-hidden="true"
         >
           {slot.order}

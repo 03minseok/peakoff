@@ -39,7 +39,7 @@ const DEFAULT_DAYS_AHEAD = 7
  */
 // 기간은 네 칸이 한 줄에 들어가야 해서 좌우 여백을 좁게 잡는다.
 const SEGMENT_BASE =
-  // 초점링은 brand-deep이다. brand(노랑)는 흰 배경에서 1.2:1이라 링으로는 보이지 않는다
+  // 초점링은 brand-deep이다. brand(틸)는 흰 카드 위에서 2.2:1이라 링으로는 보이지 않는다
   'flex h-11 cursor-pointer items-center justify-center rounded-ui px-3 text-[15px] font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-deep'
 
 const REGION_SEGMENT = `${SEGMENT_BASE} border border-line bg-surface text-muted peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-fg`
