@@ -260,7 +260,7 @@ export function LoginPage() {
       <div className="mt-auto pt-9 lg:hidden">
         <Link
           to="/"
-          className="rounded-ui text-muted hover:text-fg flex h-12.5 w-full items-center justify-center gap-1.5 bg-[#EDF1F0] text-[14.5px] font-semibold no-underline transition-colors"
+          className="rounded-ui text-muted hover:text-fg bg-fill flex h-12.5 w-full items-center justify-center gap-1.5 text-[14.5px] font-semibold no-underline transition-colors"
         >
           로그인 없이 둘러보기 <ChevronRight size={15} />
         </Link>

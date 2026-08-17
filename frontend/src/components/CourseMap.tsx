@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useKakaoSdk } from '../hooks/useKakaoSdk'
-import { LEVEL_SOLID } from './levelStyles'
+import { LEVEL_ON_SOLID } from './levelStyles'
 import type { KakaoCustomOverlay, KakaoMap, KakaoPolyline } from '../types/kakao'
 import type { CongestionLevel, Place } from '../types/api'
 
@@ -62,29 +62,29 @@ const MAP_BOX = 'isolate h-[290px] w-full overflow-hidden rounded-card border bo
 const PIN_WRAP = 'flex flex-col items-center gap-1'
 const PIN_BASE = 'grid place-items-center box-border rounded-full font-mono'
 const PIN_DOT =
-  'h-3.5 w-3.5 bg-muted shadow-[0_0_0_2px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
+  'h-3.5 w-3.5 bg-muted shadow-[0_0_0_2px_rgba(255,255,255,0.92),0_2px_6px_rgba(42,62,84,0.18)]'
 /*
  * 담긴 장소의 마커. 색만 떼어 두 갈래로 쓴다.
  *
- * 조립한 문자열이지만 Tailwind가 놓치지 않는다 — 붙이는 조각(`bg-brand`, `bg-quiet` …)이
+ * 조립한 문자열이지만 Tailwind가 놓치지 않는다 — 붙이는 조각(`bg-brand`, `bg-quiet-strong` …)이
  * 저마다 소스에 글자 그대로 적혀 있기 때문이다. 금지된 것은 `bg-${level}`처럼
  * <b>어디에도 온전히 적혀 있지 않은</b> 이름을 만들어내는 쪽이다.
  */
 const PIN_MARKED_SHAPE =
-  'h-7 w-auto min-w-7 px-1.5 text-[13px] font-semibold leading-none shadow-[0_0_0_3px_rgba(255,255,255,0.92),0_2px_6px_rgba(22,33,31,0.18)]'
+  'h-7 w-auto min-w-7 px-1.5 text-[13px] font-semibold leading-none shadow-[0_0_0_3px_rgba(255,255,255,0.92),0_2px_6px_rgba(42,62,84,0.18)]'
 /*
- * 글자색이 두 갈래인 이유.
+ * 색과 글자색을 항상 <b>짝으로</b> 붙인다. 배경만 갈아끼우면 글자가 묻는 일이 실제로 있었다 —
+ * 예전에는 PIN_MARKED_SHAPE에 text-white가 박혀 있었고, 브랜드가 밝은 파스텔로 바뀌던 날
+ * 편집 화면 마커의 번호가 배경에 묻어 사라졌다.
  *
- * 등급색(청록·앰버·레드)은 어두워서 흰 글자를 받지만, 브랜드 노랑은 밝아서 검정을 받는다.
- * 예전에는 PIN_MARKED_SHAPE에 text-white가 박혀 있었는데, 브랜드가 노랑이 되면서
- * 편집 화면 마커의 번호가 노랑 위 흰 글자(1.2:1)로 사라졌다.
+ * 등급색은 본문용 LEVEL_SOLID가 아니라 LEVEL_ON_SOLID를 쓴다. 지도 타일 위에서는
+ * 본문용 색의 대비가 죽고, 마커 안에 번호가 들어가 글자까지 받아야 하기 때문이다.
  */
 const PIN_MARKED = `${PIN_MARKED_SHAPE} bg-brand text-fg`
-const PIN_LEVEL_INK = 'text-white'
 const PIN_CLICKABLE = 'cursor-pointer hover:bg-brand-hover'
 /** 담긴 장소에만 붙는 이름표. 번호만으로는 어디가 어디인지 알 수 없다. */
 const PIN_LABEL =
-  'rounded-md bg-white/95 px-1.5 py-0.5 text-[11.5px] font-semibold text-fg whitespace-nowrap shadow-[0_1px_3px_rgba(22,33,31,0.12)]'
+  'rounded-md bg-white/95 px-1.5 py-0.5 text-[11.5px] font-semibold text-fg whitespace-nowrap shadow-[0_1px_3px_rgba(42,62,84,0.12)]'
 
 /** 경로에서 이 장소의 위치를 찾는다. 없으면 null */
 function findInRoutes(routes: string[][], placeId: string) {
@@ -172,7 +172,7 @@ export function CourseMap({ places, routes, levels, onSelect, className = '' }: 
         PIN_BASE,
         isMarked
           ? level
-            ? `${PIN_MARKED_SHAPE} ${PIN_LEVEL_INK} ${LEVEL_SOLID[level]}`
+            ? `${PIN_MARKED_SHAPE} ${LEVEL_ON_SOLID[level]}`
             : PIN_MARKED
           : PIN_DOT,
         // 등급색 마커에 hover로 브랜드색을 덧씌우면 색이 뜻하는 바가 흔들린다.
@@ -229,8 +229,9 @@ export function CourseMap({ places, routes, levels, onSelect, className = '' }: 
       const polyline = new maps.Polyline({
         path,
         strokeWeight: 3,
-        // 브랜드 청록. CSS 변수를 못 쓰는 자리라(카카오가 그리는 캔버스) 값을 직접 적는다.
-        strokeColor: '#0e7c86',
+        // 지도 마커의 한적색(--c-quiet-strong)과 같은 값. 카카오가 그리는 캔버스라
+        // CSS 변수를 못 쓰는 자리여서 직접 적는다 — 여기만 index.css와 따로 논다.
+        strokeColor: '#0e7a5f',
         strokeOpacity: 0.9,
         strokeStyle: 'solid',
       })

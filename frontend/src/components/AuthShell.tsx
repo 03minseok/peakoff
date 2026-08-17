@@ -51,17 +51,26 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
         서비스 안에서 "짙은 면 = 결론을 말하는 자리"로 읽히게 하려는 것이다.
       */}
       <aside className="bg-fg relative hidden overflow-hidden px-8.5 py-9.5 text-white lg:flex lg:w-100 lg:flex-none lg:flex-col lg:justify-between">
+        {/* 팔레트 띠. 헤더가 없는 화면이라 어두운 패널의 맨 윗줄이 그 역할을 이어받는다. */}
+        <div className="palette-band absolute inset-x-0 top-0 h-[3px]" aria-hidden="true" />
+        {/*
+          글로우 두 개가 서비스의 서사다 — 위는 틸(브랜드이자 한적한 방향), 아래는 핑크(붐빔).
+          어두운 네이비 위에서 두 기운이 마주보게 두어, "붐빔에서 한적으로 옮겨간다"는
+          방향이 장식에도 배어 있게 한다. 핑크 원색이 사는 자리가 여기다.
+        */}
         <div
-          className="absolute -top-17.5 -right-22.5 h-70 w-70 rounded-full bg-[rgb(254_235_143/0.13)]"
+          className="absolute -top-17.5 -right-22.5 h-70 w-70 rounded-full bg-[rgb(63_193_201/0.13)]"
           aria-hidden="true"
         />
         <div
-          className="absolute -bottom-22.5 -left-15 h-55 w-55 rounded-full bg-[rgb(254_235_143/0.07)]"
+          className="absolute -bottom-22.5 -left-15 h-55 w-55 rounded-full bg-[rgb(252_81_133/0.09)]"
           aria-hidden="true"
         />
 
         <Link to="/" className="relative flex items-center gap-2.25 no-underline">
-          {/* 어두운 면에서는 로고 마크도 밝은 청록으로 바꾼다. 브랜드색 그대로면 배경에 묻힌다. */}
+          {/* 어두운 면에서는 로고 마크를 그린틸(quiet-soft)로 바꾼다. 브랜드 틸을 그대로 두면
+              뒤에 깔린 틸 글로우에 묻히고, 같은 면의 틸 버튼과 무게가 겹쳐
+              로고가 행동 유도로 읽힌다. */}
           <span className="bg-quiet-soft relative h-5.5 w-5.5 rounded-[8px]" aria-hidden="true">
             <span className="bg-fg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
           </span>
