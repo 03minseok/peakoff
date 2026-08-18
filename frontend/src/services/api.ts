@@ -150,15 +150,20 @@ export function fetchAuthorizeUrl(
  *
  * 인가 코드는 <b>한 번만</b> 쓸 수 있다. 같은 코드로 두 번 부르면 두 번째는 실패하므로,
  * 호출하는 쪽이 중복 호출을 막아야 한다(개발 모드의 이중 실행 포함).
+ *
+ * state까지 보내는 것은 네이버 사정이다. 네이버는 인가 코드를 토큰으로 바꿀 때도 그 값을
+ * 요구한다. 서버가 판단에 쓰지는 않는다 — 우리가 시작한 로그인인지 확인하는 일은 여전히
+ * 화면(consumeState)이 하고, 서버는 받은 값을 네이버에 되돌려줄 뿐이다.
  */
 export function socialLogin(
   provider: SocialProvider,
   code: string,
+  state: string,
   signal?: AbortSignal,
 ): Promise<SocialLoginResult> {
   return apiRequest<SocialLoginResult>(`/auth/oauth/${provider}`, {
     method: 'POST',
-    body: { code },
+    body: { code, state },
     signal,
   })
 }

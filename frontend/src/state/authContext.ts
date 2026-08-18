@@ -36,10 +36,14 @@ export interface AuthContextValue {
    * - 후보 객체: 같은 이메일의 기존 계정이 있다. 비밀번호를 받아 {@link linkSocial}을 불러야 한다
    *
    * 인가 코드는 한 번만 쓸 수 있으므로 <b>같은 코드로 두 번 부르면 안 된다.</b>
+   *
+   * state는 제공자가 주소로 돌려준 값을 그대로 넘긴다. 네이버가 토큰 교환에도 요구하는 값이라
+   * 서버까지 가야 한다 — 우리가 시작한 로그인인지 확인하는 일은 부르기 <b>전에</b> 끝나 있어야 한다.
    */
   completeSocialLogin: (
     provider: SocialProvider,
     code: string,
+    state: string,
   ) => Promise<SocialLinkCandidate | null>
 
   /** 비밀번호를 확인해 소셜 계정을 기존 계정에 연결한다. 성공하면 곧바로 로그인 상태가 된다 */

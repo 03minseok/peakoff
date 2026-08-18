@@ -100,11 +100,15 @@ public class SocialLoginService {
 	/**
 	 * 인가 코드를 받아 로그인시킨다.
 	 *
+	 * @param state 로그인을 시작할 때 화면이 만든 값. 네이버는 토큰 교환에도 이 값을 요구한다.
+	 *              이 값으로 <b>여기서 무엇을 판단하지는 않는다</b> — 우리가 시작한 로그인인지는
+	 *              화면이 이미 확인했고(서버는 값을 보관하지 않으므로 대조할 상대가 없다),
+	 *              서버는 제공자에게 되돌려주는 역할만 한다
 	 * @return 로그인이 끝났거나, 연결 확인이 필요하다는 답
 	 */
 	@Transactional
-	public SocialLoginResponse login(SocialProvider provider, String code) {
-		SocialProfile profile = clientFor(provider).fetchProfile(code);
+	public SocialLoginResponse login(SocialProvider provider, String code, String state) {
+		SocialProfile profile = clientFor(provider).fetchProfile(code, state);
 
 		// 1. 이미 연결된 수단이면 그 계정의 주인이 맞다. OAuth가 방금 증명했다.
 		Optional<SocialAccount> connected =

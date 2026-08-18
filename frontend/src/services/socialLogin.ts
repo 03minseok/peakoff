@@ -52,8 +52,12 @@ export async function startSocialLogin(
  *
  * <p>맞든 틀리든 저장한 값을 <b>지운다.</b> 남겨두면 같은 값으로 두 번 통과할 수 있는데,
  * 그러면 한 번 쓰고 버리는 값이라는 전제가 깨진다.
+ *
+ * <p>반환 타입이 `received is string`인 이유: 이 검사를 통과하면 값이 있다는 뜻이기도 하다.
+ * 통과한 뒤에도 호출하는 쪽이 null을 한 번 더 다뤄야 하면, 확인이 끝난 값에 대고
+ * "혹시 없으면" 같은 분기를 다시 쓰게 된다 — 그 분기는 도달하지 않는 자리다.
  */
-export function consumeState(received: string | null): boolean {
+export function consumeState(received: string | null): received is string {
   const saved = sessionStorage.getItem(STATE_KEY)
   sessionStorage.removeItem(STATE_KEY)
   return saved !== null && received !== null && saved === received

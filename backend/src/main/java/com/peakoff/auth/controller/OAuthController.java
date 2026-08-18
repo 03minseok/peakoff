@@ -70,12 +70,16 @@ public class OAuthController {
 					- LINK_REQUIRED: 같은 이메일로 가입한 계정이 있다. 비밀번호를 받아
 					  /api/auth/oauth/link 로 보내야 연결된다
 
-					인가 코드는 한 번만 쓸 수 있다. 같은 코드로 두 번 호출하면 실패한다.""")
+					인가 코드는 한 번만 쓸 수 있다. 같은 코드로 두 번 호출하면 실패한다.
+
+					state는 로그인을 시작할 때 화면이 만든 값을 그대로 실어 보낸다.
+					네이버가 토큰 교환에도 그 값을 요구해서다. 카카오는 쓰지 않는다.""")
 	@PostMapping("/{provider}")
 	public ApiResponse<SocialLoginResponse> login(
 			@PathVariable String provider, @Valid @RequestBody SocialLoginRequest request) {
 
-		return ApiResponse.ok(socialLoginService.login(toProvider(provider), request.code()));
+		return ApiResponse.ok(
+				socialLoginService.login(toProvider(provider), request.code(), request.state()));
 	}
 
 	@Operation(

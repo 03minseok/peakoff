@@ -74,6 +74,9 @@ export function OAuthCallbackPage() {
     /*
      * 우리가 시작한 로그인이 맞는지 확인한다. 이 검사가 없으면 남이 만들어둔 로그인 주소를
      * 눌렀을 때 그 사람의 계정으로 로그인되고, 사용자는 자기 계정인 줄 알고 코스를 저장한다.
+     *
+     * 통과한 state는 아래에서 서버로도 넘어간다 — 네이버가 토큰 교환에 그 값을 요구한다.
+     * 확인이 먼저다. 검사를 통과하지 못한 값을 서버로 보내지 않는다.
      */
     if (!consumeState(state)) {
       setPhase({ status: 'failed', message: '로그인 요청을 확인하지 못했어요. 다시 시도해 주세요.' })
@@ -81,7 +84,7 @@ export function OAuthCallbackPage() {
     }
 
     auth
-      .completeSocialLogin(provider as SocialProvider, code)
+      .completeSocialLogin(provider as SocialProvider, code, state)
       .then((candidate) => {
         if (candidate === null) {
           // replace를 쓴다. 뒤로 가기를 눌렀을 때 이미 써버린 코드가 담긴 주소로 돌아오면 실패한다.
