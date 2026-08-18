@@ -406,12 +406,32 @@ export function MyPage() {
             둘 중 무엇이 이길지가 Tailwind의 출력 순서에 달린다 —
             클래스를 적은 순서가 아니라 스타일시트 순서로 정해지기 때문이다.
           */}
-          <Link
-            to="/plan"
-            className="bg-brand hover:bg-brand-hover shadow-cta rounded-ui mt-1 grid h-13.5 place-items-center px-6 text-base font-semibold text-fg no-underline transition-colors"
-          >
-            코스 짜러 가기
-          </Link>
+          {/*
+            들어가는 문 둘. 홈의 진입점 두 개와 같은 짝이다.
+
+            빈 화면에서 한쪽만 내밀면 <b>경주를 모르는 사람은 여기서 막힌다</b> —
+            "코스 짜러 가기"는 갈 곳을 이미 아는 사람의 문이고, 30개 목록에서 장소를
+            담는 일이 첫 관문이 된다. 저장한 코스가 없다는 것은 아직 한 번도 끝까지
+            가보지 않았다는 뜻이라, 오히려 이 자리에 두 문이 다 있어야 한다.
+
+            모양은 홈과 같게 둔다 — 직접 짜기는 채운 면, 추천받기는 흰 면에 브랜드 테두리.
+            같은 기능이 화면마다 다르게 생기면 사용자가 같은 문인 줄 알아보지 못한다.
+            둘 다 실제로 열리므로 어느 쪽도 흐리게 그리지 않는다.
+          */}
+          <div className="mt-1 flex w-full max-w-70 flex-col gap-2 sm:max-w-none sm:flex-row sm:justify-center">
+            <Link
+              to="/plan"
+              className="bg-brand hover:bg-brand-hover shadow-cta rounded-ui text-fg grid h-13.5 place-items-center px-6 text-base font-semibold no-underline transition-colors"
+            >
+              코스 짜러 가기
+            </Link>
+            <Link
+              to="/recommend"
+              className="border-brand bg-surface hover:bg-bg text-fg rounded-ui grid h-13.5 place-items-center border-[1.5px] px-6 text-base font-semibold no-underline transition-colors"
+            >
+              코스 추천받기
+            </Link>
+          </div>
         </div>
       )}
 
