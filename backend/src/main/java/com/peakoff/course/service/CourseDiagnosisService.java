@@ -38,9 +38,9 @@ public class CourseDiagnosisService {
 				.map(slot -> diagnoseSlot(slot, request.startDate()))
 				.toList();
 
+		// 총점(슬롯 한적도의 평균)은 Course.of가 계산한다. 설문 코스 생성도 같은 규칙을 쓴다.
 		// Course 생성자가 일차 범위·점수 범위를 다시 검증한다. 여기서 틀리면 400으로 나간다.
-		Course course = new Course(
-				region.toRegion(), request.startDate(), request.nights(), slots, averageQuietness(slots));
+		Course course = Course.of(region.toRegion(), request.startDate(), request.nights(), slots);
 
 		return CourseDiagnosisResponse.from(course, region.slug());
 	}
@@ -57,16 +57,6 @@ public class CourseDiagnosisService {
 		int quietness = congestionProvider.quietnessOf(place.id(), visitDate);
 
 		return new CourseSlot(slotRequest.day(), slotRequest.order(), place, quietness);
-	}
-
-	/**
-	 * 코스 총점 = 슬롯 한적도의 평균.
-	 *
-	 * <p><b>임시 규칙이다.</b> 체류 시간이 긴 장소에 가중치를 주는 등의 보정은
-	 * 분석 검증 후 정해야 한다. 지금은 "원안 대비 개선폭"을 비교할 기준만 있으면 된다.
-	 */
-	private static int averageQuietness(List<CourseSlot> slots) {
-		return (int) Math.round(slots.stream().mapToInt(CourseSlot::quietness).average().orElseThrow());
 	}
 
 }

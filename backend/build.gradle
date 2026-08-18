@@ -23,6 +23,11 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 
+	// 바깥 API를 호출하는 클라이언트(RestClient). 소셜 로그인이 카카오와 통신하는 데 쓴다.
+	// 부트 4에서 HTTP 클라이언트 자동설정이 별도 모듈로 갈라져, webmvc 스타터만으로는
+	// RestClient.Builder 빈이 만들어지지 않는다.
+	implementation 'org.springframework.boot:spring-boot-starter-restclient'
+
 	// 회원 저장. 공사 OpenAPI 데이터는 여기에 적재하지 않는다 — 회원 정보 전용이다.
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	runtimeOnly 'com.h2database:h2'

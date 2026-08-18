@@ -34,8 +34,12 @@ const CELL = 'flex min-w-0 flex-col gap-5 lg:gap-4'
 /**
  * 고른 날짜로 넘어가는 버튼의 <b>모양</b>. 색은 쓰는 쪽이 붙인다.
  *
- * <p>둘로 나눈 이유: 두 버튼은 크기·높이·비활성 처리가 같아야 하고 색만 다르다.
- * 각자 전부 적어두면 나중에 한쪽 높이만 고쳐져 나란히 선 두 버튼이 어긋난다.
+ * <p>둘로 나눈 이유: 두 버튼은 크기·높이·비활성 처리가 같아야 하고 <b>면 처리만</b> 다르다
+ * (하나는 채움, 하나는 테두리). 각자 전부 적어두면 나중에 한쪽 높이만 고쳐져
+ * 나란히 선 두 버튼이 어긋난다.
+ *
+ * <p>비활성이 되면 <b>둘 다 색이 빠진다</b> — 채움은 회색 면으로, 테두리는 회색 선으로
+ * 내려앉는다. 누를 수 없는 상태에서까지 주·보조를 구분해 봐야 고를 것이 없다.
  *
  * <p>{@code disabled:} 값을 여기 함께 둔다. 색을 붙이는 쪽에서 {@code bg-*}를 얹어도
  * 비활성 색이 이기는데, 이는 Tailwind가 변형(disabled:)을 기본 유틸리티보다
@@ -50,7 +54,7 @@ const DATE_ACTION =
  * <p>imageUrl은 서버(TourAPI 국문 관광정보의 대표 이미지)에서 온다. 배관은 끝까지
  * 깔려 있고 mock에 값이 없을 뿐이라, 실연동되면 이 컴포넌트 수정 없이 사진이 나타난다.
  *
- * <p>대체면은 <b>중립 회색</b>이다. 브랜드 노랑을 깔면 이미지 없는 장소마다 노란 사각형이
+ * <p>대체면은 <b>중립 회색</b>이다. 브랜드 틸을 깔면 이미지 없는 장소마다 청록 사각형이
  * 서서, 로고·주요 버튼에만 남겨야 할 강조색이 목록 전체에 번진다. 깨진 이미지 아이콘 대신
  * 이름 첫 글자를 얹어 자리와 크기를 지킨다 — 사진 있는 카드와 같은 리듬으로 늘어선다.
  */
@@ -445,45 +449,44 @@ export function HomePage() {
               lg:flex-1 — 그리드 칸은 줄 높이만큼 늘어나므로, 버튼이 남는 높이를 채워
               옆 칸과 아랫변이 맞는다. 이게 없으면 큰 칸 아래에만 빈 공간이 남는다.
             */}
-            <button
-              type="button"
-              onClick={() => navigate('/plan')}
-              className="bg-fg relative w-full cursor-pointer overflow-hidden rounded-[24px] px-6 pt-6.5 pb-6 text-left text-white shadow-[0_8px_26px_rgb(22_33_31/0.18)] lg:flex-1 lg:px-8 lg:pt-9"
-            >
+            {/*
+              카드는 <b>누르는 것이 아니다.</b> 예전에는 카드 전체가 button이라 어디를 눌러도
+              넘어갔는데, 그러면 안에 든 "시작하기"가 장식으로 전락한다 — 사용자는 무엇이
+              버튼인지 배우지 못하고, 카드 안에 다른 링크를 하나라도 넣는 순간 중첩이 된다.
+              들어가는 문은 아래 링크 하나다.
+
+              hover는 카드를 살짝 띄우되 <b>커서는 바꾸지 않는다.</b> 카드가 손가락 커서를
+              달고 있으면 "여기도 눌리는데?"가 되어 방금 없앤 혼란이 되돌아온다.
+              대신 같은 hover에서 CTA가 함께 반응해 눌러야 할 곳을 가리킨다.
+            */}
+            <div className="group bg-fg relative w-full overflow-hidden rounded-[24px] px-6 pt-6.5 pb-6 text-left text-white shadow-[0_8px_26px_rgb(42_62_84/0.18)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-[0_14px_34px_rgb(42_62_84/0.24)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
           {/*
             장식 원을 잘라내는 층.
 
-            버튼에도 overflow-hidden이 걸려 있지만 그것만으로는 잘리지 않는다.
-            <button>은 폼 컨트롤이라 브라우저가 자체 렌더링 규칙을 얹어, 절대 위치 자식이
-            기대대로 잘리지 않는다. 그래서 잘라내는 일은 평범한 span에 맡긴다.
+            원이 카드 오른쪽으로 40px 삐져나가는데, 열(max-w-430)이 가운데 정렬이라
+            화면이 510px보다 넓으면 양옆 여백에 묻힌다. 그보다 좁아지는 순간 화면 밖으로
+            나가 페이지 전체에 가로 스크롤이 생긴다.
 
-            안 하면 이렇게 된다 — 원이 버튼 오른쪽으로 항상 40px 삐져나가는데,
-            열(max-w-430)이 가운데 정렬이라 화면이 510px보다 넓으면 양옆 여백에 묻힌다.
-            그보다 좁아지는 순간 화면 밖으로 나가 페이지 전체에 가로 스크롤이 생긴다.
-
-            같은 장식이 결과 화면(section)과 로그인 화면(aside)에도 있는데 거기는 멀쩡하다.
-            일반 요소에서는 overflow-hidden이 그대로 먹기 때문이다.
-
-            모서리는 버튼과 같은 값으로 깎아야 둥근 부분 밖으로 색이 비치지 않는다.
+            모서리는 카드와 같은 값으로 깎아야 둥근 부분 밖으로 색이 비치지 않는다.
           */}
           <span
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]"
             aria-hidden="true"
           >
             {/*
-              장식 원은 브랜드 노랑의 글로우다. 옛 청록(rgb(14 124 134))을 그대로 두면
-              어두운 카드 전체에 청록 기운이 깔려 그 위의 노란 버튼이 탁해 보인다 —
-              강조색과 배경 기운이 싸우면 강조색이 진다.
-              알파를 낮게 두는 이유: 노랑을 진하게 깔면 검정 위에서 올리브색이 된다.
+              글로우 두 개가 서비스의 서사다 — 위는 틸(브랜드·행동이자 한적한 방향), 아래는 핑크(붐빔).
+              어두운 네이비 면마다 이 두 기운을 마주 놓아 "붐빔에서 한적으로"라는 방향을
+              장식에도 배게 한다. 로그인 패널·결과 히어로와 같은 문법이다.
+              알파를 낮게 두는 이유: 진하게 깔면 어두운 면 위에서 탁해진다.
             */}
-            <span className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(254_235_143/0.14)]" />
-            <span className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(254_235_143/0.07)]" />
+            <span className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(63_193_201/0.14)]" />
+            <span className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(252_81_133/0.09)]" />
           </span>
           <span className="relative flex flex-col gap-3">
             {/*
-              킥커도 브랜드 노랑이다. 청록으로 두면 카드의 색 기운이 둘로 갈린다.
-              "brand는 배경 전용" 규칙은 흰 배경의 1.2:1 때문인데, 여기는 어두운 잉크 위라
-              13.7:1로 넉넉하다 — 규칙의 이유가 사라지는 유일한 자리다.
+              킥커는 브랜드 틸이다. 다른 색을 쓰면 카드의 색 기운이 둘로 갈린다.
+              "brand는 배경 전용" 규칙은 흰 카드 위의 2.2:1 때문인데, 여기는 어두운 잉크 위라
+              5.1:1로 넉넉하다 — 규칙의 이유가 사라지는 유일한 자리다.
             */}
             <span className="text-brand text-[11.5px] font-semibold tracking-[0.1em]">
               START PLANNING
@@ -494,11 +497,17 @@ export function HomePage() {
             <span className="max-w-62.5 text-sm leading-[1.6] text-white/60">
               날짜를 정하면 각 장소가 그날 얼마나 붐빌지 미리 계산해 드려요.
             </span>
-            <span className="bg-brand text-fg rounded-ui mt-1.5 inline-flex h-11.5 items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold">
-              시작하기 <ChevronRight />
-            </span>
+            {/* 이 링크가 유일한 문이다. button+navigate 대신 Link라 새 탭으로도 열린다 */}
+            <Link
+              to="/plan"
+              className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
+            >
+              시작하기
+              {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
+              <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+            </Link>
           </span>
-        </button>
+        </div>
 
           {/*
             "이 기기에 저장한 코스"는 뺐다. 기기 저장(localStorage) 자체를 없앴기 때문이다 —
@@ -513,20 +522,18 @@ export function HomePage() {
           앞의 문 하나뿐이라, 뒤쪽 사람은 30개 목록에서 장소를 담는 일이 첫 관문이 되어
           진단까지 가보지도 못하고 나갔다.
 
-          아직 만들지 않았지만 크기는 처음부터 같게 둔다. 작게 뒀다가 나중에 키우면
-          그동안 사용자가 배운 위계("이건 곁다리")를 되돌려야 한다.
+          크기는 왼쪽과 같다. 두 문 다 실제로 동작하므로 어느 쪽이 곁다리가 아니다.
 
-          색은 다르다. 왼쪽은 어두운 면(동작하는 기능), 이쪽은 흰 면에 <b>노란 테두리</b>다 —
-          크기로 비중을 말하고, 색과 배지로 상태를 말한다. 노란 면을 통째로 깔면 로고와
-          주요 버튼에만 남겨야 할 강조색이 화면의 절반을 차지해, 정작 눌러야 할
-          "시작하기"보다 이쪽이 먼저 눈에 들어온다.
+          <b>점선을 실선으로 바꿨다.</b> 점선은 "준비 중"이라는 상태 신호였는데 기능이
+          생겼으므로 남길 이유가 없다 — 미완성으로 읽히는 테두리를 그대로 두면
+          동작하는 기능을 사용자가 눌러보지 않는다.
+
+          색은 여전히 다르다. 왼쪽은 어두운 면, 이쪽은 흰 면에 노란 테두리다.
+          노란 면을 통째로 깔면 로고와 주요 버튼에만 남겨야 할 강조색이 화면 절반을 차지한다.
         */}
         <div className={`${CELL} lg:col-span-6`}>
-          <button
-            type="button"
-            onClick={() => navigate('/recommend')}
-            className="border-brand bg-surface hover:bg-bg shadow-rest relative w-full cursor-pointer overflow-hidden rounded-[24px] border-[1.5px] border-dashed px-6 pt-6.5 pb-6 text-left transition-colors lg:flex-1 lg:px-8 lg:pt-9"
-          >
+          {/* 왼쪽 카드와 같은 규칙 — 카드는 누르는 것이 아니고, hover는 CTA를 가리킨다 */}
+          <div className="group border-brand bg-surface shadow-rest relative w-full overflow-hidden rounded-[24px] border-[1.5px] px-6 pt-6.5 pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
             <span className="relative flex flex-col gap-3">
               <span className="text-brand-deep text-[11.5px] font-semibold tracking-[0.1em]">
                 GET A COURSE
@@ -537,12 +544,20 @@ export function HomePage() {
               <span className="text-muted max-w-62.5 text-sm leading-[1.6]">
                 몇 가지만 답하면 취향에 맞으면서 덜 붐비는 코스를 만들어 드려요.
               </span>
-              {/* 배경이 흰색이 되면서 흰 알약은 사라진다. 테두리로 서게 한다 */}
-              <span className="border-line text-muted rounded-ui mt-1.5 inline-flex h-11.5 items-center gap-1.75 self-start border px-5 text-[15.5px] font-semibold">
-                준비 중 <ChevronRight />
-              </span>
+              {/*
+                왼쪽 카드와 같은 노란 알약이다. 회색 테두리 알약은 "준비 중"의 표현이었다 —
+                눌러도 되는 버튼을 비활성처럼 그려두면 사용자는 없는 기능으로 읽는다.
+                두 문이 같은 모양의 버튼을 갖는 것이 맞다. 둘 다 실제로 열리니까.
+              */}
+              <Link
+                to="/recommend"
+                className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
+              >
+                시작하기
+                <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+              </Link>
             </span>
-          </button>
+          </div>
         </div>
 
         {state.phase === 'error' && (
@@ -754,14 +769,25 @@ export function HomePage() {
               날짜를 정한 사람도 <b>직접 짤지 추천받을지</b>는 아직 안 정했을 수 있다.
               한쪽만 두면 날짜를 고른 순간 나머지 길이 닫힌다.
 
-              추천받기는 위 진입점과 같은 점선을 두른다. 준비 중이라는 신호를 화면마다
-              다른 방식으로 말하면, 사용자는 그게 같은 기능인지 알아보지 못한다.
+              <b>채움 하나 + 테두리 하나로 짝을 짓는다.</b> 전에는 둘 다 흰 면에 테두리만
+              달랐는데(회색 1px / 틸 1.5px), 그러면 같은 종류의 버튼 둘이 굵기와 색만
+              어긋난 채 서 있어 틸 테두리 하나가 홀로 떠 보인다. 게다가 흰 카드 위의
+              흰 버튼이라 <b>누르는 것으로 보이지 않았다</b> — 예보를 다 본 다음 시선이
+              닿아야 할 자리인데 가장 조용했다.
+
+              같은 틸의 채움과 테두리는 서로를 설명한다. 주·보조가 한눈에 갈리면서도
+              두 문이 같은 기운으로 묶여, 마이페이지 빈 화면의 두 문과도 같은 모양이 된다.
+              채움이 직접 짜기인 것은 서비스의 원래 흐름이기 때문이고, 그 순서는
+              위쪽 진입점 두 카드에서도 같다.
+
+              shadow-cta는 얹지 않는다. 위쪽 카드의 CTA도 그림자 없이 색으로만 서 있어,
+              여기만 그림자를 두면 같은 버튼이 화면 안에서 두 무게를 갖는다.
             */}
             <div className="flex flex-col gap-2 px-1">
               <button
                 type="button"
                 disabled={activeDate === null}
-                className={`${DATE_ACTION} border-line bg-surface text-fg hover:bg-bg border`}
+                className={`${DATE_ACTION} bg-brand hover:bg-brand-hover text-fg`}
                 onClick={() =>
                   activeDate && navigate('/plan', { state: { startDate: activeDate } })
                 }
@@ -771,7 +797,7 @@ export function HomePage() {
               <button
                 type="button"
                 disabled={activeDate === null}
-                className={`${DATE_ACTION} border-brand bg-surface text-fg hover:bg-bg border-[1.5px] border-dashed`}
+                className={`${DATE_ACTION} border-brand bg-surface text-fg hover:bg-bg border-[1.5px]`}
                 onClick={() =>
                   activeDate && navigate('/recommend', { state: { startDate: activeDate } })
                 }

@@ -108,6 +108,67 @@ export interface CourseDiagnosis {
   slots: DiagnosedSlot[]
 }
 
+/*
+ * 설문 기반 코스 추천 (POST /api/courses/recommend).
+ *
+ * 아래 네 타입은 서버의 설문 enum과 같은 값이다. <b>각 답이 무슨 숫자를 뜻하는지는
+ * 여기 없다.</b> 밀도가 몇 곳인지, 민감도가 한적도를 몇 퍼센트 반영하는지는 전부 서버에 있다.
+ * 화면은 이름만 보내고 값은 모른다 — 분석 결과로 값이 바뀔 때 화면을 고치지 않기 위해서다.
+ * 한적도 임계값이나 추천도 반영 비율을 서버에 둔 것과 같은 이유다.
+ */
+
+/** 설문 1번 — 여행 스타일. <b>복수 선택</b>이라 배열로 보낸다 */
+export type TravelStyle = 'HISTORY' | 'NATURE' | 'FOOD' | 'ACTIVITY'
+
+/** 설문 2번 — 일정 밀도. 일자별로 몇 곳을 담을지 */
+export type ItineraryDensity = 'RELAXED' | 'BALANCED' | 'PACKED'
+
+/** 설문 3번 — 혼잡 민감도. 서비스 정체성이 걸린 문항이다 */
+export type CrowdSensitivity = 'POPULAR' | 'MIXED' | 'QUIET'
+
+/** 설문 4번 — 이동수단. 후보 반경과 슬롯 간 이동거리를 정한다 */
+export type Transport = 'CAR' | 'TRANSIT'
+
+export interface CourseRecommendRequest {
+  /** 지역 슬러그. 예: "gyeongju" */
+  region: string
+  /** yyyy-MM-dd */
+  startDate: string
+  /** 박 수. 당일치기는 0 */
+  nights: number
+  styles: TravelStyle[]
+  density: ItineraryDensity
+  sensitivity: CrowdSensitivity
+  transport: Transport
+}
+
+/**
+ * 초안의 슬롯. 진단 슬롯에 <b>왜 골랐는지</b>가 붙은 모양이다.
+ *
+ * {@link DiagnosedSlot}을 확장한 것이 우연이 아니다. 서버가 두 응답의 슬롯 모양을 맞춰
+ * 내려주므로, 진단 화면의 타임라인 컴포넌트를 그대로 재사용할 수 있다.
+ *
+ * factors는 <b>개수가 고정이 아니다.</b> 각 일자의 첫 장소는 비교 대상이 없어 한적도 하나만
+ * 오고, 연관 관광지 데이터가 붙으면 항목이 하나 는다. 항목 이름을 화면에 박지 말고
+ * 배열을 그대로 반복해 그려야 한다.
+ */
+export interface DraftSlot extends DiagnosedSlot {
+  /** 이 자리에 이곳을 얼마나 미는가 (0~100). 한적도가 이미 반영돼 있다 */
+  recommendation: number
+  factors: ScoreFactor[]
+  reason: string
+}
+
+/**
+ * 설문으로 만든 코스 초안.
+ *
+ * <b>같은 답을 다시 보내면 다른 코스가 온다.</b> 서버가 상위 후보군에서 가중 무작위로
+ * 뽑기 때문이다 — 모든 사용자에게 같은 곳을 추천하면 그곳이 새로운 혼잡지가 된다.
+ */
+export interface CourseDraft extends Omit<CourseDiagnosis, 'slots'> {
+  slots: DraftSlot[]
+}
+
 export interface DateOption {
   date: string
   quietness: number
@@ -198,6 +259,38 @@ export interface SignupRequest {
 
 export interface LoginRequest {
   email: string
+  password: string
+}
+
+/** 지금 붙어 있는 소셜 로그인. 주소(/oauth/callback/kakao)와 API 경로에 그대로 쓰인다 */
+export type SocialProvider = 'kakao' | 'naver'
+
+/**
+ * 소셜 로그인 결과. 끝이 둘이다.
+ *
+ * `status`로 갈라 읽는다. `auth`의 유무로 추측하지 않는 이유는 서버 쪽 주석과 같다 —
+ * 상태가 하나 늘 때 화면의 판단 기준이 조용히 어긋난다.
+ */
+export type SocialLoginResult =
+  | { status: 'LOGGED_IN'; auth: AuthResult; link: null }
+  | { status: 'LINK_REQUIRED'; auth: null; link: SocialLinkCandidate }
+
+/**
+ * 같은 이메일로 가입한 계정이 이미 있을 때 받는 정보.
+ *
+ * 이 단계에서는 <b>아직 로그인이 아니다.</b> 비밀번호를 확인해야 연결되고, 그때 로그인된다.
+ */
+export interface SocialLinkCandidate {
+  /** 기존 계정의 이메일. 어느 계정과 잇는지 화면에 보여준다 */
+  email: string
+  /** "카카오"처럼 사람이 읽는 이름. 문구에 그대로 쓴다 */
+  provider: string
+  /** 비밀번호와 함께 돌려보낼 5분짜리 티켓. 이것만으로는 로그인되지 않는다 */
+  linkTicket: string
+}
+
+export interface SocialLinkRequest {
+  linkTicket: string
   password: string
 }
 

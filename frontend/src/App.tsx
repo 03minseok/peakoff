@@ -6,6 +6,7 @@ import { HomePage } from './routes/HomePage'
 import { MyPage } from './routes/MyPage'
 import { LoginPage } from './routes/LoginPage'
 import { NotFoundPage } from './routes/NotFoundPage'
+import { OAuthCallbackPage } from './routes/OAuthCallbackPage'
 import { PlanPage } from './routes/PlanPage'
 import { RecommendPage } from './routes/RecommendPage'
 import { PreviewPage } from './routes/PreviewPage'
@@ -34,7 +35,13 @@ function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="plan" element={<PlanPage />} />
-            {/* 설문 기반 코스 추천. 아직 안내 화면뿐이다 — 홈의 진입점과 함께 완성하거나 함께 감춘다 */}
+            {/*
+              설문 기반 코스 추천. 경주를 모르는 사용자의 진입점이다.
+
+              결과(초안)는 주소를 따로 두지 않고 이 화면 안에서 편다. 같은 답을 보내도
+              매번 다른 코스가 오기 때문에(가중 무작위 추출), 주소로 다시 열어도
+              그때 그 코스가 아니다 — 주소를 나눠도 얻는 것이 없다.
+            */}
             <Route path="recommend" element={<RecommendPage />} />
             <Route path="course" element={<CoursePage />} />
             <Route path="diagnosis" element={<DiagnosisPage />} />
@@ -70,6 +77,15 @@ function App() {
           */}
           <Route path="login" element={<LoginPage />} />
           <Route path="signup" element={<SignupPage />} />
+
+          {/*
+            제공자가 사용자를 되돌려 보내는 자리.
+
+            주소를 카카오 콘솔에 등록해뒀기 때문에 <b>마음대로 바꿀 수 없다</b> —
+            바꾸려면 콘솔의 Redirect URI와 서버 설정(redirect-uri)을 함께 고쳐야 한다.
+            provider를 경로에 둔 이유는 네이버가 붙을 때 화면을 하나 더 만들지 않기 위해서다.
+          */}
+          <Route path="oauth/callback/:provider" element={<OAuthCallbackPage />} />
         </Routes>
       </TripProvider>
     </AuthProvider>

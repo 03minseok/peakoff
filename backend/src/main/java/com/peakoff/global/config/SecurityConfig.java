@@ -14,6 +14,7 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import com.peakoff.auth.jwt.JwtAuthenticationFilter;
 import com.peakoff.auth.jwt.JwtProperties;
+import com.peakoff.auth.oauth.OAuthProperties;
 import com.peakoff.global.error.UnauthorizedException;
 
 import jakarta.servlet.DispatcherType;
@@ -30,7 +31,8 @@ import jakarta.servlet.DispatcherType;
  * 남의 코스가 조용히 공개된다. 실수했을 때 닫히는 쪽이 안전하다.
  */
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+// 인증에 쓰는 설정 묶음을 함께 켠다. JWT는 우리 토큰, OAuth는 소셜 제공자 인증키다.
+@EnableConfigurationProperties({ JwtProperties.class, OAuthProperties.class })
 public class SecurityConfig {
 
 	/** 로그인 없이 쓸 수 있는 경로. 게스트가 서비스 전체를 체험하는 데 필요한 것들이다. */
@@ -38,8 +40,20 @@ public class SecurityConfig {
 			"/api/health",
 			"/api/auth/signup",
 			"/api/auth/login",
+			/*
+			 * 소셜 로그인. 로그인하기 <b>전에</b> 부르는 경로라 당연히 열려 있어야 한다.
+			 * 연결(/link)도 여기 포함된다 — 그 요청의 본인 확인은 토큰이 아니라
+			 * 티켓과 비밀번호가 한다.
+			 */
+			"/api/auth/oauth/**",
 			"/api/places/**",
 			"/api/courses/diagnose",
+			/*
+			 * 설문 기반 코스 추천. 경주를 모르는 사용자의 진입점이라 로그인 뒤에 두면
+			 * 진입 장벽 자체가 된다. 저장(POST /api/courses)은 여전히 로그인이 필요하다 —
+			 * 경로를 정확히 적었으므로 그쪽까지 열리지 않는다.
+			 */
+			"/api/courses/recommend",
 			"/api/dates/**" };
 
 	/** API 문서. 심사 때 화면으로 보여줘야 해서 열어 둔다. */
