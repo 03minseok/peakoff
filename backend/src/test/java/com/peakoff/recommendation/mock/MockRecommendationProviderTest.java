@@ -14,12 +14,15 @@ import com.peakoff.congestion.mock.MockCongestionProvider;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.mock.GyeongjuMockCatalog;
 import com.peakoff.recommendation.domain.Alternative;
+import com.peakoff.recommendation.domain.RecommendationScorer;
 import com.peakoff.recommendation.domain.ScoreFactor;
 
 class MockRecommendationProviderTest {
 
+	private static final MockCongestionProvider CONGESTION = new MockCongestionProvider();
+
 	private final MockRecommendationProvider provider =
-			new MockRecommendationProvider(new MockCongestionProvider());
+			new MockRecommendationProvider(CONGESTION, new RecommendationScorer(CONGESTION));
 
 	private static final LocalDate WEDNESDAY = LocalDate.of(2026, 9, 16);
 

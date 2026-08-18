@@ -123,13 +123,13 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
         버튼이 아니라 div이므로 키보드 사용자를 위해 아래 "나중에 할게요"와 Esc가 같은 일을 한다.
       */}
       <div
-        className="absolute inset-0 bg-[rgb(22_33_31/0.4)]"
+        className="absolute inset-0 bg-[rgb(42_62_84/0.4)]"
         onClick={onClose}
         aria-hidden="true"
       />
 
       <div
-        className="bg-bg relative max-h-[92svh] overflow-y-auto rounded-t-[26px] shadow-[0_-10px_40px_rgb(22_33_31/0.24)]"
+        className="bg-bg relative max-h-[92svh] overflow-y-auto rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="save-course-title"

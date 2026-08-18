@@ -111,7 +111,7 @@ export function AlternativeSheet({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-end justify-center bg-[rgb(22_33_31/0.42)] lg:items-center lg:p-6"
+      className="fixed inset-0 z-100 flex items-end justify-center bg-[rgb(42_62_84/0.42)] lg:items-center lg:p-6"
       onClick={onClose}
     >
       {/*
@@ -128,7 +128,7 @@ export function AlternativeSheet({
       */}
       <div
         ref={panelRef}
-        className="bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] shadow-[0_-10px_40px_rgb(22_33_31/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(22_33_31/0.28)]"
+        className="bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"
@@ -243,7 +243,7 @@ export function AlternativeSheet({
                   <div className="bg-bg rounded-ui flex flex-col gap-2.5 px-3 py-3">
                     <div className="flex items-start gap-2.5">
                       <span
-                        className="bg-quiet-soft/50 text-brand-deep mt-px grid h-4 w-4 flex-none place-items-center rounded-full text-[10px] font-bold"
+                        className="bg-quiet-soft/50 text-quiet-deep mt-px grid h-4 w-4 flex-none place-items-center rounded-full text-[10px] font-bold"
                         aria-hidden="true"
                       >
                         i

@@ -33,7 +33,8 @@ const NO_AGREEMENT: Agreed = { age: false, tos: false, privacy: false, marketing
 const CHECKBOX_BASE =
   'grid h-5.5 w-5.5 flex-none place-items-center rounded-[7px] text-xs font-bold'
 const CHECKBOX_ON = `${CHECKBOX_BASE} bg-brand text-fg`
-const CHECKBOX_OFF = `${CHECKBOX_BASE} bg-[#EDF1F0] text-[#CBD6D5]`
+/* 꺼진 상태는 색을 쓰지 않는다. 체크 표시는 자리만 지키도록 흐리게 둔다 */
+const CHECKBOX_OFF = `${CHECKBOX_BASE} bg-fill text-hint/35`
 
 interface Errors {
   email?: string

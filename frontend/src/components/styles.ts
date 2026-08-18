@@ -20,9 +20,17 @@ export const PRIMARY_BUTTON =
 export const SECONDARY_BUTTON =
   'min-h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15px] font-semibold text-fg transition-colors hover:bg-bg'
 
-/** 카드 안에 들어가는 작은 행동 버튼 (교체·추가 등). */
+/**
+ * 카드 안에 들어가는 작은 행동 버튼 (교체·추가 등).
+ *
+ * hover에서 <b>같은 색조 안에서만</b> 진해진다. 색조가 건너뛰면 손을 올렸을 때
+ * "다른 버튼으로 바뀐 것"처럼 읽힌다.
+ *
+ * tint 다음 칸은 point(--c-brand)가 아니라 soft다. point까지 가면 글자색(deep)이
+ * 2.7:1로 무너져 hover에서 글자가 안 읽힌다 — soft는 같은 글자색을 5.0:1로 받는다.
+ */
 export const CHIP_BUTTON =
-  'min-h-9 cursor-pointer rounded-chip bg-brand-tint px-3.5 text-[13px] font-semibold text-brand-deep transition-colors hover:bg-quiet-soft/40'
+  'min-h-9 cursor-pointer rounded-chip bg-brand-tint px-3.5 text-[13px] font-semibold text-brand-deep transition-colors hover:bg-brand-soft'
 
 /** 목록·내용을 담는 기본 카드. 배경 위에 놓인 상태 */
 export const CARD = 'rounded-card bg-surface shadow-rest'
@@ -44,8 +52,8 @@ export const NOTICE =
  * 초점이 오면 <b>테두리와 링이 같은 색</b>으로 함께 선다.
  *
  * 링만 남겨봤더니 회색 테두리 밖에 링이 떠서 입력칸과 따로 노는 느낌이 났고,
- * 테두리를 brand(노랑)로 바꿔봤더니 어두운 링과 색이 갈려 두 겹으로 보였다.
- * 청록 시절이 자연스러웠던 이유는 <b>둘이 한 색</b>이어서다 — 그 구조를 brand-deep으로 재현한다.
+ * 테두리를 brand(밝은 틸)로 바꿔봤더니 어두운 링과 색이 갈려 두 겹으로 보였다.
+ * 예전 청록 시절이 자연스러웠던 이유는 <b>둘이 한 색</b>이어서다 — 그 구조를 brand-deep으로 재현한다.
  */
 export const TEXT_INPUT =
   'h-13 w-full rounded-ui border border-line bg-surface px-3.5 font-sans text-base text-fg transition-colors'

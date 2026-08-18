@@ -216,6 +216,90 @@ class ApiEndpointsTest {
 	}
 
 	@Nested
+	@DisplayName("POST /api/courses/recommend")
+	class Recommend {
+
+		private static final String SURVEY_JSON = """
+				{
+				  "region": "gyeongju",
+				  "startDate": "2026-09-16",
+				  "nights": 1,
+				  "styles": ["HISTORY", "FOOD"],
+				  "density": "BALANCED",
+				  "sensitivity": "QUIET",
+				  "transport": "TRANSIT"
+				}
+				""";
+
+		@Test
+		@DisplayName("설문 답으로 코스 초안을 만들고 슬롯마다 근거를 함께 준다")
+		void buildsDraftWithReasons() throws Exception {
+			mockMvc.perform(post("/api/courses/recommend")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(SURVEY_JSON))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.days").value(2))
+					.andExpect(jsonPath("$.data.endDate").value("2026-09-17"))
+					.andExpect(jsonPath("$.data.totalQuietness").isNumber())
+					.andExpect(jsonPath("$.data.slots.length()").value(org.hamcrest.Matchers.greaterThan(0)))
+					// 진단 화면과 슬롯 모양을 맞춰, 프론트가 타임라인 컴포넌트를 재사용할 수 있게 한다.
+					.andExpect(jsonPath("$.data.slots[0].visitDate").value("2026-09-16"))
+					.andExpect(jsonPath("$.data.slots[0].levelLabel").isNotEmpty())
+					// 왜 이 장소인지가 반드시 함께 나가야 한다.
+					.andExpect(jsonPath("$.data.slots[0].reason").isNotEmpty())
+					.andExpect(jsonPath("$.data.slots[0].recommendation").isNumber())
+					.andExpect(jsonPath("$.data.slots[0].factors[0].label").value("한적도"))
+					.andExpect(jsonPath("$.data.slots[0].factors[0].weightPercent").isNumber());
+		}
+
+		@Test
+		@DisplayName("게스트도 쓸 수 있다 — 경주를 모르는 사용자의 진입점이라 로그인 뒤에 두지 않는다")
+		void guestCanUseIt() throws Exception {
+			mockMvc.perform(post("/api/courses/recommend")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(SURVEY_JSON))
+					.andExpect(status().isOk());
+		}
+
+		@Test
+		@DisplayName("여행 스타일을 하나도 고르지 않으면 400 — 어느 칸인지 함께 알려준다")
+		void requiresAtLeastOneStyle() throws Exception {
+			String json = """
+					{
+					  "region": "gyeongju", "startDate": "2026-09-16", "nights": 0,
+					  "styles": [], "density": "BALANCED",
+					  "sensitivity": "MIXED", "transport": "CAR"
+					}
+					""";
+
+			mockMvc.perform(post("/api/courses/recommend")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(json))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+					.andExpect(jsonPath("$.error.fields[0].field").value("styles"));
+		}
+
+		@Test
+		@DisplayName("없는 설문 답을 보내면 자바 타입명이 아니라 읽을 수 있는 메시지로 400")
+		void rejectsUnknownAnswer() throws Exception {
+			String json = """
+					{
+					  "region": "gyeongju", "startDate": "2026-09-16", "nights": 0,
+					  "styles": ["HISTORY"], "density": "초고속",
+					  "sensitivity": "MIXED", "transport": "CAR"
+					}
+					""";
+
+			mockMvc.perform(post("/api/courses/recommend")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content(json))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.error.message").value("요청 형식이 올바르지 않습니다."));
+		}
+	}
+
+	@Nested
 	@DisplayName("GET /api/dates/alternatives")
 	class DateAlternatives {
 
@@ -326,6 +410,7 @@ class ApiEndpointsTest {
 					.andExpect(jsonPath("$.info.title").value("PEAKOFF API"))
 					.andExpect(jsonPath("$.paths['/api/places']").exists())
 					.andExpect(jsonPath("$.paths['/api/courses/diagnose']").exists())
+					.andExpect(jsonPath("$.paths['/api/courses/recommend']").exists())
 					.andExpect(jsonPath("$.paths['/api/dates/alternatives']").exists())
 					.andExpect(jsonPath("$.paths['/api/places/{placeId}/alternatives']").exists());
 		}

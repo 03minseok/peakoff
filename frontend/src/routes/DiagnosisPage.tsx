@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router'
 import { AlternativeSheet } from '../components/AlternativeSheet'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
-import { LEVEL_COLOR_VAR, LEVEL_SOLID } from '../components/levelStyles'
+import { LEVEL_COLOR_VAR, LEVEL_ON_SOLID, LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON } from '../components/styles'
 import { currentDiagnosis, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchDateAlternatives } from '../services/api'
@@ -659,8 +659,10 @@ export function DiagnosisPage() {
                       className={`${CARD} flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-3.5`}
                     >
                       <div className="flex min-w-0 items-start gap-3">
+                        {/* 색 안에 번호가 들어가므로 LEVEL_SOLID가 아니라 LEVEL_ON_SOLID다.
+                            글자색이 짝으로 따라오니 여기서 따로 지정하지 않는다 */}
                         <span
-                          className={`grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold text-white ${LEVEL_SOLID[slot.level]}`}
+                          className={`grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold ${LEVEL_ON_SOLID[slot.level]}`}
                         >
                           {slot.order}
                         </span>
@@ -731,7 +733,7 @@ export function DiagnosisPage() {
                           type="button"
                           className={`rounded-chip h-10 flex-none cursor-pointer px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
                             slot.level === 'CROWDED'
-                              ? 'bg-crowded hover:bg-crowded-deep text-white shadow-[0_4px_12px_rgb(206_81_56/0.22)]'
+                              ? 'bg-crowded-strong hover:bg-crowded-deep text-white shadow-[0_4px_12px_rgb(179_23_90/0.24)]'
                               : 'border-line bg-surface text-muted hover:border-brand hover:text-brand-deep border'
                           }`}
                           onClick={() =>

@@ -4,7 +4,13 @@ import * as api from '../services/api'
 import { AuthContext } from './authContext'
 import type { AuthContextValue } from './authContext'
 import { clearAuth, loadAuth, saveAuth } from './authStorage'
-import type { AuthMember, LoginRequest, SignupRequest } from '../types/api'
+import type {
+  AuthMember,
+  LoginRequest,
+  SignupRequest,
+  SocialLinkRequest,
+  SocialProvider,
+} from '../types/api'
 
 /**
  * 로그인 상태를 앱 전체가 공유한다.
@@ -82,6 +88,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [accept],
   )
 
+  /**
+   * 소셜 로그인 마무리.
+   *
+   * 서버가 돌려주는 두 갈래를 여기서 가른다. 로그인이 끝났으면 이메일 로그인과 <b>똑같이</b>
+   * {@link accept}를 지난다 — 토큰을 저장하는 자리가 하나여야 한쪽만 빠뜨리는 일이 없다.
+   * 연결이 필요하면 상태를 건드리지 않고 후보만 돌려준다. 아직 로그인이 아니기 때문이다.
+   */
+  const completeSocialLogin = useCallback(
+    async (provider: SocialProvider, code: string, state: string) => {
+      const result = await api.socialLogin(provider, code, state)
+      if (result.status === 'LOGGED_IN') {
+        accept(result.auth)
+        return null
+      }
+      return result.link
+    },
+    [accept],
+  )
+
+  const linkSocial = useCallback(
+    async (request: SocialLinkRequest) => {
+      accept(await api.linkSocialAccount(request))
+    },
+    [accept],
+  )
+
   const logout = useCallback(() => {
     api.setAuthToken(null)
     clearAuth()
@@ -117,8 +149,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<AuthContextValue>(
-    () => ({ member, loading, signup, login, logout, changeNickname, deleteAccount }),
-    [member, loading, signup, login, logout, changeNickname, deleteAccount],
+    () => ({
+      member,
+      loading,
+      signup,
+      login,
+      logout,
+      completeSocialLogin,
+      linkSocial,
+      changeNickname,
+      deleteAccount,
+    }),
+    [
+      member,
+      loading,
+      signup,
+      login,
+      logout,
+      completeSocialLogin,
+      linkSocial,
+      changeNickname,
+      deleteAccount,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
