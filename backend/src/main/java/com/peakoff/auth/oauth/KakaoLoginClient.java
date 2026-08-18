@@ -92,8 +92,14 @@ public class KakaoLoginClient implements SocialLoginClient {
 				.toUriString();
 	}
 
+	/**
+	 * {@code state}를 받고 쓰지 않는다.
+	 *
+	 * <p>카카오는 토큰 교환에 그 값을 요구하지 않는다. 인터페이스에 있는 것은 네이버 사정이다 —
+	 * 자세한 이유는 {@link SocialLoginClient#fetchProfile}에 적어 두었다.
+	 */
 	@Override
-	public SocialProfile fetchProfile(String code) {
+	public SocialProfile fetchProfile(String code, String state) {
 		String accessToken = exchangeCodeForToken(code);
 		return fetchUser(accessToken);
 	}

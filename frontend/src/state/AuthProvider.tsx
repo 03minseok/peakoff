@@ -96,8 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * 연결이 필요하면 상태를 건드리지 않고 후보만 돌려준다. 아직 로그인이 아니기 때문이다.
    */
   const completeSocialLogin = useCallback(
-    async (provider: SocialProvider, code: string) => {
-      const result = await api.socialLogin(provider, code)
+    async (provider: SocialProvider, code: string, state: string) => {
+      const result = await api.socialLogin(provider, code, state)
       if (result.status === 'LOGGED_IN') {
         accept(result.auth)
         return null

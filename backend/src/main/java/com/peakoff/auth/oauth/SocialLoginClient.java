@@ -43,7 +43,10 @@ public interface SocialLoginClient {
 	 * 밖에서는 그 과정을 알 필요가 없어 한 메서드로 묶었다 — 중간의 access token이
 	 * 바깥으로 새어 나가지 않게 하려는 뜻도 있다. 그 토큰은 여기서 쓰고 버린다.
 	 *
-	 * @param code 제공자가 redirect로 돌려준 <b>한 번만 쓸 수 있는</b> 인가 코드
+	 * @param code  제공자가 redirect로 돌려준 <b>한 번만 쓸 수 있는</b> 인가 코드
+	 * @param state 로그인을 시작할 때 화면이 만든 값. <b>네이버는 토큰 요청에도 이 값을 요구한다</b> —
+	 *              카카오는 쓰지 않으므로 받고 버린다. 쓰지 않는 쪽에 맞춰 빼면 네이버가 붙지 않고,
+	 *              네이버만 다른 메서드를 두면 서비스가 제공자를 구분해 부르게 된다
 	 */
-	SocialProfile fetchProfile(String code);
+	SocialProfile fetchProfile(String code, String state);
 }

@@ -57,7 +57,8 @@ peakoff:
   oauth:
     kakao:
       # 카카오 개발자 콘솔 > 앱 설정 > 앱 키 > REST API 키.
-      # 지도에 쓰는 JavaScript 키와 다른 값이다. 비어 있으면 로그인 버튼이 "준비 중"으로 답한다.
+      # 지도에 쓰는 JavaScript 키와 다른 값이다.
+      # 비어 있으면 버튼을 눌러도 로그인 창으로 가지 못하고 오류로 답한다(우리 설정 문제라 500).
       client-id: ${KAKAO_CLIENT_ID:}
       # 콘솔에서 Client Secret을 켠 경우에만 넣는다. 카카오에서 선택 기능이라,
       # 켜지 않았다면 비워두는 것이 맞다 — 빈 값을 실어 보내면 오히려 거절당한다.
@@ -65,6 +66,13 @@ peakoff:
       # 카카오가 사용자를 되돌려 보낼 주소. 콘솔에 등록한 값과 한 글자도 달라선 안 된다.
       # 배포하면 배포 도메인 주소로 바꾸고, 콘솔에도 같은 값을 추가한다.
       redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:5173/oauth/callback/kakao}
+    naver:
+      # 네이버 개발자센터 > 애플리케이션 > 내 애플리케이션 > API 설정 > Client ID.
+      client-id: ${NAVER_CLIENT_ID:}
+      # 네이버는 Client Secret이 필수다(카카오는 선택). 없으면 로그인을 시작하지 않는다.
+      client-secret: ${NAVER_CLIENT_SECRET:}
+      # 네이버 개발자센터의 "Callback URL"에 등록한 값과 한 글자도 달라선 안 된다.
+      redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/oauth/callback/naver}
 
 springdoc:
   swagger-ui:
