@@ -216,7 +216,8 @@ public class CourseDraftService {
 
 	private static DraftedSlot toDraftedSlot(int day, int order, ScoredPlace scored, String reason) {
 		return new DraftedSlot(
-				new CourseSlot(day, order, scored.place(), scored.quietness()),
+				// 설문 생성은 애초에 한적도가 있는 후보만 고른다. 진단 불가 칸이 생길 수 없다.
+				CourseSlot.diagnosed(day, order, scored.place(), scored.quietness()),
 				scored.recommendation(),
 				scored.factors(),
 				reason);
