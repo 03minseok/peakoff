@@ -42,15 +42,34 @@ public class PlaceController {
 	private final PlaceService placeService;
 	private final RecommendationService recommendationService;
 
-	/** GET /api/places?region=gyeongju */
+	/** 화면이 한 번에 보여줄 만큼. 지역 전체(경주만 621곳)를 늘어놓지 않는다. */
+	private static final int DEFAULT_SEARCH_LIMIT = 20;
+
+	/** GET /api/places?region=gyeongju&keyword=불국사&limit=20 */
 	@Operation(
-			summary = "지역의 장소 목록",
-			description = "코스에 담을 수 있는 장소를 모두 돌려준다. v1은 경주만 지원한다.")
+			summary = "장소 검색",
+			description = """
+					이름으로 장소를 찾는다. 검색 범위는 그 지역 안이다.
+
+					keyword를 비워 보내면 그 지역의 대표 관광지를 인기 순으로 돌려준다.
+					검색 전 빈 화면에 쓰는 목록이다 — 그 지역을 모르면 첫 글자를 치지 못한다.
+
+					⚠️ 대표 목록의 순서는 인기 순이지 추천 순이 아니다.
+					인기 장소는 붐비는 장소이므로 추천 점수에는 쓰지 않는다.""")
 	@GetMapping
 	public ApiResponse<List<PlaceResponse>> places(
 			@Parameter(description = "지역 슬러그", example = "gyeongju")
-			@RequestParam @NotBlank(message = "지역이 필요합니다.") String region) {
-		return ApiResponse.ok(placeService.findByRegion(region));
+			@RequestParam @NotBlank(message = "지역이 필요합니다.") String region,
+
+			@Parameter(description = "검색어. 비우면 대표 관광지가 나온다", example = "불국사")
+			@RequestParam(required = false) String keyword,
+
+			@Parameter(description = "최대 개수")
+			@RequestParam(defaultValue = "" + DEFAULT_SEARCH_LIMIT)
+			@Min(value = 1, message = "개수는 1 이상이어야 합니다.")
+			@Max(value = 100, message = "한 번에 100곳까지 볼 수 있습니다.")
+			int limit) {
+		return ApiResponse.ok(placeService.search(region, keyword, limit));
 	}
 
 	/** GET /api/places/{placeId}/alternatives?date=2026-09-12&limit=5 */

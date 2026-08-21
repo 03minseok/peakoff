@@ -31,7 +31,24 @@ import { today } from '../utils/date'
  * <p>한 이름이 아니라 목록인 이유: 서버가 볼거리를 역사·자연·체험으로 나눠 갖고 있다.
  * 설문의 "여행 스타일"이 이 분류로 후보를 고르기 때문이다.
  */
-const SIGHTSEEING_CATEGORIES = new Set(['역사·유적', '자연·풍경', '체험·액티비티'])
+const SIGHTSEEING_CATEGORIES = new Set([
+  // 신분류 코드(실데이터)
+  '역사·유적',
+  '자연·풍경',
+  '문화·명소',
+  '레저·스포츠',
+  '체험',
+  // 목업 카탈로그. 장소만 목업인 구간이 있어 둘 다 적어 둔다
+  '체험·액티비티',
+])
+
+/**
+ * 홈이 받아오는 대표 관광지 수.
+ *
+ * 지역 전체(경주 621곳)를 받지 않는다. 아래에서 다시 볼거리만 거르고 진단 요청 슬롯에
+ * 까는데, 서버 슬롯 상한이 50이라 애초에 그만큼 받을 이유가 없다.
+ */
+const REPRESENTATIVE_LIMIT = 40
 
 /**
  * "오늘의 OO"에 세우는 곳 수. 붐비는 쪽과 한적한 쪽을 <b>같은 수로</b> 뽑는다.
@@ -192,7 +209,7 @@ export function useHomeData(region: string): HomeState {
     const startDate = today()
 
     async function load() {
-      const places = await fetchPlaces(region, controller.signal)
+      const places = await fetchPlaces(region, { limit: REPRESENTATIVE_LIMIT, signal: controller.signal })
       const spots = places.filter((place) => SIGHTSEEING_CATEGORIES.has(place.categoryName))
       if (spots.length === 0) {
         throw new Error('표시할 관광지가 없습니다.')

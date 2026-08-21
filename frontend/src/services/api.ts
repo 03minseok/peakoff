@@ -227,9 +227,32 @@ export function deleteAccount(
   return apiRequest<void>('/auth/me', { method: 'DELETE', body: request, signal })
 }
 
-/** GET /api/places?region=gyeongju */
-export function fetchPlaces(region: string, signal?: AbortSignal): Promise<Place[]> {
-  return apiRequest<Place[]>(`/places?region=${encodeURIComponent(region)}`, { signal })
+/**
+ * GET /api/places?region=&keyword=&limit=
+ *
+ * 이름으로 장소를 찾는다. 검색 범위는 그 지역 안이다.
+ *
+ * keyword를 비우면 그 지역의 <b>대표 관광지</b>가 인기 순으로 온다. 검색 전 빈 화면에
+ * 쓰는 목록이다 — 경주를 모르는 사용자는 빈 검색창 앞에서 첫 글자를 치지 못한다.
+ *
+ * 지역 전체를 받지 않는 이유: 경주만 621곳이고 지역이 늘면 수천 곳이 된다.
+ * 화면에 늘어놓을 수 있는 양이 아니다.
+ *
+ * ⚠️ 대표 목록의 순서는 <b>인기 순</b>이지 추천 순이 아니다. 인기 장소는 붐비는 장소이므로
+ * 이 순서를 추천 근거로 쓰면 오버투어리즘 과제와 어긋난다.
+ */
+export function fetchPlaces(
+  region: string,
+  options: { keyword?: string; limit?: number; signal?: AbortSignal } = {},
+): Promise<Place[]> {
+  const query = new URLSearchParams({ region })
+  if (options.keyword) {
+    query.set('keyword', options.keyword)
+  }
+  if (options.limit !== undefined) {
+    query.set('limit', String(options.limit))
+  }
+  return apiRequest<Place[]>(`/places?${query}`, { signal: options.signal })
 }
 
 /** GET /api/places/{placeId}/alternatives?date=&limit= */
