@@ -13,9 +13,18 @@ type LoadState =
   | { phase: 'loaded' }
   | { phase: 'error'; message: string }
 
-/** 모바일에서 손가락으로 누를 수 있는 최소 크기(36px)를 지킨다. */
+/**
+ * 모바일에서 손가락으로 누를 수 있는 최소 크기(36px)를 지킨다.
+ *
+ * 권고치(44px)보다는 작다. 세 버튼이 서로 붙어 있어서 닿는 자리를 44px로 넓히면
+ * 서로 겹치고, 위로 옮기려다 <b>빼기</b>가 눌리는 사고가 난다 — 되돌릴 수 없는 쪽이 이겨서는 안 된다.
+ * 넓히려면 버튼 사이를 벌리는 것이 먼저다. (index.css의 .touch-hitbox 주석 참고)
+ *
+ * press는 눌림 반응이다. 순서를 바꾸는 버튼은 화면이 즉시 변하지 않는 경우가 있어
+ * (맨 위 항목의 '위로'는 잠겨 있다) 손끝 반응이 특히 필요하다.
+ */
 const ICON_BUTTON =
-  'grid h-9 w-9 place-items-center cursor-pointer rounded-chip bg-transparent text-[15px] text-muted transition-colors hover:bg-bg hover:text-fg disabled:cursor-not-allowed disabled:text-line disabled:hover:bg-transparent'
+  'press grid h-9 w-9 place-items-center cursor-pointer rounded-chip bg-transparent text-[15px] text-muted hover:bg-bg hover:text-fg disabled:cursor-not-allowed disabled:text-line disabled:hover:bg-transparent'
 
 export function CoursePage() {
   const navigate = useNavigate()
