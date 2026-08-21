@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.peakoff.place.mock.GyeongjuMockCatalog;
 import com.peakoff.support.IntegrationTest;
 
 @IntegrationTest
@@ -30,18 +29,44 @@ class ApiEndpointsTest {
 	@DisplayName("GET /api/places")
 	class Places {
 
+		/**
+		 * 검색어 없이 물으면 대표 관광지가 온다. 지역 전체가 아니다 —
+		 * 경주만 621곳이고 지역이 늘면 화면에 늘어놓을 수 있는 양이 아니다.
+		 */
 		@Test
-		@DisplayName("경주 장소 목록을 공통 응답 포맷으로 돌려준다")
-		void returnsGyeongjuPlaces() throws Exception {
-			mockMvc.perform(get("/api/places").param("region", "gyeongju"))
+		@DisplayName("검색어가 없으면 대표 관광지를 공통 응답 포맷으로 돌려준다")
+		void returnsRepresentativePlaces() throws Exception {
+			mockMvc.perform(get("/api/places").param("region", "gyeongju").param("limit", "5"))
 					.andExpect(status().isOk())
 					.andExpect(jsonPath("$.success").value(true))
-					// 개수를 숫자로 박아두면 데이터가 늘 때마다 깨진다. 카탈로그를 하나도 빠뜨리지 않는지만 본다.
-					.andExpect(jsonPath("$.data.length()").value(GyeongjuMockCatalog.places().size()))
+					.andExpect(jsonPath("$.data.length()").value(5))
 					.andExpect(jsonPath("$.data[0].id").isNotEmpty())
 					.andExpect(jsonPath("$.data[0].categoryName").isNotEmpty())
 					// 성공 응답에는 error 키가 아예 없어야 한다
 					.andExpect(jsonPath("$.error").doesNotExist());
+		}
+
+		@Test
+		@DisplayName("검색어를 주면 이름에 그 말이 든 곳만 나온다")
+		void searchesByKeyword() throws Exception {
+			mockMvc.perform(get("/api/places")
+					.param("region", "gyeongju")
+					.param("keyword", "불국"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThan(0)))
+					.andExpect(jsonPath("$.data[*].name")
+							.value(org.hamcrest.Matchers.everyItem(
+									org.hamcrest.Matchers.containsString("불국"))));
+		}
+
+		@Test
+		@DisplayName("찾는 곳이 없으면 빈 목록 — 검색은 못 찾는 것도 정상적인 결과다")
+		void emptySearchResultIsNotAnError() throws Exception {
+			mockMvc.perform(get("/api/places")
+					.param("region", "gyeongju")
+					.param("keyword", "존재하지않는장소이름"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.length()").value(0));
 		}
 
 		@Test

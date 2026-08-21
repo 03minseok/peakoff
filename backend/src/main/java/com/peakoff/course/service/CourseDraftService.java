@@ -53,6 +53,9 @@ import com.peakoff.recommendation.domain.WeightedPicker;
 @RequiredArgsConstructor
 public class CourseDraftService {
 
+	/** 코스를 채울 후보를 어디까지 볼지. 실데이터에서는 중심 관광지가 이 목록을 준다(지역당 100곳 안팎). */
+	private static final int POOL_SIZE = 100;
+
 	private final PlaceProvider placeProvider;
 	private final CongestionProvider congestionProvider;
 	private final RecommendationScorer scorer;
@@ -87,9 +90,13 @@ public class CourseDraftService {
 	 * 잘못 읽히므로, 애초에 후보로 올리지 않는다.
 	 *
 	 * <p>숙박은 어떤 스타일에도 매핑돼 있지 않아 여기서 자연히 빠진다.
+	 *
+	 * <p>지역 전체(경주 621곳)를 훑지 않고 대표 관광지까지만 본다. 대부분이 음식점·숙박이고,
+	 * 코스의 뼈대가 될 만한 곳은 앞쪽에 몰려 있다. <b>그 순서는 인기 순이라 추천 점수에는
+	 * 쓰지 않는다</b> — 여기서는 "아무도 모르는 곳만 뽑히지 않게" 하는 하한으로만 쓴다.
 	 */
 	private List<Place> candidatePool(SupportedRegion region, SurveyAnswers answers) {
-		return placeProvider.findByRegion(region.toRegion()).stream()
+		return placeProvider.representatives(region.toRegion(), POOL_SIZE).stream()
 				.filter(place -> TravelStyle.anyMatches(answers.styles(), place.category()))
 				.filter(place -> congestionProvider.hasData(place.id()))
 				.toList();

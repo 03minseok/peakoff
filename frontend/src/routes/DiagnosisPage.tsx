@@ -7,6 +7,7 @@ import { LEVEL_COLOR_VAR, LEVEL_ON_SOLID, LEVEL_SOLID } from '../components/leve
 import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON } from '../components/styles'
 import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchDateAlternatives } from '../services/api'
+import { planKeyOf } from '../services/alternativeCache'
 import { useTrip } from '../state/tripContext'
 import type { CongestionLevel, DateAlternatives } from '../types/api'
 import { formatCompactDate, formatKoreanDate, formatWeekday, today } from '../utils/date'
@@ -922,6 +923,7 @@ export function DiagnosisPage() {
           originLevel={sheet.level}
           visitDate={sheet.visitDate}
           excludePlaceIds={state.days[sheet.day - 1] ?? []}
+          planKey={planKeyOf(plan.region, plan.startDate, plan.nights)}
           onClose={() => setSheet(null)}
           onSelect={handleSelectAlternative}
         />

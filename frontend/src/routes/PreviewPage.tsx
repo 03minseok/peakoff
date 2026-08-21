@@ -14,7 +14,7 @@ export function PreviewPage() {
   useEffect(() => {
     const controller = new AbortController()
 
-    fetchPlaces('gyeongju', controller.signal)
+    fetchPlaces('gyeongju', { limit: 30, signal: controller.signal })
       .then((places) => setConnection(`연결됨 · 경주 ${places.length}곳`))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') {

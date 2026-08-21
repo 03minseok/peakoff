@@ -93,6 +93,23 @@ peakoff:
     # 준비되지 않은 빈까지 사라져 서버가 뜨지 않는다.
     congestion: ${KTO_CONGESTION:mock}
 
+    # 장소 목록을 어디서 가져올지. mock | real
+    #
+    # real이면 국문 관광정보에서 지역 카탈로그를 받아 6시간 캐시하고, 대표 관광지는
+    # 중심 관광지 API가 준다. 장소 ID가 mock-bulguksa에서 콘텐츠 ID(126166)로 바뀐다 —
+    # 저장해 둔 코스의 옛 ID는 더 이상 찾을 수 없다.
+    place: ${KTO_PLACE:mock}
+
+    # 대안 추천을 어디서 가져올지. mock | real
+    #
+    # real이면 연관 관광지("함께 많이 방문되는 곳")에서 후보를 모으고, 상위 후보군에서
+    # 가중 무작위로 뽑는다. 같은 대안이 모든 사용자에게 반복 추천되면 그곳이 새로운
+    # 혼잡지가 되기 때문이다 — 매번 다른 결과가 나오는 것은 의도된 동작이다.
+    #
+    # ⚠️ place=real과 짝이다. 장소가 목업인데 이것만 real이면 후보를 우리 카탈로그로
+    # 되돌리지 못해 빈 목록이 나온다.
+    recommendation: ${KTO_RECOMMENDATION:mock}
+
 springdoc:
   swagger-ui:
     # http://localhost:8080/docs 로 연다. 기본 경로(/swagger-ui.html)보다 기억하기 쉽다.

@@ -30,6 +30,9 @@ type ScoredSlot = DiagnosedSlot & {
   levelLabel: string
 }
 
+/** 지도에 좌표를 채우려고 받아오는 장소 수. 코스에 담긴 곳만 그리면 되므로 넉넉하면 충분하다. */
+const MAP_PLACE_LIMIT = 100
+
 interface Change {
   day: number
   order: number
@@ -210,7 +213,7 @@ export function ResultPage() {
     }
     const controller = new AbortController()
     // 지도에 좌표가 필요하다. 실패해도 비교 내용은 그대로 보여준다.
-    fetchPlaces(region, controller.signal)
+    fetchPlaces(region, { limit: MAP_PLACE_LIMIT, signal: controller.signal })
       .then(setPlaces)
       .catch(() => setPlaces([]))
     return () => controller.abort()
