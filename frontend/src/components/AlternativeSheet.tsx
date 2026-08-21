@@ -111,7 +111,7 @@ export function AlternativeSheet({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-end justify-center bg-[rgb(42_62_84/0.42)] lg:items-center lg:p-6"
+      className="sheet-dim fixed inset-0 z-100 flex items-end justify-center bg-[rgb(42_62_84/0.42)] lg:items-center lg:p-6"
       onClick={onClose}
     >
       {/*
@@ -128,7 +128,7 @@ export function AlternativeSheet({
       */}
       <div
         ref={panelRef}
-        className="bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
+        className="sheet-panel dialog-panel bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"
@@ -154,7 +154,7 @@ export function AlternativeSheet({
             </div>
             <button
               type="button"
-              className="text-muted hover:bg-line/60 rounded-chip grid h-8.5 w-8.5 flex-none cursor-pointer place-items-center bg-transparent text-base transition-colors"
+              className="press touch-hitbox text-muted hover:bg-line/60 rounded-chip grid h-8.5 w-8.5 flex-none cursor-pointer place-items-center bg-transparent text-base"
               onClick={onClose}
               aria-label="닫기"
             >
@@ -288,7 +288,7 @@ export function AlternativeSheet({
 
                   <button
                     type="button"
-                    className="bg-brand hover:bg-brand-hover rounded-ui h-11 cursor-pointer text-[14.5px] font-semibold text-fg transition-colors"
+                    className="press bg-brand hover:bg-brand-hover rounded-ui h-11 cursor-pointer text-[14.5px] font-semibold text-fg"
                     onClick={() => onSelect(alternative.place.id)}
                   >
                     이 장소로 교체
