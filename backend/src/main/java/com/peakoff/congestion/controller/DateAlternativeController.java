@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.peakoff.congestion.domain.PlannedVisit;
 import com.peakoff.congestion.dto.DateAlternativeResponse;
 import com.peakoff.congestion.service.DateAlternativeService;
 import com.peakoff.global.response.ApiResponse;
@@ -40,15 +41,21 @@ public class DateAlternativeController {
 	}
 
 	/**
-	 * GET /api/dates/alternatives?placeId=mock-bulguksa&placeId=mock-seokguram&date=2026-09-12&range=14
+	 * GET /api/dates/alternatives?slot=1:mock-bulguksa&slot=2:mock-seokguram&date=2026-09-12&range=3
 	 *
-	 * <p>{@code placeId}를 여러 번 넘길 수 있다. 하나만 넘기면 그 장소 기준,
-	 * 코스의 장소들을 모두 넘기면 코스 전체 기준으로 날짜를 비교한다.
+	 * <p>{@code slot}을 여러 번 넘긴다. 하나만 넘기면 그 장소 기준,
+	 * 코스의 방문을 모두 넘기면 코스 전체 기준으로 날짜를 비교한다.
+	 *
+	 * <p><b>장소가 아니라 방문을 받는다.</b> 2일차 장소는 시작일이 아니라 그 다음 날에 가므로,
+	 * 일차를 모르면 여러 날 일정에서 틀린 날짜의 자료를 쓰게 된다.
 	 */
 	@Operation(
 			summary = "날짜별 한적도 (앞뒤 range일)",
 			description = """
-					기준 날짜 앞뒤 range일의 한적도를 날짜순으로 돌려준다.
+					기준 시작일 앞뒤 range일의 코스 한적도를 날짜순으로 돌려준다.
+
+					시작일을 옮기면 코스 전체가 통째로 밀린다 — 2일차 장소는 후보 시작일의 다음 날로 계산된다.
+					같은 장소를 여러 날 들르면 각 날짜의 자료로 각각 계산한다.
 
 					장소를 바꾸지 않고도 혼잡을 피하는 경로다. 핵심 명소를 배제하지 않는다.
 
@@ -61,13 +68,15 @@ public class DateAlternativeController {
 	@GetMapping("/alternatives")
 	public ApiResponse<DateAlternativeResponse> alternatives(
 			@Parameter(
-					description = "기준으로 삼을 장소들. 여러 번 넘기면 코스 전체 평균으로 계산한다",
-					example = "mock-bulguksa")
-			@RequestParam @NotEmpty(message = "장소를 하나 이상 지정해야 합니다.")
-			List<String> placeId,
+					description = """
+							코스에 배치된 방문들. "일차:장소ID" 형식으로 여러 번 넘긴다.
+							하나만 넘기면 그 장소 기준, 코스 전체를 넘기면 코스 기준으로 계산한다.""",
+					example = "1:mock-bulguksa")
+			@RequestParam @NotEmpty(message = "방문을 하나 이상 지정해야 합니다.")
+			List<String> slot,
 
 			@Parameter(
-					description = "기준 날짜 (yyyy-MM-dd). 창의 한가운데가 된다",
+					description = "기준 시작일 (yyyy-MM-dd). 창의 한가운데가 된다. 2일차는 이 날의 다음 날이다",
 					example = "2026-09-12")
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 			LocalDate date,
@@ -79,6 +88,7 @@ public class DateAlternativeController {
 			@Max(value = 14, message = "조회 기간은 앞뒤 14일까지입니다.")
 			int range) {
 
-		return ApiResponse.ok(dateAlternativeService.suggest(placeId, date, range));
+		List<PlannedVisit> visits = slot.stream().map(PlannedVisit::parse).toList();
+		return ApiResponse.ok(dateAlternativeService.suggest(visits, date, range));
 	}
 }

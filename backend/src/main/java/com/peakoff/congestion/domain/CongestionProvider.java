@@ -21,6 +21,21 @@ public interface CongestionProvider {
 	 */
 	int quietnessOf(String placeId, LocalDate date);
 
-	/** 해당 장소의 예측 데이터를 갖고 있는지. 없으면 화면에서 "예측 불가"로 표시해야 한다. */
+	/**
+	 * 해당 장소가 <b>예측 대상</b>인지. 날짜와 무관하다.
+	 *
+	 * <p>{@code false}면 어느 날짜로 물어도 자료가 없다. 음식점·카페·숙박이 그렇다 —
+	 * 공사 집중률은 관광지만 예측한다.
+	 */
 	boolean hasData(String placeId);
+
+	/**
+	 * 그 장소의 <b>그 날짜</b> 자료가 있는지.
+	 *
+	 * <p>{@link #hasData(String)}와 갈라 둔 이유는 <b>사용자에게 다르게 말해야 하기 때문</b>이다.
+	 * 장소가 예측 대상이 아닌 것은 기다려도 생기지 않지만, 날짜가 예측 범위 밖인 것은
+	 * 시간이 지나면 생긴다. 둘을 "자료 없음" 하나로 뭉개면 화면이 같은 문구를 쓰게 되고,
+	 * 사용자는 서비스의 데이터가 부실하다고 읽는다.
+	 */
+	boolean hasData(String placeId, LocalDate date);
 }

@@ -61,8 +61,22 @@ public record Course(
 		return new Course(region, startDate, nights, slots, averageQuietness(slots));
 	}
 
+	/**
+	 * 총점은 <b>진단된 칸만</b>의 평균이다.
+	 *
+	 * <p>음식점처럼 예측 자료가 없는 칸은 분모에서도 빠진다. 0점으로 채워 넣으면 밥집을
+	 * 넣을수록 코스가 붐비는 것으로 계산돼, 원안 대비 개선폭이라는 비교의 기준이 무너진다.
+	 *
+	 * <p>진단된 칸이 하나도 없으면 총점이라는 값 자체가 성립하지 않는다. 그때는 0을 만들어
+	 * 내지 않고 거절한다 — 계산하지 않은 것을 근거로 말하지 않는다는 규칙이 여기에도 걸린다.
+	 */
 	private static int averageQuietness(List<CourseSlot> slots) {
-		return (int) Math.round(slots.stream().mapToInt(CourseSlot::quietness).average().orElseThrow());
+		return (int) Math.round(slots.stream()
+				.filter(CourseSlot::isDiagnosed)
+				.mapToInt(CourseSlot::quietness)
+				.average()
+				.orElseThrow(() -> new IllegalArgumentException(
+						"예상 혼잡을 계산할 수 있는 장소가 코스에 하나도 없습니다.")));
 	}
 
 	/** 여행 기간을 벗어난 일차의 슬롯이 섞이면 화면이 조용히 깨지므로 생성 시점에 막는다. */

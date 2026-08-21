@@ -143,7 +143,30 @@ function crowdRatioPercent(quietness: number, referenceQuietness: number): numbe
   return Math.max(1, Math.round((crowd / referenceCrowd) * 100))
 }
 
-function averageQuietness(slots: DiagnosedSlot[]): number {
+/**
+ * 한적도가 실제로 매겨진 슬롯.
+ *
+ * 서버는 예측 자료가 없는 칸을 {@code quietness: null}로 돌려준다 — 음식점처럼 예측 대상이
+ * 아니거나, 그 날짜가 예측 범위 밖일 때다. 홈 화면은 <b>점수로 줄을 세우는 화면</b>이라
+ * 그런 칸을 다룰 자리가 없다.
+ */
+type ScoredSlot = DiagnosedSlot & {
+  quietness: number
+  level: CongestionLevel
+  levelLabel: string
+}
+
+/**
+ * 점수가 매겨진 슬롯만 남긴다.
+ *
+ * <b>0으로 채워 넣지 않는다.</b> 0은 "매우 붐빔"으로 읽혀서, 자료가 없다는 사실이
+ * "오늘 가장 붐비는 곳"이라는 거짓말로 바뀐다 — 홈 화면 맨 위에 그 장소가 올라간다.
+ */
+function scoredOnly(slots: DiagnosedSlot[]): ScoredSlot[] {
+  return slots.filter((slot): slot is ScoredSlot => slot.quietness !== null)
+}
+
+function averageQuietness(slots: ScoredSlot[]): number {
   return slots.reduce((sum, slot) => sum + slot.quietness, 0) / slots.length
 }
 
@@ -155,7 +178,7 @@ function averageQuietness(slots: DiagnosedSlot[]): number {
  * 분석 결과로 기준이 바뀔 때 한쪽만 고쳐지는 사고가 나므로, 평균과 가장 가까운 값을 가진
  * 슬롯의 등급을 빌려 쓴다. 임계값은 계속 서버에만 남는다.
  */
-function levelNearest(slots: DiagnosedSlot[], target: number): DiagnosedSlot {
+function levelNearest(slots: ScoredSlot[], target: number): ScoredSlot {
   return slots.reduce((closest, slot) =>
     Math.abs(slot.quietness - target) < Math.abs(closest.quietness - target) ? slot : closest,
   )
@@ -189,8 +212,16 @@ export function useHomeData(region: string): HomeState {
         controller.signal,
       )
 
-      // 붐비는 순. 한적도가 낮을수록 앞에 온다.
-      const byCrowded = [...todayDiagnosis.slots].sort((a, b) => a.quietness - b.quietness)
+      /*
+       * 붐비는 순. 한적도가 낮을수록 앞에 온다.
+       *
+       * 점수가 없는 곳은 여기서 뺀다. 실데이터에서는 예측 대상이 아닌 관광지가 섞여 오는데,
+       * 줄을 세울 수 없는 것을 목록에 두면 어디엔가는 끼어들어야 한다.
+       */
+      const byCrowded = scoredOnly(todayDiagnosis.slots).sort((a, b) => a.quietness - b.quietness)
+      if (byCrowded.length === 0) {
+        throw new Error('오늘 예상 혼잡을 계산할 수 있는 관광지가 없습니다.')
+      }
 
       const toHeadline = (slot: (typeof byCrowded)[number]): HeadlineSpot => ({
         place: slot.place,
@@ -253,7 +284,7 @@ export function useHomeData(region: string): HomeState {
       )
 
       const forecast: ForecastDay[] = Array.from({ length: FORECAST_DAYS }, (_, index) => {
-        const daySlots = weekDiagnosis.slots.filter((slot) => slot.day === index + 1)
+        const daySlots = scoredOnly(weekDiagnosis.slots).filter((slot) => slot.day === index + 1)
         const average = Math.round(averageQuietness(daySlots))
         const representative = levelNearest(daySlots, average)
         return {

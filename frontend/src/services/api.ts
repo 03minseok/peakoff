@@ -310,18 +310,27 @@ export function deleteSavedCourse(courseId: number, signal?: AbortSignal): Promi
 }
 
 /**
- * GET /api/dates/alternatives?placeId=&placeId=&date=&range=
+ * GET /api/dates/alternatives?slot=1:장소&slot=2:장소&date=&range=
  *
- * placeId를 여러 번 붙인다. 하나만 넘기면 그 장소 기준, 코스의 장소를 전부 넘기면
- * 코스 전체 기준으로 날짜를 비교한다.
+ * `일차:장소ID` 형식으로 여러 번 붙인다. 하나만 넘기면 그 장소 기준, 코스의 방문을
+ * 전부 넘기면 코스 전체 기준으로 날짜를 비교한다.
+ *
+ * 장소만 넘기지 않고 <b>일차를 함께</b> 넘기는 이유: 2일차 장소는 시작일이 아니라
+ * 그 다음 날에 간다. 일차가 빠지면 서버가 모든 곳을 시작일 하루로 계산해,
+ * 여러 날 일정에서 진단 화면과 다른 숫자가 나온다.
+ *
+ * 일차와 장소를 배열 두 개로 나누지 않는 이유: 길이나 순서가 어긋나면 오류 없이
+ * 조용히 엉뚱한 날짜로 계산된다. 한 문자열에 묶으면 짝이 깨질 수 없다.
+ *
+ * @param visits day와 placeId를 가진 방문 목록. `toSlots()`의 결과를 그대로 넣을 수 있다
  */
 export function fetchDateAlternatives(
-  placeIds: string[],
+  visits: { day: number; placeId: string }[],
   date: string,
-  range = 14,
+  range = 3,
   signal?: AbortSignal,
 ): Promise<DateAlternatives> {
   const query = new URLSearchParams({ date, range: String(range) })
-  placeIds.forEach((placeId) => query.append('placeId', placeId))
+  visits.forEach((visit) => query.append('slot', `${visit.day}:${visit.placeId}`))
   return apiRequest<DateAlternatives>(`/dates/alternatives?${query}`, { signal })
 }
