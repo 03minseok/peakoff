@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp } from '../components/icons'
 import { Navigate, useNavigate } from 'react-router'
 import { CourseMap } from '../components/CourseMap'
-import { CARD, CHIP_BUTTON, NOTICE, PRIMARY_BUTTON } from '../components/styles'
+import { CARD, CHIP_BUTTON, NOTICE, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { ApiRequestError, fetchPlaces } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type { Place } from '../types/api'
@@ -13,9 +13,26 @@ type LoadState =
   | { phase: 'loaded' }
   | { phase: 'error'; message: string }
 
-/** 모바일에서 손가락으로 누를 수 있는 최소 크기(36px)를 지킨다. */
+/**
+ * 모바일에서 손가락으로 누를 수 있는 최소 크기(36px)를 지킨다.
+ *
+ * 권고치(44px)보다는 작다. 세 버튼이 서로 붙어 있어서 닿는 자리를 44px로 넓히면
+ * 서로 겹치고, 위로 옮기려다 <b>빼기</b>가 눌리는 사고가 난다 — 되돌릴 수 없는 쪽이 이겨서는 안 된다.
+ * 넓히려면 버튼 사이를 벌리는 것이 먼저다. (index.css의 .touch-hitbox 주석 참고)
+ *
+ * press는 눌림 반응이다. 순서를 바꾸는 버튼은 화면이 즉시 변하지 않는 경우가 있어
+ * (맨 위 항목의 '위로'는 잠겨 있다) 손끝 반응이 특히 필요하다.
+ */
+/**
+ * 검색어를 친 뒤 실제로 부르기까지 기다리는 시간.
+ *
+ * 글자마다 부르면 "불" "불국" "불국사"로 세 번 나가고, 앞의 둘은 버려진다.
+ * 너무 길면 다 치고 나서 멈칫하는 느낌이 든다.
+ */
+const DEBOUNCE_MS = 250
+
 const ICON_BUTTON =
-  'grid h-9 w-9 place-items-center cursor-pointer rounded-chip bg-transparent text-[15px] text-muted transition-colors hover:bg-bg hover:text-fg disabled:cursor-not-allowed disabled:text-line disabled:hover:bg-transparent'
+  'press grid h-9 w-9 place-items-center cursor-pointer rounded-chip bg-transparent text-[15px] text-muted hover:bg-bg hover:text-fg disabled:cursor-not-allowed disabled:text-line disabled:hover:bg-transparent'
 
 export function CoursePage() {
   const navigate = useNavigate()
@@ -26,6 +43,14 @@ export function CoursePage() {
   const [load, setLoad] = useState<LoadState>({ phase: 'loading' })
   const [currentDay, setCurrentDay] = useState(1)
 
+  /**
+   * 검색창에 친 글자.
+   *
+   * 비어 있으면 서버가 <b>대표 관광지</b>를 준다. 빈 목록을 두지 않는 이유는,
+   * 경주를 모르는 사용자가 빈 검색창 앞에서 첫 글자를 치지 못하기 때문이다.
+   */
+  const [keyword, setKeyword] = useState('')
+
   const region = plan?.region
 
   useEffect(() => {
@@ -35,7 +60,12 @@ export function CoursePage() {
     const controller = new AbortController()
 
     setLoad({ phase: 'loading' })
-    fetchPlaces(region, controller.signal)
+    /*
+     * 글자마다 부르지 않는다. 타이핑 중에는 요청이 계속 갈아엎히면서 화면이 깜빡이고,
+     * 서버는 버려질 결과를 계속 계산한다. 잠깐 멈췄을 때 한 번만 부른다.
+     */
+    const timer = setTimeout(() => {
+    fetchPlaces(region, { keyword, signal: controller.signal })
       .then((result) => {
         setPlaces(result)
         setLoad({ phase: 'loaded' })
@@ -50,9 +80,13 @@ export function CoursePage() {
             error instanceof ApiRequestError ? error.message : '장소를 불러오지 못했습니다.',
         })
       })
+    }, DEBOUNCE_MS)
 
-    return () => controller.abort()
-  }, [region])
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [region, keyword])
 
   // 장소 ID로 빠르게 찾기 위한 표. 목록이 바뀔 때만 다시 만든다.
   const placesById = useMemo(() => {
@@ -242,12 +276,45 @@ export function CoursePage() {
         <section className="pb-2">
           <h2 className="text-fg mb-2.5 text-sm font-semibold">장소 추가</h2>
 
+          {/*
+            검색창. 지역 전체를 늘어놓지 않는 대신 여기로 찾는다 — 경주만 621곳이라
+            목록으로는 훑을 수 없고, 지역이 늘면 더 그렇다.
+
+            type="search"인 이유: 모바일 키보드에 "검색" 키가 서고, 브라우저가 지우기
+            버튼을 붙여 준다. 우리가 만들지 않아도 되는 것을 만들지 않는다.
+          */}
+          <label className="mb-2.5 block">
+            <span className="sr-only">장소 검색</span>
+            <input
+              type="search"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="가고 싶은 곳을 검색해 보세요"
+              className={TEXT_INPUT}
+              autoComplete="off"
+            />
+          </label>
+
           {load.phase === 'loading' && <p className={NOTICE}>불러오는 중…</p>}
           {load.phase === 'error' && (
             <p className={`${NOTICE} text-crowded-deep`}>{load.message}</p>
           )}
 
-          {load.phase === 'loaded' && (
+          {/*
+            검색 전에는 서버가 대표 관광지를 준다. 빈 검색창 앞에서 첫 글자를 못 치는
+            사용자를 위한 자리라, "검색어를 입력하세요" 같은 빈 화면을 두지 않는다.
+          */}
+          {load.phase === 'loaded' && places.length === 0 && (
+            <p className={NOTICE}>
+              {keyword ? `'${keyword}'로 찾은 곳이 없어요.` : '보여줄 장소가 없어요.'}
+            </p>
+          )}
+
+          {load.phase === 'loaded' && places.length > 0 && (
+            <>
+              {!keyword && (
+                <p className="text-hint mb-2 text-[12.5px]">경주에서 많이 찾는 곳이에요</p>
+              )}
             <ul className="flex flex-col gap-2">
               {places.map((place) => {
                 const added = chosenIds.has(place.id)
@@ -277,6 +344,7 @@ export function CoursePage() {
                 )
               })}
             </ul>
+            </>
           )}
         </section>
 

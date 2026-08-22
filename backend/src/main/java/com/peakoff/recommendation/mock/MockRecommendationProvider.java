@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -38,6 +39,7 @@ import com.peakoff.recommendation.domain.ScoredPlace;
  */
 @Component
 @Profile(DataSourceProfiles.MOCK)
+@ConditionalOnProperty(name = "peakoff.kto.recommendation", havingValue = "mock", matchIfMissing = true)
 public class MockRecommendationProvider implements RecommendationProvider {
 
 	private final CongestionProvider congestionProvider;

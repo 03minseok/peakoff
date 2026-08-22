@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.peakoff.congestion.domain.CongestionProvider;
+import com.peakoff.congestion.domain.DiagnosisGap;
 import com.peakoff.course.domain.Course;
 import com.peakoff.course.domain.CourseSlot;
 import com.peakoff.course.dto.CourseDiagnosisRequest;
@@ -45,18 +46,33 @@ public class CourseDiagnosisService {
 		return CourseDiagnosisResponse.from(course, region.slug());
 	}
 
+	/**
+	 * 칸 하나를 진단한다. <b>자료가 없어도 예외를 던지지 않는다.</b>
+	 *
+	 * <p>예전에는 자료 없는 장소가 하나라도 있으면 404로 요청 전체를 죽였다. 그러면
+	 * 밥집이 낀 코스는 진단 자체가 불가능하다 — 공사 집중률에 음식점이 통째로 없기 때문이다.
+	 * 그 칸만 "진단 불가"로 표시하고 나머지는 정상적으로 진단한다.
+	 *
+	 * <p>사유를 두 갈래로 나눠 담는다. 기다리면 생기는 것과 아닌 것을 화면이 다르게 말해야 한다.
+	 */
 	private CourseSlot diagnoseSlot(CourseDiagnosisRequest.SlotRequest slotRequest, LocalDate startDate) {
+		// 장소 자체가 없는 것은 여전히 404다. 요청이 잘못된 것이지 자료가 없는 것이 아니다.
 		Place place = placeService.getById(slotRequest.placeId());
 
 		// 2일차 슬롯은 시작일 다음 날 기준으로 본다. 날짜가 다르면 같은 장소라도 한적도가 다르다.
 		LocalDate visitDate = startDate.plusDays(slotRequest.day() - 1L);
 
 		if (!congestionProvider.hasData(place.id())) {
-			throw new NotFoundException("혼잡 예측 데이터가 없는 장소입니다: " + place.name());
+			return CourseSlot.undiagnosed(
+					slotRequest.day(), slotRequest.order(), place, DiagnosisGap.NO_FORECAST_FOR_PLACE);
 		}
-		int quietness = congestionProvider.quietnessOf(place.id(), visitDate);
+		if (!congestionProvider.hasData(place.id(), visitDate)) {
+			return CourseSlot.undiagnosed(
+					slotRequest.day(), slotRequest.order(), place, DiagnosisGap.DATE_OUT_OF_FORECAST);
+		}
 
-		return new CourseSlot(slotRequest.day(), slotRequest.order(), place, quietness);
+		int quietness = congestionProvider.quietnessOf(place.id(), visitDate);
+		return CourseSlot.diagnosed(slotRequest.day(), slotRequest.order(), place, quietness);
 	}
 
 }

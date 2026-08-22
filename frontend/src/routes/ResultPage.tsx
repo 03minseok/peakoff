@@ -15,14 +15,33 @@ import { REGIONS } from '../constants/regions'
 import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchPlaces, saveCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
-import type { CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
+import type { CongestionLevel, CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
 import { formatCompactDate, formatKoreanDate } from '../utils/date'
+
+/**
+ * 한적도가 실제로 매겨진 슬롯.
+ *
+ * 교체 비교는 <b>두 점수를 빼는 화면</b>이라 점수 없는 칸을 다룰 수 없다.
+ * 진단되지 않은 자리에는 애초에 대안 버튼이 서지 않으므로 교체도 일어나지 않는다.
+ */
+type ScoredSlot = DiagnosedSlot & {
+  quietness: number
+  level: CongestionLevel
+  levelLabel: string
+}
+
+/** 지도에 좌표를 채우려고 받아오는 장소 수. 코스에 담긴 곳만 그리면 되므로 넉넉하면 충분하다. */
+const MAP_PLACE_LIMIT = 100
 
 interface Change {
   day: number
   order: number
-  before: DiagnosedSlot
-  after: DiagnosedSlot
+  before: ScoredSlot
+  after: ScoredSlot
+}
+
+function isScored(slot: DiagnosedSlot): slot is ScoredSlot {
+  return slot.quietness !== null && slot.level !== null && slot.levelLabel !== null
 }
 
 /**
@@ -37,6 +56,10 @@ function diffCourses(before: CourseDiagnosis, after: CourseDiagnosis): Change[] 
         (slot) => slot.day === afterSlot.day && slot.order === afterSlot.order,
       )
       if (!beforeSlot || beforeSlot.place.id === afterSlot.place.id) {
+        return null
+      }
+      // 점수가 없으면 "얼마나 나아졌는지"를 뺄 수 없다. 0으로 채우면 없는 개선을 지어내게 된다.
+      if (!isScored(beforeSlot) || !isScored(afterSlot)) {
         return null
       }
       return { day: afterSlot.day, order: afterSlot.order, before: beforeSlot, after: afterSlot }
@@ -118,8 +141,11 @@ function CourseColumn({
                       changed ? 'bg-quiet-tint/60' : 'bg-bg'
                     }`}
                   >
+                    {/* 등급이 없으면 색을 고를 수 없다. 뜻 없는 옅은 채움으로 자리만 지킨다 */}
                     <span
-                      className={`h-2 w-2 flex-none rounded-full ${LEVEL_SOLID[slot.level]}`}
+                      className={`h-2 w-2 flex-none rounded-full ${
+                        slot.level ? LEVEL_SOLID[slot.level] : 'bg-fill'
+                      }`}
                       aria-hidden="true"
                     />
                     <span
@@ -135,12 +161,17 @@ function CourseColumn({
                       </span>
                     )}
                     <span className="ml-auto flex-none">
-                      <CongestionBadge
-                        level={slot.level}
-                        label={slot.levelLabel}
-                        quietness={slot.quietness}
-                        size="sm"
-                      />
+                      {/* 진단되지 않은 칸은 배지 대신 사유. 빈자리로 두면 불러오는 중으로 읽힌다 */}
+                      {slot.level !== null && slot.levelLabel !== null ? (
+                        <CongestionBadge
+                          level={slot.level}
+                          label={slot.levelLabel}
+                          quietness={slot.quietness ?? undefined}
+                          size="sm"
+                        />
+                      ) : (
+                        <span className="text-hint text-[11.5px]">{slot.gapMessage}</span>
+                      )}
                     </span>
                   </div>
                 )
@@ -182,7 +213,7 @@ export function ResultPage() {
     }
     const controller = new AbortController()
     // 지도에 좌표가 필요하다. 실패해도 비교 내용은 그대로 보여준다.
-    fetchPlaces(region, controller.signal)
+    fetchPlaces(region, { limit: MAP_PLACE_LIMIT, signal: controller.signal })
       .then(setPlaces)
       .catch(() => setPlaces([]))
     return () => controller.abort()

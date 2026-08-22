@@ -527,7 +527,7 @@ class AuthApiTest {
 					.andExpect(status().isOk());
 
 			mockMvc.perform(get("/api/dates/alternatives")
-					.param("placeId", placeId).param("date", "2026-09-16").param("range", "7"))
+					.param("slot", "1:" + placeId).param("date", "2026-09-16").param("range", "7"))
 					.andExpect(status().isOk());
 
 			mockMvc.perform(get("/api/places/{id}/alternatives", placeId)

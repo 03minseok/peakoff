@@ -40,9 +40,17 @@ class PeakoffApplicationTests {
 	}
 
 	@Test
-	@DisplayName("경주 지역을 물으면 목업 관광지가 나온다")
-	void servesGyeongjuPlaces() {
-		assertThat(placeProvider.findByRegion(GyeongjuMockCatalog.GYEONGJU))
-				.hasSizeGreaterThanOrEqualTo(20);
+	@DisplayName("검색어 없이 물으면 대표 관광지가 나온다 — 검색 전 빈 화면에 세울 목록")
+	void servesRepresentativePlaces() {
+		assertThat(placeProvider.representatives(GyeongjuMockCatalog.GYEONGJU, 20))
+				.hasSizeGreaterThanOrEqualTo(10);
+	}
+
+	@Test
+	@DisplayName("이름으로 검색하면 그 지역 안에서 찾는다")
+	void searchesByName() {
+		assertThat(placeProvider.search(GyeongjuMockCatalog.GYEONGJU, "불국", 10))
+				.isNotEmpty()
+				.allSatisfy(place -> assertThat(place.name()).contains("불국"));
 	}
 }

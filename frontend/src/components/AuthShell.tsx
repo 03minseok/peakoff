@@ -51,8 +51,17 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
         서비스 안에서 "짙은 면 = 결론을 말하는 자리"로 읽히게 하려는 것이다.
       */}
       <aside className="bg-fg relative hidden overflow-hidden px-8.5 py-9.5 text-white lg:flex lg:w-100 lg:flex-none lg:flex-col lg:justify-between">
-        {/* 팔레트 띠. 헤더가 없는 화면이라 어두운 패널의 맨 윗줄이 그 역할을 이어받는다. */}
-        <div className="palette-band absolute inset-x-0 top-0 h-[3px]" aria-hidden="true" />
+        {/*
+          팔레트 띠를 여기 두르지 않는다.
+
+          이 패널은 화면 왼쪽 절반을 차지하는 <b>큰 면</b>이라, 맨 윗줄의 3색 띠가
+          화면 상단에서 세 조각으로 갈린 색 막대로 먼저 읽힌다. 헤더의 띠는 화면 폭을
+          가로질러 한 줄로 이어지기 때문에 배경 장식으로 물러나지만, 여기서는 폭이
+          잘려 있어 같은 장치가 <b>내용</b>처럼 보인다.
+
+          정체성은 이 면에 이미 두 겹으로 들어 있다 — 어두운 네이비 면 자체와,
+          아래 틸·핑크 글로우다. 띠까지 얹으면 한 화면에서 같은 말을 세 번 한다.
+        */}
         {/*
           글로우 두 개가 서비스의 서사다 — 위는 틸(브랜드이자 한적한 방향), 아래는 핑크(붐빔).
           어두운 네이비 위에서 두 기운이 마주보게 두어, "붐빔에서 한적으로 옮겨간다"는

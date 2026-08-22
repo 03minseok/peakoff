@@ -24,7 +24,7 @@ class CourseTest {
 	@Test
 	@DisplayName("1박이면 2일, 종료일은 시작일 다음 날")
 	void derivesPeriod() {
-		Course course = new Course(REGION, START, 1, List.of(new CourseSlot(1, 1, PLACE, 80)), 80);
+		Course course = new Course(REGION, START, 1, List.of(CourseSlot.diagnosed(1, 1, PLACE, 80)), 80);
 
 		assertThat(course.days()).isEqualTo(2);
 		assertThat(course.endDate()).isEqualTo(LocalDate.of(2026, 9, 13));
@@ -33,7 +33,7 @@ class CourseTest {
 	@Test
 	@DisplayName("당일치기는 0박 1일로 표현한다")
 	void allowsDayTrip() {
-		Course course = new Course(REGION, START, 0, List.of(new CourseSlot(1, 1, PLACE, 80)), 80);
+		Course course = new Course(REGION, START, 0, List.of(CourseSlot.diagnosed(1, 1, PLACE, 80)), 80);
 
 		assertThat(course.days()).isEqualTo(1);
 		assertThat(course.endDate()).isEqualTo(START);
@@ -43,8 +43,8 @@ class CourseTest {
 	@DisplayName("일차별 슬롯은 순서대로 정렬되어 나온다")
 	void sortsSlotsOfDayByOrder() {
 		Course course = new Course(REGION, START, 1,
-				List.of(new CourseSlot(1, 2, PLACE, 70), new CourseSlot(1, 1, PLACE, 80),
-						new CourseSlot(2, 1, PLACE, 60)),
+				List.of(CourseSlot.diagnosed(1, 2, PLACE, 70), CourseSlot.diagnosed(1, 1, PLACE, 80),
+						CourseSlot.diagnosed(2, 1, PLACE, 60)),
 				70);
 
 		assertThat(course.slotsOfDay(1)).extracting(CourseSlot::order).containsExactly(1, 2);
@@ -54,7 +54,7 @@ class CourseTest {
 	@Test
 	@DisplayName("생성에 넘긴 리스트를 밖에서 고쳐도 코스는 흔들리지 않는다")
 	void copiesSlotsDefensively() {
-		List<CourseSlot> mutable = new ArrayList<>(List.of(new CourseSlot(1, 1, PLACE, 80)));
+		List<CourseSlot> mutable = new ArrayList<>(List.of(CourseSlot.diagnosed(1, 1, PLACE, 80)));
 		Course course = new Course(REGION, START, 0, mutable, 80);
 
 		mutable.clear();
@@ -65,7 +65,7 @@ class CourseTest {
 	@Test
 	@DisplayName("여행 기간을 벗어난 일차의 슬롯은 생성 시점에 막는다")
 	void rejectsSlotOutsidePeriod() {
-		List<CourseSlot> slots = List.of(new CourseSlot(5, 1, PLACE, 80));
+		List<CourseSlot> slots = List.of(CourseSlot.diagnosed(5, 1, PLACE, 80));
 
 		assertThatThrownBy(() -> new Course(REGION, START, 1, slots, 80))
 				.isInstanceOf(IllegalArgumentException.class)
@@ -75,7 +75,7 @@ class CourseTest {
 	@Test
 	@DisplayName("한적도는 0~100을 벗어날 수 없다")
 	void rejectsScoreOutOfRange() {
-		assertThatThrownBy(() -> new CourseSlot(1, 1, PLACE, 101))
+		assertThatThrownBy(() -> CourseSlot.diagnosed(1, 1, PLACE, 101))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("한적도");
 	}
@@ -83,7 +83,7 @@ class CourseTest {
 	@Test
 	@DisplayName("슬롯 교체는 일차·순서를 유지한 새 슬롯을 만든다")
 	void replacesPlaceKeepingPosition() {
-		CourseSlot original = new CourseSlot(2, 3, PLACE, 40);
+		CourseSlot original = CourseSlot.diagnosed(2, 3, PLACE, 40);
 		Place quieter = new Place("999", "금능해수욕장", 33.39, 126.24, new PlaceCategory("AC01", "자연관광지"), null);
 
 		CourseSlot replaced = original.replaceWith(quieter, 88);
