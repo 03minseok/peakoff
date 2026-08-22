@@ -12,13 +12,17 @@
  *
  * 높이 54px. 시안의 모바일 최소 터치 높이(48px)보다 넉넉하게 잡아,
  * 엄지로 누를 때 빗나가지 않게 한다.
+ *
+ * press는 index.css에 있는 클래스다. 눌렀을 때 살짝 줄어드는 반응과 색 전환을 함께 맡는다 —
+ * hover가 없는 모바일에서 "눌렸다"를 알려주는 것은 이것뿐이다.
+ * transition-colors를 같이 쓰지 않는다(둘이 같은 속성을 두고 부딪힌다. index.css의 .press 주석 참고).
  */
 export const PRIMARY_BUTTON =
-  'min-h-13.5 w-full cursor-pointer rounded-ui bg-brand text-base font-semibold text-fg shadow-cta transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-hint disabled:shadow-none'
+  'press min-h-13.5 w-full cursor-pointer rounded-ui bg-brand text-base font-semibold text-fg shadow-cta hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-line disabled:text-hint disabled:shadow-none'
 
 /** 주요 버튼 옆에 서는 보조 버튼. 테두리만 두고 배경은 카드와 같게 둔다. */
 export const SECONDARY_BUTTON =
-  'min-h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15px] font-semibold text-fg transition-colors hover:bg-bg'
+  'press min-h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15px] font-semibold text-fg hover:bg-bg'
 
 /**
  * 카드 안에 들어가는 작은 행동 버튼 (교체·추가 등).
@@ -30,7 +34,7 @@ export const SECONDARY_BUTTON =
  * 2.7:1로 무너져 hover에서 글자가 안 읽힌다 — soft는 같은 글자색을 5.0:1로 받는다.
  */
 export const CHIP_BUTTON =
-  'min-h-9 cursor-pointer rounded-chip bg-brand-tint px-3.5 text-[13px] font-semibold text-brand-deep transition-colors hover:bg-brand-soft'
+  'press min-h-9 cursor-pointer rounded-chip bg-brand-tint px-3.5 text-[13px] font-semibold text-brand-deep hover:bg-brand-soft'
 
 /** 목록·내용을 담는 기본 카드. 배경 위에 놓인 상태 */
 export const CARD = 'rounded-card bg-surface shadow-rest'

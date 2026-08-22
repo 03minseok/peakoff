@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ApiRequestError, fetchAlternatives } from '../services/api'
+import { alternativesFor, forgetAlternatives } from '../services/alternativeCache'
 import type { Alternative, CongestionLevel } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
 
@@ -19,6 +20,14 @@ interface Props {
   visitDate: string
   /** 이미 그 날에 담겨 있는 장소들. 후보에서 빼야 같은 곳이 두 번 들어가지 않는다 */
   excludePlaceIds: string[]
+  /**
+   * 여행 조건(지역·시작일·기간) 열쇠.
+   *
+   * 서버가 대안을 <b>가중 무작위</b>로 뽑기 때문에, 같은 자리를 다시 물으면 다른 답이 온다.
+   * 시트를 닫았다 열 때마다 목록이 바뀌면 되돌아갈 후보를 찾지 못하므로 화면이 결과를
+   * 들고 있는다. 이 값이 바뀌면(날짜를 옮기는 등) 들고 있던 것을 버린다.
+   */
+  planKey: string
   onClose: () => void
   onSelect: (placeId: string) => void
 }
@@ -46,16 +55,27 @@ export function AlternativeSheet({
   originLevel,
   visitDate,
   excludePlaceIds,
+  planKey,
   onClose,
   onSelect,
 }: Props) {
   const [load, setLoad] = useState<LoadState>({ phase: 'loading' })
   const panelRef = useRef<HTMLDivElement>(null)
 
+  /**
+   * 다시 뽑아 달라고 요청한 횟수.
+   *
+   * 이 값이 바뀔 때만 새로 뽑는다. 화면이 다시 그려지는 것과 사용자가 새 추천을 원하는 것은
+   * 다른 일이라, 둘을 구분하지 않으면 목록이 제멋대로 바뀐다.
+   */
+  const [redrawCount, setRedrawCount] = useState(0)
+
   useEffect(() => {
     const controller = new AbortController()
 
-    fetchAlternatives(originPlaceId, visitDate, 8, controller.signal)
+    alternativesFor(planKey, originPlaceId, visitDate, () =>
+      fetchAlternatives(originPlaceId, visitDate, 8, controller.signal),
+    )
       .then((result) => {
         // 이미 그 날에 담긴 곳은 고를 수 없으므로 아예 보여주지 않는다.
         const selectable = result.filter((item) => !excludePlaceIds.includes(item.place.id))
@@ -76,7 +96,14 @@ export function AlternativeSheet({
     // excludePlaceIds는 배열이라 매 렌더 새 참조가 될 수 있어 의존성에서 뺀다.
     // 시트는 열릴 때 한 번만 받으면 되고, 여는 동안 담긴 목록은 바뀌지 않는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [originPlaceId, visitDate])
+  }, [originPlaceId, visitDate, planKey, redrawCount])
+
+  /** 사용자가 명시적으로 새 추천을 요청했을 때만 다시 뽑는다. */
+  function handleRedraw() {
+    forgetAlternatives(originPlaceId, visitDate)
+    setLoad({ phase: 'loading' })
+    setRedrawCount((count) => count + 1)
+  }
 
   // 열리면 시트로 초점을 옮긴다. 키보드 사용자가 시트 밖에 남아 있으면 안 된다.
   useEffect(() => {
@@ -111,7 +138,7 @@ export function AlternativeSheet({
 
   return (
     <div
-      className="fixed inset-0 z-100 flex items-end justify-center bg-[rgb(42_62_84/0.42)] lg:items-center lg:p-6"
+      className="sheet-dim fixed inset-0 z-100 flex items-end justify-center bg-[rgb(42_62_84/0.42)] lg:items-center lg:p-6"
       onClick={onClose}
     >
       {/*
@@ -128,7 +155,7 @@ export function AlternativeSheet({
       */}
       <div
         ref={panelRef}
-        className="bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
+        className="sheet-panel dialog-panel bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"
@@ -154,7 +181,7 @@ export function AlternativeSheet({
             </div>
             <button
               type="button"
-              className="text-muted hover:bg-line/60 rounded-chip grid h-8.5 w-8.5 flex-none cursor-pointer place-items-center bg-transparent text-base transition-colors"
+              className="press touch-hitbox text-muted hover:bg-line/60 rounded-chip grid h-8.5 w-8.5 flex-none cursor-pointer place-items-center bg-transparent text-base"
               onClick={onClose}
               aria-label="닫기"
             >
@@ -185,6 +212,7 @@ export function AlternativeSheet({
           {load.phase === 'loaded' && load.alternatives.length === 0 && (
             <p className="py-6 text-center text-sm">추천할 만한 다른 곳을 찾지 못했어요.</p>
           )}
+
 
           {load.phase === 'loaded' && load.alternatives.length > 0 && (
             <ul className="flex flex-col gap-2.5">
@@ -288,7 +316,7 @@ export function AlternativeSheet({
 
                   <button
                     type="button"
-                    className="bg-brand hover:bg-brand-hover rounded-ui h-11 cursor-pointer text-[14.5px] font-semibold text-fg transition-colors"
+                    className="press bg-brand hover:bg-brand-hover rounded-ui h-11 cursor-pointer text-[14.5px] font-semibold text-fg"
                     onClick={() => onSelect(alternative.place.id)}
                   >
                     이 장소로 교체
@@ -296,6 +324,28 @@ export function AlternativeSheet({
                 </li>
               ))}
             </ul>
+          )}
+
+          {/*
+            다시 뽑기.
+
+            서버가 상위 후보군에서 무작위로 고르므로 누를 때마다 다른 조합이 나온다.
+            <b>버튼을 눌렀을 때만</b> 다시 뽑는다 — 시트를 여닫는 것만으로 목록이 바뀌면
+            방금 봤던 후보를 다시 찾지 못한다.
+
+            목록 아래에 둔다. 위에 두면 후보를 읽기도 전에 눈에 걸리고,
+            "이 목록은 믿을 게 못 된다"는 인상을 먼저 준다.
+          */}
+          {load.phase === 'loaded' && load.alternatives.length > 0 && (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                className="press text-muted hover:text-brand-deep rounded-chip cursor-pointer bg-transparent px-3 py-2 text-[13px] font-semibold"
+                onClick={handleRedraw}
+              >
+                다른 곳도 볼래요
+              </button>
+            </div>
           )}
 
           {load.phase === 'loaded' && load.alternatives.length > 0 && (

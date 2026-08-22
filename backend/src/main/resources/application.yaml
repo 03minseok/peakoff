@@ -74,6 +74,42 @@ peakoff:
       # 네이버 개발자센터의 "Callback URL"에 등록한 값과 한 글자도 달라선 안 된다.
       redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/oauth/callback/naver}
 
+  # 공사 OpenAPI. 인증키는 application-local.yml이나 환경변수로 넣는다 — 여기 적지 않는다.
+  kto:
+    # 공공데이터포털 마이페이지의 "일반 인증키(Encoding)".
+    #
+    # 이미 URL 인코딩된 값이라 주소에 그대로 실어 보낸다. 코드에서 한 번 더 인코딩하면
+    # %2B가 %252B가 되어 공사가 다른 키로 읽고 거절한다. 자바 연동에서 가장 흔히 터지는 자리.
+    service-key: ${KTO_SERVICE_KEY:}
+
+    # 한적도를 어디서 가져올지. mock | real
+    #
+    # real로 두면 공사 "관광지 집중률 방문자 추이 예측"을 실제로 호출한다.
+    # 그 전에 공공데이터포털에서 그 API에 활용신청이 되어 있어야 한다 —
+    # 인증키는 포털 계정이 아니라 API마다 따로 등록된다.
+    #
+    # spring.profiles.active와 따로 둔 이유: 도메인마다 실연동 시점이 다르다.
+    # 집중률만 먼저 넘어가고 장소·대안은 아직 목업이라, 프로파일 하나로 전부 갈면
+    # 준비되지 않은 빈까지 사라져 서버가 뜨지 않는다.
+    congestion: ${KTO_CONGESTION:mock}
+
+    # 장소 목록을 어디서 가져올지. mock | real
+    #
+    # real이면 국문 관광정보에서 지역 카탈로그를 받아 6시간 캐시하고, 대표 관광지는
+    # 중심 관광지 API가 준다. 장소 ID가 mock-bulguksa에서 콘텐츠 ID(126166)로 바뀐다 —
+    # 저장해 둔 코스의 옛 ID는 더 이상 찾을 수 없다.
+    place: ${KTO_PLACE:mock}
+
+    # 대안 추천을 어디서 가져올지. mock | real
+    #
+    # real이면 연관 관광지("함께 많이 방문되는 곳")에서 후보를 모으고, 상위 후보군에서
+    # 가중 무작위로 뽑는다. 같은 대안이 모든 사용자에게 반복 추천되면 그곳이 새로운
+    # 혼잡지가 되기 때문이다 — 매번 다른 결과가 나오는 것은 의도된 동작이다.
+    #
+    # ⚠️ place=real과 짝이다. 장소가 목업인데 이것만 real이면 후보를 우리 카탈로그로
+    # 되돌리지 못해 빈 목록이 나온다.
+    recommendation: ${KTO_RECOMMENDATION:mock}
+
 springdoc:
   swagger-ui:
     # http://localhost:8080/docs 로 연다. 기본 경로(/swagger-ui.html)보다 기억하기 쉽다.

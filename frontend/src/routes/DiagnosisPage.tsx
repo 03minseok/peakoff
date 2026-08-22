@@ -5,10 +5,11 @@ import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { LEVEL_COLOR_VAR, LEVEL_ON_SOLID, LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON } from '../components/styles'
-import { currentDiagnosis, useDiagnosis } from '../hooks/useDiagnosis'
+import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchDateAlternatives } from '../services/api'
+import { planKeyOf } from '../services/alternativeCache'
 import { useTrip } from '../state/tripContext'
-import type { CongestionLevel, DateAlternatives, DateOption } from '../types/api'
+import type { CongestionLevel, DateAlternatives } from '../types/api'
 import { formatCompactDate, formatKoreanDate, formatWeekday, today } from '../utils/date'
 
 /**
@@ -33,16 +34,19 @@ interface SheetTarget {
 /** 날짜 목록의 한 줄. 원안·적용된 날짜·나머지 후보를 같은 모양으로 다루기 위한 형태 */
 interface DateRow {
   date: string
-  quietness: number
-  level: CongestionLevel
-  levelLabel: string
-  /** 원안 날짜 대비 한적도 증가폭. 음수면 그날이 더 붐빈다 */
-  improvement: number
+  /** 예측 자료가 없는 날은 null. 0으로 오지 않는다 — 0은 "매우 붐빔"이다 */
+  quietness: number | null
+  level: CongestionLevel | null
+  levelLabel: string | null
+  /** 원안 날짜 대비 한적도 증가폭. 음수면 그날이 더 붐빈다. 자료가 없으면 null */
+  improvement: number | null
+  /** 점수가 없는 이유를 사람이 읽는 문장. 있으면 화면이 그대로 띄운다 */
+  gapMessage?: string | null
   /** 지금 코스에 적용된 날짜 */
   current: boolean
   /** 사용자가 처음 고른 날짜 */
   base?: boolean
-  /** 여행 날짜로 고를 수 있는가. 지난 날짜는 false */
+  /** 여행 날짜로 고를 수 있는가. 지난 날짜와 자료 없는 날은 false */
   selectable?: boolean
 }
 
@@ -75,7 +79,17 @@ export function DiagnosisPage() {
   // 날짜를 옮겨 얻은 개선이 원안에도 반영돼 차이가 사라진다.
   const baseline = useDiagnosis(state.baseline?.plan ?? null, state.baseline?.days ?? null)
 
-  const uniquePlaceIds = useMemo(() => Array.from(new Set(state.days.flat())), [state.days])
+  /*
+   * 날짜 대안에 넘길 방문 목록.
+   *
+   * 진단이 쓰는 toSlots를 그대로 쓴다. 일차를 매기는 규칙이 두 벌이 되면
+   * 같은 코스인데 진단 화면과 날짜 대안의 숫자가 어긋난다.
+   *
+   * 예전에는 Set으로 중복을 없앤 장소 목록이었다. 두 가지가 틀렸다 —
+   * 일차가 사라져 2일차 장소도 시작일로 계산됐고, 이틀 연속 들르는 곳이
+   * 한 번만 반영돼 코스 평균이 실제 일정과 달랐다.
+   */
+  const visits = useMemo(() => toSlots(state.days), [state.days])
 
   /*
    * 아래 훅들은 반드시 조기 반환(Navigate)보다 <b>위</b>에 있어야 한다.
@@ -112,11 +126,20 @@ export function DiagnosisPage() {
     [diagnosis],
   )
 
-  /** 마커 색을 정하는 표. 진단 화면에서만 넘긴다 — 편집 화면은 점수를 숨긴다 */
+  /**
+   * 마커 색을 정하는 표. 진단 화면에서만 넘긴다 — 편집 화면은 점수를 숨긴다.
+   *
+   * 등급이 없는 장소는 표에서 뺀다. 넣을 색이 없어서다 — 임의로 한 색을 고르면
+   * 지도에서 그 장소의 혼잡도를 우리가 안다고 말하는 셈이 된다.
+   */
   const mapLevels = useMemo(
     () =>
       diagnosis
-        ? Object.fromEntries(diagnosis.slots.map((slot) => [slot.place.id, slot.level]))
+        ? Object.fromEntries(
+            diagnosis.slots
+              .filter((slot) => slot.level !== null)
+              .map((slot) => [slot.place.id, slot.level as CongestionLevel]),
+          )
         : {},
     [diagnosis],
   )
@@ -131,19 +154,19 @@ export function DiagnosisPage() {
   const baseDate = state.baseline?.plan.startDate ?? plan?.startDate ?? null
 
   useEffect(() => {
-    if (!baseDate || uniquePlaceIds.length === 0) {
+    if (!baseDate || visits.length === 0) {
       return
     }
     const controller = new AbortController()
 
-    fetchDateAlternatives(uniquePlaceIds, baseDate, DATE_SEARCH_RANGE, controller.signal)
+    fetchDateAlternatives(visits, baseDate, DATE_SEARCH_RANGE, controller.signal)
       .then(setDates)
       // 날짜 제안은 곁들이는 정보다. 실패해도 진단 결과까지 막지 않는다.
       .catch(() => setDates(null))
 
     return () => controller.abort()
     // 적용 날짜(plan.startDate)는 의존성이 아니다 — 옮겨도 창이 움직이면 안 된다.
-  }, [baseDate, uniquePlaceIds])
+  }, [baseDate, visits])
 
   if (!plan) {
     return <Navigate to="/plan" replace />
@@ -171,9 +194,18 @@ export function DiagnosisPage() {
           quietness: dates.selectedQuietness,
           level: dates.selectedLevel,
           levelLabel: dates.selectedLevelLabel,
-          improvement: 0,
+          // 자기 자신과의 차이라 늘 0이다. 자료가 없으면 비교할 것도 없다.
+          improvement: dates.selectedQuietness === null ? null : 0,
+          gapMessage: null,
+          // 원안 날짜는 서버 목록에 없어 여기서 직접 판단한다. 지난 날로 여행을 갈 수는 없다.
+          selectable: dates.selectedDate >= todayDate,
           current: false,
         },
+        /*
+         * 후보 날짜의 selectable은 <b>서버가 준 값을 그대로 쓴다.</b>
+         * 화면이 다시 계산하면 "지난 날짜"와 "예측 범위 밖"이라는 두 판단이 두 곳에 생기고,
+         * 예측 창이 바뀔 때 한쪽만 고쳐진다.
+         */
         ...dates.options.map((option) => ({ ...option, current: false })),
       ]
         .map((row) => ({
@@ -182,8 +214,6 @@ export function DiagnosisPage() {
           current: row.date === plan?.startDate,
           /** 사용자가 처음 고른 날짜. 여기로 돌아올 수 있어야 한다 */
           base: row.date === dates.selectedDate,
-          /** 지난 날짜는 보여주되 고를 수 없다 — 이미 지나간 날로 여행을 갈 수는 없다 */
-          selectable: row.date >= todayDate,
         }))
         .sort((a, b) => a.date.localeCompare(b.date))
     : []
@@ -199,19 +229,16 @@ export function DiagnosisPage() {
   /**
    * 가장 많이 좋아지는 날. 접혀 있을 때 한 줄로 보여준다.
    *
-   * <p>서버 정렬을 믿지 않고 직접 고른다. 목록 순서가 바뀌어도 이 문장은 계속 맞아야 한다 —
-   * 화면에 "가장"이라고 적어놓고 실제로는 첫 번째를 집는 것은 거짓말이 된다.
+   * <p><b>서버가 고른 날을 그대로 쓴다.</b> 예전에는 화면이 목록을 훑어 직접 골랐는데,
+   * 그러면 "무엇이 가장 나은가"라는 판단이 서버와 화면 두 곳에 생긴다. 동점 처리 규칙
+   * (기준일에 가까운 날 → 이른 날)까지 양쪽에 두면 언젠가 갈라진다.
    *
-   * <p>이제 목록에 <b>더 붐비는 날도 들어 있어</b> 개선폭이 음수일 수 있다. 갈 수 있고
-   * 실제로 나아지는 날만 고른다 — 아니면 "옮기면 −8" 같은 문장이 요약 자리에 오른다.
+   * <p>서버는 고를 수 있고 실제로 나아지는 날만 후보로 본다. 그런 날이 없으면 null이다.
    */
   const bestDate =
-    dates?.options
-      .filter((option) => option.improvement > 0 && option.date >= todayDate)
-      .reduce<DateOption | null>(
-        (best, option) => (best === null || option.improvement > best.improvement ? option : best),
-        null,
-      ) ?? null
+    dates?.bestDate === null || dates === null
+      ? null
+      : (dates.options.find((option) => option.date === dates.bestDate) ?? null)
 
   // 원안과 같은 자리(일차·순서)에 다른 장소가 들어갔으면 교체된 것이다.
   function isSwapped(day: number, order: number, placeId: string) {
@@ -226,6 +253,25 @@ export function DiagnosisPage() {
     replacePlace(sheet.day, sheet.index, placeId)
     setSheet(null)
     // days가 바뀌면 useDiagnosis가 다시 돌아 자동으로 재진단된다.
+  }
+
+  /*
+   * 교체한 자리를 원안의 장소로 되돌린다.
+   *
+   * <p>새 액션을 만들지 않고 {@code replacePlace}를 그대로 쓴다 — 되돌리기도 결국
+   * "그 자리에 다른 장소를 넣는 것"이고, 넣을 값은 원안에 이미 적혀 있다.
+   * 되돌리기 전용 경로를 만들면 코스를 바꾸는 길이 둘로 갈라져 나중에 한쪽만 고쳐진다.
+   *
+   * <p>원안이 없거나(진단 전) 그 자리가 비어 있으면 아무것도 하지 않는다.
+   * 이 버튼은 교체된 자리에만 서므로 실제로는 걸리지 않지만, 되돌릴 곳을 못 찾았을 때
+   * 엉뚱한 장소를 넣는 것보다 가만히 있는 편이 안전하다.
+   */
+  function handleRevert(day: number, order: number) {
+    const original = state.baseline?.days[day - 1]?.[order - 1]
+    if (original === undefined) {
+      return
+    }
+    replacePlace(day, order - 1, original)
   }
 
   const crowdedCount = diagnosis
@@ -429,10 +475,13 @@ export function DiagnosisPage() {
               이 안내가 목록을 대신하지 않는다. 더 나은 날이 없어도 <b>되돌아갈 줄</b>은
               보여야 하고, "왜 없는지"는 옆에 늘어선 점수들이 스스로 말한다.
             */}
-            {dates?.alreadyQuietest && (
-              <p className="text-[13px]">
-                고르신 {formatKoreanDate(dates.selectedDate)}이 앞뒤 3일 중 가장 한적한 날이에요.
-              </p>
+            {/*
+              문구를 화면에서 짓지 않고 서버가 준 문장을 그대로 쓴다. 판단(어느 상태인가)과
+              그 판단을 설명하는 말이 갈라지면 기준이 바뀔 때 한쪽만 고쳐진다.
+              옮기라고 권하는 상태(RECOMMENDED)일 때는 아래 요약 줄이 개선폭을 말하므로 겹치지 않게 뺀다.
+            */}
+            {dates && dates.status !== 'RECOMMENDED' && (
+              <p className="text-[13px]">{dates.statusMessage}</p>
             )}
 
             {/*
@@ -499,8 +548,8 @@ export function DiagnosisPage() {
                               적용됨
                             </span>
                           )}
-                          {/* 원안 대비 증감. 0이면(=원안 줄) 적을 것이 없다 */}
-                          {row.improvement !== 0 && (
+                          {/* 원안 대비 증감. 0이면(=원안 줄) 적을 것이 없고, 자료가 없으면 잴 수 없다 */}
+                          {row.improvement !== null && row.improvement !== 0 && (
                             <span
                               className={`text-[11.5px] font-semibold ${
                                 row.improvement > 0 ? 'text-quiet-deep' : 'text-crowded-deep'
@@ -511,12 +560,17 @@ export function DiagnosisPage() {
                           )}
                         </div>
 
-                        {/* 막대는 점수를 눈으로 비교하는 장치다. 숫자만 있으면 줄마다 다시 읽어야 한다. */}
+                        {/*
+                          막대는 점수를 눈으로 비교하는 장치다. 숫자만 있으면 줄마다 다시 읽어야 한다.
+                          자료가 없는 날은 빈 홈으로 남긴다 — 0%짜리 막대를 그리면 "가장 붐빔"으로 읽힌다.
+                        */}
                         <div className="bg-line h-2 overflow-hidden rounded-full">
-                          <div
-                            className={`h-full rounded-full ${LEVEL_SOLID[row.level]}`}
-                            style={{ width: `${row.quietness}%` }}
-                          />
+                          {row.quietness !== null && row.level !== null && (
+                            <div
+                              className={`h-full rounded-full ${LEVEL_SOLID[row.level]}`}
+                              style={{ width: `${row.quietness}%` }}
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -524,8 +578,11 @@ export function DiagnosisPage() {
                         className={`w-8 flex-none text-right font-mono text-[14.5px] font-semibold ${
                           row.current ? 'text-fg' : ''
                         }`}
+                        // 자료가 없는 날은 이유를 손끝에 남긴다. 회색 줄만 보면 왜인지 알 수 없다.
+                        title={row.gapMessage ?? undefined}
                       >
-                        {row.quietness}
+                        {/* 빈칸이 아니라 가운뎃점을 둔다. 자리를 지켜야 표의 열이 흔들리지 않는다 */}
+                        {row.quietness ?? '·'}
                       </span>
 
                       {/*
@@ -635,9 +692,15 @@ export function DiagnosisPage() {
               그 임계값은 서버(CongestionLevel)에만 있어야 한다. 화면에도 적어두면
               분석 결과로 기준이 바뀔 때 한쪽만 고쳐져 두 값이 어긋난다.
             */
-            const dayAverage = Math.round(
-              daySlots.reduce((sum, slot) => sum + slot.quietness, 0) / daySlots.length,
-            )
+            // 진단된 칸만 평균에 넣는다. 음식점을 0으로 세면 밥집을 넣을수록 그 날이 붐벼 보인다.
+            const scoredDaySlots = daySlots.filter((slot) => slot.quietness !== null)
+            const dayAverage =
+              scoredDaySlots.length === 0
+                ? null
+                : Math.round(
+                    scoredDaySlots.reduce((sum, slot) => sum + (slot.quietness ?? 0), 0) /
+                      scoredDaySlots.length,
+                  )
 
             return (
               <section key={day} className="flex flex-col gap-2.5">
@@ -653,7 +716,18 @@ export function DiagnosisPage() {
                 </div>
 
                 <ol className="flex flex-col gap-2">
-                  {daySlots.map((slot) => (
+                  {daySlots.map((slot) => {
+                    /*
+                     * 점수를 지역 상수로 꺼내 쓴다.
+                     *
+                     * slot.quietness를 그대로 조건에 쓰면 <b>아래 onClick 안에서 좁히기가 풀린다</b> —
+                     * 타입스크립트는 객체 속성의 좁히기를 클로저 안까지 유지하지 않는다.
+                     * 나중에 실행될 때 값이 바뀌어 있을 수 있어서다. 지역 상수는 그 걱정이 없다.
+                     */
+                    const quietness = slot.quietness
+                    const level = slot.level
+
+                    return (
                     <li
                       key={`${slot.day}-${slot.order}`}
                       className={`${CARD} flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-3.5`}
@@ -661,8 +735,11 @@ export function DiagnosisPage() {
                       <div className="flex min-w-0 items-start gap-3">
                         {/* 색 안에 번호가 들어가므로 LEVEL_SOLID가 아니라 LEVEL_ON_SOLID다.
                             글자색이 짝으로 따라오니 여기서 따로 지정하지 않는다 */}
+                        {/* 등급이 없으면 색을 고를 수 없다. 뜻 없는 옅은 채움으로 자리만 지킨다 */}
                         <span
-                          className={`grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold ${LEVEL_ON_SOLID[slot.level]}`}
+                          className={`grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold ${
+                            slot.level ? LEVEL_ON_SOLID[slot.level] : 'bg-fill text-muted'
+                          }`}
                         >
                           {slot.order}
                         </span>
@@ -692,13 +769,21 @@ export function DiagnosisPage() {
                           목록을 훑을 때 눈이 매번 다른 자리를 찾아야 한다. 오른쪽 끝에 고정하면
                           <b>세로로 한 줄</b>이 되어 위아래로 비교된다.
                         */}
+                        {/*
+                          진단되지 않은 칸은 배지 대신 사유를 적는다. 배지 자리를 비워두면
+                          "아직 불러오는 중"으로 읽히고, 아무 등급이나 넣으면 거짓말이 된다.
+                        */}
                         <span className="flex-none">
-                          <CongestionBadge
-                            level={slot.level}
-                            label={slot.levelLabel}
-                            quietness={slot.quietness}
-                            size="sm"
-                          />
+                          {slot.level !== null && slot.levelLabel !== null ? (
+                            <CongestionBadge
+                              level={slot.level}
+                              label={slot.levelLabel}
+                              quietness={slot.quietness ?? undefined}
+                              size="sm"
+                            />
+                          ) : (
+                            <span className="text-hint text-[12px]">{slot.gapMessage}</span>
+                          )}
                         </span>
                       </div>
 
@@ -715,44 +800,95 @@ export function DiagnosisPage() {
                           넓은 화면에서는 버튼이 오른쪽 끝에 붙어 남는 자리가 없다.
                         */}
                         <div className="bg-line h-1.5 flex-1 overflow-hidden rounded-full sm:hidden">
-                          <div
-                            className={`h-full rounded-full ${LEVEL_SOLID[slot.level]}`}
-                            style={{ width: `${slot.quietness}%` }}
-                          />
+                          {/* 자료가 없으면 빈 홈으로 둔다. 0%짜리 막대는 "가장 붐빔"으로 읽힌다 */}
+                          {slot.quietness !== null && slot.level !== null && (
+                            <div
+                              className={`h-full rounded-full ${LEVEL_SOLID[slot.level]}`}
+                              style={{ width: `${slot.quietness}%` }}
+                            />
+                          )}
                         </div>
                         {/*
-                          대안은 모든 자리에서 열 수 있다. 한적하다고 판단된 곳도
-                          사용자가 더 나은 후보를 직접 보고 판단할 수 있어야 한다.
+                          한 자리에서 갈 수 있는 곳은 <b>둘 중 하나뿐</b>이다:
+                          아직 원안이면 대안 보기, 이미 교체했으면 되돌리기.
+                          <b>대안의 대안은 열지 않는다.</b>
 
-                          다만 붐비는 곳만 채운 버튼으로 강하게 두고, 나머지는
-                          테두리만 있는 조용한 버튼으로 둔다. 모든 카드에 빨간 버튼이
-                          서 있으면 경고색이 의미를 잃는다 — 시안에도 "주황·빨강은
-                          경고 신호로만"이라고 못박혀 있다.
+                          이유 셋.
+                          ① 대안을 열 때마다 후보 목록 API가 나가고, 교체할 때마다 재진단이 돈다.
+                             한 자리에서 두세 번 갈아타면 진단 한 번에 붙는 호출이 배로 늘고
+                             그만큼 느려진다. 공사 API는 호출 이력이 곧 심사 자료라 아껴 쓸 이유가 없지만,
+                             <b>사용자가 기다리는 시간</b>은 아껴야 한다.
+                          ② 대안의 대안으로 계속 파고들면 사용자가 지금 어디쯤 왔는지 놓친다.
+                             선택지는 늘어나는데 판단은 오히려 어려워진다.
+                          ③ 모든 자리가 <b>원안이거나, 원안에서 한 번 옮긴 것</b> 둘 중 하나로 유지된다.
+                             최종 비교 화면의 "원안 대비 개선폭"이 이 성질 위에 서 있다 —
+                             중간 단계가 쌓이면 무엇과 무엇을 견주는 값인지 흐려진다.
+
+                          되돌린 뒤에는 다시 대안을 열 수 있다. 막다른 길이 되지는 않는다.
                         */}
-                        <button
-                          type="button"
-                          className={`rounded-chip h-10 flex-none cursor-pointer px-4 text-sm font-semibold whitespace-nowrap transition-colors ${
-                            slot.level === 'CROWDED'
-                              ? 'bg-crowded-strong hover:bg-crowded-deep text-white shadow-[0_4px_12px_rgb(179_23_90/0.24)]'
-                              : 'border-line bg-surface text-muted hover:border-brand hover:text-brand-deep border'
-                          }`}
-                          onClick={() =>
-                            setSheet({
-                              day: slot.day,
-                              index: slot.order - 1,
-                              placeId: slot.place.id,
-                              placeName: slot.place.name,
-                              visitDate: slot.visitDate,
-                              quietness: slot.quietness,
-                              level: slot.level,
-                            })
-                          }
-                        >
-                          대안 보기
-                        </button>
+                        {quietness === null || level === null ? (
+                          /*
+                            진단되지 않은 자리에는 대안 버튼을 두지 않는다.
+                            대안 추천은 <b>원래 장소의 혼잡도를 기준으로</b> 후보를 매기는데,
+                            그 기준이 없으면 "이 곳보다 한적하다"는 말 자체가 성립하지 않는다.
+                            연관 관광지 조회도 기준 장소가 공사 데이터에 있어야 돈다.
+
+                            버튼을 잠근 채로 두지 않고 아예 없앤다 — 눌리지 않는 버튼은
+                            "지금은 안 되지만 언젠가 될 것"으로 읽혀 사용자가 계속 시도한다.
+                          */
+                          <span className="text-hint flex-none text-[12.5px] whitespace-nowrap">
+                            교체 추천 없음
+                          </span>
+                        ) : isSwapped(slot.day, slot.order, slot.place.id) ? (
+                          /*
+                            되돌리기는 날짜 목록의 원안 줄과 <b>같은 모양</b>이다 —
+                            테두리만 있는 조용한 버튼. 이 화면에서 "원래대로"는 늘 이렇게 생겼다.
+                          */
+                          <button
+                            type="button"
+                            className="press rounded-chip border-line bg-surface text-fg hover:bg-bg h-10 flex-none cursor-pointer border px-4 text-sm font-semibold whitespace-nowrap"
+                            onClick={() => handleRevert(slot.day, slot.order)}
+                            aria-label={`${slot.place.name} 되돌리기`}
+                          >
+                            되돌리기
+                          </button>
+                        ) : (
+                          /*
+                            대안은 아직 손대지 않은 모든 자리에서 열 수 있다. 한적하다고 판단된 곳도
+                            사용자가 더 나은 후보를 직접 보고 판단할 수 있어야 한다.
+
+                            다만 붐비는 곳만 채운 버튼으로 강하게 두고, 나머지는
+                            테두리만 있는 조용한 버튼으로 둔다. 모든 카드에 빨간 버튼이
+                            서 있으면 경고색이 의미를 잃는다 — 시안에도 "주황·빨강은
+                            경고 신호로만"이라고 못박혀 있다.
+                          */
+                          <button
+                            type="button"
+                            className={`press rounded-chip h-10 flex-none cursor-pointer px-4 text-sm font-semibold whitespace-nowrap ${
+                              slot.level === 'CROWDED'
+                                ? 'bg-crowded-strong hover:bg-crowded-deep text-white shadow-[0_4px_12px_rgb(179_23_90/0.24)]'
+                                : 'border-line bg-surface text-muted hover:border-brand hover:text-brand-deep border'
+                            }`}
+                            onClick={() =>
+                              setSheet({
+                                day: slot.day,
+                                index: slot.order - 1,
+                                placeId: slot.place.id,
+                                placeName: slot.place.name,
+                                visitDate: slot.visitDate,
+                                quietness,
+                                level,
+                              })
+                            }
+                            aria-label={`${slot.place.name} 대안 보기`}
+                          >
+                            대안 보기
+                          </button>
+                        )}
                       </div>
                     </li>
-                  ))}
+                    )
+                  })}
                 </ol>
               </section>
             )
@@ -787,6 +923,7 @@ export function DiagnosisPage() {
           originLevel={sheet.level}
           visitDate={sheet.visitDate}
           excludePlaceIds={state.days[sheet.day - 1] ?? []}
+          planKey={planKeyOf(plan.region, plan.startDate, plan.nights)}
           onClose={() => setSheet(null)}
           onSelect={handleSelectAlternative}
         />

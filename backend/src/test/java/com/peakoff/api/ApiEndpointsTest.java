@@ -1,6 +1,8 @@
 package com.peakoff.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+// 목업 값이 두 날짜에 우연히 같아지면 아래 평균 검증이 아무것도 증명하지 못한다. 그때는 건너뛴다.
+import static org.assertj.core.api.Assumptions.assumeThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.peakoff.place.mock.GyeongjuMockCatalog;
 import com.peakoff.support.IntegrationTest;
 
 @IntegrationTest
@@ -28,18 +29,44 @@ class ApiEndpointsTest {
 	@DisplayName("GET /api/places")
 	class Places {
 
+		/**
+		 * 검색어 없이 물으면 대표 관광지가 온다. 지역 전체가 아니다 —
+		 * 경주만 621곳이고 지역이 늘면 화면에 늘어놓을 수 있는 양이 아니다.
+		 */
 		@Test
-		@DisplayName("경주 장소 목록을 공통 응답 포맷으로 돌려준다")
-		void returnsGyeongjuPlaces() throws Exception {
-			mockMvc.perform(get("/api/places").param("region", "gyeongju"))
+		@DisplayName("검색어가 없으면 대표 관광지를 공통 응답 포맷으로 돌려준다")
+		void returnsRepresentativePlaces() throws Exception {
+			mockMvc.perform(get("/api/places").param("region", "gyeongju").param("limit", "5"))
 					.andExpect(status().isOk())
 					.andExpect(jsonPath("$.success").value(true))
-					// 개수를 숫자로 박아두면 데이터가 늘 때마다 깨진다. 카탈로그를 하나도 빠뜨리지 않는지만 본다.
-					.andExpect(jsonPath("$.data.length()").value(GyeongjuMockCatalog.places().size()))
+					.andExpect(jsonPath("$.data.length()").value(5))
 					.andExpect(jsonPath("$.data[0].id").isNotEmpty())
 					.andExpect(jsonPath("$.data[0].categoryName").isNotEmpty())
 					// 성공 응답에는 error 키가 아예 없어야 한다
 					.andExpect(jsonPath("$.error").doesNotExist());
+		}
+
+		@Test
+		@DisplayName("검색어를 주면 이름에 그 말이 든 곳만 나온다")
+		void searchesByKeyword() throws Exception {
+			mockMvc.perform(get("/api/places")
+					.param("region", "gyeongju")
+					.param("keyword", "불국"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.length()").value(org.hamcrest.Matchers.greaterThan(0)))
+					.andExpect(jsonPath("$.data[*].name")
+							.value(org.hamcrest.Matchers.everyItem(
+									org.hamcrest.Matchers.containsString("불국"))));
+		}
+
+		@Test
+		@DisplayName("찾는 곳이 없으면 빈 목록 — 검색은 못 찾는 것도 정상적인 결과다")
+		void emptySearchResultIsNotAnError() throws Exception {
+			mockMvc.perform(get("/api/places")
+					.param("region", "gyeongju")
+					.param("keyword", "존재하지않는장소이름"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.length()").value(0));
 		}
 
 		@Test
@@ -308,7 +335,7 @@ class ApiEndpointsTest {
 		void returnsWindowAroundDate() throws Exception {
 			// range=3이면 앞 3일 + 뒤 3일 = 7일 창에서 기준일을 뺀 6개
 			mockMvc.perform(get("/api/dates/alternatives")
-					.param("placeId", "mock-bulguksa")
+					.param("slot", "1:mock-bulguksa")
 					.param("date", "2026-09-12")
 					.param("range", "3"))
 					.andExpect(status().isOk())
@@ -324,7 +351,7 @@ class ApiEndpointsTest {
 		void includesWorseDates() throws Exception {
 			// 수요일(평일 보정을 받은 날)을 기준으로 잡으면 주말이 창에 들어와 개선폭이 음수가 된다
 			String body = mockMvc.perform(get("/api/dates/alternatives")
-					.param("placeId", "mock-bulguksa")
+					.param("slot", "1:mock-bulguksa")
 					.param("date", "2026-09-16")
 					.param("range", "3"))
 					.andExpect(status().isOk())
@@ -337,25 +364,25 @@ class ApiEndpointsTest {
 		@DisplayName("토요일을 고르면 더 한적한 평일이 창 안에 있다")
 		void suggestsQuieterDates() throws Exception {
 			String body = mockMvc.perform(get("/api/dates/alternatives")
-					.param("placeId", "mock-bulguksa")
+					.param("slot", "1:mock-bulguksa")
 					.param("date", "2026-09-12")
 					.param("range", "3"))
 					.andExpect(status().isOk())
-					.andExpect(jsonPath("$.data.alreadyQuietest").value(false))
+					.andExpect(jsonPath("$.data.bestDate").isNotEmpty())
 					.andReturn().getResponse().getContentAsString();
 
 			List<Integer> improvements =
 					com.jayway.jsonpath.JsonPath.read(body, "$.data.options[*].improvement");
 
-			assertThat(improvements).anyMatch(value -> value > 0);
+			assertThat(improvements).anyMatch(value -> value != null && value > 0);
 		}
 
 		@Test
-		@DisplayName("장소 여러 곳을 넘기면 코스 전체 기준으로 계산한다")
+		@DisplayName("방문 여러 개를 넘기면 코스 전체 기준으로 계산한다")
 		void acceptsMultiplePlaces() throws Exception {
 			mockMvc.perform(get("/api/dates/alternatives")
-					.param("placeId", "mock-bulguksa")
-					.param("placeId", "mock-yangdong")
+					.param("slot", "1:mock-bulguksa")
+					.param("slot", "2:mock-yangdong")
 					.param("date", "2026-09-12")
 					.param("range", "7"))
 					.andExpect(status().isOk())
@@ -363,33 +390,130 @@ class ApiEndpointsTest {
 		}
 
 		/**
-		 * 예전에는 "빈 목록 = 더 나은 날 없음"이었다. 서버가 개선되는 날만 걸러 보냈기 때문이다.
-		 * 이제는 창 안의 모든 날을 보내므로 목록이 비지 않는다 — 특정 날짜의 결과를 못박는 대신
-		 * <b>두 값이 어긋나지 않는다</b>는 규칙 자체를 검증한다.
+		 * 2단계의 핵심 규칙이다. 예전에는 장소만 평평하게 받아 <b>모든 곳을 시작일 하루로</b>
+		 * 계산했고, 그래서 여러 날 일정에서 진단 화면과 날짜 대안의 숫자가 어긋났다.
+		 *
+		 * <p>특정 숫자를 못박지 않는 이유: 목업 값이 바뀌면 그런 테스트는 의미 없이 깨진다.
+		 * 여기서는 <b>"2일차를 D에 두는 것"과 "1일차를 D+1에 두는 것"이 같아야 한다</b>는
+		 * 관계만 확인한다. 이 관계는 어느 데이터 원천을 붙여도 성립해야 한다.
 		 */
 		@Test
-		@DisplayName("alreadyQuietest는 창 안에 개선되는 날이 없을 때만 true다 — 목록은 그래도 채워진다")
-		void alreadyQuietestReflectsWindow() throws Exception {
+		@DisplayName("2일차 방문은 시작일 다음 날로 계산된다")
+		void secondDayUsesNextDate() throws Exception {
+			int asSecondDay = selectedQuietnessOf("2:mock-bulguksa", "2026-09-12");
+			int asFirstDayNextDate = selectedQuietnessOf("1:mock-bulguksa", "2026-09-13");
+
+			assertThat(asSecondDay).isEqualTo(asFirstDayNextDate);
+		}
+
+		/**
+		 * 같은 곳을 이틀 들르면 두 번 센다.
+		 *
+		 * <p>중복을 합치면 그 장소가 한 번만 반영돼 코스 평균이 실제 일정과 달라진다.
+		 * 1일차와 2일차의 값이 다르므로, 둘을 함께 넘긴 평균은 어느 한쪽과도 같지 않아야 한다.
+		 */
+		@Test
+		@DisplayName("같은 장소를 여러 날 들르면 날짜마다 따로 센다")
+		void countsRepeatVisitsSeparately() throws Exception {
+			int firstDayOnly = selectedQuietnessOf("1:mock-bulguksa", "2026-09-11");
+			int secondDayOnly = selectedQuietnessOf("2:mock-bulguksa", "2026-09-11");
+			assumeThat(firstDayOnly).isNotEqualTo(secondDayOnly);
+
+			int both = com.jayway.jsonpath.JsonPath.read(
+					mockMvc.perform(get("/api/dates/alternatives")
+							.param("slot", "1:mock-bulguksa")
+							.param("slot", "2:mock-bulguksa")
+							.param("date", "2026-09-11")
+							.param("range", "3"))
+							.andExpect(status().isOk())
+							.andReturn().getResponse().getContentAsString(),
+					"$.data.selectedQuietness");
+
+			assertThat(both).isEqualTo(Math.round((firstDayOnly + secondDayOnly) / 2.0f));
+		}
+
+		@Test
+		@DisplayName("일차 없이 장소만 넘기면 400 — 형식을 알려준다")
+		void rejectsSlotWithoutDay() throws Exception {
+			mockMvc.perform(get("/api/dates/alternatives")
+					.param("slot", "mock-bulguksa")
+					.param("date", "2026-09-12")
+					.param("range", "3"))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.error.message").value(
+							org.hamcrest.Matchers.containsString("일차:장소ID")));
+		}
+
+		private int selectedQuietnessOf(String slot, String date) throws Exception {
 			String body = mockMvc.perform(get("/api/dates/alternatives")
-					.param("placeId", "mock-bulguksa")
-					.param("date", "2026-09-16")
+					.param("slot", slot)
+					.param("date", date)
 					.param("range", "3"))
 					.andExpect(status().isOk())
 					.andReturn().getResponse().getContentAsString();
+			return com.jayway.jsonpath.JsonPath.read(body, "$.data.selectedQuietness");
+		}
 
-			boolean alreadyQuietest = com.jayway.jsonpath.JsonPath.read(body, "$.data.alreadyQuietest");
+		/**
+		 * 상태와 추천 날짜가 <b>서로 어긋나지 않는다</b>는 규칙을 확인한다.
+		 *
+		 * <p>특정 날짜의 결과를 못박지 않는 이유: 목업 값이 바뀌면 그런 테스트는 의미 없이 깨진다.
+		 * 여기서 지키려는 것은 "권한다고 해놓고 권할 날이 없다"는 모순이 생기지 않는 것이다.
+		 */
+		@Test
+		@DisplayName("추천 상태와 추천 날짜는 함께 움직인다")
+		void statusAgreesWithBestDate() throws Exception {
+			String body = mockMvc.perform(get("/api/dates/alternatives")
+					.param("slot", "1:mock-bulguksa")
+					.param("date", "2026-09-16")
+					.param("range", "3"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.status").isNotEmpty())
+					.andExpect(jsonPath("$.data.statusMessage").isNotEmpty())
+					.andExpect(jsonPath("$.data.minImprovement").isNumber())
+					.andReturn().getResponse().getContentAsString();
+
+			String status = com.jayway.jsonpath.JsonPath.read(body, "$.data.status");
+			Object bestDate = com.jayway.jsonpath.JsonPath.read(body, "$.data.bestDate");
 			List<Integer> improvements =
 					com.jayway.jsonpath.JsonPath.read(body, "$.data.options[*].improvement");
 
 			assertThat(improvements).isNotEmpty();
-			assertThat(alreadyQuietest).isEqualTo(improvements.stream().noneMatch(value -> value > 0));
+
+			// 옮기라고 권했으면 옮길 날이 반드시 있어야 한다.
+			if ("RECOMMENDED".equals(status) || "MARGINAL".equals(status)) {
+				assertThat(bestDate).isNotNull();
+			}
+			// 지금이 최선이라고 했으면 더 나은 날이 있어서는 안 된다.
+			if ("CURRENT_BEST".equals(status)) {
+				assertThat(bestDate).isNull();
+			}
+		}
+
+		/**
+		 * 음식점은 공사 집중률에 아예 없다. 예전에는 이런 장소가 하나만 끼어도 404로
+		 * <b>요청 전체가 죽었다</b> — 밥집 없는 여행 코스는 없으므로 사실상 쓸 수 없는 상태였다.
+		 *
+		 * <p>목업에서는 음식점에도 값이 있어 이 경로를 확인할 수 없다. 그래서 여기서는
+		 * "요청이 살아 있다"만 확인하고, 실제 제외 동작은 실데이터에서 확인한다.
+		 */
+		@Test
+		@DisplayName("예측 자료가 없는 장소가 섞여도 요청 전체가 죽지 않는다")
+		void survivesPlacesWithoutForecast() throws Exception {
+			mockMvc.perform(get("/api/dates/alternatives")
+					.param("slot", "1:mock-bulguksa")
+					.param("slot", "1:mock-gyorigimbap")
+					.param("date", "2026-09-16")
+					.param("range", "3"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.status").isNotEmpty());
 		}
 
 		@Test
 		@DisplayName("조회 기간이 범위를 벗어나면 400 — 어느 파라미터인지 함께 알려준다")
 		void rejectsOutOfRangeDays() throws Exception {
 			mockMvc.perform(get("/api/dates/alternatives")
-					.param("placeId", "mock-bulguksa")
+					.param("slot", "1:mock-bulguksa")
 					.param("date", "2026-09-12")
 					.param("range", "100"))
 					.andExpect(status().isBadRequest())

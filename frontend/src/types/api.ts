@@ -84,15 +84,32 @@ export interface CourseDiagnosisRequest {
   slots: CourseSlotRequest[]
 }
 
+/**
+ * 한적도를 매기지 못한 이유. 서버가 정한 값을 그대로 받는다.
+ *
+ * 둘을 갈라 받는 이유: 하나는 기다리면 생기고 하나는 생기지 않는다.
+ * 같은 문구로 뭉개면 사용자가 "데이터가 부실하다"로 읽는다.
+ */
+export type DiagnosisGap =
+  /** 예측 대상이 아닌 장소. 음식점·카페·숙박은 공사 집중률에 아예 없다 */
+  | 'NO_FORECAST_FOR_PLACE'
+  /** 장소는 예측 대상인데 그 날짜가 예측 범위 밖. 여행일이 다가오면 생긴다 */
+  | 'DATE_OUT_OF_FORECAST'
+
 export interface DiagnosedSlot {
   day: number
   order: number
   /** 그 슬롯을 실제로 방문하는 날짜. 2일차면 시작일 다음 날 */
   visitDate: string
   place: Place
-  quietness: number
-  level: CongestionLevel
-  levelLabel: string
+  /** 진단하지 못한 칸은 null. 0으로 오지 않는다 — 0은 화면에서 "매우 붐빔"이다 */
+  quietness: number | null
+  level: CongestionLevel | null
+  levelLabel: string | null
+  /** 진단됐으면 null */
+  gap: DiagnosisGap | null
+  /** 화면에 그대로 띄우는 문장. 진단됐으면 null */
+  gapMessage: string | null
 }
 
 export interface CourseDiagnosis {
@@ -152,7 +169,17 @@ export interface CourseRecommendRequest {
  * 오고, 연관 관광지 데이터가 붙으면 항목이 하나 는다. 항목 이름을 화면에 박지 말고
  * 배열을 그대로 반복해 그려야 한다.
  */
+/**
+ * 설문 초안의 한 칸.
+ *
+ * 점수가 <b>반드시 있다.</b> 초안은 애초에 한적도가 있는 후보 중에서만 고르기 때문에
+ * 진단 불가 칸이 생길 수 없다. 그래서 진단 결과와 달리 null을 다룰 필요가 없다 —
+ * 화면마다 있지도 않은 경우를 방어하지 않게 타입에서 좁혀 둔다.
+ */
 export interface DraftSlot extends DiagnosedSlot {
+  quietness: number
+  level: CongestionLevel
+  levelLabel: string
   /** 이 자리에 이곳을 얼마나 미는가 (0~100). 한적도가 이미 반영돼 있다 */
   recommendation: number
   factors: ScoreFactor[]
@@ -171,11 +198,16 @@ export interface CourseDraft extends Omit<CourseDiagnosis, 'slots'> {
 
 export interface DateOption {
   date: string
-  quietness: number
-  level: CongestionLevel
-  levelLabel: string
-  /** 선택 날짜 대비 한적도 증가폭. 클수록 덜 붐빈다 */
-  improvement: number
+  /** 자료가 없는 날은 null */
+  quietness: number | null
+  level: CongestionLevel | null
+  levelLabel: string | null
+  /** 선택 날짜 대비 한적도 증가폭. 클수록 덜 붐빈다. 자료가 없으면 null */
+  improvement: number | null
+  /** 실제로 고를 수 있는 날인지. 지난 날짜와 자료 없는 날은 false */
+  selectable: boolean
+  gap: DiagnosisGap | null
+  gapMessage: string | null
 }
 
 /** POST /api/courses 요청. 총점은 진단에서 받은 값을 그대로 싣는다 */
@@ -321,12 +353,36 @@ export interface DeleteAccountRequest {
   password: string
 }
 
+/**
+ * 날짜를 옮기라고 권할지에 대한 서버의 판단. 위에서부터 먼저 들어맞는 것이 온다.
+ *
+ * 화면이 직접 판단하지 않는다 — 임계값이 서버에 있어야 분석 결과로 바뀔 때 한 곳만 고쳐진다.
+ */
+export type TimeOffStatus =
+  /** 계산할 자료가 없다. 예측 범위 밖이거나 코스에 예측 대상 장소가 없다 */
+  | 'INSUFFICIENT_DATA'
+  /** 지금 일정이 이미 한적하다. 옮길 이유가 없다 */
+  | 'ALREADY_QUIET'
+  /** 앞뒤를 다 봐도 지금이 가장 낫다 */
+  | 'CURRENT_BEST'
+  /** 더 나은 날이 있지만 차이가 작다 */
+  | 'MARGINAL'
+  /** 옮길 만하다. 화면이 개선폭을 강조해도 되는 유일한 상태 */
+  | 'RECOMMENDED'
+
 export interface DateAlternatives {
+  status: TimeOffStatus
+  /** 그 판단을 사람이 읽는 문장. 화면이 그대로 띄운다 */
+  statusMessage: string
   selectedDate: string
-  selectedQuietness: number
-  selectedLevel: CongestionLevel
-  selectedLevelLabel: string
-  /** 선택한 날짜보다 나은 날이 없으면 true. 이때 options는 빈 배열 */
-  alreadyQuietest: boolean
+  /** 계산할 수 없으면 null */
+  selectedQuietness: number | null
+  selectedLevel: CongestionLevel | null
+  selectedLevelLabel: string | null
+  /** 가장 나은 후보. 없으면 null. 지난 날짜는 후보에서 빠진다 */
+  bestDate: string | null
+  bestImprovement: number | null
+  /** 옮기라고 권하는 최소 개선폭. 화면에 숫자를 박지 않으려고 서버가 내려보낸다 */
+  minImprovement: number
   options: DateOption[]
 }

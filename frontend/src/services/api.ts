@@ -227,9 +227,32 @@ export function deleteAccount(
   return apiRequest<void>('/auth/me', { method: 'DELETE', body: request, signal })
 }
 
-/** GET /api/places?region=gyeongju */
-export function fetchPlaces(region: string, signal?: AbortSignal): Promise<Place[]> {
-  return apiRequest<Place[]>(`/places?region=${encodeURIComponent(region)}`, { signal })
+/**
+ * GET /api/places?region=&keyword=&limit=
+ *
+ * 이름으로 장소를 찾는다. 검색 범위는 그 지역 안이다.
+ *
+ * keyword를 비우면 그 지역의 <b>대표 관광지</b>가 인기 순으로 온다. 검색 전 빈 화면에
+ * 쓰는 목록이다 — 경주를 모르는 사용자는 빈 검색창 앞에서 첫 글자를 치지 못한다.
+ *
+ * 지역 전체를 받지 않는 이유: 경주만 621곳이고 지역이 늘면 수천 곳이 된다.
+ * 화면에 늘어놓을 수 있는 양이 아니다.
+ *
+ * ⚠️ 대표 목록의 순서는 <b>인기 순</b>이지 추천 순이 아니다. 인기 장소는 붐비는 장소이므로
+ * 이 순서를 추천 근거로 쓰면 오버투어리즘 과제와 어긋난다.
+ */
+export function fetchPlaces(
+  region: string,
+  options: { keyword?: string; limit?: number; signal?: AbortSignal } = {},
+): Promise<Place[]> {
+  const query = new URLSearchParams({ region })
+  if (options.keyword) {
+    query.set('keyword', options.keyword)
+  }
+  if (options.limit !== undefined) {
+    query.set('limit', String(options.limit))
+  }
+  return apiRequest<Place[]>(`/places?${query}`, { signal: options.signal })
 }
 
 /** GET /api/places/{placeId}/alternatives?date=&limit= */
@@ -310,18 +333,27 @@ export function deleteSavedCourse(courseId: number, signal?: AbortSignal): Promi
 }
 
 /**
- * GET /api/dates/alternatives?placeId=&placeId=&date=&range=
+ * GET /api/dates/alternatives?slot=1:장소&slot=2:장소&date=&range=
  *
- * placeId를 여러 번 붙인다. 하나만 넘기면 그 장소 기준, 코스의 장소를 전부 넘기면
- * 코스 전체 기준으로 날짜를 비교한다.
+ * `일차:장소ID` 형식으로 여러 번 붙인다. 하나만 넘기면 그 장소 기준, 코스의 방문을
+ * 전부 넘기면 코스 전체 기준으로 날짜를 비교한다.
+ *
+ * 장소만 넘기지 않고 <b>일차를 함께</b> 넘기는 이유: 2일차 장소는 시작일이 아니라
+ * 그 다음 날에 간다. 일차가 빠지면 서버가 모든 곳을 시작일 하루로 계산해,
+ * 여러 날 일정에서 진단 화면과 다른 숫자가 나온다.
+ *
+ * 일차와 장소를 배열 두 개로 나누지 않는 이유: 길이나 순서가 어긋나면 오류 없이
+ * 조용히 엉뚱한 날짜로 계산된다. 한 문자열에 묶으면 짝이 깨질 수 없다.
+ *
+ * @param visits day와 placeId를 가진 방문 목록. `toSlots()`의 결과를 그대로 넣을 수 있다
  */
 export function fetchDateAlternatives(
-  placeIds: string[],
+  visits: { day: number; placeId: string }[],
   date: string,
-  range = 14,
+  range = 3,
   signal?: AbortSignal,
 ): Promise<DateAlternatives> {
   const query = new URLSearchParams({ date, range: String(range) })
-  placeIds.forEach((placeId) => query.append('placeId', placeId))
+  visits.forEach((visit) => query.append('slot', `${visit.day}:${visit.placeId}`))
   return apiRequest<DateAlternatives>(`/dates/alternatives?${query}`, { signal })
 }

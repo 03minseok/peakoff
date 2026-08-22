@@ -72,7 +72,7 @@ export function FormSheet({
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
       <div
-        className="absolute inset-0 bg-[rgb(42_62_84/0.42)]"
+        className="sheet-dim absolute inset-0 bg-[rgb(42_62_84/0.42)]"
         onClick={busy ? undefined : onCancel}
         aria-hidden="true"
       />
@@ -84,7 +84,7 @@ export function FormSheet({
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="bg-bg relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-w-[420px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
+        className="sheet-panel dialog-panel bg-bg relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-w-[420px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-sheet-title"
