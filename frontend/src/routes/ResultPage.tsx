@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowRight } from '../components/icons'
 import { Link, Navigate, useLocation } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
@@ -13,7 +13,8 @@ import {
 } from '../components/styles'
 import { regionNameOf } from '../constants/regions'
 import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
-import { fetchPlaces, saveCourse } from '../services/api'
+import { saveCourse } from '../services/api'
+import { recallPlaces } from '../services/placeCache'
 import { useTrip } from '../state/tripContext'
 import type { CongestionLevel, CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
 import { formatCompactDate, formatKoreanDate } from '../utils/date'
@@ -29,9 +30,6 @@ type ScoredSlot = DiagnosedSlot & {
   level: CongestionLevel
   levelLabel: string
 }
-
-/** 지도에 좌표를 채우려고 받아오는 장소 수. 코스에 담긴 곳만 그리면 되므로 넉넉하면 충분하다. */
-const MAP_PLACE_LIMIT = 100
 
 interface Change {
   day: number
@@ -193,7 +191,6 @@ export function ResultPage() {
   const original = useDiagnosis(state.baseline?.plan ?? null, state.baseline?.days ?? null)
   const improved = useDiagnosis(plan, state.days)
 
-  const [places, setPlaces] = useState<Place[]>([])
   /*
    * 로그인·가입을 마치고 돌아온 경우 시트를 연 채로 시작한다.
    * 그 화면들이 "돌아와 바로 저장할 수 있어요"라고 약속하고 보냈다.
@@ -204,20 +201,6 @@ export function ResultPage() {
   )
   /** 지도에 어느 일차를 그릴지. 'all'이면 전체 일정을 한 번에 */
   const [mapDay, setMapDay] = useState<number | 'all'>('all')
-
-  const region = plan?.region
-
-  useEffect(() => {
-    if (!region) {
-      return
-    }
-    const controller = new AbortController()
-    // 지도에 좌표가 필요하다. 실패해도 비교 내용은 그대로 보여준다.
-    fetchPlaces(region, { limit: MAP_PLACE_LIMIT, signal: controller.signal })
-      .then(setPlaces)
-      .catch(() => setPlaces([]))
-    return () => controller.abort()
-  }, [region])
 
   /*
     지도에 그릴 경로. 일차를 고르면 그 하루만 넘긴다.
@@ -231,12 +214,32 @@ export function ResultPage() {
     [state.days, mapDay],
   )
 
-  // 그 날 담긴 곳만 지도에 올린다. 다른 날 장소까지 두면 회색 점이 흩뿌려져
-  // "오늘 어디를 도는지"가 오히려 안 보인다.
+  /**
+   * 그 날 담긴 곳만 지도에 올린다. 다른 날 장소까지 두면 회색 점이 흩뿌려져
+   * "오늘 어디를 도는지"가 오히려 안 보인다.
+   *
+   * <p>예전에는 대표 관광지 100곳을 따로 받아와 그중에서 골랐다. 그런데
+   * <b>검색해서 담은 음식점은 애초에 그 100곳에 없다</b> — 코스에 넣은 피자집이
+   * 최종 동선 지도에서 통째로 빠졌다. 담은 장소는 담을 때 이미 알고 있었으므로
+   * 기억해 둔 것에서 찾는다. 요청도 하나 줄었다.
+   */
   const visiblePlaces = useMemo(() => {
+    const known = new Map<string, Place>()
+    // 담을 때 기억해 둔 것이 먼저, 진단 응답이 나중이다 — 방금 서버가 준 쪽이 이긴다.
+    for (const place of recallPlaces(visibleRoutes.flat())) {
+      known.set(place.id, place)
+    }
+    /*
+      진단을 여기서도 보는 것은 <b>의존성 때문이기도 하다.</b> 새로고침 직후에는
+      기억해 둔 것이 비어 있고 진단이 도착하면서 채워지는데, 이 계산이 경로에만
+      기대고 있으면 그때 다시 돌지 않아 지도가 빈 채로 남는다.
+    */
+    for (const slot of currentDiagnosis(improved)?.slots ?? []) {
+      known.set(slot.place.id, slot.place)
+    }
     const ids = new Set(visibleRoutes.flat())
-    return places.filter((place) => ids.has(place.id))
-  }, [places, visibleRoutes])
+    return [...known.values()].filter((place) => ids.has(place.id))
+  }, [visibleRoutes, improved])
 
   if (!plan) {
     return <Navigate to="/plan" replace />

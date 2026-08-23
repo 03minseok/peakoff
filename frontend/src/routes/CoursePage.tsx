@@ -4,6 +4,7 @@ import { Navigate, useNavigate } from 'react-router'
 import { CourseMap } from '../components/CourseMap'
 import { CARD, CHIP_BUTTON, NOTICE, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { ApiRequestError, fetchPlaces } from '../services/api'
+import { recallPlaces } from '../services/placeCache'
 import { regionNameOf } from '../constants/regions'
 import { useTrip } from '../state/tripContext'
 import type { Place } from '../types/api'
@@ -89,10 +90,33 @@ export function CoursePage() {
     }
   }, [region, keyword])
 
-  // 장소 ID로 빠르게 찾기 위한 표. 목록이 바뀔 때만 다시 만든다.
+  /**
+   * 지금 코스에 담겨 있는 장소들. <b>목록에 없어도 기억해 둔 것에서 찾아온다.</b>
+   *
+   * 예전에는 화면에 떠 있는 목록에서만 찾았다. 그래서 "피자옥"을 검색해 담고 검색창을
+   * 비우면 목록이 대표 관광지로 바뀌면서 피자옥이 사라졌고, 이름 자리에 id(숫자)가 뜨고
+   * 지도 마커도 없어졌다. 담긴 장소는 목록과 무관하게 알고 있어야 한다.
+   */
+  const chosenPlaces = useMemo(
+    () => recallPlaces(state.days.flat()),
+    [state.days],
+  )
+
+  // 장소 ID로 빠르게 찾기 위한 표. 담긴 장소를 먼저 깔고 목록을 덮어 최신 값이 이긴다.
   const placesById = useMemo(() => {
-    return new Map(places.map((place) => [place.id, place]))
-  }, [places])
+    return new Map([...chosenPlaces, ...places].map((place) => [place.id, place]))
+  }, [chosenPlaces, places])
+
+  /**
+   * 지도에 올릴 장소. 검색 결과에 <b>담긴 장소를 더한다.</b>
+   *
+   * 지도는 경로(routes)로 받은 id를 이 목록에서 찾아 마커를 찍는다. 담긴 곳이 여기 없으면
+   * 선은 그어지는데 마커만 빠져, 코스에 넣은 음식점이 지도에서 통째로 사라진다.
+   */
+  const mapPlaces = useMemo(() => {
+    const listed = new Set(places.map((place) => place.id))
+    return [...places, ...chosenPlaces.filter((place) => !listed.has(place.id))]
+  }, [places, chosenPlaces])
 
   const currentDayPlaceIds = useMemo(
     () => state.days[currentDay - 1] ?? [],
@@ -144,7 +168,7 @@ export function CoursePage() {
       <div className="lg:min-w-0 lg:flex-1">
         {/* 편집 중에는 현재 일차만 선으로 잇는다. 다른 날 경로까지 겹치면 읽기 어렵다. */}
         <CourseMap
-          places={places}
+          places={mapPlaces}
           routes={currentDayRoute}
           onSelect={handleSelect}
           className="lg:h-full"
