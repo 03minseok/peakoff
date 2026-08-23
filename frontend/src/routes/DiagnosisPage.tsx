@@ -838,8 +838,18 @@ export function DiagnosisPage() {
                         )}
                       </div>
 
-                      {/* 이름과 분류. 넓은 화면에서는 가운데 열이 되어 남는 폭을 가진다 */}
-                      <div className="flex min-w-0 flex-col gap-0.5 px-4 pt-3.5 sm:order-2 sm:flex-1 sm:px-0 sm:pt-0">
+                      {/*
+                        이름과 분류. 넓은 화면에서는 가운데 열이 되어 남는 폭을 가진다.
+
+                        진단된 칸의 아래 여백은 오른쪽 행동 자리가 갖는다(pb-4). 진단되지 않은
+                        칸은 그 자리가 비므로 여기서 직접 갖는다 — 안 그러면 카드 바닥에
+                        글자가 붙는다.
+                      */}
+                      <div
+                        className={`flex min-w-0 flex-col gap-0.5 px-4 pt-3.5 sm:order-2 sm:flex-1 sm:px-0 sm:pt-0 sm:pb-0 ${
+                          quietness === null || level === null ? 'pb-4' : ''
+                        }`}
+                      >
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-fg m-0 text-[17px] font-bold tracking-[-0.01em] sm:text-base sm:font-semibold">
                             {slot.place.name}
@@ -851,6 +861,27 @@ export function DiagnosisPage() {
                           )}
                         </div>
                         <p className="text-hint m-0 text-[12.5px]">{slot.place.categoryName}</p>
+
+                        {/*
+                          진단하지 못한 이유. <b>서버가 문구를 줄 때만</b> 그린다.
+
+                          gap이 아니라 gapMessage가 있는지로 가르는 것이 핵심이다. 음식점·숙박은
+                          gap은 있어도 문구가 null로 온다 — 애초에 예측 대상이 아닌 것을 "없다"고
+                          알리는 것은 정보가 아니고, 코스에 밥집이 서넛만 있어도 이 줄이 화면을
+                          채워 정작 읽어야 할 점수들이 그 사이에 묻힌다.
+
+                          반대로 관광지인데 자료가 없으면 반드시 말한다. 같은 왕릉인데 어떤 곳은
+                          점수가 뜨고 어떤 곳은 아무것도 없으면, 사용자는 담는 방법을 잘못 알았다고
+                          생각하며 자기 탓을 찾는다.
+
+                          <b>회색으로 조용히 둔다.</b> 경고색을 쓰면 "문제가 생겼다"로 읽히는데,
+                          이건 잘못된 상태가 아니라 우리가 아직 매기지 못한 자리일 뿐이다.
+                        */}
+                        {slot.gapMessage && (
+                          <p className="bg-fill text-muted rounded-chip m-0 mt-1.5 w-fit px-2.5 py-1 text-[12px] leading-snug">
+                            {slot.gapMessage}
+                          </p>
+                        )}
                       </div>
 
                       {/*
@@ -889,10 +920,9 @@ export function DiagnosisPage() {
                             버튼을 잠근 채로 두지 않는 이유: 눌리지 않는 버튼은 "지금은 안 되지만
                             언젠가 될 것"으로 읽혀 사용자가 계속 시도한다.
 
-                            안내 문구도 두지 않는다. 음식점·숙박은 애초에 공사 예측 대상이 아니라
-                            <b>흔하게 나온다.</b> 코스에 밥집이 서넛만 있어도 "예상 혼잡 정보가 없는
-                            장소예요"가 화면을 채워, 정작 읽어야 할 점수들이 그 사이에 묻힌다.
-                            없는 것은 없는 대로 두는 편이 목록이 조용하다.
+                            사유는 이 자리가 아니라 <b>이름 아래</b>에 적는다. 여기는 폭이 좁아
+                            (sm:w-28) 문장이 서너 줄로 접히고, 무엇보다 "왜 점수가 없는지"는
+                            장소에 딸린 설명이지 행동이 아니다.
                           */
                           null
                         ) : isSwapped(slot.day, slot.order, slot.place.id) ? (
