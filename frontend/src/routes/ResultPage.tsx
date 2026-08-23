@@ -11,7 +11,7 @@ import {
   PRIMARY_BUTTON,
   SECONDARY_BUTTON,
 } from '../components/styles'
-import { REGIONS } from '../constants/regions'
+import { regionNameOf } from '../constants/regions'
 import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchPlaces, saveCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
@@ -266,7 +266,7 @@ export function ResultPage() {
    * 미리 채워두고, 고치고 싶은 사람만 고치게 한다.
    */
   const defaultCourseName = `${
-    REGIONS.find((option) => option.slug === plan.region)?.name ?? ''
+    regionNameOf(plan.region)
   } ${plan.nights === 0 ? '당일치기' : `${plan.nights}박 ${plan.nights + 1}일`}`.trim()
 
   const crowdedBefore = beforeDiagnosis
