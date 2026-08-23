@@ -251,7 +251,7 @@ class ApiEndpointsTest {
 				  "region": "gyeongju",
 				  "startDate": "2026-09-16",
 				  "nights": 1,
-				  "styles": ["HISTORY", "FOOD"],
+				  "styles": ["HISTORY", "NATURE"],
 				  "density": "BALANCED",
 				  "sensitivity": "QUIET",
 				  "transport": "TRANSIT"

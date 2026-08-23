@@ -3,9 +3,8 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { ChevronRight } from '../components/icons'
-import { LEVEL_ON_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
-import { DEFAULT_REGION, REGIONS } from '../constants/regions'
+import { DEFAULT_REGION, regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type {
@@ -58,8 +57,6 @@ const DURATIONS = [
 const STYLE_OPTIONS: { value: TravelStyle; label: string; hint: string }[] = [
   { value: 'HISTORY', label: '역사·유적', hint: '왕릉 · 사찰 · 유적지' },
   { value: 'NATURE', label: '자연·풍경', hint: '호수 · 바다 · 숲길' },
-  { value: 'FOOD', label: '맛집·카페', hint: '식사와 커피 한 잔' },
-  { value: 'ACTIVITY', label: '체험·액티비티', hint: '즐길 거리 · 거리 산책' },
 ]
 
 const DENSITY_OPTIONS: { value: ItineraryDensity; label: string }[] = [
@@ -144,7 +141,7 @@ export function RecommendPage() {
   const [view, setView] = useState<Phase>({ phase: 'survey' })
 
   const region = state.plan?.region ?? DEFAULT_REGION
-  const regionName = REGIONS.find((option) => option.slug === region)?.name ?? ''
+  const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
   const canSubmit = answers.styles.length > 0 && !isPastDate
 
@@ -222,7 +219,13 @@ export function RecommendPage() {
       <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
           <div className="flex items-baseline justify-between gap-2">
-            <legend className={`${CARD_TITLE} p-0`}>어떤 곳을 좋아하세요</legend>
+            {/*
+              legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로
+              끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
+            */}
+            <div>
+              <legend className={`${CARD_TITLE} p-0`}>어떤 곳을 좋아하세요</legend>
+            </div>
             <span className="text-hint text-xs">여러 개 고를 수 있어요</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -248,7 +251,13 @@ export function RecommendPage() {
         </fieldset>
 
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
-          <legend className={`${CARD_TITLE} p-0`}>하루를 얼마나 채울까요</legend>
+          {/*
+            legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로
+            끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
+          */}
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>하루를 얼마나 채울까요</legend>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {DENSITY_OPTIONS.map((option) => (
               <label key={option.value}>
@@ -266,7 +275,13 @@ export function RecommendPage() {
         </fieldset>
 
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
-          <legend className={`${CARD_TITLE} p-0`}>사람 많은 곳은 어떠세요</legend>
+          {/*
+            legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로
+            끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
+          */}
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>사람 많은 곳은 어떠세요</legend>
+          </div>
           <div className="flex flex-col gap-2">
             {SENSITIVITY_OPTIONS.map((option) => (
               <label key={option.value}>
@@ -294,7 +309,13 @@ export function RecommendPage() {
         </fieldset>
 
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
-          <legend className={`${CARD_TITLE} p-0`}>어떻게 이동하세요</legend>
+          {/*
+            legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로
+            끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
+          */}
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>어떻게 이동하세요</legend>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {TRANSPORT_OPTIONS.map((option) => (
               <label key={option.value}>
@@ -315,7 +336,13 @@ export function RecommendPage() {
         </fieldset>
 
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
-          <legend className={`${CARD_TITLE} p-0`}>언제 며칠 가세요</legend>
+          {/*
+            legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로
+            끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
+          */}
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>언제 며칠 가세요</legend>
+          </div>
           <input
             type="date"
             className={TEXT_INPUT}
@@ -487,9 +514,10 @@ function DraftSlotCard({ slot }: { slot: DraftSlot }) {
     <li className={`${CARD} flex flex-col gap-3 p-4`}>
       <div className="flex items-start gap-3">
         {/* 순서 번호가 곧 등급 색이다. 목록을 훑으면 붐비는 자리가 먼저 보인다.
-            번호가 색 안에 들어가므로 글자색까지 짝으로 오는 LEVEL_ON_SOLID를 쓴다 */}
+            색은 브랜드색 하나로 통일한다. 번호는 순서를 가리키는 눈금이지 혼잡 신호가 아니다 —
+            혼잡은 옆의 배지가 맡는다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
         <span
-          className={`${LEVEL_ON_SOLID[slot.level]} mt-0.5 grid h-6.5 w-6.5 flex-none place-items-center rounded-full font-mono text-[12px] font-semibold`}
+          className="bg-brand text-fg mt-0.5 grid h-6.5 w-6.5 flex-none place-items-center rounded-full font-mono text-[12px] font-semibold"
           aria-hidden="true"
         >
           {slot.order}
