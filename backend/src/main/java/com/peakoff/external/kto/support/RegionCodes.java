@@ -1,4 +1,4 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.support;
 
 import com.peakoff.place.domain.Region;
 
