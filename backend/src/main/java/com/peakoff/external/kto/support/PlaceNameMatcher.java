@@ -1,4 +1,4 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.support;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -109,16 +109,32 @@ public class PlaceNameMatcher {
 		}
 
 		/*
-		 * 2) 포함 관계. 상대 이름이 더 긴 경우만 본다 — "대릉원" → "경주 대릉원 일원".
+		 * 2) 포함 관계. <b>어느 쪽이 길든 한쪽이 다른 쪽을 품으면 잇는다.</b>
 		 *
-		 * 접두어를 뗀 짧은 변형으로는 견주지 않는다. "월드" 같은 조각이 아무 데나 걸린다.
-		 * 반대 방향(우리 이름이 더 긴 경우)도 열지 않는다 — 그건 상위 권역으로 넘어가는
-		 * 것이라 사람이 정할 일이다.
+		 * 처음에는 상대 이름이 더 긴 경우만 봤다("대릉원" → "경주 대릉원 일원").
+		 * 우리 이름이 더 긴 쪽은 상위 권역으로 넘어가는 것이라 사람이 정할 일이라고 봤는데,
+		 * 실제로 써 보니 <b>대릉원에서 대안이 하나도 안 나왔다.</b>
+		 *
+		 * 이 매처는 방향이 고정돼 있지 않다. 집중률·중심 관광지를 이을 때는 상대가 짧지만
+		 * (우리 "경주 대릉원 일원" ← 상대 "대릉원"), 연관 관광지를 찾을 때는 우리가 길고
+		 * 상대가 짧다. 한쪽만 열어 두면 그 방향에서만 동작한다.
+		 *
+		 * ⚠️ 대신 "경주 남산 삼릉" → "경주 남산"처럼 <b>상위 권역으로 넘어가는 근사 매칭</b>이
+		 * 자동으로 일어난다. 정확히 같은 지점이 아니라 그 권역의 값을 쓰게 된다.
+		 * 이 절충은 docs/OPEN_DECISIONS.md에 적어 두었다 — 실제 분포를 보고 다시 판단할 자리다.
+		 *
+		 * 안전장치는 그대로다 — <b>후보가 정확히 하나일 때만</b> 잇는다.
+		 * 애매하면 잇지 않는 원칙은 유지되고, 걱정되는 자리는 위의 수동 표가 먼저 잡는다.
 		 */
 		String full = normalize(name, List.of());
+		String stripped = normalize(name, regionWords);
 		return onlyOne(candidates.stream()
-				.filter(candidate -> normalize(candidate, List.of()).contains(full)
-						|| normalize(candidate, regionWords).contains(normalize(name, regionWords)))
+				.filter(candidate -> {
+					String candidateFull = normalize(candidate, List.of());
+					String candidateStripped = normalize(candidate, regionWords);
+					return candidateFull.contains(full) || candidateStripped.contains(stripped)
+							|| full.contains(candidateFull) || stripped.contains(candidateStripped);
+				})
 				.toList());
 	}
 

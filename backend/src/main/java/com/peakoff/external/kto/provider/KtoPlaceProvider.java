@@ -1,12 +1,17 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.provider;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import com.peakoff.external.kto.client.KtoHubClient;
+import com.peakoff.external.kto.client.KtoPlaceClient;
+import com.peakoff.external.kto.client.RegionCatalog;
+import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.Region;
@@ -27,18 +32,12 @@ import com.peakoff.place.domain.SupportedRegion;
  */
 @Component
 @ConditionalOnProperty(name = "peakoff.kto.place", havingValue = "real")
+@RequiredArgsConstructor
 public class KtoPlaceProvider implements PlaceProvider {
 
 	private final KtoPlaceClient placeClient;
 	private final KtoHubClient hubClient;
 	private final PlaceNameMatcher nameMatcher;
-
-	public KtoPlaceProvider(KtoPlaceClient placeClient, KtoHubClient hubClient,
-			PlaceNameMatcher nameMatcher) {
-		this.placeClient = placeClient;
-		this.hubClient = hubClient;
-		this.nameMatcher = nameMatcher;
-	}
 
 	@Override
 	public List<Place> search(Region region, String keyword, int limit) {

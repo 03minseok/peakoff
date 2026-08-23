@@ -1,4 +1,4 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.support;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -18,11 +18,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *                   빈 등록 단계에서 본다. 여기 적어 두는 것은 설정 항목을 한곳에 모으고
  *                   IDE 자동완성이 듣게 하기 위해서다
  */
-@ConfigurationProperties(prefix = "peakoff.kto")
+
+
+//공사 api를 부르는 데 필요한 설정을 한곳에 모으고, 부르기 전에 준비가 됐는지 확인하는 역할의 코드
+
+@ConfigurationProperties(prefix = "peakoff.kto") //application.yml에 있는 service_key같은 자바 객체로 매핑해줌
+//이제 설정값을 코드 여기저기에서 @Value("${peakoff.kto.service-key}") 이런 식으로 가져오지 않고, KtoProperties를 주입받아 serviceKey를 가져올 수 있음
 public record KtoProperties(String serviceKey, String baseUrl, String congestion) {
 
 	private static final String DEFAULT_BASE_URL = "https://apis.data.go.kr";
-
+// baseUrl을 application.yml에 안적어도 기본값 들어가게 생성
 	public KtoProperties {
 		if (baseUrl == null || baseUrl.isBlank()) {
 			baseUrl = DEFAULT_BASE_URL;
@@ -36,6 +41,7 @@ public record KtoProperties(String serviceKey, String baseUrl, String congestion
 	 * "키가 틀렸다"인지 "키를 안 넣었다"인지 구분되지 않는다. 부르기 전에 걸러
 	 * <b>우리 설정 문제</b>라고 말할 수 있게 한다.
 	 */
+	//인증키 있는지 체크
 	public boolean isConfigured() {
 		return serviceKey != null && !serviceKey.isBlank();
 	}

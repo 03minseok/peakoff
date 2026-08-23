@@ -1,4 +1,4 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.provider;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -7,10 +7,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import com.peakoff.congestion.domain.CongestionProvider;
+import com.peakoff.external.kto.client.KtoPlaceClient;
+import com.peakoff.external.kto.client.KtoRelatedClient;
+import com.peakoff.external.kto.client.RegionCatalog;
+import com.peakoff.external.kto.client.RelatedPlaces;
+import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.SupportedRegion;
@@ -50,6 +56,7 @@ import com.peakoff.recommendation.domain.WeightedPicker;
  */
 @Component
 @ConditionalOnProperty(name = "peakoff.kto.recommendation", havingValue = "real")
+@RequiredArgsConstructor
 public class KtoRecommendationProvider implements RecommendationProvider {
 
 	/**
@@ -74,17 +81,6 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	private final CongestionProvider congestionProvider;
 	private final RecommendationScorer scorer;
 	private final WeightedPicker picker;
-
-	public KtoRecommendationProvider(KtoRelatedClient relatedClient, KtoPlaceClient placeClient,
-			PlaceNameMatcher nameMatcher, CongestionProvider congestionProvider,
-			RecommendationScorer scorer, WeightedPicker picker) {
-		this.relatedClient = relatedClient;
-		this.placeClient = placeClient;
-		this.nameMatcher = nameMatcher;
-		this.congestionProvider = congestionProvider;
-		this.scorer = scorer;
-		this.picker = picker;
-	}
 
 	@Override
 	public List<Alternative> findAlternatives(Place origin, LocalDate date, int limit) {

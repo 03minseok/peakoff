@@ -15,3 +15,36 @@ export interface RegionOption {
 export const REGIONS: RegionOption[] = [{ slug: 'gyeongju', name: '경주' }]
 
 export const DEFAULT_REGION = REGIONS[0].slug
+
+/**
+ * 슬러그를 화면에 쓸 지역명으로 바꾼다.
+ *
+ * <b>이 조회가 화면 네 곳에 복사돼 있었다.</b> 지역이 늘거나 이름 표기가 바뀌면
+ * 고쳐야 할 곳을 전부 찾아다녀야 하고, 하나를 놓치면 그 화면만 옛 이름으로 남는다.
+ *
+ * 모르는 슬러그에는 빈 문자열을 준다. "알 수 없는 지역" 같은 말을 끼워 넣으면
+ * "오늘의 알 수 없는 지역"이 되어 오히려 더 이상하다.
+ */
+export function regionNameOf(slug: string): string {
+  return REGIONS.find((option) => option.slug === slug)?.name ?? ''
+}
+
+/**
+ * 지금 지역 다음에 올 지역. 마지막이면 처음으로 돌아온다.
+ *
+ * 홈 화면이 일정 시간마다 지역을 넘기게 될 자리다. <b>지역이 하나뿐이면 자기 자신을
+ * 돌려주므로</b>, 호출하는 쪽은 개수를 세지 않아도 된다 — 지역을 늘리는 순간
+ * 화면 코드를 고치지 않고도 돌기 시작한다.
+ */
+export function nextRegion(slug: string): string {
+  const index = REGIONS.findIndex((option) => option.slug === slug)
+  if (index < 0) {
+    return DEFAULT_REGION
+  }
+  return REGIONS[(index + 1) % REGIONS.length].slug
+}
+
+/** 넘길 지역이 둘 이상인지. 하나뿐일 때 타이머를 걸거나 화살표를 그리지 않기 위해 쓴다 */
+export function hasMultipleRegions(): boolean {
+  return REGIONS.length > 1
+}
