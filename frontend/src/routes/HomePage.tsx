@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ChevronRight } from '../components/icons'
+import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { BottomNav, HeaderNav } from '../components/BottomNav'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID, LEVEL_TINT } from '../components/levelStyles'
 import { CARD } from '../components/styles'
-import { DEFAULT_REGION, REGIONS } from '../constants/regions'
+import { DEFAULT_REGION, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
 import { useHomeData } from '../hooks/useHomeData'
 import type { ForecastDay, HeadlineSpot, QuietSpot } from '../hooks/useHomeData'
 import { useAuth } from '../state/authContext'
@@ -47,37 +48,6 @@ const CELL = 'flex min-w-0 flex-col gap-5 lg:gap-4'
  */
 const DATE_ACTION =
   'min-h-13 w-full cursor-pointer rounded-ui text-[15px] font-semibold transition-colors disabled:cursor-not-allowed disabled:border-line/60 disabled:bg-bg disabled:text-hint'
-
-/**
- * 사진 자리. 이미지가 있으면 그것을, 없으면 회색 대체면을 그린다.
- *
- * <p>imageUrl은 서버(TourAPI 국문 관광정보의 대표 이미지)에서 온다. 배관은 끝까지
- * 깔려 있고 mock에 값이 없을 뿐이라, 실연동되면 이 컴포넌트 수정 없이 사진이 나타난다.
- *
- * <p>대체면은 <b>중립 회색</b>이다. 브랜드 틸을 깔면 이미지 없는 장소마다 청록 사각형이
- * 서서, 로고·주요 버튼에만 남겨야 할 강조색이 목록 전체에 번진다. 깨진 이미지 아이콘 대신
- * 이름 첫 글자를 얹어 자리와 크기를 지킨다 — 사진 있는 카드와 같은 리듬으로 늘어선다.
- */
-function PlaceThumbnail({ name, imageUrl }: { name: string; imageUrl: string | null }) {
-  if (imageUrl) {
-    return (
-      <img
-        src={imageUrl}
-        alt=""
-        className="h-21 w-21 flex-none rounded-[14px] object-cover"
-        loading="lazy"
-      />
-    )
-  }
-  return (
-    <span
-      className="bg-bg text-muted grid h-21 w-21 flex-none place-items-center rounded-[14px] text-[22px] font-bold"
-      aria-hidden="true"
-    >
-      {name.slice(0, 1)}
-    </span>
-  )
-}
 
 function HeadlineRow({ spot, last }: { spot: HeadlineSpot; last: boolean }) {
   return (
@@ -339,13 +309,48 @@ function ForecastRow({
   )
 }
 
+/**
+ * 지역을 넘기는 간격.
+ *
+ * 홈은 훑어보는 화면이라 한 지역을 읽을 만큼은 머물러야 한다. 너무 짧으면 읽는 중에
+ * 바뀌어 성가시고, 너무 길면 다른 지역이 있다는 사실 자체가 전해지지 않는다.
+ */
+const REGION_ROTATE_MS = 8000
+
 export function HomePage() {
   const navigate = useNavigate()
   const { member, loading: authLoading } = useAuth()
-  const state = useHomeData(DEFAULT_REGION)
+  /*
+   * 지금 보고 있는 지역.
+   *
+   * 상수가 아니라 상태로 둔다. 지역이 늘면 이 값만 갈아끼우면 아래 화면 전체가 따라온다 —
+   * "오늘의 OO", 붐빔·한적 목록, 주간 예보가 전부 이 값에서 나온다.
+   *
+   * 일정 시간마다 넘기려면 nextRegion(regionSlug)로 이 값을 바꾸는 타이머만 걸면 된다.
+   * 지역이 하나뿐인 지금은 nextRegion이 자기 자신을 돌려주므로 걸어도 아무 일이 없다.
+   */
+  const [regionSlug, setRegionSlug] = useState(DEFAULT_REGION)
 
+  /*
+   * 일정 시간마다 다음 지역으로 넘긴다.
+   *
+   * 지역이 하나뿐이면 타이머를 아예 걸지 않는다 — nextRegion이 자기 자신을 돌려주므로
+   * 걸어도 화면은 그대로지만, 30초마다 의미 없이 다시 그릴 이유가 없다.
+   *
+   * ⚠️ 지역이 늘면 이 자리에 "멈춤" 수단이 필요하다. 읽는 중에 내용이 저절로 바뀌는 것은
+   * 접근성 지침이 막는 동작이다(WCAG 2.2.2). 화살표나 점 표시로 직접 넘길 수 있게 하고,
+   * 사용자가 손대면 자동 넘김을 멈추는 편이 맞다.
+   */
+  useEffect(() => {
+    if (!hasMultipleRegions()) {
+      return
+    }
+    const timer = setInterval(() => setRegionSlug(nextRegion), REGION_ROTATE_MS)
+    return () => clearInterval(timer)
+  }, [])
 
-  const regionName = REGIONS.find((option) => option.slug === DEFAULT_REGION)?.name ?? ''
+  const state = useHomeData(regionSlug)
+  const regionName = regionNameOf(regionSlug)
   const data = state.phase === 'loaded' ? state.data : null
 
   /** 사용자가 직접 고른 날짜. 아직 안 골랐으면 null이고, 그때는 가장 한적한 날을 쓴다 */
@@ -387,12 +392,22 @@ export function HomePage() {
         */}
         <div className="max-w-app mx-auto flex h-full items-center justify-between gap-2 px-4 md:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex flex-none items-center gap-2" aria-label="PEAKOFF">
+            {/*
+              홈에서도 로고를 링크로 둔다. 이미 홈이라 눌러도 화면은 그대로지만,
+              <b>다른 화면과 같은 것으로 보여야</b> 한다 — 어떤 화면에서는 손가락 커서가 뜨고
+              어떤 화면에서는 안 뜨면, 사용자는 로고가 링크인지 아닌지를 매번 시험하게 된다.
+              누를 수 있게 생긴 것은 어디서나 누를 수 있어야 한다.
+            */}
+            <Link
+              to="/"
+              className="flex flex-none items-center gap-2 no-underline"
+              aria-label="PEAKOFF 처음으로"
+            >
               <span className="bg-brand relative h-5 w-5 rounded-[7px]" aria-hidden="true">
                 <span className="bg-fg absolute top-1.5 left-1.5 h-2 w-2 rounded-full" />
               </span>
               <span className="text-fg text-xs font-bold tracking-[0.16em]">PEAKOFF</span>
-            </span>
+            </Link>
             <HeaderNav />
           </div>
 
