@@ -4,6 +4,7 @@ import { Navigate, useNavigate } from 'react-router'
 import { CourseMap } from '../components/CourseMap'
 import { CARD, CHIP_BUTTON, NOTICE, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { ApiRequestError, fetchPlaces } from '../services/api'
+import { regionNameOf } from '../constants/regions'
 import { useTrip } from '../state/tripContext'
 import type { Place } from '../types/api'
 import { formatDuration, formatKoreanDate } from '../utils/date'
@@ -118,8 +119,16 @@ export function CoursePage() {
     .map((day, index) => (day.length === 0 ? index + 1 : 0))
     .filter((day) => day > 0)
   const totalCount = state.days.flat().length
-  // 이미 어딘가에 담긴 곳은 후보 목록에서 뺀다. 같은 곳을 두 번 담을 일은 없다.
-  const chosenIds = new Set(state.days.flat())
+  /*
+    장소별로 코스에 몇 번 담겼는지. 여행 전체 기준이라 다른 날에 담은 것도 센다.
+
+    막기 위한 값이 아니라 알려주기 위한 값이다 — 같은 곳을 여러 번 담는 것은
+    막지 않는다(TripProvider의 ADD_PLACE 주석 참고).
+  */
+  const chosenCounts = state.days.flat().reduce<Map<string, number>>((counts, placeId) => {
+    counts.set(placeId, (counts.get(placeId) ?? 0) + 1)
+    return counts
+  }, new Map())
 
   return (
     /*
@@ -313,11 +322,20 @@ export function CoursePage() {
           {load.phase === 'loaded' && places.length > 0 && (
             <>
               {!keyword && (
-                <p className="text-hint mb-2 text-[12.5px]">경주에서 많이 찾는 곳이에요</p>
+                <p className="text-hint mb-2 text-[12.5px]">
+                  {regionNameOf(plan.region)}에서 많이 찾는 곳이에요
+                </p>
               )}
             <ul className="flex flex-col gap-2">
               {places.map((place) => {
-                const added = chosenIds.has(place.id)
+                /*
+                  이미 담았어도 버튼은 그대로 둔다. 아침에 들렀다 저녁에 다시 오는 곳,
+                  이틀 연속 가는 카페처럼 다시 담을 이유가 실제로 있다.
+
+                  대신 몇 번 담겼는지는 알려준다. 버튼만 있고 아무 표시가 없으면
+                  이미 담은 줄 모르고 또 누르게 된다 — 막지는 않되 알려는 준다.
+                */
+                const addedCount = chosenCounts.get(place.id) ?? 0
                 return (
                   <li
                     key={place.id}
@@ -329,17 +347,18 @@ export function CoursePage() {
                       </span>
                       <span className="text-hint text-xs">{place.categoryName}</span>
                     </div>
-                    {added ? (
-                      <span className="text-hint flex-none px-2 text-[13px]">담김</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`${CHIP_BUTTON} flex-none`}
-                        onClick={() => addPlace(currentDay, place.id)}
-                      >
-                        추가
-                      </button>
+                    {addedCount > 0 && (
+                      <span className="text-hint flex-none text-[12.5px] whitespace-nowrap">
+                        {addedCount > 1 ? `${addedCount}번 담김` : '담김'}
+                      </span>
                     )}
+                    <button
+                      type="button"
+                      className={`${CHIP_BUTTON} flex-none`}
+                      onClick={() => addPlace(currentDay, place.id)}
+                    >
+                      추가
+                    </button>
                   </li>
                 )
               })}
