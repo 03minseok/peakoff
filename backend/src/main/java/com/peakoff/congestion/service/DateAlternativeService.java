@@ -219,7 +219,9 @@ public class DateAlternativeService {
 		List<DateOption> options = startDate.minusDays(rangeDays)
 				.datesUntil(startDate.plusDays(rangeDays + 1))
 				.filter(candidate -> !candidate.equals(startDate))
-				.map(candidate -> DateOption.unavailable(candidate, DiagnosisGap.NO_FORECAST_FOR_PLACE))
+				// 여기는 코스 전체가 진단 불가일 때다. 분류가 섞여 있어 어느 쪽인지 가릴 수 없으므로
+				// 말이 있는 쪽을 쓴다 — 날짜 표의 점수 자리에 손끝 설명으로만 붙는다.
+				.map(candidate -> DateOption.unavailable(candidate, DiagnosisGap.PLACE_NOT_FORECASTED))
 				.toList();
 
 		return DateAlternativeResponse.of(

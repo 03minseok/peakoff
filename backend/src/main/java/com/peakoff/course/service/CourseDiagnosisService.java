@@ -14,6 +14,7 @@ import com.peakoff.course.dto.CourseDiagnosisRequest;
 import com.peakoff.course.dto.CourseDiagnosisResponse;
 import com.peakoff.global.error.NotFoundException;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.place.service.PlaceService;
 
@@ -63,8 +64,17 @@ public class CourseDiagnosisService {
 		LocalDate visitDate = startDate.plusDays(slotRequest.day() - 1L);
 
 		if (!congestionProvider.hasData(place.id())) {
-			return CourseSlot.undiagnosed(
-					slotRequest.day(), slotRequest.order(), place, DiagnosisGap.NO_FORECAST_FOR_PLACE);
+			/*
+			 * 자료가 없다는 사실은 같지만 사용자에게 할 말이 다르다.
+			 *
+			 * 관광지인데 없으면 "우리가 못 매겼다"고 밝힌다 — 침묵하면 사용자는 자기가
+			 * 잘못 담았다고 생각한다. 반대로 음식점·숙박은 애초에 예측 대상이 아니라
+			 * 흔하게 나온다. 밥집마다 안내를 세우면 정작 읽어야 할 점수가 그 사이에 묻힌다.
+			 */
+			DiagnosisGap gap = PlaceCategories.isForecastTarget(place.category())
+					? DiagnosisGap.PLACE_NOT_FORECASTED
+					: DiagnosisGap.CATEGORY_NOT_FORECASTED;
+			return CourseSlot.undiagnosed(slotRequest.day(), slotRequest.order(), place, gap);
 		}
 		if (!congestionProvider.hasData(place.id(), visitDate)) {
 			return CourseSlot.undiagnosed(

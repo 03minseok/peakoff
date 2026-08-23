@@ -91,8 +91,10 @@ export interface CourseDiagnosisRequest {
  * 같은 문구로 뭉개면 사용자가 "데이터가 부실하다"로 읽는다.
  */
 export type DiagnosisGap =
-  /** 예측 대상이 아닌 장소. 음식점·카페·숙박은 공사 집중률에 아예 없다 */
-  | 'NO_FORECAST_FOR_PLACE'
+  /** <b>관광지인데</b> 예측 목록에 없다. 공사가 관광지의 일부만 예측한다 */
+  | 'PLACE_NOT_FORECASTED'
+  /** 애초에 예측 대상 분류가 아니다 (음식점·숙박·쇼핑). gapMessage가 null로 온다 */
+  | 'CATEGORY_NOT_FORECASTED'
   /** 장소는 예측 대상인데 그 날짜가 예측 범위 밖. 여행일이 다가오면 생긴다 */
   | 'DATE_OUT_OF_FORECAST'
 
@@ -108,7 +110,13 @@ export interface DiagnosedSlot {
   levelLabel: string | null
   /** 진단됐으면 null */
   gap: DiagnosisGap | null
-  /** 화면에 그대로 띄우는 문장. 진단됐으면 null */
+  /**
+   * 화면에 그대로 띄우는 문장. 진단됐으면 null이고, <b>할 말이 없어도 null이다.</b>
+   *
+   * 음식점·숙박처럼 애초에 예측 대상이 아닌 곳은 gap은 있는데 문구가 없다.
+   * 그래서 화면은 gap이 아니라 <b>이 값이 있는지</b>를 보고 안내를 그린다 —
+   * 나중에 공사가 음식점을 예측하기 시작해도 화면을 고치지 않는다.
+   */
   gapMessage: string | null
 }
 

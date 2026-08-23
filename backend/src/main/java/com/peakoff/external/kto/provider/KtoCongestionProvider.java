@@ -14,6 +14,7 @@ import com.peakoff.external.kto.client.RegionForecast;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.global.support.Scores;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.SupportedRegion;
@@ -86,9 +87,32 @@ public class KtoCongestionProvider implements CongestionProvider {
 		return client.forecastOf(region()).lastForecastDate();
 	}
 
-	// 우리 장소 id -> 이름 -> 공사이름 으로 매칭
+	/**
+	 * 우리 장소 id → 이름 → 공사 이름으로 잇는다. 못 이으면 비어 있다.
+	 *
+	 * <h3>이름을 대보기 전에 분류부터 보는 이유</h3>
+	 * 이름 매칭은 <b>양쪽 어느 쪽이 길든 품으면 잇는다.</b> 대릉원(우리) ↔ 대릉원 일원(공사)을
+	 * 살리려고 그렇게 열었는데, 같은 규칙이 이런 것도 이어 버렸다:
+	 *
+	 * <pre>
+	 * "불국사밀면"        → "불국사"     밀면집이 절의 혼잡도를 받는다
+	 * "여미온 황리단길점"  → "황리단길"   식당이 거리의 혼잡도를 받는다
+	 * </pre>
+	 *
+	 * <p>실제로 음식점·숙박 11곳을 담아 보니 <b>7곳이 남의 점수를 받았다.</b> 화면에 틀린
+	 * 배지가 서는 것으로 끝나지 않고 코스 총점까지 오염된다 — 계산하지 않은 것을 근거로
+	 * 말하지 않는다는 규칙이 정확히 이 자리를 막는다.
+	 *
+	 * <p>분류로 먼저 거르면 이 부류가 통째로 사라진다. 공사 집중률은 관광지만 예측하므로
+	 * 음식점·숙박은 <b>이름이 아무리 닮아도 이을 곳이 없는 것이 맞다.</b> 쇼핑·체험·레저·축제
+	 * 14곳을 실제로 진단해 봐도 지금 이어지는 곳이 하나도 없어, 걸러서 잃는 것은 없다.
+	 *
+	 * <p>이 자리에 둔 이유는 {@code quietnessOf}와 {@code hasData} 둘이 전부 여기를
+	 * 지나기 때문이다. 한 군데만 막으면 점수·배지·총점이 함께 정리된다.
+	 */
 	private Optional<String> apiNameOf(String placeId, Region region, RegionForecast forecast) {
 		return placeProvider.findById(placeId)
+				.filter(place -> PlaceCategories.isForecastTarget(place.category()))
 				.map(Place::name)
 				.flatMap(name -> nameMatcher.match(name, region, forecast.placeNames()));
 	}
