@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.peakoff.congestion.domain.CongestionLevel;
@@ -29,6 +30,7 @@ import com.peakoff.place.service.PlaceService;
  * 물을 수 있어야 하기 때문이다. 장소 하나만 넘기면 그 장소 기준 답이 나온다.
  */
 @Service
+@RequiredArgsConstructor
 public class DateAlternativeService {
 
 	/**
@@ -45,12 +47,6 @@ public class DateAlternativeService {
 	private final CongestionProvider congestionProvider;
 	private final Clock clock;
 
-	public DateAlternativeService(PlaceService placeService, CongestionProvider congestionProvider,
-			Clock clock) {
-		this.placeService = placeService;
-		this.congestionProvider = congestionProvider;
-		this.clock = clock;
-	}
 
 	/**
 	 * 기준 시작일 <b>앞뒤</b>로 살펴 그 창 안의 모든 날짜를 돌려준다.

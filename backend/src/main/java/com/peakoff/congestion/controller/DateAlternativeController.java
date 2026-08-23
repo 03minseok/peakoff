@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +25,7 @@ import com.peakoff.global.response.ApiResponse;
 @Tag(name = "날짜", description = "장소를 바꾸지 않고 혼잡을 피하는 경로")
 @RestController
 @RequestMapping("/api/dates")
+@RequiredArgsConstructor
 public class DateAlternativeController {
 
 	/**
@@ -35,10 +37,6 @@ public class DateAlternativeController {
 	private static final int DEFAULT_RANGE_DAYS = 3;
 
 	private final DateAlternativeService dateAlternativeService;
-
-	public DateAlternativeController(DateAlternativeService dateAlternativeService) {
-		this.dateAlternativeService = dateAlternativeService;
-	}
 
 	/**
 	 * GET /api/dates/alternatives?slot=1:mock-bulguksa&slot=2:mock-seokguram&date=2026-09-12&range=3

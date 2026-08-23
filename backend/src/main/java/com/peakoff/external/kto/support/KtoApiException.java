@@ -1,4 +1,4 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.support;
 
 /**
  * 공사 OpenAPI를 부르지 못했거나, 부르긴 했는데 쓸 수 없는 답이 왔을 때.
