@@ -134,8 +134,14 @@ export interface CourseDiagnosis {
  * 한적도 임계값이나 추천도 반영 비율을 서버에 둔 것과 같은 이유다.
  */
 
-/** 설문 1번 — 여행 스타일. <b>복수 선택</b>이라 배열로 보낸다 */
-export type TravelStyle = 'HISTORY' | 'NATURE' | 'FOOD' | 'ACTIVITY'
+/**
+ * 설문 1번 — 여행 스타일. <b>복수 선택</b>이라 배열로 보낸다.
+ *
+ * 공사 집중률이 예측하는 분류만 둔다. 경주 65곳의 분류가 역사·자연·문화명소뿐이라,
+ * 맛집·체험·레저를 고르면 후보가 하나도 남지 않아 추천이 실패했다.
+ * 밥집은 코스 편집에서 직접 담는다 — 담는 것은 막지 않고 진단에서만 빠진다.
+ */
+export type TravelStyle = 'HISTORY' | 'NATURE'
 
 /** 설문 2번 — 일정 밀도. 일자별로 몇 곳을 담을지 */
 export type ItineraryDensity = 'RELAXED' | 'BALANCED' | 'PACKED'
@@ -168,13 +174,9 @@ export interface CourseRecommendRequest {
  * factors는 <b>개수가 고정이 아니다.</b> 각 일자의 첫 장소는 비교 대상이 없어 한적도 하나만
  * 오고, 연관 관광지 데이터가 붙으면 항목이 하나 는다. 항목 이름을 화면에 박지 말고
  * 배열을 그대로 반복해 그려야 한다.
- */
-/**
- * 설문 초안의 한 칸.
  *
- * 점수가 <b>반드시 있다.</b> 초안은 애초에 한적도가 있는 후보 중에서만 고르기 때문에
- * 진단 불가 칸이 생길 수 없다. 그래서 진단 결과와 달리 null을 다룰 필요가 없다 —
- * 화면마다 있지도 않은 경우를 방어하지 않게 타입에서 좁혀 둔다.
+ * 점수는 <b>반드시 있다.</b> 초안은 애초에 한적도가 있는 후보 중에서만 고르기 때문에
+ * 진단 불가 칸이 생길 수 없다 — 화면마다 있지도 않은 경우를 방어하지 않게 타입에서 좁혀 둔다.
  */
 export interface DraftSlot extends DiagnosedSlot {
   quietness: number
