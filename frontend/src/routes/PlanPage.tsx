@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
-import { DEFAULT_REGION, REGIONS } from '../constants/regions'
+import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
 import { useTrip } from '../state/tripContext'
 import { daysFromToday, formatDateRange, formatKoreanDate, today } from '../utils/date'
 
@@ -70,7 +70,7 @@ export function PlanPage() {
   const [nights, setNights] = useState(state.plan?.nights ?? 1)
 
   const isPastDate = startDate < today()
-  const regionName = REGIONS.find((option) => option.slug === region)?.name ?? ''
+  const regionName = regionNameOf(region)
   const durationLabel = DURATIONS.find((option) => option.nights === nights)?.label ?? ''
 
   function handleSubmit(event: FormEvent) {
@@ -176,7 +176,17 @@ export function PlanPage() {
         </fieldset>
 
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
-          <legend className={`${CARD_TITLE} p-0`}>언제 떠나요</legend>
+          {/*
+            legend를 div로 한 겹 감싼다.
+
+            감싸지 않으면 브라우저가 legend를 <b>fieldset 테두리 위로 끌어올려</b> 특별하게 배치한다.
+            border-0이라 테두리는 안 보이는데 글자만 카드 밖으로 삐져나와, 제목이 박스에서
+            떨어져 보인다. div 안에 넣으면 평범한 블록으로 흘러 카드 안에 자리를 잡는다.
+            (같은 이유로 "어디로 가시나요"는 처음부터 감싸져 있었다)
+          */}
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>언제 떠나요</legend>
+          </div>
           <input
             type="date"
             className={TEXT_INPUT}
@@ -208,7 +218,17 @@ export function PlanPage() {
         </fieldset>
 
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
-          <legend className={`${CARD_TITLE} p-0`}>며칠 머무를까요</legend>
+          {/*
+            legend를 div로 한 겹 감싼다.
+
+            감싸지 않으면 브라우저가 legend를 <b>fieldset 테두리 위로 끌어올려</b> 특별하게 배치한다.
+            border-0이라 테두리는 안 보이는데 글자만 카드 밖으로 삐져나와, 제목이 박스에서
+            떨어져 보인다. div 안에 넣으면 평범한 블록으로 흘러 카드 안에 자리를 잡는다.
+            (같은 이유로 "어디로 가시나요"는 처음부터 감싸져 있었다)
+          */}
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>며칠 머무를까요</legend>
+          </div>
           <div className="flex gap-2">
             {DURATIONS.map((option) => (
               <label key={option.nights} className="flex-1">

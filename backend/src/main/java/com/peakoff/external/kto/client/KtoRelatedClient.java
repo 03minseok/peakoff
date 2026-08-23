@@ -1,4 +1,4 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.client;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -7,11 +7,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.peakoff.external.kto.support.KtoApiCaller;
+import com.peakoff.external.kto.support.RegionCache;
+import com.peakoff.external.kto.support.RegionCodes;
 import com.peakoff.place.domain.Region;
 
 /**

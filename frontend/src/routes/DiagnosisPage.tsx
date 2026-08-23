@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router'
+import { Navigate, useNavigate } from 'react-router'
 import { AlternativeSheet } from '../components/AlternativeSheet'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
-import { LEVEL_COLOR_VAR, LEVEL_ON_SOLID, LEVEL_SOLID } from '../components/levelStyles'
-import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON } from '../components/styles'
+import { PlaceThumbnail } from '../components/PlaceThumbnail'
+import { LEVEL_COLOR_VAR, LEVEL_SOLID } from '../components/levelStyles'
+import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
 import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchDateAlternatives } from '../services/api'
 import { planKeyOf } from '../services/alternativeCache'
@@ -282,27 +283,49 @@ export function DiagnosisPage() {
     : 0
 
   /*
-   * 다음 단계 버튼. 화면 두 곳에 놓지만 정의는 하나다.
+   * 이 화면에서 나가는 두 갈래. 화면 두 곳에 놓지만 정의는 하나다.
    *
    * 좁은 화면에서는 아래에 붙어 따라오고, 넓은 화면에서는 종합 지수 바로 아래에 선다.
    * 자리가 달라 감싸는 것이 다를 뿐 하는 일은 같으므로, 두 번 적어두면
    * 문구나 이동 경로를 고칠 때 한쪽만 바뀐다. 둘 중 하나는 항상 display:none이라
-   * 화면에도 보조기술에도 버튼은 하나로 보인다.
+   * 화면에도 보조기술에도 버튼은 한 벌로 보인다.
+   *
+   * <b>돌아가기를 작게 두는 이유</b>: 이 화면의 목적은 진단 결과를 보고 다음으로 가는 것이다.
+   * 두 버튼을 같은 크기로 두면 "어느 쪽이 기본인가"가 흐려져, 매번 읽고 고르게 된다.
+   * 되돌아가는 길은 있되 눈에 먼저 걸리지는 않아야 한다.
+   *
+   * 코스 편집으로 돌아가도 원안(baseline)은 그대로 남는다 — 장소를 더 담고 다시 와도
+   * "원안 대비 개선폭"의 기준이 흔들리지 않는다.
    */
-  const confirmButton = (
-    <button type="button" className={PRIMARY_BUTTON} onClick={() => navigate('/result')}>
-      최종 코스 확인하기
-    </button>
+  const stepActions = (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        className={`${SECONDARY_BUTTON} flex-none px-5`}
+        onClick={() => navigate('/course')}
+      >
+        돌아가기
+      </button>
+      <button
+        type="button"
+        className={`${PRIMARY_BUTTON} flex-1`}
+        onClick={() => navigate('/result')}
+      >
+        최종 코스 확인하기
+      </button>
+    </div>
   )
 
   return (
     // lg부터 읽기 폭(max-w-read)을 풀어 대시보드 폭으로 넓힌다
     <div className="mx-auto flex w-full max-w-read flex-col gap-4.5 lg:max-w-app">
-      <header className="flex items-baseline justify-between gap-2">
+      {/*
+        코스 편집으로 돌아가는 길은 아래 "돌아가기" 하나뿐이다.
+        같은 일을 하는 조작이 화면 두 곳에 있으면 어느 쪽이 진짜인지 흔들리고,
+        위쪽 링크는 다음 단계 버튼과 멀리 떨어져 있어 짝으로 읽히지도 않았다.
+      */}
+      <header>
         <h1 className="text-fg text-xl font-bold tracking-tight">진단 결과</h1>
-        <Link to="/course" className="text-muted text-[13px] font-medium">
-          코스 수정
-        </Link>
       </header>
 
       {current.phase === 'error' && (
@@ -318,7 +341,7 @@ export function DiagnosisPage() {
             │ 더 한적한 날짜 │ Day 2             │
             │ (따라다님)    │ Day 3 …           │
             ├──────────────┴───────────────────┤
-            │ 최종 코스 확인하기 (바닥에 붙어 따라옴) │
+            │ 돌아가기 · 최종 코스 확인하기 (바닥에 붙어 따라옴) │
             └──────────────────────────────────┘
 
           왼쪽이 따라다니는(sticky) 것이 요점이다. 장소를 교체하면 총점이 바로 바뀌는데,
@@ -434,7 +457,7 @@ export function DiagnosisPage() {
             실제로는 날짜 이동과 장소 교체를 <b>둘 다 반영한 결과</b>로 넘어가는 버튼이다.
             바로 위 종합 지수가 그 둘을 합친 값이므로, 거기에 붙여야 무엇을 확정하는지가 맞는다.
           */}
-          <div className="hidden flex-none lg:block">{confirmButton}</div>
+          <div className="hidden flex-none lg:block">{stepActions}</div>
 
           {/* 회피 경로 ①: 장소는 그대로 두고 날짜를 옮긴다 */}
           {/* lg:min-h-0 — flex 자식은 이게 없으면 내용보다 작아지지 않아 스크롤이 걸리지 않는다 */}
@@ -715,8 +738,8 @@ export function DiagnosisPage() {
                   </span>
                 </div>
 
-                <ol className="flex flex-col gap-2">
-                  {daySlots.map((slot) => {
+                <ol className="flex flex-col gap-2.5">
+                  {daySlots.map((slot, index) => {
                     /*
                      * 점수를 지역 상수로 꺼내 쓴다.
                      *
@@ -730,115 +753,178 @@ export function DiagnosisPage() {
                     return (
                     <li
                       key={`${slot.day}-${slot.order}`}
-                      className={`${CARD} flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-3.5`}
+                      className="flex items-start gap-2.5 sm:items-center"
                     >
-                      <div className="flex min-w-0 items-start gap-3">
-                        {/* 색 안에 번호가 들어가므로 LEVEL_SOLID가 아니라 LEVEL_ON_SOLID다.
-                            글자색이 짝으로 따라오니 여기서 따로 지정하지 않는다 */}
-                        {/* 등급이 없으면 색을 고를 수 없다. 뜻 없는 옅은 채움으로 자리만 지킨다 */}
-                        <span
-                          className={`grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold ${
-                            slot.level ? LEVEL_ON_SOLID[slot.level] : 'bg-fill text-muted'
-                          }`}
-                        >
+                      {/*
+                        방문 순서. <b>카드 밖 왼쪽</b>에 세운다.
+
+                        사진 위에 얹어 봤더니 두 가지가 걸렸다 — 사진이 밝으면 읽기 어렵고,
+                        오른쪽 아래 한적도 배지와 같은 사진 위에서 색 신호가 둘이 되어
+                        어느 쪽을 읽어야 할지 흔들렸다.
+
+                        밖으로 빼면 번호들이 세로로 한 줄에 서서 <b>목록의 눈금</b>처럼 읽힌다.
+
+                        색은 등급색이 아니라 <b>브랜드색 하나로 통일</b>한다. 이 번호는 순서를
+                        가리키는 눈금이지 혼잡을 알리는 신호가 아니다. 등급을 여기서도 색으로
+                        말하면 한 카드 안에 같은 뜻의 색 신호가 둘(번호·배지)이 되어,
+                        어느 쪽을 읽어야 할지 흔들린다. 혼잡은 배지와 막대가 맡는다.
+
+                        밝은 틸 위에는 흰 글자가 2.2:1로 안 보인다. 잉크(text-fg)를 얹는다.
+                      */}
+                      {/*
+                        번호와 그 아래로 이어지는 선. 둘이 합쳐 <b>타임라인</b>이 된다.
+
+                        self-stretch로 이 열을 카드 높이만큼 늘리고, 선은 절대 배치로
+                        카드 아래(-bottom-2.5 = 목록 간격 10px)까지 내려 다음 번호에 닿게 한다.
+                        간격만큼 내리지 않으면 카드 사이에서 선이 끊겨 보인다.
+
+                        마지막 칸에는 선을 두지 않는다 — 이어질 것이 없는데 선이 남으면
+                        아래에 무언가 더 있는 것처럼 읽힌다.
+                      */}
+                      <div className="relative flex-none self-stretch">
+                        <span className="bg-surface border-brand text-fg mt-1 grid h-7 w-7 place-items-center rounded-full border-2 font-mono text-[13px] font-semibold sm:mt-0">
                           {slot.order}
                         </span>
-                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-fg m-0 text-base font-semibold tracking-[-0.01em]">
-                              {slot.place.name}
-                            </p>
-                            {isSwapped(slot.day, slot.order, slot.place.id) && (
-                              <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
-                                교체함
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-hint m-0 text-[12.5px]">
-                            {slot.place.categoryName}
-                          </p>
-                        </div>
+                        {index < daySlots.length - 1 && (
+                          <span
+                            className="bg-line absolute top-9 -bottom-2.5 left-1/2 w-px -translate-x-1/2 sm:top-8"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </div>
+
+                      {/*
+                        overflow-hidden: 배너 사진이 카드의 둥근 위 모서리에 맞춰 잘린다.
+                        좁은 화면에서는 사진이 카드 폭을 가로지르므로 안쪽 여백을 카드가 아니라
+                        각 줄이 갖는다. 넓은 화면에서는 예전처럼 한 줄짜리 카드다.
+                      */}
+                      <div
+                        className={`${CARD} flex min-w-0 flex-1 flex-col overflow-hidden sm:flex-row sm:items-center sm:gap-4 sm:p-4.5`}
+                      >
+                      {/*
+                        사진과 그 위에 얹히는 두 표시.
+
+                        좁은 화면에서는 사진이 배너이고 순서 칩과 한적도 배지가 그 위에 뜬다.
+                        넓은 화면에서는 sm:contents로 이 상자를 layout에서 없애 셋이 카드의
+                        직접 자식이 되고, order로 한 줄에 늘어선다 — 사진을 두 개 두지 않으려는 배치다.
+                      */}
+                      <div className="relative sm:contents">
+                        <PlaceThumbnail
+                          name={slot.place.name}
+                          imageUrl={slot.place.imageUrl}
+                          size="banner"
+                          className="sm:order-1"
+                        />
 
                         {/*
-                          한적도 배지는 카드 오른쪽 끝에 세운다.
-
-                          아래 행동 줄에 있을 때는 대안 버튼과 나란히 서서 두 번째 버튼처럼
-                          읽혔다. 배지는 누르는 것이 아니라 이 장소를 설명하는 값이다.
-
-                          이름 바로 옆에 붙이면 이름 길이에 따라 배지 위치가 카드마다 달라져
-                          목록을 훑을 때 눈이 매번 다른 자리를 찾아야 한다. 오른쪽 끝에 고정하면
-                          <b>세로로 한 줄</b>이 되어 위아래로 비교된다.
+                          그 날 몇 번째로 가는 자리인가. 사진 위에 얹으므로 흐린 검정 바탕에
+                          흰 글자를 둔다 — 사진이 밝든 어둡든 읽혀야 한다.
+                          넓은 화면에서는 예전처럼 등급색 동그라미로 돌아간다.
                         */}
                         {/*
+                          한적도 배지. 사진 오른쪽 아래에 얹는다 — 사진과 점수가 한눈에 짝지어진다.
                           진단되지 않은 칸은 배지 대신 사유를 적는다. 배지 자리를 비워두면
                           "아직 불러오는 중"으로 읽히고, 아무 등급이나 넣으면 거짓말이 된다.
                         */}
-                        <span className="flex-none">
-                          {slot.level !== null && slot.levelLabel !== null ? (
+                        {slot.level !== null && slot.levelLabel !== null && (
+                          <span className="absolute right-3 bottom-3 sm:hidden">
                             <CongestionBadge
                               level={slot.level}
                               label={slot.levelLabel}
                               quietness={slot.quietness ?? undefined}
                               size="sm"
                             />
-                          ) : (
-                            <span className="text-hint text-[12px]">{slot.gapMessage}</span>
-                          )}
-                        </span>
+                          </span>
+                        )}
                       </div>
 
-                      {/* 아래 줄은 "얼마나(막대)"와 "무엇을 할까(버튼)"만 남는다 */}
-                      <div className="flex items-center gap-3 sm:flex-none sm:ml-auto">
-                        {/*
-                          한적도 막대. 좁은 화면에서만 선다.
+                      {/*
+                        이름과 분류. 넓은 화면에서는 가운데 열이 되어 남는 폭을 가진다.
 
-                          배지가 위로 올라가 이 줄은 버튼 하나만 남았다. 빈자리를 장식으로
-                          메우는 대신 <b>읽을 것</b>을 넣는다 — 막대 길이는 숫자를 읽기 전에
-                          카드끼리의 차이를 보여준다. 바로 아래 날짜 목록이 쓰는 것과 같은
-                          패턴이라 두 목록을 같은 방식으로 훑게 된다.
-
-                          넓은 화면에서는 버튼이 오른쪽 끝에 붙어 남는 자리가 없다.
-                        */}
-                        <div className="bg-line h-1.5 flex-1 overflow-hidden rounded-full sm:hidden">
-                          {/* 자료가 없으면 빈 홈으로 둔다. 0%짜리 막대는 "가장 붐빔"으로 읽힌다 */}
-                          {slot.quietness !== null && slot.level !== null && (
-                            <div
-                              className={`h-full rounded-full ${LEVEL_SOLID[slot.level]}`}
-                              style={{ width: `${slot.quietness}%` }}
-                            />
+                        진단된 칸의 아래 여백은 오른쪽 행동 자리가 갖는다(pb-4). 진단되지 않은
+                        칸은 그 자리가 비므로 여기서 직접 갖는다 — 안 그러면 카드 바닥에
+                        글자가 붙는다.
+                      */}
+                      <div
+                        className={`flex min-w-0 flex-col gap-0.5 px-4 pt-3.5 sm:order-2 sm:flex-1 sm:px-0 sm:pt-0 sm:pb-0 ${
+                          quietness === null || level === null ? 'pb-4' : ''
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-fg m-0 text-[17px] font-bold tracking-[-0.01em] sm:text-base sm:font-semibold">
+                            {slot.place.name}
+                          </p>
+                          {isSwapped(slot.day, slot.order, slot.place.id) && (
+                            <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                              교체함
+                            </span>
                           )}
                         </div>
+                        <p className="text-hint m-0 text-[12.5px]">{slot.place.categoryName}</p>
+
                         {/*
-                          한 자리에서 갈 수 있는 곳은 <b>둘 중 하나뿐</b>이다:
-                          아직 원안이면 대안 보기, 이미 교체했으면 되돌리기.
-                          <b>대안의 대안은 열지 않는다.</b>
+                          진단하지 못한 이유. <b>서버가 문구를 줄 때만</b> 그린다.
 
-                          이유 셋.
-                          ① 대안을 열 때마다 후보 목록 API가 나가고, 교체할 때마다 재진단이 돈다.
-                             한 자리에서 두세 번 갈아타면 진단 한 번에 붙는 호출이 배로 늘고
-                             그만큼 느려진다. 공사 API는 호출 이력이 곧 심사 자료라 아껴 쓸 이유가 없지만,
-                             <b>사용자가 기다리는 시간</b>은 아껴야 한다.
-                          ② 대안의 대안으로 계속 파고들면 사용자가 지금 어디쯤 왔는지 놓친다.
-                             선택지는 늘어나는데 판단은 오히려 어려워진다.
-                          ③ 모든 자리가 <b>원안이거나, 원안에서 한 번 옮긴 것</b> 둘 중 하나로 유지된다.
-                             최종 비교 화면의 "원안 대비 개선폭"이 이 성질 위에 서 있다 —
-                             중간 단계가 쌓이면 무엇과 무엇을 견주는 값인지 흐려진다.
+                          gap이 아니라 gapMessage가 있는지로 가르는 것이 핵심이다. 음식점·숙박은
+                          gap은 있어도 문구가 null로 온다 — 애초에 예측 대상이 아닌 것을 "없다"고
+                          알리는 것은 정보가 아니고, 코스에 밥집이 서넛만 있어도 이 줄이 화면을
+                          채워 정작 읽어야 할 점수들이 그 사이에 묻힌다.
 
-                          되돌린 뒤에는 다시 대안을 열 수 있다. 막다른 길이 되지는 않는다.
+                          반대로 관광지인데 자료가 없으면 반드시 말한다. 같은 왕릉인데 어떤 곳은
+                          점수가 뜨고 어떤 곳은 아무것도 없으면, 사용자는 담는 방법을 잘못 알았다고
+                          생각하며 자기 탓을 찾는다.
+
+                          <b>회색으로 조용히 둔다.</b> 경고색을 쓰면 "문제가 생겼다"로 읽히는데,
+                          이건 잘못된 상태가 아니라 우리가 아직 매기지 못한 자리일 뿐이다.
                         */}
+                        {slot.gapMessage && (
+                          <p className="bg-fill text-muted rounded-chip m-0 mt-1.5 w-fit px-2.5 py-1 text-[12px] leading-snug">
+                            {slot.gapMessage}
+                          </p>
+                        )}
+                      </div>
+
+                      {/*
+                        행동 자리. 좁은 화면에서는 카드 아래를 가로지르는 버튼이고,
+                        넓은 화면에서는 오른쪽 끝의 작은 버튼이다.
+                      */}
+                      <div
+                        className={`sm:order-3 sm:flex sm:w-28 sm:flex-none sm:flex-col sm:items-end sm:gap-2 sm:p-0 ${
+                          quietness === null || level === null ? '' : 'px-4 pt-3 pb-4'
+                        }`}
+                      >
+                        {/*
+                          넓은 화면에서는 배지가 사진에서 내려와 버튼 위에 선다.
+                          폭을 고정(w-32)하는 이유는 배지 글자 길이가 등급마다 달라서다 —
+                          그대로 두면 카드마다 버튼 시작점이 달라져, 목록을 훑을 때
+                          눈이 매번 다른 자리를 찾아야 한다.
+
+                          좁은 화면의 배지와 마크업이 겹치지만 사진과 달리 <b>받아올 것이 없어</b>
+                          비용이 없다. 사진은 하나로 두고 order로 옮긴 것과 판단이 다른 이유다.
+                        */}
+                        {slot.level !== null && slot.levelLabel !== null && (
+                          <span className="hidden sm:block">
+                            <CongestionBadge
+                              level={slot.level}
+                              label={slot.levelLabel}
+                              quietness={slot.quietness ?? undefined}
+                              size="sm"
+                            />
+                          </span>
+                        )}
+
                         {quietness === null || level === null ? (
                           /*
-                            진단되지 않은 자리에는 대안 버튼을 두지 않는다.
-                            대안 추천은 <b>원래 장소의 혼잡도를 기준으로</b> 후보를 매기는데,
-                            그 기준이 없으면 "이 곳보다 한적하다"는 말 자체가 성립하지 않는다.
-                            연관 관광지 조회도 기준 장소가 공사 데이터에 있어야 돈다.
+                            진단되지 않은 자리는 <b>그냥 비워 둔다.</b>
 
-                            버튼을 잠근 채로 두지 않고 아예 없앤다 — 눌리지 않는 버튼은
-                            "지금은 안 되지만 언젠가 될 것"으로 읽혀 사용자가 계속 시도한다.
+                            버튼을 잠근 채로 두지 않는 이유: 눌리지 않는 버튼은 "지금은 안 되지만
+                            언젠가 될 것"으로 읽혀 사용자가 계속 시도한다.
+
+                            사유는 이 자리가 아니라 <b>이름 아래</b>에 적는다. 여기는 폭이 좁아
+                            (sm:w-28) 문장이 서너 줄로 접히고, 무엇보다 "왜 점수가 없는지"는
+                            장소에 딸린 설명이지 행동이 아니다.
                           */
-                          <span className="text-hint flex-none text-[12.5px] whitespace-nowrap">
-                            교체 추천 없음
-                          </span>
+                          null
                         ) : isSwapped(slot.day, slot.order, slot.place.id) ? (
                           /*
                             되돌리기는 날짜 목록의 원안 줄과 <b>같은 모양</b>이다 —
@@ -846,7 +932,7 @@ export function DiagnosisPage() {
                           */
                           <button
                             type="button"
-                            className="press rounded-chip border-line bg-surface text-fg hover:bg-bg h-10 flex-none cursor-pointer border px-4 text-sm font-semibold whitespace-nowrap"
+                            className="press rounded-ui border-line bg-surface text-fg hover:bg-bg h-11 w-full cursor-pointer border text-sm font-semibold whitespace-nowrap sm:h-9 sm:w-full sm:px-3 sm:text-[13px]"
                             onClick={() => handleRevert(slot.day, slot.order)}
                             aria-label={`${slot.place.name} 되돌리기`}
                           >
@@ -854,17 +940,13 @@ export function DiagnosisPage() {
                           </button>
                         ) : (
                           /*
-                            대안은 아직 손대지 않은 모든 자리에서 열 수 있다. 한적하다고 판단된 곳도
-                            사용자가 더 나은 후보를 직접 보고 판단할 수 있어야 한다.
-
-                            다만 붐비는 곳만 채운 버튼으로 강하게 두고, 나머지는
-                            테두리만 있는 조용한 버튼으로 둔다. 모든 카드에 빨간 버튼이
-                            서 있으면 경고색이 의미를 잃는다 — 시안에도 "주황·빨강은
-                            경고 신호로만"이라고 못박혀 있다.
+                            붐비는 곳만 채운 버튼으로 강하게 두고, 나머지는 테두리만 있는
+                            조용한 버튼으로 둔다. 모든 카드에 빨간 버튼이 서 있으면
+                            경고색이 의미를 잃는다.
                           */
                           <button
                             type="button"
-                            className={`press rounded-chip h-10 flex-none cursor-pointer px-4 text-sm font-semibold whitespace-nowrap ${
+                            className={`press rounded-ui h-11 w-full cursor-pointer text-sm font-semibold whitespace-nowrap sm:h-9 sm:w-full sm:px-3 sm:text-[13px] ${
                               slot.level === 'CROWDED'
                                 ? 'bg-crowded-strong hover:bg-crowded-deep text-white shadow-[0_4px_12px_rgb(179_23_90/0.24)]'
                                 : 'border-line bg-surface text-muted hover:border-brand hover:text-brand-deep border'
@@ -880,11 +962,12 @@ export function DiagnosisPage() {
                                 level,
                               })
                             }
-                            aria-label={`${slot.place.name} 대안 보기`}
+                            aria-label={`${slot.place.name} 장소 바꾸기`}
                           >
-                            대안 보기
+                            장소 바꾸기
                           </button>
                         )}
+                        </div>
                       </div>
                     </li>
                     )
@@ -908,7 +991,7 @@ export function DiagnosisPage() {
             형제(특히 지도)에 덮인다. BottomNav(z-40)와 시트(z-50)보다는 아래다.
           */}
           <div className="from-bg/0 to-bg sticky bottom-15 z-30 mt-1 bg-gradient-to-b to-[30%] pt-3.5 pb-5 md:bottom-0 lg:hidden">
-            {confirmButton}
+            {stepActions}
           </div>
         </div>
       )}

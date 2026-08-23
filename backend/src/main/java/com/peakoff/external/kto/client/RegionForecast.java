@@ -1,4 +1,4 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.client;
 
 import java.time.LocalDate;
 import java.util.Collections;
@@ -26,7 +26,7 @@ import java.util.Set;
  * @param lastDate    응답에 들어 있던 가장 늦은 날짜. 자료가 없으면 {@code null}
  */
 public record RegionForecast(
-		Map<String, Map<LocalDate, Double>> ratesByName,
+		Map<String, Map<LocalDate, Double>> ratesByName, //key, value 순서 -> key값은 관광지명 원문 -> 문제발생 ㄱㄴ
 		LocalDate firstDate,
 		LocalDate lastDate) {
 

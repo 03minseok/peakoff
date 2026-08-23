@@ -22,6 +22,7 @@ import type {
   SocialLoginResult,
   SocialProvider,
 } from '../types/api'
+import { rememberPlaces } from './placeCache'
 
 /**
  * 백엔드 호출을 한곳에 모은다.
@@ -227,6 +228,24 @@ export function deleteAccount(
   return apiRequest<void>('/auth/me', { method: 'DELETE', body: request, signal })
 }
 
+/*
+ * 장소가 서버에서 들어오는 <b>모든 길목</b>에서 기억해 둔다.
+ *
+ * 화면마다 부르게 두면 새 화면을 만들 때 빠뜨리고, 빠뜨린 자리에서만 장소 이름이
+ * 숫자로 보이는 찾기 어려운 버그가 된다. 코스에는 장소 id만 담기므로
+ * "그 id가 누구인지"는 누군가 반드시 들고 있어야 한다(placeCache 참고).
+ */
+function remember<T extends Place>(places: T[]): T[] {
+  rememberPlaces(places)
+  return places
+}
+
+/** 진단·초안 응답은 장소가 슬롯 안에 들어 있다. 겉모양만 다르고 하는 일은 같다. */
+function rememberSlots<T extends { slots: { place: Place }[] }>(response: T): T {
+  rememberPlaces(response.slots.map((slot) => slot.place))
+  return response
+}
+
 /**
  * GET /api/places?region=&keyword=&limit=
  *
@@ -252,7 +271,7 @@ export function fetchPlaces(
   if (options.limit !== undefined) {
     query.set('limit', String(options.limit))
   }
-  return apiRequest<Place[]>(`/places?${query}`, { signal: options.signal })
+  return apiRequest<Place[]>(`/places?${query}`, { signal: options.signal }).then(remember)
 }
 
 /** GET /api/places/{placeId}/alternatives?date=&limit= */
@@ -266,7 +285,12 @@ export function fetchAlternatives(
   return apiRequest<Alternative[]>(
     `/places/${encodeURIComponent(placeId)}/alternatives?${query}`,
     { signal },
-  )
+  ).then((alternatives) => {
+    // 대안으로 교체하면 그 장소가 코스에 들어간다. 여기서 기억해 두지 않으면
+    // 코스 편집 화면이 교체된 장소를 모른 채로 id만 들고 있게 된다.
+    rememberPlaces(alternatives.map((alternative) => alternative.place))
+    return alternatives
+  })
 }
 
 /** POST /api/courses/diagnose */
@@ -278,7 +302,7 @@ export function diagnoseCourse(
     method: 'POST',
     body: course,
     signal,
-  })
+  }).then(rememberSlots)
 }
 
 /**
@@ -298,7 +322,7 @@ export function recommendCourse(
     method: 'POST',
     body: request,
     signal,
-  })
+  }).then(rememberSlots)
 }
 
 /**

@@ -1,15 +1,20 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.provider;
 
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.OptionalDouble;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import com.peakoff.congestion.domain.CongestionProvider;
+import com.peakoff.external.kto.client.KtoCongestionClient;
+import com.peakoff.external.kto.client.RegionForecast;
+import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.global.support.Scores;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.SupportedRegion;
@@ -29,28 +34,22 @@ import com.peakoff.place.domain.SupportedRegion;
  */
 @Component
 @ConditionalOnProperty(name = "peakoff.kto.congestion", havingValue = "real")
+@RequiredArgsConstructor
 public class KtoCongestionProvider implements CongestionProvider {
 
 	private final KtoCongestionClient client;
 	private final PlaceProvider placeProvider;
 	private final PlaceNameMatcher nameMatcher;
 
-	public KtoCongestionProvider(KtoCongestionClient client, PlaceProvider placeProvider,
-			PlaceNameMatcher nameMatcher) {
-		this.client = client;
-		this.placeProvider = placeProvider;
-		this.nameMatcher = nameMatcher;
-	}
-
 	@Override
 	public int quietnessOf(String placeId, LocalDate date) {
-		Region region = region();
-		RegionForecast forecast = client.forecastOf(region);
+			Region region = region();
+			RegionForecast forecast = client.forecastOf(region);
 		String apiName = apiNameOf(placeId, region, forecast)
 				.orElseThrow(() -> new IllegalArgumentException(
 						"예측 대상이 아닌 장소입니다. placeId=" + placeId));
 
-		OptionalDouble rate = forecast.rateOf(apiName, date);
+		OptionalDouble rate = forecast.rateOf(apiName, date); //이름, 날짜 집중률
 		if (rate.isEmpty()) {
 			/*
 			 * 장소는 목록에 있는데 그 날짜만 없다 — 예측 범위 밖이다.
@@ -88,8 +87,32 @@ public class KtoCongestionProvider implements CongestionProvider {
 		return client.forecastOf(region()).lastForecastDate();
 	}
 
+	/**
+	 * 우리 장소 id → 이름 → 공사 이름으로 잇는다. 못 이으면 비어 있다.
+	 *
+	 * <h3>이름을 대보기 전에 분류부터 보는 이유</h3>
+	 * 이름 매칭은 <b>양쪽 어느 쪽이 길든 품으면 잇는다.</b> 대릉원(우리) ↔ 대릉원 일원(공사)을
+	 * 살리려고 그렇게 열었는데, 같은 규칙이 이런 것도 이어 버렸다:
+	 *
+	 * <pre>
+	 * "불국사밀면"        → "불국사"     밀면집이 절의 혼잡도를 받는다
+	 * "여미온 황리단길점"  → "황리단길"   식당이 거리의 혼잡도를 받는다
+	 * </pre>
+	 *
+	 * <p>실제로 음식점·숙박 11곳을 담아 보니 <b>7곳이 남의 점수를 받았다.</b> 화면에 틀린
+	 * 배지가 서는 것으로 끝나지 않고 코스 총점까지 오염된다 — 계산하지 않은 것을 근거로
+	 * 말하지 않는다는 규칙이 정확히 이 자리를 막는다.
+	 *
+	 * <p>분류로 먼저 거르면 이 부류가 통째로 사라진다. 공사 집중률은 관광지만 예측하므로
+	 * 음식점·숙박은 <b>이름이 아무리 닮아도 이을 곳이 없는 것이 맞다.</b> 쇼핑·체험·레저·축제
+	 * 14곳을 실제로 진단해 봐도 지금 이어지는 곳이 하나도 없어, 걸러서 잃는 것은 없다.
+	 *
+	 * <p>이 자리에 둔 이유는 {@code quietnessOf}와 {@code hasData} 둘이 전부 여기를
+	 * 지나기 때문이다. 한 군데만 막으면 점수·배지·총점이 함께 정리된다.
+	 */
 	private Optional<String> apiNameOf(String placeId, Region region, RegionForecast forecast) {
 		return placeProvider.findById(placeId)
+				.filter(place -> PlaceCategories.isForecastTarget(place.category()))
 				.map(Place::name)
 				.flatMap(name -> nameMatcher.match(name, region, forecast.placeNames()));
 	}
@@ -112,6 +135,7 @@ public class KtoCongestionProvider implements CongestionProvider {
 	 * 한적도가 31~67에 모인다. 3단계 배지의 경계와 잘 맞는지, 아니면 관측 분포에 맞춰
 	 * 늘려야 하는지는 실제 데이터로 확정한다.
 	 */
+	//집중률 뒤집기
 	private static int toQuietness(double concentrationRate) {
 		double quietness = Scores.MAX - concentrationRate;
 		return (int) Math.round(Math.clamp(quietness, Scores.MIN, Scores.MAX));

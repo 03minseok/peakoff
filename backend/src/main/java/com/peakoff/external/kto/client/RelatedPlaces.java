@@ -1,4 +1,4 @@
-package com.peakoff.external.kto;
+package com.peakoff.external.kto.client;
 
 import java.util.Collections;
 import java.util.HashMap;

@@ -3,6 +3,8 @@ package com.peakoff.external.kto;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import com.peakoff.external.kto.support.KtoProperties;
+
 /**
  * 공사 OpenAPI 설정을 스프링에 등록한다.
  *
