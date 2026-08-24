@@ -12,7 +12,18 @@ export interface RegionOption {
   name: string
 }
 
-export const REGIONS: RegionOption[] = [{ slug: 'gyeongju', name: '경주' }]
+/*
+ * 서버의 SupportedRegion과 순서·슬러그가 같아야 한다.
+ *
+ * 제주가 둘로 갈린 이유: 공사 API가 시군구 하나를 받는다. 제주도는 시군구가 둘이라
+ * 한 지역으로 묶으려면 서버가 매번 두 번씩 불러 합쳐야 한다.
+ * ⚠️ 대신 한라산(제주시)과 성산일출봉(서귀포시)을 한 코스에 담을 수 없다.
+ */
+export const REGIONS: RegionOption[] = [
+  { slug: 'gyeongju', name: '경주' },
+  { slug: 'jeju', name: '제주시' },
+  { slug: 'seogwipo', name: '서귀포시' },
+]
 
 export const DEFAULT_REGION = REGIONS[0].slug
 

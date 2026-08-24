@@ -91,7 +91,16 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 			throw new IllegalArgumentException("후보 수는 1 이상이어야 합니다. 입력값: " + limit);
 		}
 
-		Region region = region();
+		/*
+		 * 기준 장소가 든 지역에서만 후보를 찾는다.
+		 *
+		 * 장소 ID에 지역이 묻어 있지 않아 지원 지역을 하나씩 훑는다. 못 찾으면 빈 목록이다 —
+		 * 어느 지역 카탈로그에도 없는 장소는 연관 목록에도 없다.
+		 */
+		Region region = regionOf(origin).orElse(null);
+		if (region == null) {
+			return List.of();
+		}
 		List<ScoredPlace> scored = scoreCandidates(origin, date, region);
 		if (scored.isEmpty()) {
 			return List.of();
@@ -182,8 +191,14 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 				origin.name(), scored.level().congestionPhrase());
 	}
 
-	/** v1은 파일럿 한 지역이라 경주로 고정한다. 지역을 늘릴 때 손댈 자리를 남겨 둔다. */
-	private static Region region() {
-		return SupportedRegion.GYEONGJU.toRegion();
+	/**
+	 * 그 장소가 어느 지역 카탈로그에 들어 있는지 찾는다.
+	 *
+	 * <p>카탈로그는 6시간 캐시라 대개 메모리에 있다. 첫 조회에서만 지역 수만큼 부른다.
+	 */
+	private Optional<Region> regionOf(Place origin) {
+		return SupportedRegion.allRegions().stream()
+				.filter(region -> placeClient.catalogOf(region).findById(origin.id()).isPresent())
+				.findFirst();
 	}
 }

@@ -78,9 +78,15 @@ public class KtoPlaceProvider implements PlaceProvider {
 	 */
 	@Override
 	public Optional<Place> findById(String placeId) {
-		Optional<Place> cached = placeClient.catalogOf(region()).findById(placeId);
-		if (cached.isPresent()) {
-			return cached;
+		/*
+		 * 장소 ID에 지역이 묻어 있지 않아 지원 지역을 하나씩 훑는다.
+		 * 카탈로그는 6시간 캐시라 대개 메모리에 있고, 첫 조회에서만 지역 수만큼 부른다.
+		 */
+		for (Region region : SupportedRegion.allRegions()) {
+			Optional<Place> cached = placeClient.catalogOf(region).findById(placeId);
+			if (cached.isPresent()) {
+				return cached;
+			}
 		}
 		return placeClient.findDetail(placeId);
 	}
@@ -93,17 +99,17 @@ public class KtoPlaceProvider implements PlaceProvider {
 	 */
 	@Override
 	public List<NearbyPlace> nearby(Place origin, int limit) {
-		return NearbyPlaces.from(placeClient.catalogOf(region()).all(), origin,
-				NearbyPlaces.DEFAULT_RADIUS_KM, limit);
-	}
-
-	/**
-	 * v1은 파일럿 한 지역이라 경주로 고정한다.
-	 *
-	 * <p>{@code Place}에 지역이 들어 있지 않아 장소 ID만으로는 지역을 알 수 없다.
-	 * 지역을 늘릴 때 손댈 자리를 남기려고 메서드로 빼 뒀다.
-	 */
-	private static Region region() {
-		return SupportedRegion.GYEONGJU.toRegion();
+		/*
+		 * 기준 장소가 든 지역의 카탈로그에서만 고른다. 모든 지역을 한 무더기로 합치지 않는 이유는
+		 * 반경(5km)이 어차피 걸러 주기 때문이 아니라 <b>지역이 코스의 단위</b>이기 때문이다 —
+		 * 경주 코스의 밥집 자리에 제주 식당이 후보로 오르면 안 된다.
+		 */
+		return SupportedRegion.allRegions().stream()
+				.map(placeClient::catalogOf)
+				.filter(catalog -> catalog.findById(origin.id()).isPresent())
+				.findFirst()
+				.map(catalog -> NearbyPlaces.from(catalog.all(), origin,
+						NearbyPlaces.DEFAULT_RADIUS_KM, limit))
+				.orElseGet(List::of);
 	}
 }
