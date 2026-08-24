@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ChevronRight } from '../components/icons'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
@@ -351,16 +351,37 @@ export function HomePage() {
    *
    * <p>손이 올라가 있거나 키보드 초점이 그 안에 있으면 읽는 중이다. 그때만 멈춘다.
    * 사용자가 아무것도 배우지 않아도 되고, 손을 떼면 알아서 다시 돈다.
+   *
+   * <p>상태가 아니라 ref인 이유는 아래 타이머 주석에 적어 두었다 — 요약하면,
+   * 이 값이 바뀔 때마다 다시 그리면 타이머가 되감겨 간격이 제멋대로가 된다.
    */
-  const [reading, setReading] = useState(false)
+  const reading = useRef(false)
 
   useEffect(() => {
-    if (!hasMultipleRegions() || reading) {
+    if (!hasMultipleRegions()) {
       return
     }
-    const timer = setInterval(() => setRegionSlug(nextRegion), REGION_ROTATE_MS)
+    /*
+     * 타이머는 <b>한 번만</b> 건다. 읽는 중이면 이번 차례를 건너뛸 뿐 시계는 계속 간다.
+     *
+     * 예전에는 "읽는 중"을 상태로 두고 그것을 effect 의존성에 넣었다. 그러면 값이 바뀔
+     * 때마다 타이머를 걷고 새로 걸어 <b>8초 카운트가 처음부터 다시 시작됐다.</b>
+     * 그것만으로도 간격이 흔들렸는데, 지역이 바뀔 때 칸이 새로 만들어지는 것과 겹쳐
+     * 더 나빠졌다 — 마우스가 그 위에 있으면 칸이 사라지고 생기면서 mouseleave와
+     * mouseenter가 잇달아 튀고, 그때마다 타이머가 되감겼다.
+     * 그래서 3초 만에 넘어가기도 하고 15초가 걸리기도 했다.
+     *
+     * ref는 바뀌어도 다시 그리지 않으므로 이 effect가 다시 돌지 않는다. 시계가 하나뿐이니
+     * 간격은 언제나 정확히 REGION_ROTATE_MS다.
+     */
+    const timer = setInterval(() => {
+      if (reading.current) {
+        return
+      }
+      setRegionSlug(nextRegion)
+    }, REGION_ROTATE_MS)
     return () => clearInterval(timer)
-  }, [reading])
+  }, [])
 
   /**
    * 넘어가는 세 칸에 함께 붙인다.
@@ -378,10 +399,18 @@ export function HomePage() {
    * 일반 onFocus는 자식에서 올라오는 것을 놓치는 경우가 있다.
    */
   const rotating = {
-    onMouseEnter: () => setReading(true),
-    onMouseLeave: () => setReading(false),
-    onFocusCapture: () => setReading(true),
-    onBlurCapture: () => setReading(false),
+    onMouseEnter: () => {
+      reading.current = true
+    },
+    onMouseLeave: () => {
+      reading.current = false
+    },
+    onFocusCapture: () => {
+      reading.current = true
+    },
+    onBlurCapture: () => {
+      reading.current = false
+    },
   }
 
   const state = useHomeData(regionSlug)
@@ -641,9 +670,7 @@ export function HomePage() {
               </div>
               {/* 예측·통계값이라 "실시간"이라고 쓰지 않는다. 화면 어디서도 마찬가지다. */}
               <span className="text-hint text-[12.5px]">
-                오늘 예상되는 혼잡이에요.
-                <br />
-                예측값이라 실제와 다를 수 있어요.
+                오늘 예상되는 혼잡이에요. 예측값이라 실제와 다를 수 있어요.
               </span>
             </div>
 
