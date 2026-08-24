@@ -1,10 +1,10 @@
 package com.peakoff.external.kto.provider;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +12,7 @@ import com.peakoff.external.kto.client.KtoHubClient;
 import com.peakoff.external.kto.client.KtoPlaceClient;
 import com.peakoff.external.kto.client.RegionCatalog;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
+import com.peakoff.external.kto.support.RegionCache;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.NearbyPlaces;
 import com.peakoff.place.domain.NearbyPlace;
@@ -34,12 +35,37 @@ import com.peakoff.place.domain.SupportedRegion;
  */
 @Component
 @ConditionalOnProperty(name = "peakoff.kto.place", havingValue = "real")
-@RequiredArgsConstructor
 public class KtoPlaceProvider implements PlaceProvider {
 
 	private final KtoPlaceClient placeClient;
 	private final KtoHubClient hubClient;
 	private final PlaceNameMatcher nameMatcher;
+
+	/**
+	 * 대표 관광지를 <b>우리 장소로 이어 놓은 결과</b>를 지역별로 들고 있는다.
+	 *
+	 * <h3>왜 여기까지 캐시하는가</h3>
+	 * 원자료(중심 관광지 목록·지역 카탈로그)는 이미 캐시돼 있었는데도 이 화면이 380ms 걸렸다.
+	 * 남은 비용이 <b>이름 매칭</b>이었기 때문이다 — 중심 관광지 100개를 카탈로그 621곳과
+	 * 견주는데, 후보 하나마다 정규화를 두 번 돌린다. 요청 한 번에 정규식이 12만 번 돈다.
+	 *
+	 * <h3>분산 규칙을 어기지 않는다</h3>
+	 * 여기 담기는 것은 <b>"이 공사 이름이 우리 어느 장소인가"</b>라는 기계적 대응표뿐이다.
+	 * 점수도 순서도 들어 있지 않다. 캐시하지 말아야 할 것은 완성된 <b>대안 목록</b>이다 —
+	 * 그것을 캐시하면 모든 사용자가 같은 답을 받아 추천 분산이 죽는다.
+	 * 점수 계산과 가중 무작위 뽑기는 지금처럼 매번 한다.
+	 *
+	 * <p>⚠️ 순서는 <b>인기 순</b>이라 추천 점수에 쓰지 않는다. 목록을 늘어놓는 순서로만 쓴다.
+	 */
+	private final RegionCache<List<Place>> representativesCache;
+
+	public KtoPlaceProvider(KtoPlaceClient placeClient, KtoHubClient hubClient,
+			PlaceNameMatcher nameMatcher, Clock clock) {
+		this.placeClient = placeClient;
+		this.hubClient = hubClient;
+		this.nameMatcher = nameMatcher;
+		this.representativesCache = new RegionCache<>(clock);
+	}
 
 	@Override
 	public List<Place> search(Region region, String keyword, int limit) {
@@ -54,6 +80,15 @@ public class KtoPlaceProvider implements PlaceProvider {
 	 */
 	@Override
 	public List<Place> representatives(Region region, int limit) {
+		// 이어 놓은 결과는 지역당 한 벌이다. limit은 그 목록에서 앞부분을 자르는 것뿐이라
+		// 캐시 열쇠에 넣지 않는다 — 넣으면 limit이 다를 때마다 매칭을 다시 하게 된다.
+		return representativesCache.get(region, this::resolveRepresentatives).stream()
+				.limit(limit)
+				.toList();
+	}
+
+	/** 중심 관광지 이름을 우리 장소로 잇는다. <b>비싼 쪽</b>이라 캐시 뒤에 둔다. */
+	private List<Place> resolveRepresentatives(Region region) {
 		RegionCatalog catalog = placeClient.catalogOf(region);
 		if (catalog.isEmpty()) {
 			return List.of();
@@ -65,7 +100,6 @@ public class KtoPlaceProvider implements PlaceProvider {
 				.filter(matched -> matched != null)
 				.map(byName::get)
 				.distinct()
-				.limit(limit)
 				.toList();
 	}
 
