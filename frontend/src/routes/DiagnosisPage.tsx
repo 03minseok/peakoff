@@ -113,23 +113,41 @@ export function DiagnosisPage() {
    * 좌표는 진단 응답이 들고 있다(slot.place). 장소 목록을 따로 부르지 않는다 —
    * 코스에 담긴 곳만 그리면 되고, 그건 이미 손에 있다.
    */
+  /**
+   * 지도에 그릴 일차. <b>한 번에 하루만 그린다.</b>
+   *
+   * <p>여러 날을 겹쳐 두면 선이 서로를 가로질러 "어느 날 어디를 도는지"가 오히려 안 보인다.
+   * 마커 번호도 날마다 1부터 다시 시작해 같은 숫자가 여러 개 뜬다.
+   */
+  const [mapDay, setMapDay] = useState(1)
+
+  /*
+   * 고른 일차가 코스보다 뒤일 수 있다. 2일차를 보다가 편집에서 당일치기로 줄이면
+   * 그렇다. 그때 그대로 두면 지도가 빈 채로 남아 "장소가 없어졌다"로 읽힌다.
+   * 상태를 effect로 되돌리는 대신 <b>쓸 때 가둔다</b> — 되돌리면 한 번 더 그려진다.
+   */
+  const safeDay = diagnosis ? Math.min(mapDay, diagnosis.days) : mapDay
+
   const mapPlaces = useMemo(
-    () => (diagnosis ? diagnosis.slots.map((slot) => slot.place) : []),
-    [diagnosis],
+    () =>
+      diagnosis
+        ? diagnosis.slots.filter((slot) => slot.day === safeDay).map((slot) => slot.place)
+        : [],
+    [diagnosis, safeDay],
   )
 
-  /** 일차별 방문 순서. 하나의 배열이 하루치라 밤사이 이동이 선으로 이어지지 않는다 */
+  /** 그 날의 방문 순서 하나. 배열 하나만 넘기므로 마커 번호가 "1, 2, 3"으로 매겨진다 */
   const mapRoutes = useMemo(
     () =>
       diagnosis
-        ? Array.from({ length: diagnosis.days }, (_, index) =>
+        ? [
             diagnosis.slots
-              .filter((slot) => slot.day === index + 1)
+              .filter((slot) => slot.day === safeDay)
               .sort((a, b) => a.order - b.order)
               .map((slot) => slot.place.id),
-          )
+          ]
         : [],
-    [diagnosis],
+    [diagnosis, safeDay],
   )
 
   /**
@@ -661,8 +679,18 @@ export function DiagnosisPage() {
                           적용 중
                         </span>
                       ) : !row.selectable ? (
+                        /*
+                          고를 수 없는 날. <b>이유가 둘인데 한 가지 말만 하고 있었다.</b>
+
+                          지난 날짜와 "예측이 아직 안 나온 날"이 서버에서 똑같이
+                          selectable=false로 오는데, 화면이 둘 다 "지난 날"이라고 적었다.
+                          그래서 다음 달 날짜를 보는데 지났다는 말이 붙었다.
+
+                          하나는 지나갔고 하나는 <b>기다리면 생긴다.</b> 같은 말로 뭉개면
+                          사용자가 나중에 다시 와 볼 이유를 잃는다.
+                        */
                         <span className="text-hint bg-line/50 rounded-chip h-9 flex-none px-3 text-center text-[12.5px] leading-9 font-medium whitespace-nowrap">
-                          지난 날
+                          {row.date < todayDate ? '지난 날' : '예측 전'}
                         </span>
                       ) : (
                         <button
@@ -706,9 +734,33 @@ export function DiagnosisPage() {
               첫 코스에는 점수를 노출하지 않기로 했기 때문이다.
             */}
             <section className={`${CARD_RAISED} flex flex-col gap-3 p-4.5`}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-fg text-[15px] font-semibold">코스 지도</h2>
-                <span className="text-hint text-[12.5px]">마커 색이 예상 혼잡도예요</span>
+                {/*
+                  하루짜리 일정에는 고를 것이 없다. 탭이 하나뿐이면 누를 수 있다는
+                  신호만 주고 아무것도 바뀌지 않아 오히려 헷갈린다.
+                */}
+                {diagnosis.days > 1 ? (
+                  <div className="flex gap-1.5" role="group" aria-label="지도에 표시할 일차">
+                    {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map(
+                      (day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                            day === safeDay ? 'bg-fg text-white' : 'bg-bg text-hint hover:text-fg'
+                          }`}
+                          aria-pressed={day === safeDay}
+                          onClick={() => setMapDay(day)}
+                        >
+                          Day {day}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-hint text-[12.5px]">마커 색이 예상 혼잡도예요</span>
+                )}
               </div>
 
               {/* 읽기 전용. onSelect를 넘기지 않으면 마커를 누를 수 없다 */}
