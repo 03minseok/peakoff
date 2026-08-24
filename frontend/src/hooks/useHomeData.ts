@@ -58,9 +58,6 @@ const REPRESENTATIVE_LIMIT = 40
  */
 const HEADLINE_PER_SIDE = 3
 
-/** "지금 한적한 곳" 카드 수. */
-const QUIET_COUNT = 4
-
 /** 예보 기간. 서버가 받는 nights 상한이 6이라 7일이 최대다. */
 const FORECAST_DAYS = 7
 
@@ -80,21 +77,6 @@ export interface HeadlineSpot {
   levelLabel: string
 }
 
-export interface QuietSpot {
-  place: Place
-  quietness: number
-  level: CongestionLevel
-  levelLabel: string
-  /**
-   * 근거 문구.
-   *
-   * <b>계산한 것만 말한다.</b> "함께 많이 찾는 곳" 같은 표현은 연관 관광지 데이터가
-   * 붙기 전까지 쓸 수 없다. 지금 손에 있는 것은 같은 날 두 장소의 예상 혼잡뿐이라,
-   * 그 비교만 문장으로 만든다.
-   */
-  reason: string
-}
-
 export interface ForecastDay {
   date: string
   /** 표본 장소들의 그날 한적도 평균 */
@@ -112,7 +94,6 @@ export interface HomeData {
    * 그 개수는 장소가 모자랄 때 달라진다.
    */
   headline: { crowded: HeadlineSpot[]; quiet: HeadlineSpot[] }
-  quiet: QuietSpot[]
   forecast: ForecastDay[]
   /** 예보 기간에서 가장 한적한 날 */
   bestDay: ForecastDay
@@ -148,16 +129,6 @@ function evenlySampled<T>(items: T[], count: number): T[] {
     { length: count },
     (_, index) => items[Math.round((index * (items.length - 1)) / (count - 1))],
   )
-}
-
-/** 혼잡도(100 - 한적도) 비율. "붐비는 곳의 몇 % 수준인지"를 말하는 데 쓴다. */
-function crowdRatioPercent(quietness: number, referenceQuietness: number): number {
-  const crowd = 100 - quietness
-  const referenceCrowd = 100 - referenceQuietness
-  if (referenceCrowd <= 0) {
-    return 100
-  }
-  return Math.max(1, Math.round((crowd / referenceCrowd) * 100))
 }
 
 /**
@@ -240,33 +211,6 @@ export function useHomeData(region: string): HomeState {
       const headlineCrowded = byCrowded.slice(0, perSide).map(toHeadline)
       const headlineQuiet = [...byCrowded].reverse().slice(0, perSide).map(toHeadline)
 
-      // 근거 문구의 비교 대상. 오늘 가장 붐비는 곳이다.
-      const busiest = byCrowded[0]
-
-      /*
-       * 아래 카드 목록은 위 headline에 이미 선 곳을 건너뛴다.
-       *
-       * 같은 이름이 한 화면에 두 번 나오면 두 번째는 읽히지 않고, "왜 또 나오지"만 남는다.
-       * 위는 훑는 목록이고 아래는 사진·근거까지 붙는 자세한 카드라 역할이 다른데,
-       * 대상까지 같으면 그 차이가 전해지지 않는다.
-       */
-      const shownIds = new Set(headlineQuiet.map((spot) => spot.place.id))
-
-      const quiet: QuietSpot[] = [...byCrowded]
-        .reverse()
-        .filter((slot) => !shownIds.has(slot.place.id))
-        .slice(0, QUIET_COUNT)
-        .map((slot) => ({
-          place: slot.place,
-          quietness: slot.quietness,
-          level: slot.level,
-          levelLabel: slot.levelLabel,
-          reason: `같은 날 예상 혼잡은 ${busiest.place.name}의 ${crowdRatioPercent(
-            slot.quietness,
-            busiest.quietness,
-          )}% 수준`,
-        }))
-
       /*
        * ② 지역을 대표하는 7곳으로 이번 주 예보를 받는다.
        *
@@ -322,7 +266,6 @@ export function useHomeData(region: string): HomeState {
         phase: 'loaded',
         data: {
           headline: { crowded: headlineCrowded, quiet: headlineQuiet },
-          quiet,
           forecast,
           bestDay,
         },

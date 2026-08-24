@@ -3,14 +3,21 @@ import { Link, useNavigate } from 'react-router'
 import { ChevronRight } from '../components/icons'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { BottomNav, HeaderNav } from '../components/BottomNav'
-import { CongestionBadge } from '../components/CongestionBadge'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID, LEVEL_TINT } from '../components/levelStyles'
 import { CARD } from '../components/styles'
 import { DEFAULT_REGION, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
 import { useHomeData } from '../hooks/useHomeData'
-import type { ForecastDay, HeadlineSpot, QuietSpot } from '../hooks/useHomeData'
+import { fetchRecentCourses } from '../services/api'
+import type { ForecastDay, HeadlineSpot } from '../hooks/useHomeData'
+import type { PublicCourse } from '../types/api'
 import { useAuth } from '../state/authContext'
-import { formatCompactDate, formatKoreanDate, formatWeekday, today } from '../utils/date'
+import {
+  formatCompactDate,
+  formatDuration,
+  formatKoreanDate,
+  formatWeekday,
+  today,
+} from '../utils/date'
 
 /**
  * 화면 폭.
@@ -54,6 +61,19 @@ function HeadlineRow({ spot, last }: { spot: HeadlineSpot; last: boolean }) {
     <div
       className={`flex items-center gap-3 py-2.75 ${last ? '' : 'border-bg border-b'}`}
     >
+      {/*
+        사진과 색점을 함께 둔다.
+
+        사진은 <b>어디인지</b>를, 색점은 <b>얼마나 붐비는지</b>를 말한다. 사진만 두면
+        훑을 때 등급이 안 읽히고, 색점만 두면 이름을 모르는 곳이 글자로만 남는다.
+        색점을 사진 위에 얹지 않는 이유: 사진이 밝은지 어두운지에 따라 묻는 자리가 생긴다.
+      */}
+      <PlaceThumbnail
+        name={spot.place.name}
+        imageUrl={spot.place.imageUrl}
+        size="sm"
+        className="rounded-[10px]"
+      />
       <span
         className={`h-2.25 w-2.25 flex-none rounded-full ${LEVEL_SOLID[spot.level]}`}
         aria-hidden="true"
@@ -113,44 +133,6 @@ function HeadlineGroup({
       {spots.map((spot, index) => (
         <HeadlineRow key={spot.place.id} spot={spot} last={index === spots.length - 1} />
       ))}
-    </div>
-  )
-}
-
-function QuietCard({ spot }: { spot: QuietSpot }) {
-  return (
-    <div className={`${CARD} flex gap-3.25 p-3`}>
-      <PlaceThumbnail name={spot.place.name} imageUrl={spot.place.imageUrl} />
-
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.75">
-        <div className="flex items-start justify-between gap-2.5">
-          <div className="flex min-w-0 flex-col gap-0.75">
-            <span className="text-fg truncate text-base font-semibold tracking-[-0.01em]">
-              {spot.place.name}
-            </span>
-            <span className="text-hint text-[12.5px]">{spot.place.categoryName}</span>
-          </div>
-          <CongestionBadge level={spot.level} label={spot.levelLabel} size="sm" />
-        </div>
-
-        <div className="flex items-center gap-2.25">
-          <div className="bg-line/60 h-1.5 flex-1 overflow-hidden rounded-[3px]">
-            <div
-              className="h-full rounded-[3px]"
-              style={{
-                width: `${spot.quietness}%`,
-                background: LEVEL_COLOR_VAR[spot.level],
-              }}
-            />
-          </div>
-          <span className="text-brand-deep flex-none font-mono text-xs font-semibold">
-            {spot.quietness}
-          </span>
-        </div>
-
-        {/* 근거. 계산한 비교만 적는다 — 방문객 수 같은 없는 수치를 지어내지 않는다. */}
-        <span className="text-hint text-xs leading-[1.5]">{spot.reason}</span>
-      </div>
     </div>
   )
 }
@@ -317,6 +299,48 @@ function ForecastRow({
  */
 const REGION_ROTATE_MS = 8000
 
+/** 다른 사람들의 여행 카드 수. 한 열에 담기는 만큼만 */
+const OTHER_COURSE_COUNT = 4
+
+/**
+ * 다른 사람이 저장한 코스 한 장. <b>누를 수 없다.</b>
+ *
+ * <p>서버가 코스 id를 주지 않는다 — 남의 코스를 열어 볼 길을 아예 두지 않으려고
+ * 응답에서 뺐다. 그래서 이 카드는 링크도 버튼도 아니고, 보여주기만 한다.
+ *
+ * <p>이름 대신 <b>장소 이름 몇 개</b>를 세운다. 코스 이름은 사용자가 자기만 볼 줄 알고
+ * 지은 것이라 공개하지 않는다. 어차피 "어디를 도는 여행인가"는 장소가 더 잘 말해준다.
+ */
+function OtherCourseCard({ course }: { course: PublicCourse }) {
+  return (
+    <div className={`${CARD} flex flex-col gap-2 p-3.5`}>
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-fg truncate text-[14.5px] font-semibold tracking-[-0.01em]">
+            {course.regionName} {formatDuration(course.nights)}
+          </span>
+          <span className="text-hint text-[12px]">
+            {formatCompactDate(course.startDate)} 출발 · {course.placeCount}곳
+          </span>
+        </div>
+        <span
+          className={`flex-none rounded-full px-2.5 py-1 text-center font-mono text-[11.5px] font-semibold ${LEVEL_TINT[course.level]}`}
+        >
+          {course.totalQuietness}
+        </span>
+      </div>
+
+      {/* 담긴 순서대로 앞쪽 몇 곳. 코스 전체가 아니라는 뜻으로 말줄임을 붙인다 */}
+      {course.places.length > 0 && (
+        <p className="text-muted m-0 truncate text-[12.5px]">
+          {course.places.join(' · ')}
+          {course.placeCount > course.places.length ? ' …' : ''}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function HomePage() {
   const navigate = useNavigate()
   const { member, loading: authLoading } = useAuth()
@@ -414,6 +438,25 @@ export function HomePage() {
   }
 
   const state = useHomeData(regionSlug)
+
+  /**
+   * 다른 사람들이 최근에 저장한 코스.
+   *
+   * <p><b>지역과 무관하다.</b> 왼쪽 두 칸은 8초마다 지역이 넘어가지만 이 칸은 그대로 선다 —
+   * "다른 사람들은 어디로 갔나"에 지역을 걸면 볼 수 있는 여행이 3분의 1로 줄고,
+   * 지금은 저장된 코스 자체가 많지 않다.
+   *
+   * <p>실패해도 홈은 그대로 그린다. 곁들이는 정보라 이것 때문에 화면을 막을 이유가 없다.
+   */
+  const [others, setOthers] = useState<PublicCourse[]>([])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchRecentCourses(OTHER_COURSE_COUNT, controller.signal)
+      .then(setOthers)
+      .catch(() => setOthers([]))
+    return () => controller.abort()
+  }, [])
   const regionName = regionNameOf(regionSlug)
   const data = state.phase === 'loaded' ? state.data : null
 
@@ -503,18 +546,24 @@ export function HomePage() {
         같은 비중의 주요 기능이라 크기도 같아야 한다. 한쪽을 작게 두면 사용자가
         "이건 곁다리"라고 배우고, 나중에 크기를 키울 때 그 학습을 되돌려야 한다.
 
-        둘째 줄은 데이터다. 넓이를 다르게 준다 — 전부 같으면 무엇을 먼저 보라는 것인지가
-        사라진다. 목록 길이에 맞춰 오늘(4) · 한적한 곳(5) · 이번 주(3)로 나눴다.
+        둘째 줄은 데이터다. <b>지역이 넘어갈 때 함께 바뀌는 두 칸</b>이고,
+        오늘 하루(장소)와 이번 주(날짜)가 나란히 선다 — 혼잡을 피하는 두 경로가
+        한 줄에서 짝을 이룬다.
+
+        "지금 한적한 곳"은 걷어냈다. 위 카드의 "한적할 것으로 예상"과 <b>같은 목록에서
+        앞의 세 곳만 빼고</b> 그 다음을 보여주고 있었는데, 제목은 "가장 덜 붐빌 곳"이었다.
+        정작 가장 한적한 곳이 그 목록에 없었다.
 
         배치는 전부 자동이다. row-span을 쓰지 않아 DOM 순서가 곧 화면 순서이고,
         좁은 화면에서 순서를 되돌리는 장치(order)도 필요 없어졌다.
 
           ┌───────────────┬───────────────┐
           │ 코스 직접 짜기 │ 코스 추천받기  │
-          ├───────┬───────┴──────┬────────┤
-          │ 오늘의 │ 지금 한적한 곳 │ 이번 주 │
-          │ 경주   │              │ 한적한날│
-          └───────┴──────────────┴────────┘
+          ├───────┬───────┴──┬────────────┤
+          │ 오늘의 │ 이번 주   │ 다른 사람들 │
+          │ 경주   │ 한적한 날 │ 의 여행     │
+          └───────┴──────────┴────────────┘
+             ← 지역 따라 바뀜 →   ← 지역 무관 →
       */}
       {/*
         위·좌우 여백은 Layout 본문(pt-6/lg:pt-8, px-4.5/md:px-6/lg:px-8)과 같은 값이다.
@@ -653,7 +702,7 @@ export function HomePage() {
         {state.phase !== 'error' && (
         <>
           {/* 3. 오늘의 경주 — 오늘 가장 붐빌 것으로 보이는 명소들 */}
-          <section key={`crowded-${regionSlug}`} className={`${CELL} region-slide gap-3 lg:col-span-4 lg:gap-3`} {...rotating}>
+          <section key={`crowded-${regionSlug}`} className={`${CELL} region-slide gap-3 lg:col-span-5 lg:gap-3`} {...rotating}>
             {/*
               제목과 설명을 <b>한 묶음</b>으로 싼다. 설명을 섹션의 별도 항목으로 두면
               칸 사이 간격(gap-3)을 받아 제목에서 멀어지는데, 옆의 "지금 한적한 곳"은
@@ -728,31 +777,7 @@ export function HomePage() {
 
           </section>
 
-          {/* 4. 지금 한적한 곳 — 바로 왼쪽 "오늘의 경주"의 대안이다. 붙어 있어야 짝으로 읽힌다 */}
-          <section key={`quiet-${regionSlug}`} className={`${CELL} region-slide gap-3 lg:col-span-5 lg:gap-3`} {...rotating}>
-            <div className="flex flex-col gap-0.75 px-1">
-              <h2 className={SECTION_TITLE}>지금 한적한 곳</h2>
-              <span className="text-hint text-[12.5px]">
-                오늘 {regionName}에서 가장 덜 붐빌 것으로 보이는 곳
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-1">
-              {data
-                ? data.quiet.map((spot) => <QuietCard key={spot.place.id} spot={spot} />)
-                : Array.from({ length: 4 }, (_, index) => (
-                    <div key={index} className={`${CARD} flex gap-3.25 p-3`}>
-                      <span className="skeleton h-21 w-21 flex-none rounded-[14px]" />
-                      <div className="flex flex-1 flex-col gap-2.5 pt-1.5">
-                        <span className="skeleton h-4 w-32.5" />
-                        <span className="skeleton h-3 w-22.5" />
-                        <span className="skeleton h-1.5 w-full rounded-[3px]" />
-                      </div>
-                    </div>
-                  ))}
-            </div>
-          </section>
-          {/* 5. 이번 주 한적한 날 — 장소가 아니라 날짜로 혼잡을 피하는 경로 */}
+          {/* 4. 이번 주 한적한 날 — 장소가 아니라 날짜로 혼잡을 피하는 경로 */}
           {/*
             오른쪽 좁고 긴 칸. 두 줄을 차지해(row-span-2) 왼쪽 두 칸이 쌓인 높이와 아랫변이 맞는다.
 
@@ -889,6 +914,37 @@ export function HomePage() {
 
           </section>
 
+
+          {/* 5. 다른 사람들의 여행 — 지역이 넘어가도 그대로 선다 */}
+          <section className={`${CELL} gap-3 lg:col-span-4 lg:gap-3`}>
+            <div className="flex flex-col gap-0.75 px-1">
+              <h2 className={SECTION_TITLE}>다른 사람들의 여행</h2>
+              <span className="text-hint text-[12.5px]">최근에 저장된 코스예요</span>
+            </div>
+
+            {others.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-1">
+                {others.map((course) => (
+                  <OtherCourseCard
+                    key={`${course.region}-${course.startDate}-${course.createdAt}`}
+                    course={course}
+                  />
+                ))}
+              </div>
+            ) : (
+              /*
+                아직 저장된 코스가 없을 때. <b>빈 칸으로 두지 않는다.</b>
+                자리만 비워 두면 고장으로 읽히고, 스켈레톤을 계속 돌리면 영영 오지 않을 것을
+                기다리는 화면이 된다. 대신 첫 사람이 될 수 있다고 말한다.
+              */
+              <div className={`${CARD} flex flex-col gap-1.5 p-4.5`}>
+                <span className="text-fg text-[14px] font-semibold">아직 저장된 코스가 없어요</span>
+                <span className="text-hint text-[12.5px] leading-[1.6]">
+                  코스를 짜고 저장하면 여기 처음으로 올라와요.
+                </span>
+              </div>
+            )}
+          </section>
         </>
         )}
         </div>

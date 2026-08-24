@@ -14,6 +14,7 @@ import type {
   DeleteAccountRequest,
   LoginRequest,
   NearbyPlace,
+  PublicCourse,
   Place,
   SaveCourseRequest,
   SavedCourseDetail,
@@ -362,6 +363,15 @@ export function saveCourse(
   signal?: AbortSignal,
 ): Promise<SavedCourseDetail> {
   return apiRequest<SavedCourseDetail>('/courses', { method: 'POST', body: request, signal })
+}
+
+/**
+ * GET /api/courses/recent — 다른 사람들이 최근에 저장한 코스 (익명).
+ *
+ * 로그인 없이 부를 수 있다. 로그인 상태면 서버가 내 코스를 빼고 준다.
+ */
+export function fetchRecentCourses(limit = 4, signal?: AbortSignal): Promise<PublicCourse[]> {
+  return apiRequest<PublicCourse[]>(`/courses/recent?limit=${limit}`, { signal })
 }
 
 /** GET /api/courses — 내가 저장한 코스 목록. 최근 저장한 것이 먼저 온다 */

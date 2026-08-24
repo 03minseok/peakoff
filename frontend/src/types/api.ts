@@ -302,6 +302,29 @@ export interface SavedCourseDetail extends Omit<SavedCourseSummary, 'placeCount'
   places: SavedPlace[]
 }
 
+/**
+ * 남이 저장한 코스의 <b>익명</b> 요약. 홈의 "다른 사람들의 여행"에 쓴다.
+ *
+ * <b>id도 이름도 없다.</b> id가 없으니 눌러서 열어 볼 길이 아예 없고,
+ * 코스 이름은 사용자가 자기만 볼 줄 알고 지은 것이라 공개에 동의한 적이 없다.
+ * 남는 것은 지역·기간·총점과 앞쪽 장소 이름 몇 개뿐이다.
+ */
+export interface PublicCourse {
+  region: string
+  regionName: string
+  startDate: string
+  endDate: string
+  nights: number
+  days: number
+  totalQuietness: number
+  level: CongestionLevel
+  levelLabel: string
+  placeCount: number
+  /** 맛보기로 오는 앞쪽 장소 이름. 코스 전체가 아니다 */
+  places: string[]
+  createdAt: string
+}
+
 /** 서버 MemberResponse. 비밀번호 관련 값은 어떤 형태로도 내려오지 않는다. */
 export interface AuthMember {
   id: number

@@ -15,6 +15,7 @@ import com.peakoff.course.domain.SavedCourse;
 import com.peakoff.course.domain.SavedCourse.PlaceEntry;
 import com.peakoff.course.domain.SavedCoursePlace;
 import com.peakoff.course.domain.SavedCourseRepository;
+import com.peakoff.course.dto.PublicCourseSummary;
 import com.peakoff.course.dto.SaveCourseRequest;
 import com.peakoff.course.dto.SavedCourseDetail;
 import com.peakoff.course.dto.SavedCourseSummary;
@@ -133,5 +134,22 @@ public class SavedCourseService {
 	 */
 	private SavedCourseDetail toDetail(SavedCourse course) {
 		return SavedCourseDetail.from(course);
+	}
+	/**
+	 * 최근 저장된 남의 코스 몇 개. 익명 요약이라 로그인 없이도 볼 수 있다.
+	 *
+	 * @param viewerId 보고 있는 사람. 로그인하지 않았으면 {@code null}.
+	 *                 자기 코스는 "다른 사람들의 여행"이 아니므로 뺀다
+	 */
+	@Transactional(readOnly = true)
+	public List<PublicCourseSummary> recent(Long viewerId, int limit) {
+		List<SavedCourse> courses = viewerId == null
+				? savedCourseRepository.findTop12ByOrderByCreatedAtDesc()
+				: savedCourseRepository.findTop12ByMemberIdNotOrderByCreatedAtDesc(viewerId);
+
+		return courses.stream()
+				.limit(limit)
+				.map(PublicCourseSummary::from)
+				.toList();
 	}
 }
