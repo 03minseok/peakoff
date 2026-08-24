@@ -27,9 +27,14 @@ interface SheetTarget {
   placeId: string
   placeName: string
   visitDate: string
-  /** 지금 이 자리의 한적도. 후보가 더 나은지 비교해 보여주기 위해 함께 넘긴다 */
-  quietness: number
-  level: CongestionLevel
+  /**
+   * 지금 이 자리의 한적도. 후보가 더 나은지 비교해 보여주기 위해 함께 넘긴다.
+   *
+   * <b>null이면 시트가 다른 모드로 열린다.</b> 음식점·숙박처럼 예측 대상이 아닌 자리에서는
+   * 추천도를 매길 수 없어, 추천 대신 가까운 같은 분류 장소를 보여준다.
+   */
+  quietness: number | null
+  level: CongestionLevel | null
 }
 
 /** 날짜 목록의 한 줄. 원안·적용된 날짜·나머지 후보를 같은 모양으로 다루기 위한 형태 */
@@ -177,8 +182,12 @@ export function DiagnosisPage() {
   }
 
   const baselineTotal = baseline.phase === 'loaded' ? baseline.diagnosis.totalQuietness : null
-  const improvement =
-    diagnosis && baselineTotal !== null ? diagnosis.totalQuietness - baselineTotal : 0
+  /*
+    총점은 <b>없을 수 있다.</b> 진단된 칸이 하나도 없는 코스(밥집만 담은 경우)가 그렇다.
+    한쪽이라도 비면 개선폭이라는 값이 성립하지 않으므로 0으로 둔다 — 아래에서 그리지 않는다.
+  */
+  const total = diagnosis?.totalQuietness ?? null
+  const improvement = total !== null && baselineTotal !== null ? total - baselineTotal : 0
   const dateMoved =
     state.baseline !== null && state.baseline.plan.startDate !== plan.startDate
 
@@ -370,15 +379,27 @@ export function DiagnosisPage() {
             className={`${CARD_RAISED} flex flex-col items-center gap-4.5 p-5 sm:flex-row sm:items-center sm:gap-7 sm:p-6.5`}
             aria-live="polite"
           >
+            {/*
+              총점이 없으면 <b>게이지를 비운다.</b> 0%로 그리면 눈금이 바닥에 붙어
+              "최악의 코스"로 읽히는데, 실제로는 매길 수 없었을 뿐이다.
+              숫자 자리에는 가운뎃점을 둔다 — 자리를 지켜야 옆 칸이 밀리지 않는다.
+            */}
             <div
               className="grid h-27 w-27 flex-none place-items-center rounded-full lg:h-34 lg:w-34"
               style={{
-                background: `conic-gradient(${LEVEL_COLOR_VAR[diagnosis.totalLevel]} ${diagnosis.totalQuietness}%, var(--c-line) 0)`,
+                background:
+                  diagnosis.totalLevel !== null && diagnosis.totalQuietness !== null
+                    ? `conic-gradient(${LEVEL_COLOR_VAR[diagnosis.totalLevel]} ${diagnosis.totalQuietness}%, var(--c-line) 0)`
+                    : 'var(--c-line)',
               }}
             >
               <div className="bg-surface grid h-22 w-22 place-items-center rounded-full lg:h-28 lg:w-28">
-                <span className="text-fg font-mono text-[34px] leading-none font-semibold tracking-[-0.02em]">
-                  {diagnosis.totalQuietness}
+                <span
+                  className={`font-mono text-[34px] leading-none font-semibold tracking-[-0.02em] ${
+                    diagnosis.totalQuietness === null ? 'text-hint' : 'text-fg'
+                  }`}
+                >
+                  {diagnosis.totalQuietness ?? '·'}
                 </span>
                 <span className="text-hint text-[11.5px]">한적 지수</span>
               </div>
@@ -386,27 +407,45 @@ export function DiagnosisPage() {
 
             <div className="flex min-w-0 flex-1 flex-col items-center gap-2.5 sm:items-start">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <CongestionBadge
-                  level={diagnosis.totalLevel}
-                  label={diagnosis.totalLevelLabel}
-                />
+                {diagnosis.totalLevel !== null && diagnosis.totalLevelLabel !== null && (
+                  <CongestionBadge
+                    level={diagnosis.totalLevel}
+                    label={diagnosis.totalLevelLabel}
+                  />
+                )}
                 {/* 출처 표기(절대 규칙 4). 공사 이름 대신 중립 표현 — 숫자가 서는 화면마다 한 번은 말한다 */}
                 <span className="text-hint text-[13px]">
                   {formatKoreanDate(plan.startDate)} 기준 · 공공데이터 기반 예측
                 </span>
               </div>
 
-              <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
-                {crowdedCount > 0
-                  ? `${crowdedCount}곳이 붐빌 것으로 보여요`
-                  : '전체적으로 여유로운 코스예요'}
-              </p>
+              {/*
+                총점이 없을 때 "전체적으로 여유로운 코스예요"라고 말하면 <b>거짓말이 된다.</b>
+                붐비는 곳이 0곳인 것과 셀 수 있는 곳이 0곳인 것은 다르다.
+                무엇을 못 했는지와 그래서 무엇을 할 수 있는지를 함께 말한다.
+              */}
+              {diagnosis.totalQuietness === null ? (
+                <div className="flex flex-col gap-1">
+                  <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
+                    예상 혼잡을 매길 수 있는 장소가 아직 없어요
+                  </p>
+                  <p className="text-hint m-0 text-center text-[13px] leading-[1.5] text-pretty sm:text-left">
+                    음식점·숙박은 예측 대상이 아니에요. 관광지를 한 곳 담으면 코스 점수가 나와요.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
+                  {crowdedCount > 0
+                    ? `${crowdedCount}곳이 붐빌 것으로 보여요`
+                    : '전체적으로 여유로운 코스예요'}
+                </p>
+              )}
 
               {improvement !== 0 && baselineTotal !== null && (
                 <p className="m-0 text-center text-[13px] sm:text-left">
                   원안 {baselineTotal} → 지금{' '}
                   <strong className={improvement > 0 ? 'text-quiet-deep' : ''}>
-                    {diagnosis.totalQuietness}
+                    {total}
                     {improvement > 0 ? ` (+${improvement})` : ` (${improvement})`}
                   </strong>
                 </p>
@@ -841,15 +880,10 @@ export function DiagnosisPage() {
                       {/*
                         이름과 분류. 넓은 화면에서는 가운데 열이 되어 남는 폭을 가진다.
 
-                        진단된 칸의 아래 여백은 오른쪽 행동 자리가 갖는다(pb-4). 진단되지 않은
-                        칸은 그 자리가 비므로 여기서 직접 갖는다 — 안 그러면 카드 바닥에
-                        글자가 붙는다.
+                        아래 여백은 오른쪽 행동 자리가 갖는다(pb-4). 진단 여부와 상관없이
+                        그 자리에 늘 버튼이 서므로 한 곳에서만 여백을 준다.
                       */}
-                      <div
-                        className={`flex min-w-0 flex-col gap-0.5 px-4 pt-3.5 sm:order-2 sm:flex-1 sm:px-0 sm:pt-0 sm:pb-0 ${
-                          quietness === null || level === null ? 'pb-4' : ''
-                        }`}
-                      >
+                      <div className="flex min-w-0 flex-col gap-0.5 px-4 pt-3.5 sm:order-2 sm:flex-1 sm:px-0 sm:pt-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-fg m-0 text-[17px] font-bold tracking-[-0.01em] sm:text-base sm:font-semibold">
                             {slot.place.name}
@@ -888,11 +922,7 @@ export function DiagnosisPage() {
                         행동 자리. 좁은 화면에서는 카드 아래를 가로지르는 버튼이고,
                         넓은 화면에서는 오른쪽 끝의 작은 버튼이다.
                       */}
-                      <div
-                        className={`sm:order-3 sm:flex sm:w-28 sm:flex-none sm:flex-col sm:items-end sm:gap-2 sm:p-0 ${
-                          quietness === null || level === null ? '' : 'px-4 pt-3 pb-4'
-                        }`}
-                      >
+                      <div className="px-4 pt-3 pb-4 sm:order-3 sm:flex sm:w-28 sm:flex-none sm:flex-col sm:items-end sm:gap-2 sm:p-0">
                         {/*
                           넓은 화면에서는 배지가 사진에서 내려와 버튼 위에 선다.
                           폭을 고정(w-32)하는 이유는 배지 글자 길이가 등급마다 달라서다 —
@@ -915,16 +945,38 @@ export function DiagnosisPage() {
 
                         {quietness === null || level === null ? (
                           /*
-                            진단되지 않은 자리는 <b>그냥 비워 둔다.</b>
+                            진단되지 않은 자리에도 <b>장소를 바꿀 길은 연다.</b>
 
-                            버튼을 잠근 채로 두지 않는 이유: 눌리지 않는 버튼은 "지금은 안 되지만
-                            언젠가 될 것"으로 읽혀 사용자가 계속 시도한다.
+                            예전에는 여기를 비워 뒀다. 점수를 못 매기니 추천도 못 한다는
+                            이유였는데, 그 바람에 밥집 셋으로 코스를 짠 사용자는
+                            <b>바꿀 방법 자체가 없었다.</b> 우리가 점수를 못 매기는 것이지
+                            사용자가 다른 밥집을 고르고 싶지 않은 것이 아니다.
+
+                            문구가 "장소 바꾸기"가 아니라 "가까운 곳"인 이유: 열리는 것이
+                            추천 목록이 아니다. 같은 분류에서 가까운 순으로 늘어놓을 뿐이고,
+                            어디가 더 나은지는 말하지 않는다. 버튼 이름이 그 차이를 미리 알린다.
 
                             사유는 이 자리가 아니라 <b>이름 아래</b>에 적는다. 여기는 폭이 좁아
-                            (sm:w-28) 문장이 서너 줄로 접히고, 무엇보다 "왜 점수가 없는지"는
-                            장소에 딸린 설명이지 행동이 아니다.
+                            (sm:w-28) 문장이 서너 줄로 접힌다.
                           */
-                          null
+                          <button
+                            type="button"
+                            className="press rounded-ui border-line bg-surface text-muted hover:border-brand hover:text-brand-deep h-11 w-full cursor-pointer border text-sm font-semibold whitespace-nowrap sm:h-9 sm:w-full sm:px-3 sm:text-[13px]"
+                            onClick={() =>
+                              setSheet({
+                                day: slot.day,
+                                index: slot.order - 1,
+                                placeId: slot.place.id,
+                                placeName: slot.place.name,
+                                visitDate: slot.visitDate,
+                                quietness: null,
+                                level: null,
+                              })
+                            }
+                            aria-label={`${slot.place.name} 근처의 같은 분류 장소 보기`}
+                          >
+                            가까운 곳
+                          </button>
                         ) : isSwapped(slot.day, slot.order, slot.place.id) ? (
                           /*
                             되돌리기는 날짜 목록의 원안 줄과 <b>같은 모양</b>이다 —

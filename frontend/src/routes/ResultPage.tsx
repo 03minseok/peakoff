@@ -79,7 +79,8 @@ function CourseColumn({
 }: {
   title: string
   subtitle: string
-  score: number
+  /** 총점. 진단된 칸이 하나도 없으면 null이다 */
+  score: number | null
   diagnosis: CourseDiagnosis
   /** 교체된 장소 ID. 개선안 열에서만 표시한다 */
   changedPlaceIds?: string[]
@@ -112,10 +113,11 @@ function CourseColumn({
         </div>
         <span
           className={`flex-none font-mono text-[26px] leading-none font-semibold ${
-            highlighted ? 'text-quiet-deep' : 'text-crowded-deep'
+            score === null ? 'text-hint' : highlighted ? 'text-quiet-deep' : 'text-crowded-deep'
           }`}
         >
-          {score}
+          {/* 점수를 못 매긴 코스는 가운뎃점. 0을 쓰면 "최악"으로 읽힌다 */}
+          {score ?? '·'}
         </span>
       </div>
 
@@ -253,7 +255,14 @@ export function ResultPage() {
   const ready = beforeDiagnosis !== null && afterDiagnosis !== null
 
   const changes = ready ? diffCourses(beforeDiagnosis, afterDiagnosis) : []
-  const gain = ready ? afterDiagnosis.totalQuietness - beforeDiagnosis.totalQuietness : 0
+  /*
+    개선폭은 <b>양쪽 총점이 다 있어야</b> 성립한다. 진단된 칸이 하나도 없는 코스는
+    총점이 null이라, 한쪽이라도 비면 0으로 두고 아래에서 비교 문구를 그리지 않는다.
+  */
+  const beforeTotal = ready ? beforeDiagnosis.totalQuietness : null
+  const afterTotal = ready ? afterDiagnosis.totalQuietness : null
+  const comparable = beforeTotal !== null && afterTotal !== null
+  const gain = comparable ? afterTotal - beforeTotal : 0
 
   // 날짜 이동과 장소 교체는 서로 다른 회피 경로다. 무엇을 해서 나아졌는지
   // 구분해 보여줘야 "왜 좋아졌는지"가 화면에 남는다.
@@ -325,13 +334,15 @@ export function ResultPage() {
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[12.5px] font-medium text-white/50">원안</span>
                 <span className="text-crowded-soft font-mono text-[44px] leading-[0.9] font-semibold tracking-[-0.03em] lg:text-[68px]">
-                  {beforeDiagnosis.totalQuietness}
+                  {beforeDiagnosis.totalQuietness ?? '·'}
                 </span>
-                <CongestionBadge
-                  level={beforeDiagnosis.totalLevel}
-                  label={beforeDiagnosis.totalLevelLabel}
-                  size="sm"
-                />
+                {beforeDiagnosis.totalLevel !== null && beforeDiagnosis.totalLevelLabel !== null && (
+                  <CongestionBadge
+                    level={beforeDiagnosis.totalLevel}
+                    label={beforeDiagnosis.totalLevelLabel}
+                    size="sm"
+                  />
+                )}
               </div>
 
               <ArrowRight size={26} className="mt-3.5 text-white/30" />
@@ -339,13 +350,15 @@ export function ResultPage() {
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[12.5px] font-medium text-white/60">개선안</span>
                 <span className="text-quiet-soft font-mono text-[54px] leading-[0.9] font-semibold tracking-[-0.03em] lg:text-[88px]">
-                  {afterDiagnosis.totalQuietness}
+                  {afterDiagnosis.totalQuietness ?? '·'}
                 </span>
-                <CongestionBadge
-                  level={afterDiagnosis.totalLevel}
-                  label={afterDiagnosis.totalLevelLabel}
-                  size="sm"
-                />
+                {afterDiagnosis.totalLevel !== null && afterDiagnosis.totalLevelLabel !== null && (
+                  <CongestionBadge
+                    level={afterDiagnosis.totalLevel}
+                    label={afterDiagnosis.totalLevelLabel}
+                    size="sm"
+                  />
+                )}
               </div>
             </div>
 
@@ -596,15 +609,29 @@ export function ResultPage() {
               >
                 돌아가기
               </Link>
-              {/* 이 화면의 결론. 남는 폭을 다 가져가 가장 크게 선다 */}
+              {/*
+                이 화면의 결론. 남는 폭을 다 가져가 가장 크게 선다.
+
+                <b>총점이 없으면 저장할 수 없다.</b> 저장은 그때의 점수를 스냅샷으로 함께
+                남기는 일인데, 남길 점수가 없으면 나중에 열어도 비교할 것이 없다.
+                버튼을 눌러 보고 실패하게 두는 대신 미리 잠그고 <b>이유를 옆에 적는다</b> —
+                잠긴 채 아무 말 없는 버튼은 고장으로 읽힌다.
+              */}
               <button
                 type="button"
-                className={`${PRIMARY_BUTTON} flex-1`}
+                className={`${PRIMARY_BUTTON} flex-1 disabled:cursor-not-allowed disabled:opacity-45`}
                 onClick={() => setShowSavePrompt(true)}
+                disabled={afterTotal === null}
               >
                 저장하기
               </button>
             </div>
+
+            {afterTotal === null && (
+              <p className="text-hint m-0 text-center text-[12.5px]">
+                코스 점수가 있어야 저장할 수 있어요. 관광지를 한 곳 담아 보세요.
+              </p>
+            )}
 
             {/*
               테두리도 배경도 없는 조용한 버튼. 그래도 높이는 넉넉히 준다 —
@@ -632,8 +659,11 @@ export function ResultPage() {
                   region: plan.region,
                   startDate: plan.startDate,
                   nights: plan.nights,
-                  // 방금 진단에서 받은 총점을 그대로 싣는다. 서버가 다시 계산하지 않는다.
-                  totalQuietness: afterDiagnosis.totalQuietness,
+                  /*
+                    방금 진단에서 받은 총점을 그대로 싣는다. 서버가 다시 계산하지 않는다.
+                    총점이 없으면 저장 버튼이 잠겨 있어 여기까지 오지 않는다.
+                  */
+                  totalQuietness: afterTotal ?? 0,
                   slots: toSlots(state.days),
                 })
               }}

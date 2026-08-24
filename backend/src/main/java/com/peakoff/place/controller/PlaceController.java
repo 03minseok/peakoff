@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peakoff.global.response.ApiResponse;
+import com.peakoff.place.dto.NearbyPlaceResponse;
 import com.peakoff.place.dto.PlaceResponse;
 import com.peakoff.place.service.PlaceService;
 import com.peakoff.recommendation.dto.AlternativeResponse;
@@ -96,5 +97,39 @@ public class PlaceController {
 			int limit) {
 
 		return ApiResponse.ok(recommendationService.findAlternatives(placeId, date, limit));
+	}
+
+	/**
+	 * GET /api/places/{placeId}/nearby?limit=5
+	 *
+	 * <p>대안 추천과 <b>다른 엔드포인트인 이유</b>: 돌려주는 것이 다르다.
+	 * 저쪽은 점수와 근거가 붙은 추천이고, 여기는 거리라는 사실뿐이다.
+	 * 한 엔드포인트에 몰아 넣고 점수 자리를 비우면, 화면이 "점수가 아직 안 온 추천"으로 읽는다.
+	 */
+	@Operation(
+			summary = "근처의 같은 분류 장소 (점수 없음)",
+			description = """
+					기준 장소에서 가까운 순으로, 같은 분류의 다른 장소를 돌려준다.
+
+					<b>추천이 아니다.</b> 공사 집중률은 관광지만 예측해서 음식점·숙박은 한적도를 알 수 없고,
+					한적도를 모르면 추천도를 매길 수 없다. 그래서 "여기가 더 한적합니다"라고 말하지 않고
+					"같은 분류이고 몇 km 떨어져 있다"는 사실만 전한다.
+
+					진단할 수 없는 장소에서 장소를 바꾸는 유일한 길이다.
+					날짜를 받지 않는 것도 같은 이유다 — 날짜에 따라 달라지는 값이 하나도 없다.
+
+					반경 밖이거나 같은 분류가 없으면 빈 목록이다.""")
+	@GetMapping("/{placeId}/nearby")
+	public ApiResponse<List<NearbyPlaceResponse>> nearby(
+			@Parameter(description = "기준 장소 ID", example = "2736657")
+			@PathVariable @NotBlank(message = "장소를 지정해야 합니다.") String placeId,
+
+			@Parameter(description = "최대 개수")
+			@RequestParam(defaultValue = "" + DEFAULT_ALTERNATIVE_LIMIT)
+			@Min(value = 1, message = "개수는 1 이상이어야 합니다.")
+			@Max(value = 20, message = "한 번에 20곳까지 볼 수 있습니다.")
+			int limit) {
+
+		return ApiResponse.ok(placeService.findNearby(placeId, limit));
 	}
 }

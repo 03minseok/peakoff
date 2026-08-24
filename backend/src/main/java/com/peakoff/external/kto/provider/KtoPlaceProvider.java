@@ -13,6 +13,8 @@ import com.peakoff.external.kto.client.KtoPlaceClient;
 import com.peakoff.external.kto.client.RegionCatalog;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.NearbyPlaces;
+import com.peakoff.place.domain.NearbyPlace;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.SupportedRegion;
@@ -81,6 +83,18 @@ public class KtoPlaceProvider implements PlaceProvider {
 			return cached;
 		}
 		return placeClient.findDetail(placeId);
+	}
+
+	/**
+	 * <b>이미 받아 둔 지역 카탈로그</b>에서 고른다. 공사 API를 새로 부르지 않는다.
+	 *
+	 * <p>카탈로그는 6시간 캐시라 대개 메모리에 있다. 음식점 211곳·숙박 121곳이 전부 여기 있으므로,
+	 * 예측이 닿지 않는 장소일수록 오히려 후보가 넉넉하다 — 진단은 못 해도 바꿀 곳은 보여줄 수 있다.
+	 */
+	@Override
+	public List<NearbyPlace> nearby(Place origin, int limit) {
+		return NearbyPlaces.from(placeClient.catalogOf(region()).all(), origin,
+				NearbyPlaces.DEFAULT_RADIUS_KM, limit);
 	}
 
 	/**
