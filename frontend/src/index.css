@@ -475,6 +475,31 @@
   }
 }
 
+/*
+ * 홈의 지역이 넘어갈 때. <b>오른쪽에서 밀려 들어온다.</b>
+ *
+ * 나가는 쪽을 따로 그리지 않는 이유: 지역이 바뀌면 내용을 새로 받아와야 해서
+ * 두 지역이 한 화면에 동시에 있는 순간이 없다. 들어오는 쪽만 움직여도
+ * "옆으로 넘어갔다"로 읽힌다.
+ *
+ * 거리를 18px로 짧게 두는 이유: 8초마다 저절로 도는 움직임이라, 크게 움직이면
+ * 읽고 있던 눈이 매번 끌려간다. 넘어갔다는 사실만 알리고 물러난다.
+ */
+.region-slide {
+  animation: pk-region-in 420ms var(--ease-out-quart);
+}
+
+@keyframes pk-region-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes pk-shimmer {
   0% {
     background-position: -320px 0;
@@ -500,7 +525,9 @@
   .skeleton,
   .sheet-dim,
   .sheet-panel,
-  .dialog-panel {
+  .dialog-panel,
+  /* 지역은 그대로 넘어가되 미끄러지지 않는다. 내용이 바뀌는 것과 움직이는 것은 다른 일이다 */
+  .region-slide {
     animation: none;
   }
 
