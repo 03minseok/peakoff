@@ -366,9 +366,13 @@ export function HomePage() {
    * 넘어가는 세 칸에 함께 붙인다.
    *
    * <p>{@code key}는 여기 담지 않고 각 칸에 직접 적는다 — React는 key를 spread로 받으면
-   * 경고한다. key가 지역 슬러그인 것이 핵심이다: 지역이 바뀌면 React가 그 칸을 새로 만들고,
+   * 경고한다. key에 지역 슬러그를 넣는 이유: 지역이 바뀌면 React가 그 칸을 새로 만들고,
    * 그 순간 CSS 애니메이션이 처음부터 다시 돈다. 상태로 "지금 넘어가는 중"을 들고 있지
    * 않아도 된다.
+   *
+   * <p>⚠️ <b>칸마다 앞에 이름을 붙여야 한다</b>({@code crowded-} · {@code quiet-} · {@code week-}).
+   * 세 칸은 한 부모의 형제인데 key를 슬러그 하나로 두면 셋이 같은 key를 갖는다.
+   * 그러면 React가 어느 칸이 어느 칸인지 못 가려, 바뀌는 대신 <b>아래에 새로 쌓인다.</b>
    *
    * <p>Capture를 쓰는 이유: 초점은 칸 안쪽 어느 요소에나 들어갈 수 있는데,
    * 일반 onFocus는 자식에서 올라오는 것을 놓치는 경우가 있다.
@@ -620,7 +624,7 @@ export function HomePage() {
         {state.phase !== 'error' && (
         <>
           {/* 3. 오늘의 경주 — 오늘 가장 붐빌 것으로 보이는 명소들 */}
-          <section key={regionSlug} className={`${CELL} region-slide gap-3 lg:col-span-4 lg:gap-3`} {...rotating}>
+          <section key={`crowded-${regionSlug}`} className={`${CELL} region-slide gap-3 lg:col-span-4 lg:gap-3`} {...rotating}>
             {/*
               제목과 설명을 <b>한 묶음</b>으로 싼다. 설명을 섹션의 별도 항목으로 두면
               칸 사이 간격(gap-3)을 받아 제목에서 멀어지는데, 옆의 "지금 한적한 곳"은
@@ -698,7 +702,7 @@ export function HomePage() {
           </section>
 
           {/* 4. 지금 한적한 곳 — 바로 왼쪽 "오늘의 경주"의 대안이다. 붙어 있어야 짝으로 읽힌다 */}
-          <section key={regionSlug} className={`${CELL} region-slide gap-3 lg:col-span-5 lg:gap-3`} {...rotating}>
+          <section key={`quiet-${regionSlug}`} className={`${CELL} region-slide gap-3 lg:col-span-5 lg:gap-3`} {...rotating}>
             <div className="flex flex-col gap-0.75 px-1">
               <h2 className={SECTION_TITLE}>지금 한적한 곳</h2>
               <span className="text-hint text-[12.5px]">
@@ -730,7 +734,7 @@ export function HomePage() {
             장치(order)까지 필요했다. 첫 줄을 진입점 둘이 가져가면서 이 칸도 한 줄이 되어
             <b>그 두 가지가 모두 사라졌다</b> — 이제 DOM 순서가 곧 화면 순서다.
           */}
-          <section key={regionSlug} className={`${CELL} region-slide gap-3 lg:col-span-3 lg:gap-3`} {...rotating}>
+          <section key={`week-${regionSlug}`} className={`${CELL} region-slide gap-3 lg:col-span-3 lg:gap-3`} {...rotating}>
             {/*
               가장 한적한 날은 <b>문구로</b> 말한다. 목록에서 그 줄만 색을 깔면
               "선택됨"과 신호가 부딪혀, 어느 것이 내가 고른 것인지 흐려진다.
