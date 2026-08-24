@@ -66,7 +66,7 @@ public class CourseDraftService {
 	public CourseDraft draft(SupportedRegion region, LocalDate startDate, int nights, SurveyAnswers answers) {
 		List<Place> pool = candidatePool(region, answers);
 		if (pool.isEmpty()) {
-			throw new NotFoundException("고른 여행 스타일에 맞는 장소를 찾지 못했습니다. 스타일을 더 골라 보세요.");
+			throw new NotFoundException("고른 여행 스타일에 맞는 장소를 찾지 못했습니다.\n스타일을 더 골라 보세요.");
 		}
 
 		Set<String> used = new HashSet<>();
@@ -77,7 +77,7 @@ public class CourseDraftService {
 		}
 
 		if (slots.isEmpty()) {
-			throw new NotFoundException("설문 조건에 맞는 코스를 만들지 못했습니다. 조건을 넓혀 보세요.");
+			throw new NotFoundException("설문 조건에 맞는 코스를 만들지 못했습니다.\n조건을 넓혀 보세요.");
 		}
 		return CourseDraft.of(region.toRegion(), startDate, nights, slots);
 	}

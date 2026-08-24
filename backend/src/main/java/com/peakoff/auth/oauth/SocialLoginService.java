@@ -153,11 +153,11 @@ public class SocialLoginService {
 		JwtProvider.LinkTicket ticket = jwtProvider.parseLinkTicket(request.linkTicket());
 		if (ticket == null) {
 			// 만료가 대부분이다. 다시 시도하면 되는 일이라 그렇게 말한다.
-			throw new UnauthorizedException("연결 정보가 만료됐어요. 다시 시도해 주세요.");
+			throw new UnauthorizedException("연결 정보가 만료됐어요.\n다시 시도해 주세요.");
 		}
 
 		Member member = memberRepository.findById(ticket.memberId())
-				.orElseThrow(() -> new UnauthorizedException("회원 정보를 찾을 수 없습니다. 다시 시도해 주세요."));
+				.orElseThrow(() -> new UnauthorizedException("회원 정보를 찾을 수 없습니다.\n다시 시도해 주세요."));
 
 		if (!member.hasPassword() || !passwordEncoder.matches(request.password(), member.passwordHash())) {
 			throw new UnauthorizedException("비밀번호가 올바르지 않습니다.");

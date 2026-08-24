@@ -196,7 +196,7 @@ public class NaverLoginClient implements SocialLoginClient {
 	 * 어디서 막혔는지는 우리 설정을 알려주는 정보가 된다. 원인은 로그가 들고 있다.
 	 */
 	private static UnauthorizedException fail() {
-		return new UnauthorizedException("네이버 로그인에 실패했어요. 다시 시도해 주세요.");
+		return new UnauthorizedException("네이버 로그인에 실패했어요.\n다시 시도해 주세요.");
 	}
 
 	/** 오류 본문을 로그용 문자열로. 읽다 실패해도 원래 오류를 덮지 않도록 삼킨다. */

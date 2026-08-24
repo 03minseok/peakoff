@@ -52,11 +52,11 @@ public class SavedCourseService {
 	public SavedCourseDetail save(Long memberId, SaveCourseRequest request) {
 		Member member = memberRepository.findById(memberId)
 				// 토큰은 유효한데 회원이 없다 — 탈퇴했거나 DB가 초기화된 경우다.
-				.orElseThrow(() -> new UnauthorizedException("회원 정보를 찾을 수 없습니다. 다시 로그인해 주세요."));
+				.orElseThrow(() -> new UnauthorizedException("회원 정보를 찾을 수 없습니다.\n다시 로그인해 주세요."));
 
 		if (savedCourseRepository.countByMemberId(memberId) >= SavedCourse.MAX_PER_MEMBER) {
 			throw new ConflictException(
-					"저장할 수 있는 코스는 %d개까지입니다. 쓰지 않는 코스를 지우고 다시 시도해 주세요."
+					"저장할 수 있는 코스는 %d개까지입니다.\n쓰지 않는 코스를 지우고 다시 시도해 주세요."
 							.formatted(SavedCourse.MAX_PER_MEMBER));
 		}
 

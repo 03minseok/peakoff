@@ -253,12 +253,12 @@ export function AlternativeSheet({
             "여기가 더 낫다"고 할 근거가 없다. 우리가 아는 것(분류·거리)만 말하고
             <b>고르는 판단은 사용자에게 남긴다</b> — 계산하지 않은 것을 근거로 말하지 않는다.
           */}
-          <p className="m-0 text-[13px] leading-[1.6] text-pretty">
+          <p className="m-0 text-[13px] leading-[1.6] text-pretty whitespace-pre-line">
             {nearbyMode
-              ? '예상 혼잡을 알 수 없는 곳이라 추천 순서를 매기지 못해요. 같은 분류에서 가까운 순으로 보여드릴게요.'
+              ? '예상 혼잡을 알 수 없는 곳이라 추천 순서를 매기지 못해요.\n같은 분류에서 가까운 순으로 보여드릴게요.'
               : originLevel === 'CROWDED'
-                ? '추천도가 높은 순이에요. 추천도에는 한적도가 가장 크게 반영됩니다.'
-                : '지금도 크게 붐비지는 않는 곳이에요. 추천도가 높은 순으로 비교해 보세요.'}
+                ? '추천도가 높은 순이에요.\n추천도에는 한적도가 가장 크게 반영됩니다.'
+                : '지금도 크게 붐비지는 않는 곳이에요.\n추천도가 높은 순으로 비교해 보세요.'}
           </p>
         </header>
 
@@ -268,7 +268,7 @@ export function AlternativeSheet({
             <p className="py-6 text-center text-sm">후보를 찾는 중…</p>
           )}
           {load.phase === 'error' && (
-            <p className="text-crowded-deep py-6 text-center text-sm">{load.message}</p>
+            <p className="text-crowded-deep py-6 text-center text-sm whitespace-pre-line">{load.message}</p>
           )}
 
           {load.phase === 'loaded' && load.alternatives.length === 0 && (
