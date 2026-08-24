@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { diagnoseCourse, fetchPlaces } from '../services/api'
+import { diagnoseCourse, fetchDateAlternatives, fetchPlaces } from '../services/api'
 import type { CongestionLevel, DiagnosedSlot } from '../types/api'
 import type { Place } from '../types/api'
-import { today } from '../utils/date'
+import { daysFromToday, today } from '../utils/date'
 
 /**
  * 홈 화면이 쓰는 데이터를 모은다.
@@ -183,24 +183,6 @@ function scoredOnly(slots: DiagnosedSlot[]): ScoredSlot[] {
   return slots.filter((slot): slot is ScoredSlot => slot.quietness !== null)
 }
 
-function averageQuietness(slots: ScoredSlot[]): number {
-  return slots.reduce((sum, slot) => sum + slot.quietness, 0) / slots.length
-}
-
-/**
- * 평균값에 해당하는 등급을 고른다.
- *
- * 평균은 서버가 매기지 않은 값이라 등급이 딸려오지 않는다. 그렇다고 화면에서
- * {@code quietness >= 70 ? '한적'} 식으로 판정하면 <b>임계값이 서버와 화면 두 곳에 생긴다.</b>
- * 분석 결과로 기준이 바뀔 때 한쪽만 고쳐지는 사고가 나므로, 평균과 가장 가까운 값을 가진
- * 슬롯의 등급을 빌려 쓴다. 임계값은 계속 서버에만 남는다.
- */
-function levelNearest(slots: ScoredSlot[], target: number): ScoredSlot {
-  return slots.reduce((closest, slot) =>
-    Math.abs(slot.quietness - target) < Math.abs(closest.quietness - target) ? slot : closest,
-  )
-}
-
 export function useHomeData(region: string): HomeState {
   const [state, setState] = useState<HomeState>({ phase: 'loading' })
 
@@ -285,32 +267,52 @@ export function useHomeData(region: string): HomeState {
           )}% 수준`,
         }))
 
-      // ② 지역을 대표하는 7곳을 7일치로 깔아 주간 예보를 받는다.
+      /*
+       * ② 지역을 대표하는 7곳으로 이번 주 예보를 받는다.
+       *
+       * <b>진단이 아니라 날짜 대안 경로를 쓴다.</b> 진단은 장소마다 점수를 주지 날짜마다
+       * 주지 않아서, 예전에는 화면이 하루치를 평균 내고 <b>그 평균에 가장 가까운 장소의
+       * 등급을 빌려</b> 붙였다. 그래서 같은 36점인데 어떤 날은 보통, 어떤 날은 붐빔이 됐다 —
+       * 36에 가장 가까운 장소가 41이면 그 장소의 "보통"이 따라온 것이다.
+       *
+       * 날짜 대안은 서버가 <b>날짜별로 평균을 내고 그 평균에 등급을 매겨</b> 돌려준다.
+       * 숫자와 배지가 같은 값에서 나오므로 어긋날 수 없고, 임계값도 서버에만 남는다.
+       *
+       * 창의 한가운데를 오늘+3로 두는 이유: 서버는 기준일 앞뒤로 range일을 본다.
+       * 가운데를 오늘로 두면 지난 날짜 절반이 딸려 오고, 오늘+3에 두면 창이 정확히
+       * 오늘부터 7일이 된다.
+       */
       const sample = evenlySampled(byCrowded, FORECAST_SAMPLE_SIZE)
-      const weekDiagnosis = await diagnoseCourse(
-        {
-          region,
-          startDate,
-          nights: FORECAST_DAYS - 1,
-          slots: slotsFor(
-            sample.map((slot) => slot.place.id),
-            FORECAST_DAYS,
-          ),
-        },
+      const half = Math.floor(FORECAST_DAYS / 2)
+      const week = await fetchDateAlternatives(
+        sample.map((slot) => ({ day: 1, placeId: slot.place.id })),
+        daysFromToday(half),
+        half,
         controller.signal,
       )
 
-      const forecast: ForecastDay[] = Array.from({ length: FORECAST_DAYS }, (_, index) => {
-        const daySlots = scoredOnly(weekDiagnosis.slots).filter((slot) => slot.day === index + 1)
-        const average = Math.round(averageQuietness(daySlots))
-        const representative = levelNearest(daySlots, average)
-        return {
-          date: daySlots[0].visitDate,
-          quietness: average,
-          level: representative.level,
-          levelLabel: representative.levelLabel,
-        }
-      })
+      /*
+       * 기준일은 options에 들어 있지 않다(서버가 "고른 날"로 따로 담아 보낸다).
+       * 두 자리에서 온 값을 한 줄로 세워야 이번 주가 빠짐없이 그려진다.
+       */
+      const forecast: ForecastDay[] = [
+        ...week.options,
+        {
+          date: week.selectedDate,
+          quietness: week.selectedQuietness,
+          level: week.selectedLevel,
+          levelLabel: week.selectedLevelLabel,
+        },
+      ]
+        .filter(
+          (day): day is ForecastDay =>
+            day.quietness !== null && day.level !== null && day.levelLabel !== null,
+        )
+        .sort((a, b) => a.date.localeCompare(b.date))
+
+      if (forecast.length === 0) {
+        throw new Error('이번 주 예상 혼잡을 계산하지 못했습니다.')
+      }
 
       const bestDay = forecast.reduce((best, day) =>
         day.quietness > best.quietness ? day : best,
