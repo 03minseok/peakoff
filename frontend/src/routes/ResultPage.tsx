@@ -318,8 +318,6 @@ export function ResultPage() {
             "이쪽이 결론"이라는 방향 표시다.
           */}
           <section className="bg-fg rounded-card relative flex flex-col gap-5 overflow-hidden px-5 py-7 text-white lg:flex-row lg:items-center lg:gap-11 lg:px-10 lg:py-9">
-            {/* 팔레트 띠. 발표의 결론 카드이니 정체성 모티프가 이 카드에도 둘린다. */}
-            <div className="palette-band absolute inset-x-0 top-0 h-[3px]" aria-hidden="true" />
             {/*
               글로우가 틸 하나뿐인 것은 장식이 아니라 결론이다 — 이 카드가 말하는 것이
               "한적한 쪽으로 옮겨왔다"이고, 틸이 그 방향(브랜드이자 한적)의 색이다.
