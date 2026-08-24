@@ -147,7 +147,7 @@ export function SignupPage() {
       setFailure(
         error instanceof ApiRequestError
           ? error.message
-          : '가입하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+          : '가입하지 못했습니다.\n잠시 후 다시 시도해 주세요.',
       )
     } finally {
       setSubmitting(false)
@@ -185,7 +185,9 @@ export function SignupPage() {
           계정 만들기
         </h1>
         <p className="m-0 text-[14.5px] leading-[1.6] text-pretty">
-          30초면 돼요. 지금까지 짠 코스도 그대로 옮겨집니다.
+          30초면 돼요.
+          <br />
+          지금까지 짠 코스도 그대로 옮겨집니다.
         </p>
       </div>
 
@@ -314,7 +316,7 @@ export function SignupPage() {
 
         {failure && (
           <div
-            className="bg-crowded-tint rounded-ui text-crowded-deep px-3.5 py-3 text-xs leading-[1.65]"
+            className="bg-crowded-tint rounded-ui text-crowded-deep px-3.5 py-3 text-xs leading-[1.65] whitespace-pre-line"
             role="alert"
           >
             {failure}

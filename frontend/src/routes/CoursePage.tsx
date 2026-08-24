@@ -330,7 +330,7 @@ export function CoursePage() {
 
           {load.phase === 'loading' && <p className={NOTICE}>불러오는 중…</p>}
           {load.phase === 'error' && (
-            <p className={`${NOTICE} text-crowded-deep`}>{load.message}</p>
+            <p className={`${NOTICE} text-crowded-deep whitespace-pre-line`}>{load.message}</p>
           )}
 
           {/*

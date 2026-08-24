@@ -78,7 +78,7 @@ function Sheet({
       setFailure(
         error instanceof ApiRequestError
           ? error.message
-          : '처리하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          : '처리하지 못했어요.\n잠시 후 다시 시도해 주세요.',
       )
     } finally {
       setBusy(false)
@@ -198,7 +198,7 @@ function Sheet({
   return (
     <FormSheet
       title="정말 탈퇴할까요?"
-      description="계정과 저장한 코스가 모두 사라져요. 되돌릴 수 없어요."
+      description={'계정과 저장한 코스가 모두 사라져요.\n되돌릴 수 없어요.'}
       submitLabel="탈퇴하기"
       cancelLabel="돌아가기"
       danger

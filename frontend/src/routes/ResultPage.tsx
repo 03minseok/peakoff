@@ -304,7 +304,9 @@ export function ResultPage() {
 
       {(original.phase === 'error' || improved.phase === 'error') && (
         <p className={`${NOTICE} text-crowded-deep text-sm`}>
-          결과를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+          결과를 불러오지 못했습니다.
+          <br />
+          잠시 후 다시 시도해 주세요.
         </p>
       )}
 
@@ -368,10 +370,11 @@ export function ResultPage() {
                     ? `${summary.join(' · ')}로 한적 지수가 ${gain} 올랐어요`
                     : `${summary.join(' · ')} · 총점은 ${gain === 0 ? '같아요' : `${Math.abs(gain)} 내려갔어요`}`}
               </h2>
-              <p className="m-0 max-w-[440px] text-[14px] leading-[1.7] text-white/60 text-pretty lg:text-[14.5px]">
+              <p className="m-0 max-w-[440px] text-[14px] leading-[1.7] whitespace-pre-line text-white/60 text-pretty lg:text-[14.5px]">
                 {summary.length === 0
-                  ? '바꾼 곳이 없어요. 진단 화면에서 붐비는 장소의 대안을 확인해 보세요.'
-                  : `원안대로면 ${crowdedBefore}곳에서 인파와 대기를 만날 가능성이 높았어요. 개선안은 동선과 테마를 유지하면서 붐비는 곳을 ${crowdedAfter}곳으로 줄였습니다.`}
+                  ? '바꾼 곳이 없어요.\n진단 화면에서 붐비는 장소의 대안을 확인해 보세요.'
+                  : `원안대로면 ${crowdedBefore}곳에서 인파와 대기를 만날 가능성이 높았어요.
+개선안은 동선과 테마를 유지하면서 붐비는 곳을 ${crowdedAfter}곳으로 줄였습니다.`}
               </p>
               <div className="flex gap-2.5 pt-1">
                 {[
@@ -564,9 +567,9 @@ export function ResultPage() {
             </div>
 
             {state.days.length > 1 && (
-              <p className="text-hint m-0 px-4.5 pb-4 text-[12.5px]">
+              <p className="text-hint m-0 px-4.5 pb-4 text-[12.5px] whitespace-pre-line">
                 {mapDay === 'all'
-                  ? '마커 번호는 “일차-순서”예요. 일차를 고르면 그 날만 볼 수 있어요.'
+                  ? '마커 번호는 “일차-순서”예요.\n일차를 고르면 그 날만 볼 수 있어요.'
                   : `Day ${mapDay}에 담은 ${visibleRoutes[0].length}곳만 순서대로 보여주고 있어요.`}
               </p>
             )}
@@ -627,7 +630,9 @@ export function ResultPage() {
 
             {afterTotal === null && (
               <p className="text-hint m-0 text-center text-[12.5px]">
-                코스 점수가 있어야 저장할 수 있어요. 관광지를 한 곳 담아 보세요.
+                코스 점수가 있어야 저장할 수 있어요.
+                <br />
+                관광지를 한 곳 담아 보세요.
               </p>
             )}
 

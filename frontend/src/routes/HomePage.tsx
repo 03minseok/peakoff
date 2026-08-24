@@ -579,7 +579,9 @@ export function HomePage() {
           /* 데이터 줄 전체를 채운다. 한 칸만 쓰면 나머지가 통째로 비어 오류보다 빈칸이 먼저 보인다 */
           <div className={`${CELL} lg:col-span-12`}>
             <p className="bg-crowded-tint text-crowded-deep rounded-card m-0 p-4 text-center text-[13px]">
-              오늘의 혼잡 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+              오늘의 혼잡 정보를 불러오지 못했어요.
+              <br />
+              잠시 후 다시 시도해 주세요.
             </p>
           </div>
         )}
@@ -604,7 +606,9 @@ export function HomePage() {
               </div>
               {/* 예측·통계값이라 "실시간"이라고 쓰지 않는다. 화면 어디서도 마찬가지다. */}
               <span className="text-hint text-[12.5px]">
-                오늘 예상되는 혼잡이에요. 예측값이라 실제와 다를 수 있어요.
+                오늘 예상되는 혼잡이에요.
+                <br />
+                예측값이라 실제와 다를 수 있어요.
               </span>
             </div>
 

@@ -165,7 +165,7 @@ export function RecommendPage() {
       const message =
         error instanceof ApiRequestError
           ? error.message
-          : '코스를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'
+          : '코스를 만들지 못했어요.\n잠시 후 다시 시도해 주세요.'
       setView({ phase: 'error', message })
     }
   }
@@ -211,8 +211,9 @@ export function RecommendPage() {
           코스를 짜드릴게요
         </h1>
         <p className="m-0 text-[14.5px] leading-[1.65] text-pretty">
-          취향에 맞으면서 그날 덜 붐빌 {regionName} 코스를 만들어 드려요. 만든 뒤에 직접
-          고칠 수 있어요.
+          취향에 맞으면서 그날 덜 붐빌 {regionName} 코스를 만들어 드려요.
+          <br />
+          만든 뒤에 직접 고칠 수 있어요.
         </p>
       </header>
 
@@ -371,7 +372,7 @@ export function RecommendPage() {
         </fieldset>
 
         {view.phase === 'error' && (
-          <p className="bg-crowded-tint text-crowded-deep rounded-ui m-0 px-4 py-3 text-[13px] leading-[1.6]">
+          <p className="bg-crowded-tint text-crowded-deep rounded-ui m-0 px-4 py-3 text-[13px] leading-[1.6] whitespace-pre-line">
             {view.message}
           </p>
         )}
@@ -471,7 +472,9 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
             */}
             {slots.length === 0 ? (
               <p className={`${CARD} m-0 px-4 py-3.5 text-[13px] leading-[1.6]`}>
-                이 날은 조건에 맞는 곳을 더 찾지 못했어요. 다음 화면에서 직접 담아보세요.
+                이 날은 조건에 맞는 곳을 더 찾지 못했어요.
+                <br />
+                다음 화면에서 직접 담아보세요.
               </p>
             ) : (
               <ul className="m-0 flex list-none flex-col gap-2.5 p-0">

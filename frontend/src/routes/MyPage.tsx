@@ -173,7 +173,7 @@ export function MyPage() {
         text:
           error instanceof ApiRequestError
             ? error.message
-            : '코스를 지우지 못했어요. 잠시 후 다시 시도해 주세요.',
+            : '코스를 지우지 못했어요.\n잠시 후 다시 시도해 주세요.',
       })
     } finally {
       setDeleting(false)
@@ -320,7 +320,9 @@ export function MyPage() {
 
       {list.status === 'error' && (
         <p className="bg-crowded-tint text-crowded-deep rounded-card m-0 p-4 text-center text-[13px]">
-          저장한 코스를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+          저장한 코스를 불러오지 못했어요.
+          <br />
+          잠시 후 다시 시도해 주세요.
         </p>
       )}
 
@@ -339,7 +341,7 @@ export function MyPage() {
           role={notice.tone === 'error' ? 'alert' : 'status'}
         >
           <span
-            className={`text-[13px] ${
+            className={`text-[13px] whitespace-pre-line ${
               notice.tone === 'error' ? 'text-crowded-deep' : 'text-brand-deep'
             }`}
           >
@@ -522,8 +524,9 @@ export function MyPage() {
         </button>
 
         <p className="text-muted m-0 px-1 text-[12px] leading-[1.6]">
-          탈퇴하면 저장한 코스가 함께 사라지고 되돌릴 수 없어요. 저장 기능만 필요 없다면
-          로그아웃으로 충분해요.
+          탈퇴하면 저장한 코스가 함께 사라지고 되돌릴 수 없어요.
+          <br />
+          저장 기능만 필요 없다면 로그아웃으로 충분해요.
         </p>
       </section>
 
@@ -566,7 +569,7 @@ export function MyPage() {
       {pendingDelete && (
         <ConfirmSheet
           title={`"${pendingDelete.name}"을(를) 지울까요?`}
-          description="지운 코스는 되돌릴 수 없어요. 계정에서 완전히 사라집니다."
+          description={'지운 코스는 되돌릴 수 없어요.\n계정에서 완전히 사라집니다.'}
           confirmLabel="지우기"
           cancelLabel="그대로 두기"
           danger

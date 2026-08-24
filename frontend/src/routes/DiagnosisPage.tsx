@@ -338,7 +338,7 @@ export function DiagnosisPage() {
       </header>
 
       {current.phase === 'error' && (
-        <p className={`${NOTICE} text-crowded-deep text-sm`}>{current.message}</p>
+        <p className={`${NOTICE} text-crowded-deep text-sm whitespace-pre-line`}>{current.message}</p>
       )}
 
       {diagnosis && (
@@ -430,7 +430,9 @@ export function DiagnosisPage() {
                     예상 혼잡을 매길 수 있는 장소가 아직 없어요
                   </p>
                   <p className="text-hint m-0 text-center text-[13px] leading-[1.5] text-pretty sm:text-left">
-                    음식점·숙박은 예측 대상이 아니에요. 관광지를 한 곳 담으면 코스 점수가 나와요.
+                    음식점·숙박은 예측 대상이 아니에요.
+                    <br />
+                    관광지를 한 곳 담으면 코스 점수가 나와요.
                   </p>
                 </div>
               ) : (
