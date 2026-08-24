@@ -6,7 +6,7 @@ import { BottomNav, HeaderNav } from '../components/BottomNav'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID, LEVEL_TINT } from '../components/levelStyles'
 import { CARD } from '../components/styles'
-import { DEFAULT_REGION, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
+import { DEFAULT_REGION, REGIONS, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
 import { useHomeData } from '../hooks/useHomeData'
 import type { ForecastDay, HeadlineSpot, QuietSpot } from '../hooks/useHomeData'
 import { useAuth } from '../state/authContext'
@@ -341,13 +341,24 @@ export function HomePage() {
    * 접근성 지침이 막는 동작이다(WCAG 2.2.2). 화살표나 점 표시로 직접 넘길 수 있게 하고,
    * 사용자가 손대면 자동 넘김을 멈추는 편이 맞다.
    */
+  /**
+   * 사용자가 지역을 <b>직접 골랐는가.</b> 고르면 자동 넘김이 멈춘다.
+   *
+   * <p>접근성 지침이 요구하는 것이다(WCAG 2.2.2) — 읽는 중에 내용이 저절로 바뀌면
+   * 따라 읽기 어렵고, 멈출 방법이 없으면 그 화면을 쓸 수 없는 사람이 생긴다.
+   *
+   * <p>다시 켜는 수단은 두지 않았다. 자동 넘김은 "다른 지역도 있다"를 알리는 장치이고,
+   * 직접 고른 사람은 이미 그것을 알았다. 되돌리려면 새로고침이면 된다.
+   */
+  const [pinnedRegion, setPinnedRegion] = useState(false)
+
   useEffect(() => {
-    if (!hasMultipleRegions()) {
+    if (!hasMultipleRegions() || pinnedRegion) {
       return
     }
     const timer = setInterval(() => setRegionSlug(nextRegion), REGION_ROTATE_MS)
     return () => clearInterval(timer)
-  }, [])
+  }, [pinnedRegion])
 
   const state = useHomeData(regionSlug)
   const regionName = regionNameOf(regionSlug)
@@ -597,6 +608,38 @@ export function HomePage() {
               간격을 쓰면 나란히 놓였을 때 머리글 높이가 어긋나 보인다.
             */}
             <div className="flex flex-col gap-0.75 px-1">
+              {/*
+                지역 탭. <b>자동 넘김을 멈추는 수단이기도 하다.</b>
+
+                화살표나 점 표시 대신 이름을 그대로 세운 이유: 점은 "몇 번째인지"만 알려주고
+                어디로 가는지는 눌러 봐야 안다. 지역이 셋뿐이라 이름을 다 적을 수 있다.
+
+                하나뿐이면 그리지 않는다. 고를 것이 없는 탭은 누를 수 있다는 신호만 주고
+                아무 일도 하지 않아 오히려 헷갈린다.
+              */}
+              {hasMultipleRegions() && (
+                <div className="mb-1.5 flex flex-wrap gap-1.5" role="group" aria-label="지역 고르기">
+                  {REGIONS.map((option) => {
+                    const active = option.slug === regionSlug
+                    return (
+                      <button
+                        key={option.slug}
+                        type="button"
+                        className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                          active ? 'bg-fg text-white' : 'bg-surface text-muted hover:text-fg'
+                        }`}
+                        aria-pressed={active}
+                        onClick={() => {
+                          setRegionSlug(option.slug)
+                          setPinnedRegion(true)
+                        }}
+                      >
+                        {option.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className={SECTION_TITLE}>오늘의 {regionName}</h2>
                 {/* toISOString은 UTC라 저녁에 날짜가 하루 밀린다. 로컬 기준 today()를 쓴다. */}

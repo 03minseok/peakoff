@@ -41,15 +41,34 @@ public class KtoCongestionProvider implements CongestionProvider {
 	private final PlaceProvider placeProvider;
 	private final PlaceNameMatcher nameMatcher;
 
+	/**
+	 * 장소가 어느 지역의 예측 목록에 들어 있는지 찾아 낸 결과.
+	 *
+	 * <p>{@code Place}에 지역이 들어 있지 않아 <b>장소 ID만으로는 어느 지역인지 알 수 없다.</b>
+	 * 그래서 지원 지역을 하나씩 훑어 이름이 이어지는 곳을 찾는다. 지역별 예측은 6시간 캐시라
+	 * 대개 메모리에 있고, 못 찾으면 그 장소는 어느 지역에서도 예측 대상이 아니다.
+	 */
+	private record Located(RegionForecast forecast, String apiName) {
+	}
+
+	private Optional<Located> locate(String placeId) {
+		for (Region region : SupportedRegion.allRegions()) {
+			RegionForecast forecast = client.forecastOf(region);
+			Optional<String> apiName = apiNameOf(placeId, region, forecast);
+			if (apiName.isPresent()) {
+				return Optional.of(new Located(forecast, apiName.get()));
+			}
+		}
+		return Optional.empty();
+	}
+
 	@Override
 	public int quietnessOf(String placeId, LocalDate date) {
-			Region region = region();
-			RegionForecast forecast = client.forecastOf(region);
-		String apiName = apiNameOf(placeId, region, forecast)
+		Located located = locate(placeId)
 				.orElseThrow(() -> new IllegalArgumentException(
 						"예측 대상이 아닌 장소입니다. placeId=" + placeId));
 
-		OptionalDouble rate = forecast.rateOf(apiName, date); //이름, 날짜 집중률
+		OptionalDouble rate = located.forecast().rateOf(located.apiName(), date);
 		if (rate.isEmpty()) {
 			/*
 			 * 장소는 목록에 있는데 그 날짜만 없다 — 예측 범위 밖이다.
@@ -57,23 +76,21 @@ public class KtoCongestionProvider implements CongestionProvider {
 			 * 하나는 기다리면 생기고 하나는 생기지 않는다.
 			 */
 			throw new IllegalArgumentException("예측 범위 밖의 날짜입니다. date=%s, 예측 가능 마지막 날=%s"
-					.formatted(date, forecast.lastForecastDate().map(LocalDate::toString).orElse("없음")));
+					.formatted(date, located.forecast().lastForecastDate()
+							.map(LocalDate::toString).orElse("없음")));
 		}
 		return toQuietness(rate.getAsDouble());
 	}
 
 	@Override
 	public boolean hasData(String placeId) {
-		Region region = region();
-		return apiNameOf(placeId, region, client.forecastOf(region)).isPresent();
+		return locate(placeId).isPresent();
 	}
 
 	@Override
 	public boolean hasData(String placeId, LocalDate date) {
-		Region region = region();
-		RegionForecast forecast = client.forecastOf(region);
-		return apiNameOf(placeId, region, forecast)
-				.map(apiName -> forecast.rateOf(apiName, date).isPresent())
+		return locate(placeId)
+				.map(located -> located.forecast().rateOf(located.apiName(), date).isPresent())
 				.orElse(false);
 	}
 
@@ -82,9 +99,15 @@ public class KtoCongestionProvider implements CongestionProvider {
 	 *
 	 * <p>화면이 "언제부터 진단할 수 있는지" 안내하려면 이 값이 필요하다.
 	 * 상수가 아니라 응답에서 나온 값이라, 공사가 창을 늘리면 저절로 따라간다.
+	 *
+	 * <p>지역이 여럿이면 <b>가장 이른 날</b>을 쓴다. 지역마다 창이 다를 때 가장 늦은 날을
+	 * 약속하면, 창이 짧은 지역을 고른 사용자가 진단되지 않는 날짜를 고르게 된다.
 	 */
 	public Optional<LocalDate> lastForecastDate() {
-		return client.forecastOf(region()).lastForecastDate();
+		return SupportedRegion.allRegions().stream()
+				.map(region -> client.forecastOf(region).lastForecastDate())
+				.flatMap(Optional::stream)
+				.min(LocalDate::compareTo);
 	}
 
 	/**
@@ -115,17 +138,6 @@ public class KtoCongestionProvider implements CongestionProvider {
 				.filter(place -> PlaceCategories.isForecastTarget(place.category()))
 				.map(Place::name)
 				.flatMap(name -> nameMatcher.match(name, region, forecast.placeNames()));
-	}
-
-	/**
-	 * v1은 파일럿 한 지역이라 경주로 고정한다.
-	 *
-	 * <p>{@code Place}에 지역이 들어 있지 않아 장소 ID만으로는 지역을 알 수 없다.
-	 * 지역을 늘릴 때 손댈 자리를 남기려고 메서드로 빼 뒀다 — 그때는 장소가 지역을
-	 * 들고 다니게 하거나, 호출하는 쪽에서 지역을 넘겨야 한다.
-	 */
-	private static Region region() {
-		return SupportedRegion.GYEONGJU.toRegion();
 	}
 
 	/**
