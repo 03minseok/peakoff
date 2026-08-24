@@ -11,19 +11,24 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peakoff.auth.jwt.AuthenticatedMember;
 import com.peakoff.course.dto.SaveCourseRequest;
+import com.peakoff.course.dto.PublicCourseSummary;
 import com.peakoff.course.dto.SavedCourseDetail;
 import com.peakoff.course.dto.SavedCourseSummary;
 import com.peakoff.course.service.SavedCourseService;
 import com.peakoff.global.response.ApiResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 /**
  * 저장된 코스.
@@ -40,6 +45,9 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
 public class SavedCourseController {
+
+	/** 홈에 서는 카드 수. 한 열에 담기는 만큼만 */
+	private static final int DEFAULT_RECENT_LIMIT = 4;
 
 	private final SavedCourseService savedCourseService;
 
@@ -100,5 +108,36 @@ public class SavedCourseController {
 
 		savedCourseService.delete(member.id(), courseId);
 		return ApiResponse.ok(null);
+	}
+	/**
+	 * GET /api/courses/recent?limit=4 — 다른 사람들이 최근에 저장한 코스.
+	 *
+	 * <p><b>로그인 없이 볼 수 있다.</b> 홈에 서는 목록이고, 게스트도 홈을 본다.
+	 * 대신 나가는 것은 익명 요약이라 코스 id도 이름도 담기지 않는다.
+	 *
+	 * <p>로그인한 사람에게는 자기 코스를 뺀다 — 내가 저장한 것을 "다른 사람들의 여행"이라고
+	 * 보여줄 수는 없다. 이 화면은 열려 있으므로 {@code member}가 {@code null}일 수 있다.
+	 */
+	@Operation(
+			summary = "다른 사람들의 최근 코스 (익명)",
+			description = """
+					최근 저장된 코스를 익명으로 요약해 돌려준다. 로그인 없이 부를 수 있다.
+
+					코스 id와 이름, 저장한 사람은 담기지 않는다. 이름은 사용자가 자기만 볼 줄 알고
+					지은 것이라 공개에 동의한 적이 없고, id는 열어 볼 길을 아예 두지 않으려고 뺐다.
+					지역·기간·총점·장소 수와 앞쪽 장소 이름 몇 개만 나간다.
+
+					로그인 상태면 자기 코스는 빠진다.""")
+	@GetMapping("/recent")
+	public ApiResponse<List<PublicCourseSummary>> findRecent(
+			@AuthenticationPrincipal AuthenticatedMember member,
+
+			@Parameter(description = "최대 개수")
+			@RequestParam(defaultValue = "" + DEFAULT_RECENT_LIMIT)
+			@Min(value = 1, message = "개수는 1 이상이어야 합니다.")
+			@Max(value = 12, message = "한 번에 12개까지 볼 수 있습니다.")
+			int limit) {
+
+		return ApiResponse.ok(savedCourseService.recent(member == null ? null : member.id(), limit));
 	}
 }
