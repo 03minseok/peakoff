@@ -6,7 +6,7 @@ import { BottomNav, HeaderNav } from '../components/BottomNav'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID, LEVEL_TINT } from '../components/levelStyles'
 import { CARD } from '../components/styles'
-import { DEFAULT_REGION, REGIONS, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
+import { DEFAULT_REGION, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
 import { useHomeData } from '../hooks/useHomeData'
 import type { ForecastDay, HeadlineSpot, QuietSpot } from '../hooks/useHomeData'
 import { useAuth } from '../state/authContext'
@@ -342,23 +342,43 @@ export function HomePage() {
    * 사용자가 손대면 자동 넘김을 멈추는 편이 맞다.
    */
   /**
-   * 사용자가 지역을 <b>직접 골랐는가.</b> 고르면 자동 넘김이 멈춘다.
+   * 지금 이 영역을 <b>보고 있는가.</b> 보고 있는 동안에는 넘기지 않는다.
    *
-   * <p>접근성 지침이 요구하는 것이다(WCAG 2.2.2) — 읽는 중에 내용이 저절로 바뀌면
-   * 따라 읽기 어렵고, 멈출 방법이 없으면 그 화면을 쓸 수 없는 사람이 생긴다.
+   * <h3>고르는 버튼 대신 이렇게 한 이유</h3>
+   * 읽는 중에 내용이 저절로 바뀌면 따라 읽을 수 없고, 멈출 방법이 없으면 그 화면을
+   * 쓸 수 없는 사람이 생긴다(WCAG 2.2.2). 그렇다고 지역을 고르는 버튼을 세우면
+   * 홈이 "둘러보는 화면"에서 "고르는 화면"이 된다 — 고르는 자리는 코스 짜기에 이미 있다.
    *
-   * <p>다시 켜는 수단은 두지 않았다. 자동 넘김은 "다른 지역도 있다"를 알리는 장치이고,
-   * 직접 고른 사람은 이미 그것을 알았다. 되돌리려면 새로고침이면 된다.
+   * <p>손이 올라가 있거나 키보드 초점이 그 안에 있으면 읽는 중이다. 그때만 멈춘다.
+   * 사용자가 아무것도 배우지 않아도 되고, 손을 떼면 알아서 다시 돈다.
    */
-  const [pinnedRegion, setPinnedRegion] = useState(false)
+  const [reading, setReading] = useState(false)
 
   useEffect(() => {
-    if (!hasMultipleRegions() || pinnedRegion) {
+    if (!hasMultipleRegions() || reading) {
       return
     }
     const timer = setInterval(() => setRegionSlug(nextRegion), REGION_ROTATE_MS)
     return () => clearInterval(timer)
-  }, [pinnedRegion])
+  }, [reading])
+
+  /**
+   * 넘어가는 세 칸에 함께 붙인다.
+   *
+   * <p>{@code key}는 여기 담지 않고 각 칸에 직접 적는다 — React는 key를 spread로 받으면
+   * 경고한다. key가 지역 슬러그인 것이 핵심이다: 지역이 바뀌면 React가 그 칸을 새로 만들고,
+   * 그 순간 CSS 애니메이션이 처음부터 다시 돈다. 상태로 "지금 넘어가는 중"을 들고 있지
+   * 않아도 된다.
+   *
+   * <p>Capture를 쓰는 이유: 초점은 칸 안쪽 어느 요소에나 들어갈 수 있는데,
+   * 일반 onFocus는 자식에서 올라오는 것을 놓치는 경우가 있다.
+   */
+  const rotating = {
+    onMouseEnter: () => setReading(true),
+    onMouseLeave: () => setReading(false),
+    onFocusCapture: () => setReading(true),
+    onBlurCapture: () => setReading(false),
+  }
 
   const state = useHomeData(regionSlug)
   const regionName = regionNameOf(regionSlug)
@@ -600,7 +620,7 @@ export function HomePage() {
         {state.phase !== 'error' && (
         <>
           {/* 3. 오늘의 경주 — 오늘 가장 붐빌 것으로 보이는 명소들 */}
-          <section className={`${CELL} gap-3 lg:col-span-4 lg:gap-3`}>
+          <section key={regionSlug} className={`${CELL} region-slide gap-3 lg:col-span-4 lg:gap-3`} {...rotating}>
             {/*
               제목과 설명을 <b>한 묶음</b>으로 싼다. 설명을 섹션의 별도 항목으로 두면
               칸 사이 간격(gap-3)을 받아 제목에서 멀어지는데, 옆의 "지금 한적한 곳"은
@@ -608,38 +628,6 @@ export function HomePage() {
               간격을 쓰면 나란히 놓였을 때 머리글 높이가 어긋나 보인다.
             */}
             <div className="flex flex-col gap-0.75 px-1">
-              {/*
-                지역 탭. <b>자동 넘김을 멈추는 수단이기도 하다.</b>
-
-                화살표나 점 표시 대신 이름을 그대로 세운 이유: 점은 "몇 번째인지"만 알려주고
-                어디로 가는지는 눌러 봐야 안다. 지역이 셋뿐이라 이름을 다 적을 수 있다.
-
-                하나뿐이면 그리지 않는다. 고를 것이 없는 탭은 누를 수 있다는 신호만 주고
-                아무 일도 하지 않아 오히려 헷갈린다.
-              */}
-              {hasMultipleRegions() && (
-                <div className="mb-1.5 flex flex-wrap gap-1.5" role="group" aria-label="지역 고르기">
-                  {REGIONS.map((option) => {
-                    const active = option.slug === regionSlug
-                    return (
-                      <button
-                        key={option.slug}
-                        type="button"
-                        className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
-                          active ? 'bg-fg text-white' : 'bg-surface text-muted hover:text-fg'
-                        }`}
-                        aria-pressed={active}
-                        onClick={() => {
-                          setRegionSlug(option.slug)
-                          setPinnedRegion(true)
-                        }}
-                      >
-                        {option.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className={SECTION_TITLE}>오늘의 {regionName}</h2>
                 {/* toISOString은 UTC라 저녁에 날짜가 하루 밀린다. 로컬 기준 today()를 쓴다. */}
@@ -710,7 +698,7 @@ export function HomePage() {
           </section>
 
           {/* 4. 지금 한적한 곳 — 바로 왼쪽 "오늘의 경주"의 대안이다. 붙어 있어야 짝으로 읽힌다 */}
-          <section className={`${CELL} gap-3 lg:col-span-5 lg:gap-3`}>
+          <section key={regionSlug} className={`${CELL} region-slide gap-3 lg:col-span-5 lg:gap-3`} {...rotating}>
             <div className="flex flex-col gap-0.75 px-1">
               <h2 className={SECTION_TITLE}>지금 한적한 곳</h2>
               <span className="text-hint text-[12.5px]">
@@ -742,7 +730,7 @@ export function HomePage() {
             장치(order)까지 필요했다. 첫 줄을 진입점 둘이 가져가면서 이 칸도 한 줄이 되어
             <b>그 두 가지가 모두 사라졌다</b> — 이제 DOM 순서가 곧 화면 순서다.
           */}
-          <section className={`${CELL} gap-3 lg:col-span-3 lg:gap-3`}>
+          <section key={regionSlug} className={`${CELL} region-slide gap-3 lg:col-span-3 lg:gap-3`} {...rotating}>
             {/*
               가장 한적한 날은 <b>문구로</b> 말한다. 목록에서 그 줄만 색을 깔면
               "선택됨"과 신호가 부딪혀, 어느 것이 내가 고른 것인지 흐려진다.
