@@ -3,6 +3,7 @@ package com.peakoff.course.domain;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalDouble;
 
 import com.peakoff.global.support.Scores;
 import com.peakoff.place.domain.Region;
@@ -18,14 +19,16 @@ import com.peakoff.place.domain.Region;
  * @param startDate      여행 시작일
  * @param nights         박 수. 당일치기는 0
  * @param slots          일자·순서대로 채워진 슬롯 목록
- * @param totalQuietness 코스 전체의 예상 한적 지수 (0~100, 클수록 한적)
+ * @param totalQuietness 코스 전체의 예상 한적 지수 (0~100, 클수록 한적).
+ *                       <b>진단된 칸이 하나도 없으면 {@code null}이다</b> —
+ *                       음식점만 담은 코스가 그렇다
  */
 public record Course(
 		Region region,
 		LocalDate startDate,
 		int nights,
 		List<CourseSlot> slots,
-		int totalQuietness) {
+		Integer totalQuietness) {
 
 	public Course {
 		Objects.requireNonNull(region, "지역은 필수입니다.");
@@ -36,7 +39,10 @@ public record Course(
 		Objects.requireNonNull(slots, "슬롯 목록은 필수입니다.");
 		// 방어적 복사. 밖에서 넘긴 리스트를 나중에 고쳐도 코스는 흔들리지 않는다.
 		slots = List.copyOf(slots);
-		Scores.validate(totalQuietness, "코스 총점");
+		// 총점은 없을 수 있다. 있을 때만 범위를 본다.
+		if (totalQuietness != null) {
+			Scores.validate(totalQuietness, "코스 총점");
+		}
 		validateSlotsWithinPeriod(slots, nights + 1);
 	}
 
@@ -62,21 +68,29 @@ public record Course(
 	}
 
 	/**
-	 * 총점은 <b>진단된 칸만</b>의 평균이다.
+	 * 총점은 <b>진단된 칸만</b>의 평균이다. 하나도 없으면 {@code null}이다.
 	 *
 	 * <p>음식점처럼 예측 자료가 없는 칸은 분모에서도 빠진다. 0점으로 채워 넣으면 밥집을
 	 * 넣을수록 코스가 붐비는 것으로 계산돼, 원안 대비 개선폭이라는 비교의 기준이 무너진다.
 	 *
-	 * <p>진단된 칸이 하나도 없으면 총점이라는 값 자체가 성립하지 않는다. 그때는 0을 만들어
-	 * 내지 않고 거절한다 — 계산하지 않은 것을 근거로 말하지 않는다는 규칙이 여기에도 걸린다.
+	 * <h3>없으면 왜 거절하지 않고 {@code null}인가</h3>
+	 * 예전에는 진단된 칸이 하나도 없으면 예외를 던졌고, 그것이 400이 되어
+	 * <b>진단 화면 자체가 뜨지 않았다.</b> 밥집 셋으로 코스를 짠 사용자는 아무 화면도 보지 못했다.
+	 *
+	 * <p>총점이 없는 것과 코스가 없는 것은 다르다. 장소도 순서도 지도도 그대로 있고
+	 * 점수 한 칸만 비었을 뿐인데, 그것 때문에 화면 전체를 막을 이유가 없다.
+	 * 날짜 대안이 같은 상황을 이미 이렇게 다룬다 — 창은 그리되 점수 자리를 비운다
+	 * ({@code TimeOffStatus.INSUFFICIENT_DATA}).
+	 *
+	 * <p>0을 만들어 내지 않는 것은 그대로다. 0은 화면에서 <b>"매우 붐빔"</b>으로 읽혀,
+	 * 밥집만 담았다는 이유로 최악의 코스라고 말하게 된다.
 	 */
-	private static int averageQuietness(List<CourseSlot> slots) {
-		return (int) Math.round(slots.stream()
+	private static Integer averageQuietness(List<CourseSlot> slots) {
+		OptionalDouble average = slots.stream()
 				.filter(CourseSlot::isDiagnosed)
 				.mapToInt(CourseSlot::quietness)
-				.average()
-				.orElseThrow(() -> new IllegalArgumentException(
-						"예상 혼잡을 계산할 수 있는 장소가 코스에 하나도 없습니다.")));
+				.average();
+		return average.isPresent() ? (int) Math.round(average.getAsDouble()) : null;
 	}
 
 	/** 여행 기간을 벗어난 일차의 슬롯이 섞이면 화면이 조용히 깨지므로 생성 시점에 막는다. */

@@ -18,7 +18,10 @@ import com.peakoff.place.dto.PlaceResponse;
  * <p><b>모든 칸에 점수가 붙지는 않는다.</b> 공사 집중률은 관광지만 예측해서 음식점·카페·숙박은
  * 자료가 없고, 여행일이 예측 범위 밖이면 관광지도 값이 없다. 그런 칸은 점수 대신 사유가 나간다.
  *
- * @param totalQuietness 진단된 칸만의 평균. 자료 없는 칸은 분모에서도 빠진다
+ * @param totalQuietness 진단된 칸만의 평균. 자료 없는 칸은 분모에서도 빠진다.
+ *                       <b>진단된 칸이 하나도 없으면 {@code null}</b>이다 — 음식점만 담은
+ *                       코스가 그렇다. 그때는 {@code totalLevel}·{@code totalLevelLabel}도 함께 비어
+ *                       화면이 점수 자리만 비우고 코스는 그대로 그린다
  * @param diagnosedCount 실제로 점수가 매겨진 칸 수. 화면이 "3곳 중 2곳 기준"이라 말할 수 있게 한다
  */
 public record CourseDiagnosisResponse(
@@ -28,7 +31,7 @@ public record CourseDiagnosisResponse(
 		LocalDate endDate,
 		int nights,
 		int days,
-		int totalQuietness,
+		Integer totalQuietness,
 		CongestionLevel totalLevel,
 		String totalLevelLabel,
 		int diagnosedCount,
@@ -68,7 +71,12 @@ public record CourseDiagnosisResponse(
 	}
 
 	public static CourseDiagnosisResponse from(Course course, String regionSlug) {
-		CongestionLevel totalLevel = CongestionLevel.fromQuietness(course.totalQuietness());
+		/*
+		 * 총점이 없으면 등급도 없다. 없는 점수에 등급을 붙이면 "붐빔"이 되어,
+		 * 밥집만 담았다는 이유로 최악의 코스라고 말하게 된다.
+		 */
+		Integer total = course.totalQuietness();
+		CongestionLevel totalLevel = total == null ? null : CongestionLevel.fromQuietness(total);
 		List<DiagnosedSlot> slots = course.slots().stream()
 				.map(slot -> DiagnosedSlot.from(slot, course.startDate().plusDays(slot.day() - 1L)))
 				.toList();
@@ -82,9 +90,9 @@ public record CourseDiagnosisResponse(
 				course.endDate(),
 				course.nights(),
 				course.days(),
-				course.totalQuietness(),
+				total,
 				totalLevel,
-				totalLevel.label(),
+				totalLevel == null ? null : totalLevel.label(),
 				diagnosedCount,
 				slots);
 	}
