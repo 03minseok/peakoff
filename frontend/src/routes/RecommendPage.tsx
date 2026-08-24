@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { ChevronRight } from '../components/icons'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
-import { DEFAULT_REGION, regionNameOf } from '../constants/regions'
+import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type {
@@ -82,6 +82,12 @@ const SEGMENT_BASE =
   'flex cursor-pointer items-center justify-center rounded-ui px-3 text-center transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-deep'
 
 /** 한 줄에 나란히 서는 단일 선택 (밀도·기간) */
+/*
+ * 지역 칸. <b>브랜드색으로 고른 것을 표시한다</b> — 아래 답들(잉크색)과 색을 갈라
+ * "어디"와 "어떻게"가 다른 층위임을 눈으로 알린다. 코스 짜기 화면과 같은 규칙이다.
+ */
+const REGION_SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-[15px] font-medium text-muted peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-fg`
+
 const SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-[15px] font-medium text-muted peer-checked:border-fg peer-checked:bg-fg peer-checked:font-semibold peer-checked:text-white`
 
 /**
@@ -140,7 +146,14 @@ export function RecommendPage() {
   })
   const [view, setView] = useState<Phase>({ phase: 'survey' })
 
-  const region = state.plan?.region ?? DEFAULT_REGION
+  /*
+   * 지역. 코스 짜기에서 이미 고른 적이 있으면 그 값으로 시작한다.
+   *
+   * 상수가 아니라 상태인 이유: 이 화면은 코스 짜기를 <b>거치지 않고도</b> 들어올 수 있다.
+   * 그 경로로 들어온 사람에게 지역이 고정돼 있으면, 경주를 보러 온 것이 아닌데도
+   * 경주 코스를 받게 된다.
+   */
+  const [region, setRegion] = useState(state.plan?.region ?? DEFAULT_REGION)
   const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
   const canSubmit = answers.styles.length > 0 && !isPastDate
@@ -218,6 +231,32 @@ export function RecommendPage() {
       </header>
 
       <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
+        {/*
+          지역이 맨 앞에 오는 이유: 뒤의 답들이 전부 <b>그 지역 안에서</b>의 취향이다.
+          "역사·유적을 좋아한다"를 고른 뒤에 지역을 바꾸면 앞의 답을 다시 읽어야 한다.
+          코스 짜기 화면도 지역을 첫 칸에 두고 있어 두 화면의 순서가 맞는다.
+        */}
+        <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            {REGIONS.map((option) => (
+              <label key={option.slug}>
+                <input
+                  type="radio"
+                  name="region"
+                  className="peer sr-only"
+                  value={option.slug}
+                  checked={region === option.slug}
+                  onChange={() => setRegion(option.slug)}
+                />
+                <span className={REGION_SEGMENT}>{option.name}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
           <div className="flex items-baseline justify-between gap-2">
             {/*
