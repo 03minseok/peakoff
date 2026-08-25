@@ -2,20 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ChevronRight } from '../components/icons'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
-import { BottomNav, HeaderNav } from '../components/BottomNav'
+import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID, LEVEL_TINT } from '../components/levelStyles'
-import { CARD } from '../components/styles'
+import { PublicCourseSheet } from '../components/PublicCourseSheet'
+import { CARD_RAISED } from '../components/styles'
 import { DEFAULT_REGION, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
 import { useHomeData } from '../hooks/useHomeData'
 import { fetchRecentCourses } from '../services/api'
 import type { ForecastDay, HeadlineSpot } from '../hooks/useHomeData'
 import type { PublicCourse } from '../types/api'
-import { useAuth } from '../state/authContext'
+import { useTrip } from '../state/tripContext'
 import {
+  daysFromToday,
   formatCompactDate,
-  formatDuration,
   formatKoreanDate,
+  formatNights,
   formatWeekday,
+  isPastDate,
   today,
 } from '../utils/date'
 
@@ -59,7 +62,12 @@ const DATE_ACTION =
 function HeadlineRow({ spot, last }: { spot: HeadlineSpot; last: boolean }) {
   return (
     <div
-      className={`flex items-center gap-3 py-2.75 ${last ? '' : 'border-bg border-b'}`}
+      /*
+        줄 사이 선은 <b>패널 바탕보다 진해야</b> 한다. 예전에는 border-bg(회백)였는데,
+        패널이 흰 카드에서 회백으로 내려오면서 바탕과 같은 색이 되어 통째로 사라졌다.
+        묶음을 가르는 선(bg-line)보다는 옅게 둬야 층위가 유지된다.
+      */
+      className={`flex items-center gap-3 py-2.75 ${last ? '' : 'border-line/60 border-b'}`}
     >
       {/*
         사진과 색점을 함께 둔다.
@@ -116,18 +124,32 @@ function HeadlineGroup({
   label,
   spots,
   className = '',
+  labelHidden = false,
 }: {
   label: string
   spots: HeadlineSpot[]
   /** 카드 안에서 이 덩이가 차지할 자리. 넓은 화면에서 절반씩 나눠 갖는 데 쓴다 */
   className?: string
+  /**
+   * 소제목을 눈에서만 감춘다. 좁은 화면에서는 바로 위 스위치가 같은 말을 하고 있어,
+   * 그대로 두면 "붐빌 것으로 예상"이 두 줄 연속으로 선다.
+   *
+   * <b>지우지 않고 감추는</b> 이유: 화면 낭독기에게는 이 묶음이 무엇인지 여전히 필요하다.
+   */
+  labelHidden?: boolean
 }) {
   if (spots.length === 0) {
     return null
   }
   return (
     <div className={`flex flex-col ${className}`}>
-      <span className="text-fg px-0.5 pb-1.5 text-[13px] font-bold tracking-[-0.01em]">
+      <span
+        className={
+          labelHidden
+            ? 'sr-only'
+            : 'text-fg px-0.5 pb-1.5 text-[13px] font-bold tracking-[-0.01em]'
+        }
+      >
         {label}
       </span>
       {spots.map((spot, index) => (
@@ -137,7 +159,27 @@ function HeadlineGroup({
   )
 }
 
-function ForecastCard({
+/**
+ * 좁은 화면의 하루 한 줄. <b>요일·날짜와 점수만</b> 세운다.
+ *
+ * <h3>가로로 미는 카드를 걷어낸 이유 (2026-08-25)</h3>
+ * 예전에는 7일을 세로 막대 카드로 만들어 <b>옆으로 미는 띠</b>에 담았다.
+ * 그런데 그 띠가 화면에 하나뿐인 가로 스크롤 상자였고, <b>휴대폰에서 페이지가 옆으로
+ * 밀리는 원인</b>이었다 — 띠를 잡고 민 제스처가 더 갈 곳이 없으면 문서로 이어진다.
+ *
+ * <p>진단 도구로 재 보니 화면 밖으로 <b>안 잘리고</b> 삐져나온 요소는 하나도 없었는데도
+ * 실물에서는 계속 밀렸다. 넘치는 요소를 찾는 방향이 처음부터 틀렸던 것이고,
+ * 범인은 "넘친 것"이 아니라 "미는 것"이었다.
+ *
+ * <p>세로로 쌓으면 미는 상자 자체가 사라진다. 7일이 한 화면에 들어가는 것은 덤이고,
+ * 옆으로 밀어야 나머지가 보이던 예전 띠보다 오히려 한눈에 읽힌다.
+ *
+ * <h3>막대를 뺀 이유</h3>
+ * 좁은 화면에서 막대까지 넣으면 한 줄에 요일·날짜·막대·점수·배지가 다 들어가 빽빽해진다.
+ * 여기서 필요한 것은 "어느 날이 나은가"이고 그건 <b>숫자와 배지</b>가 이미 말한다.
+ * 막대는 자리가 넉넉한 넓은 화면({@link ForecastRow})이 맡는다.
+ */
+function ForecastCompactRow({
   day,
   selected,
   onSelect,
@@ -147,67 +189,66 @@ function ForecastCard({
   onSelect: () => void
 }) {
   const weekday = formatWeekday(day.date).charAt(0)
-  const weekend = weekday === '토' || weekday === '일'
 
   return (
-    // 넓은 화면의 줄({@link ForecastRow})과 같다 — 카드 하나가 곧 고르는 버튼이다
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`box-border flex w-26 flex-none cursor-pointer flex-col rounded-[18px] p-3.5 text-left transition-all ${
-        selected
-          ? 'border-quiet-soft bg-quiet-tint shadow-raised border-[1.5px]'
-          : 'bg-surface shadow-rest hover:shadow-raised'
+      className={`flex w-full cursor-pointer items-center gap-2.5 rounded-[12px] px-2.5 py-2.5 text-left transition-colors ${
+        selected ? 'bg-quiet-tint ring-quiet-soft ring-1' : 'hover:bg-fill'
       }`}
     >
-      <div className="flex flex-col gap-0.5">
-        <span
-          className={`text-xs font-semibold ${
-            weekday === '일' ? 'text-crowded' : weekday === '토' ? 'text-quiet' : 'text-hint'
-          }`}
-        >
-          {weekday}
-        </span>
-        <span className="text-fg font-mono text-[15px] font-semibold tracking-[-0.01em]">
-          {formatCompactDate(day.date)}
-        </span>
+      {/* 주말은 색으로 구분한다 — 붐빌 확률이 높은 날을 훑을 때 먼저 눈에 들어와야 한다 */}
+      <span
+        className={`w-4 flex-none text-[13px] font-semibold ${
+          weekday === '일' ? 'text-crowded' : weekday === '토' ? 'text-quiet' : 'text-hint'
+        }`}
+      >
+        {weekday}
+      </span>
+      <span className="text-fg flex-none font-mono text-[14px] font-semibold tracking-[-0.01em]">
+        {formatCompactDate(day.date)}
+      </span>
+
+      {/*
+        점수 막대. 남는 폭을 전부 가져간다 — 날짜·점수·배지가 폭이 정해진 덩이라
+        여기만 flex-1로 두면 화면이 넓어질수록 막대가 길어져 날짜별 차이가 더 잘 보인다.
+
+        숫자를 막대 <b>안</b>에 넣지 않았다. 넓은 화면 줄({@link ForecastRow})은 그렇게 하지만
+        거기는 막대가 400px쯤이라 짧은 막대도 두 자리를 담는다. 좁은 화면에서는 140px 남짓이라
+        점수가 낮은 날은 채운 부분이 20px도 안 돼 숫자가 잘린다.
+
+        빈 부분은 흰색이다. 패널이 회백이라 예전 회백 트랙은 바탕에 묻힌다.
+      */}
+      <div className="bg-surface h-5 min-w-0 flex-1 overflow-hidden rounded-[6px]">
+        <div
+          className="h-full rounded-[6px]"
+          style={{
+            // 0점인 날도 막대가 보여야 "값이 없다"로 오해되지 않는다.
+            width: `${Math.max(8, day.quietness)}%`,
+            background: LEVEL_COLOR_VAR[day.level],
+          }}
+        />
       </div>
 
-      {/* 막대는 위가 아니라 아래에서 자란다. 값이 클수록(한적할수록) 높이 찬다. */}
-      <div className="flex flex-1 items-end py-2">
-        <div className="bg-bg flex h-14 w-full items-end overflow-hidden rounded-[8px]">
-          <div
-            className="w-full rounded-[8px]"
-            style={{
-              // 0점인 날도 막대가 보여야 "값이 없다"로 오해되지 않는다.
-              height: `${Math.max(10, day.quietness)}%`,
-              background: LEVEL_COLOR_VAR[day.level],
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col items-start gap-1.25">
-        <span
-          className={`font-mono text-[17px] font-semibold tracking-[-0.02em] ${
-            day.level === 'QUIET'
-              ? 'text-quiet-deep'
-              : day.level === 'MODERATE'
-                ? 'text-moderate-deep'
-                : 'text-crowded-deep'
-          }`}
-        >
-          {day.quietness}
-        </span>
-        {/* 배지는 늘 등급만 말한다. "가장 한적"은 머리글 문구가 맡는다 */}
-        <span
-          className={`rounded-full px-2.25 py-0.75 text-[11px] font-semibold ${LEVEL_TINT[day.level]}`}
-        >
-          {day.levelLabel}
-        </span>
-      </div>
-      {weekend && <span className="sr-only">주말</span>}
+      {/* 점수와 배지를 오른쪽에 나란히. 세로로 훑을 때 숫자 열이 한 줄로 맞는다 */}
+      <span
+        className={`flex-none font-mono text-[16px] font-semibold tracking-[-0.02em] ${
+          day.level === 'QUIET'
+            ? 'text-quiet-deep'
+            : day.level === 'MODERATE'
+              ? 'text-moderate-deep'
+              : 'text-crowded-deep'
+        }`}
+      >
+        {day.quietness}
+      </span>
+      <span
+        className={`w-11 flex-none rounded-full py-0.75 text-center text-[11px] font-semibold ${LEVEL_TINT[day.level]}`}
+      >
+        {day.levelLabel}
+      </span>
     </button>
   )
 }
@@ -249,7 +290,7 @@ function ForecastRow({
       onClick={onSelect}
       aria-pressed={selected}
       className={`flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-2.5 py-2 text-left transition-colors ${
-        selected ? 'bg-quiet-tint ring-quiet-soft ring-1' : 'hover:bg-bg'
+        selected ? 'bg-quiet-tint ring-quiet-soft ring-1' : 'hover:bg-fill'
       }`}
     >
       <div className="flex w-13 flex-none items-baseline gap-1.25">
@@ -266,7 +307,7 @@ function ForecastRow({
       </div>
 
       {/* 막대는 왼쪽에서 자란다. 길수록(한적할수록) 멀리 뻗는다 */}
-      <div className="bg-bg h-6 min-w-0 flex-1 overflow-hidden rounded-[7px]">
+      <div className="bg-surface h-6 min-w-0 flex-1 overflow-hidden rounded-[7px]">
         <div
           className="flex h-full items-center justify-end rounded-[7px] pr-2"
           style={{
@@ -297,53 +338,137 @@ function ForecastRow({
  * 홈은 훑어보는 화면이라 한 지역을 읽을 만큼은 머물러야 한다. 너무 짧으면 읽는 중에
  * 바뀌어 성가시고, 너무 길면 다른 지역이 있다는 사실 자체가 전해지지 않는다.
  */
-const REGION_ROTATE_MS = 8000
+const REGION_ROTATE_MS = 14000
+
+/**
+ * 사라지고 나타나는 데 걸리는 시간.
+ *
+ * <p>한 번 넘어가는 데 이 값의 두 배가 든다(사라짐 + 나타남). 460ms씩이면 거의 1초인데,
+ * 14초에 한 번 있는 일이라 길어도 성가시지 않다. 오히려 <b>짧으면 깜빡인 것처럼 보여</b>
+ * 무엇이 바뀌었는지 눈이 따라가지 못한다.
+ */
+const REGION_FADE_MS = 460
 
 /** 다른 사람들의 여행 카드 수. 한 열에 담기는 만큼만 */
 const OTHER_COURSE_COUNT = 4
 
 /**
- * 다른 사람이 저장한 코스 한 장. <b>누를 수 없다.</b>
+ * 남의 코스를 베껴 올 때, 그 날짜가 이미 지났으면 며칠 뒤로 잡을지.
  *
- * <p>서버가 코스 id를 주지 않는다 — 남의 코스를 열어 볼 길을 아예 두지 않으려고
- * 응답에서 뺐다. 그래서 이 카드는 링크도 버튼도 아니고, 보여주기만 한다.
+ * <p>조건 화면({@code PlanPage})의 기본값과 같은 값이다. 새 여행을 시작하는 자리마다
+ * 다른 날을 내밀면 사용자가 "이 서비스의 기본 날짜"를 배우지 못한다.
+ */
+const COPIED_COURSE_DAYS_AHEAD = 7
+
+/**
+ * "오늘의 OO"의 두 덩이. 좁은 화면에서는 이 둘을 스위치로 오간다.
+ *
+ * <p>라벨을 여기 한 번만 적는다 — 스위치 글자와 넓은 화면의 소제목이 같은 말이어야
+ * "지금 보고 있는 것"이 화면을 옮겨도 이어진다.
+ */
+const HEADLINE_TABS = [
+  { key: 'crowded', label: '붐빌 것으로 예상' },
+  { key: 'quiet', label: '한적할 것으로 예상' },
+] as const
+
+type HeadlineTab = (typeof HEADLINE_TABS)[number]['key']
+
+/** 카드에 맛보기로 보이는 장소 수. 나머지는 눌러서 펼쳤을 때 나온다 */
+const PREVIEW_PLACES = 3
+
+/**
+ * 다른 사람이 저장한 코스 한 장. <b>눌러서 펼쳐 본다.</b>
+ *
+ * <p>예전에는 누를 수 없었다. 서버가 코스 id를 주지 않아서인데, 이제는 <b>id 없이</b>
+ * 목록 응답이 장소를 전부 들고 온다 — 열어 보는 데 필요한 것이 이미 손에 있으므로
+ * 남의 코스에 주소를 주지 않고도 펼칠 수 있다. 그래서 누를 때 서버를 다시 부르지 않는다.
  *
  * <p>이름 대신 <b>장소 이름 몇 개</b>를 세운다. 코스 이름은 사용자가 자기만 볼 줄 알고
  * 지은 것이라 공개하지 않는다. 어차피 "어디를 도는 여행인가"는 장소가 더 잘 말해준다.
+ *
+ * <p>흰 카드가 아니라 <b>바탕색으로 눌러 담은 칸</b>이다. 이 카드가 흰 박스 안에 들어가서,
+ * 흰 면 위에 흰 카드를 얹으면 그림자로만 갈려 층이 흐릿해진다.
+ *
+ * <p>펼쳤을 때({@code PublicCourseSheet})와 <b>같은 것을 같은 모양으로</b> 보여준다 —
+ * 제목 한 줄과 동그라미 한적 지수. 예전에는 숫자만 든 작은 알약 하나였는데, 카드가
+ * 휑해 보이는 데다 그 숫자가 무엇인지 카드 안에서 설명되지 않았다. 게이지는 차 있는
+ * 만큼이 곧 점수라 숫자를 읽지 않아도 대강이 들어온다.
  */
-function OtherCourseCard({ course }: { course: PublicCourse }) {
+function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () => void }) {
+  const preview = course.places.slice(0, PREVIEW_PLACES)
+  // "경상북도 경주시" → "경주시". 좁은 카드라 앞쪽 도명까지는 들어가지 않는다.
+  const shortRegion = course.regionName.replace(/^.*\s/, '')
+
   return (
-    <div className={`${CARD} flex flex-col gap-2 p-3.5`}>
-      <div className="flex items-start justify-between gap-2.5">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-fg truncate text-[14.5px] font-semibold tracking-[-0.01em]">
-            {course.regionName} {formatDuration(course.nights)}
-          </span>
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group bg-bg hover:bg-fill flex w-full cursor-pointer flex-col gap-2.5 rounded-[16px] border-none p-3.5 text-left transition-colors"
+    >
+      <div className="flex w-full items-center gap-3">
+        {/*
+          동그라미 한적 지수. 겹창·시트와 같은 원형 게이지를 작게 줄인 것이다 —
+          같은 값이 화면마다 다른 모양으로 나오면 같은 값으로 읽히지 않는다.
+
+          색은 CSS 변수로 넘긴다. 값이 실행 중에 정해져 클래스로 만들 수 없지만,
+          색 정의는 여전히 index.css 한 곳에만 남는다.
+        */}
+        <div
+          // p-1이 곧 고리의 두께다(52px 원에 4px). 시트의 92px/8px과 같은 비율이라 같은 물건으로 보인다
+          className="grid h-13 w-13 flex-none place-items-center rounded-full p-1"
+          style={{
+            background: `conic-gradient(${LEVEL_COLOR_VAR[course.level]} ${course.totalQuietness}%, var(--c-line) 0)`,
+          }}
+        >
+          {/*
+            가운데를 뚫는 원. <b>카드와 같은 색이어야</b> 도넛으로 보인다.
+            카드가 hover에서 색이 바뀌므로 이쪽도 group-hover로 따라간다 —
+            안 따라가면 손을 올린 순간 가운데만 옛 색으로 남아 동그라미가 두 겹이 된다.
+          */}
+          <div className="bg-bg group-hover:bg-fill grid h-full w-full place-items-center rounded-full transition-colors">
+            <span className="text-fg font-mono text-[15px] leading-none font-semibold">
+              {course.totalQuietness}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            {/*
+              코스 이름 자리에 <b>지역과 기간</b>이 선다. 이름은 사용자가 자기만 볼 줄 알고
+              지은 것이라 공개하지 않는다 — 서버도 내려보내지 않는다.
+            */}
+            <span className="text-fg min-w-0 flex-1 truncate text-[14.5px] font-semibold tracking-[-0.01em]">
+              {shortRegion} {formatNights(course.nights)}
+            </span>
+            {/* 한적도는 어디서나 3단계 배지로 말한다. 게이지는 정도를, 배지는 등급을 맡는다 */}
+            <span
+              className={`flex-none rounded-full px-2 py-0.75 text-[11px] font-semibold ${LEVEL_TINT[course.level]}`}
+            >
+              {course.levelLabel}
+            </span>
+          </div>
           <span className="text-hint text-[12px]">
-            {formatCompactDate(course.startDate)} 출발 · {course.placeCount}곳
+            {formatCompactDate(course.startDate)} 출발 · {course.places.length}곳
           </span>
         </div>
-        <span
-          className={`flex-none rounded-full px-2.5 py-1 text-center font-mono text-[11.5px] font-semibold ${LEVEL_TINT[course.level]}`}
-        >
-          {course.totalQuietness}
-        </span>
       </div>
 
       {/* 담긴 순서대로 앞쪽 몇 곳. 코스 전체가 아니라는 뜻으로 말줄임을 붙인다 */}
-      {course.places.length > 0 && (
-        <p className="text-muted m-0 truncate text-[12.5px]">
-          {course.places.join(' · ')}
-          {course.placeCount > course.places.length ? ' …' : ''}
+      {preview.length > 0 && (
+        <p className="text-muted m-0 w-full truncate text-[12.5px]">
+          {preview.map((place) => place.name).join(' · ')}
+          {course.places.length > preview.length ? ' …' : ''}
         </p>
       )}
-    </div>
+    </button>
   )
 }
 
 export function HomePage() {
   const navigate = useNavigate()
-  const { member, loading: authLoading } = useAuth()
+  // 남의 코스를 내 편집 흐름에 담을 때만 쓴다.
+  const { restore } = useTrip()
   /*
    * 지금 보고 있는 지역.
    *
@@ -381,6 +506,30 @@ export function HomePage() {
    */
   const reading = useRef(false)
 
+  /**
+   * 다음 지역으로 넘어가도 되는가. <b>아니면 이번 차례를 건너뛴다.</b>
+   *
+   * <p>{@link useHomeData}가 지금 지역을 그리는 동안 다음 지역을 미리 받아 두므로 대개 참이다.
+   * 첫 화면이 느리게 열렸을 때처럼 아직 안 왔으면 넘기지 않고 14초를 더 기다린다 —
+   * 넘겨봐야 사라졌다 나타난 자리에 스켈레톤이 서고, 그게 없애려던 공백이다.
+   *
+   * <p>{@link reading}과 같은 이유로 상태가 아니라 ref다. 상태로 두고 effect 의존성에 넣으면
+   * 값이 바뀔 때마다 타이머가 되감겨 간격이 제멋대로가 된다.
+   */
+  const canAdvanceRef = useRef(false)
+
+  /**
+   * 지금 사라지는 중인가.
+   *
+   * <p><b>박스가 아니라 안에 든 묶음들</b>이 이 값을 따른다({@code .region-fade}).
+   * 카드에 직접 걸었더니 테두리·그림자·바탕까지 함께 없어져 화면에 구멍이 뚫렸다.
+   * 날짜로 넘어가는 버튼 둘은 여기서도 빠진다 — 행동하는 자리는 붙박이여야 한다.
+   */
+  const [fading, setFading] = useState(false)
+
+  /** 사라짐이 끝나면 내용을 갈 시계. 화면을 떠날 때 거두려고 들고 있는다 */
+  const swapTimer = useRef<number | undefined>(undefined)
+
   useEffect(() => {
     if (!hasMultipleRegions()) {
       return
@@ -402,9 +551,33 @@ export function HomePage() {
       if (reading.current) {
         return
       }
-      setRegionSlug(nextRegion)
+      /*
+       * 받아 둔 것이 없으면 넘기지 않는다. 시계는 계속 가므로 준비되는 대로
+       * 다음 차례에 넘어간다 — 읽는 중일 때 건너뛰는 것과 같은 방식이다.
+       */
+      if (!canAdvanceRef.current) {
+        return
+      }
+      /*
+       * 먼저 사라지고, 다 사라진 뒤에 내용을 갈고, 다시 나타난다.
+       *
+       * 지역을 곧바로 갈면 <b>글자가 제자리에서 바뀌어</b> 깜빡인 것처럼 보인다.
+       * 사이를 비워야 "다른 지역으로 넘어갔다"로 읽힌다.
+       */
+      setFading(true)
+      swapTimer.current = window.setTimeout(() => {
+        setRegionSlug(nextRegion)
+        setFading(false)
+      }, REGION_FADE_MS)
     }, REGION_ROTATE_MS)
-    return () => clearInterval(timer)
+
+    return () => {
+      clearInterval(timer)
+      // 사라지는 도중에 화면을 떠나면 남은 시계도 함께 거둔다.
+      if (swapTimer.current !== undefined) {
+        window.clearTimeout(swapTimer.current)
+      }
+    }
   }, [])
 
   /**
@@ -437,7 +610,16 @@ export function HomePage() {
     },
   }
 
-  const state = useHomeData(regionSlug)
+  /*
+   * 지금 지역과 <b>다음 지역을 함께</b> 받는다. 넘어가는 순간 데이터가 이미 있어야
+   * 사라졌다 나타난 자리가 비지 않는다.
+   */
+  const { state, canAdvance } = useHomeData(regionSlug)
+
+  // 타이머는 ref만 읽는다. 상태를 의존성에 넣으면 값이 바뀔 때마다 시계가 되감긴다.
+  useEffect(() => {
+    canAdvanceRef.current = canAdvance
+  }, [canAdvance])
 
   /**
    * 다른 사람들이 최근에 저장한 코스.
@@ -457,8 +639,57 @@ export function HomePage() {
       .catch(() => setOthers([]))
     return () => controller.abort()
   }, [])
+
+  /**
+   * 펼쳐 보고 있는 남의 코스. <b>id가 아니라 객체를 들고 있다.</b>
+   *
+   * <p>마이페이지는 코스 번호를 들고 있다가 열 때 서버에 다시 묻는다. 남의 코스에는
+   * 번호가 없고(그 통로를 열지 않으려고 응답에서 뺐다) 대신 목록이 내용을 이미 들고 왔으므로,
+   * 여는 순간 부를 것이 없다.
+   */
+  const [openedCourse, setOpenedCourse] = useState<PublicCourse | null>(null)
+
+  /**
+   * 남의 코스를 그대로 내 편집 화면에 담는다.
+   *
+   * <p><b>진단 화면이 아니라 편집 화면으로 간다.</b> 마이페이지의 "수정하기"는 내가 짠
+   * 코스를 그대로 다시 진단하는 것이지만, 여기는 남의 일정을 베껴 오는 것이라 대개
+   * 날짜부터 갈아야 한다. 담긴 채로 편집 화면에 서면 무엇을 고칠지 바로 보인다.
+   *
+   * <p>날짜가 지났으면 새로 잡는다. 지난 날짜로 담으면 예측 범위 밖이라
+   * 진단이 통째로 비어 나오고, 사용자는 그것을 고장으로 읽는다.
+   */
+  function copyToFlow(course: PublicCourse) {
+    const days: string[][] = Array.from({ length: course.days }, () => [])
+    course.places.forEach((place) => {
+      days[place.day - 1]?.push(place.placeId)
+    })
+
+    restore(
+      {
+        region: course.region,
+        startDate: isPastDate(course.startDate)
+          ? daysFromToday(COPIED_COURSE_DAYS_AHEAD)
+          : course.startDate,
+        nights: course.nights,
+      },
+      days,
+    )
+    setOpenedCourse(null)
+    navigate('/course')
+  }
   const regionName = regionNameOf(regionSlug)
   const data = state.phase === 'loaded' ? state.data : null
+
+  /**
+   * 좁은 화면에서 "오늘의 OO"의 어느 쪽을 보고 있는가.
+   *
+   * <p>기본값이 붐빔인 이유: 이 서비스는 <b>피할 곳을 먼저 알려주고</b> 대안을 내미는
+   * 순서로 말한다. 한적한 곳부터 보여주면 "그래서 어디가 문제인데"가 뒤에 온다.
+   *
+   * <p>넓은 화면에서는 둘 다 보이므로 이 값이 쓰이지 않는다.
+   */
+  const [headlineTab, setHeadlineTab] = useState<HeadlineTab>('crowded')
 
   /** 사용자가 직접 고른 날짜. 아직 안 골랐으면 null이고, 그때는 가장 한적한 날을 쓴다 */
   const [pickedDate, setPickedDate] = useState<string | null>(null)
@@ -476,8 +707,8 @@ export function HomePage() {
   const activeDate = pickedDate ?? data?.bestDay.date ?? null
 
   return (
-    // pb-26: 아래 고정된 BottomNav가 마지막 버튼을 가리지 않게 한다. md부터는 막대가 사라진다.
-    <div className="flex min-h-svh flex-col pb-26 md:pb-10">
+    // 아래 고정 막대를 걷어내면서 그것을 피하려던 여백(pb-26)도 함께 뺐다.
+    <div className="flex min-h-svh flex-col pb-10">
       {/*
         1. 상단 — 공용 헤더(Layout)와 <b>같은 모양의 고정 막대</b>다.
 
@@ -519,23 +750,22 @@ export function HomePage() {
           </div>
 
           {/*
-            로그인한 뒤에는 이 자리를 비운다. 마이페이지로 가는 길은 이미 나란히 서 있는
-            HeaderNav에 있어서, 닉네임까지 링크로 두면 같은 곳으로 가는 문이 두 개가 된다.
-            확인이 끝나기 전에도 비워 둔다. "로그인"이 떴다가 사라지면 눈에 거슬린다.
+            헤더 오른쪽 끝. 좁은 화면에서는 <b>메뉴 토글</b>이 여기 서고, 그 왼쪽에
+            계정 버튼(로그인/로그아웃)이 붙는다. md부터는 토글이 숨고 HeaderNav가 대신한다.
+
+            로그인한 뒤에도 닉네임은 두지 않는다. 마이페이지로 가는 길은 이미 이동 메뉴에
+            있어서, 닉네임까지 링크로 두면 같은 곳으로 가는 문이 나란히 두 개가 된다.
+            누구로 로그인했는지는 마이페이지가 보여준다.
+
+            -mr-2는 묶음에 준다. 그래야 좁은 화면에서는 토글이, 넓은 화면에서는
+            계정 버튼이 각각 헤더 가장자리에 붙는다.
           */}
-          {authLoading ? (
-            <span className="h-4 w-12 flex-none" aria-hidden="true" />
-          ) : member ? null : (
-            <Link
-              to="/login"
-              className="text-hint hover:text-fg -mr-2 flex-none rounded-chip p-2 text-[13px] font-medium no-underline"
-            >
-              로그인
-            </Link>
-          )}
+          <div className="-mr-2 flex flex-none items-center gap-1 self-stretch">
+            <HeaderAuthAction />
+            <MobileMenu />
+          </div>
         </div>
       </header>
-      <BottomNav />
 
       {/*
         벤토 그리드.
@@ -701,8 +931,25 @@ export function HomePage() {
 
         {state.phase !== 'error' && (
         <>
-          {/* 3. 오늘의 경주 — 오늘 가장 붐빌 것으로 보이는 명소들 */}
-          <section key={`crowded-${regionSlug}`} className={`${CELL} region-slide gap-3 lg:col-span-5 lg:gap-3`} {...rotating}>
+          {/*
+            3. 지역 한 곳을 통째로 말하는 박스.
+
+            <b>"오늘의 OO"와 "이번 주 한적한 날"이 한 박스에 산다.</b> 둘은 같은 지역의
+            같은 이야기를 장소와 날짜로 나눠 하는 것이고, 8초마다 함께 넘어간다.
+            따로 두었더니 나란히 바뀌는데도 서로 남처럼 보였다 — 같이 움직이는 것은
+            같은 테두리 안에 있어야 한다.
+
+            안에서는 두 열로 나눈다(7:5). 왼쪽이 오늘 하루, 오른쪽이 이번 주다.
+          */}
+          {/*
+            박스에는 fade를 걸지 않는다. 걸었더니 테두리·그림자·바탕까지 함께 사라져
+            14초마다 화면에 구멍이 뚫렸다. 틀은 붙박이로 두고 안에 든 것만 간다.
+          */}
+          <section
+            className={`${CARD_RAISED} flex flex-col gap-5 p-4.5 lg:col-span-8 lg:flex-row lg:gap-6 lg:p-5.5`}
+            {...rotating}
+          >
+          <div className={`${CELL} region-fade gap-3 lg:flex-1 lg:gap-3`} data-fading={fading}>
             {/*
               제목과 설명을 <b>한 묶음</b>으로 싼다. 설명을 섹션의 별도 항목으로 두면
               칸 사이 간격(gap-3)을 받아 제목에서 멀어지는데, 옆의 "지금 한적한 곳"은
@@ -738,7 +985,74 @@ export function HomePage() {
               대신 각 덩이가 절반씩 나눠 갖고(lg:flex-1) 자기 절반 안에서 가운데에 선다.
               그래야 선이 카드의 실제 한가운데에 놓이고 위아래 여백이 같아진다.
             */}
-            <div className={`${CARD} flex flex-col px-4 py-3 lg:flex-1`}>
+            {/*
+              <b>흰 카드가 아니라 눌러 담은 회백 패널이다.</b>
+
+              박스가 흰 면인데 그 위에 흰 카드를 얹으면 그림자 한 올만 경계로 남아,
+              목록이 어디서 시작하는지 눈으로 잡히지 않았다. 색을 한 칸 내리면 경계가
+              선이 아니라 <b>면</b>이 되어 가늘든 말든 상관이 없어진다.
+
+              그림자도 뗐다. 눌러 담은 면이 떠 보이면 두 신호가 부딪힌다.
+              옆 칸의 "다른 사람들의 여행"이 쓰는 것과 같은 문법이다.
+            */}
+            {/*
+              좁은 화면: <b>한 번에 한쪽만</b> 보여주고 위 스위치로 오간다.
+
+              두 덩이를 세로로 다 펴면 목록만 여섯 줄이라 화면을 통째로 잡아먹고,
+              아래 "이번 주 한적한 날"이 스크롤 밖으로 밀려난다. 홈은 훑어보는 화면이라
+              한 화면에 무엇이 있는지부터 보여야 한다.
+
+              <b>탭을 없애고 한쪽만 두는 선택은 하지 않았다.</b> 붐비는 곳 옆에 갈 곳이
+              같은 무게로 서 있어야 이 서비스가 하려는 말이 완성된다 — 넓은 화면에서
+              둘을 나란히 두는 이유와 같다. 좁은 화면에서는 나란히가 아니라 번갈아일 뿐이다.
+            */}
+            <div className="bg-bg rounded-card flex flex-col px-4 py-3 lg:hidden">
+              {/*
+                스위치. 고른 쪽이 흰 면으로 떠오른다.
+
+                고른 쪽에 등급색(붐빔 빨강 / 한적 초록)을 칠하지 않았다. 이 카드에서 색은
+                3단계 신호이고 아래 줄마다 이미 배지가 서 있는데, 탭까지 같은 색을 쓰면
+                "지금 고른 것"과 "얼마나 붐비는지"가 같은 신호로 겹친다.
+              */}
+              <div className="bg-fill mb-3 flex gap-1 rounded-[12px] p-1">
+                {HEADLINE_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setHeadlineTab(tab.key)}
+                    aria-pressed={headlineTab === tab.key}
+                    className={`flex-1 cursor-pointer rounded-[9px] py-1.75 text-[12.5px] font-semibold transition-colors ${
+                      headlineTab === tab.key
+                        ? 'bg-surface text-fg shadow-rest'
+                        : 'text-hint bg-transparent'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {data ? (
+                <HeadlineGroup
+                  label={HEADLINE_TABS.find((tab) => tab.key === headlineTab)!.label}
+                  spots={headlineTab === 'crowded' ? data.headline.crowded : data.headline.quiet}
+                  labelHidden
+                />
+              ) : (
+                Array.from({ length: 3 }, (_, index) => (
+                  <div key={index} className="flex items-center gap-3 py-2.75">
+                    <span className="skeleton h-9 w-9 flex-none rounded-[10px]" />
+                    <span className="skeleton h-2.25 w-2.25 flex-none rounded-full" />
+                    <span className="skeleton h-3.25 w-23" />
+                    <span className="flex-1" />
+                    <span className="skeleton h-6 w-15.5 rounded-full" />
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* 넓은 화면: 자리가 넉넉하니 둘을 한 패널에 위아래로 편다 */}
+            <div className="bg-bg rounded-card hidden flex-col px-4 py-3 lg:flex lg:flex-1">
               {data ? (
                 <>
                   <HeadlineGroup
@@ -753,7 +1067,7 @@ export function HomePage() {
                     끊기면 줄 사이의 얇은 구분선(각 장소 사이)과 같은 것으로 보여, 묶음이
                     갈린다는 신호가 되지 않는다. 끝까지 닿아야 "여기서 다른 이야기가 시작된다"가 된다.
 
-                    색도 줄 사이 선(border-bg)보다 진한 border-line이다. 같은 색이면
+                    색도 줄 사이 선(border-line/60)보다 진하다. 같은 색이면
                     굵기와 길이만으로는 층위가 구분되지 않는다.
                   */}
                   <span className="bg-line -mx-4 my-3 h-px" aria-hidden="true" />
@@ -775,18 +1089,27 @@ export function HomePage() {
               )}
             </div>
 
-          </section>
+          </div>
 
-          {/* 4. 이번 주 한적한 날 — 장소가 아니라 날짜로 혼잡을 피하는 경로 */}
           {/*
-            오른쪽 좁고 긴 칸. 두 줄을 차지해(row-span-2) 왼쪽 두 칸이 쌓인 높이와 아랫변이 맞는다.
-
-            데이터 줄의 마지막 칸이다. 예전에는 두 줄을 차지하느라(row-span-2) DOM에서
-            "지금 한적한 곳"보다 앞에 있어야 했고, 그 탓에 좁은 화면에서는 순서를 되돌리는
-            장치(order)까지 필요했다. 첫 줄을 진입점 둘이 가져가면서 이 칸도 한 줄이 되어
-            <b>그 두 가지가 모두 사라졌다</b> — 이제 DOM 순서가 곧 화면 순서다.
+            두 열을 가르는 선. 좁은 화면에서는 가로선, 넓은 화면에서는 세로선이다.
+            선이 없으면 "오늘"과 "이번 주"가 한 덩이로 흘러 어디까지가 무엇인지 흐려진다.
           */}
-          <section key={`week-${regionSlug}`} className={`${CELL} region-slide gap-3 lg:col-span-3 lg:gap-3`} {...rotating}>
+          <span className="bg-line h-px w-full flex-none lg:h-auto lg:w-px" aria-hidden="true" />
+
+          <div className={`${CELL} gap-3 lg:w-[38%] lg:flex-none lg:gap-3`}>
+            {/*
+              지역과 함께 갈리는 부분만 이 묶음 안에 든다. 아래 버튼 둘은 밖에 남아
+              내용이 바뀌는 동안에도 그대로 선다 — 자세한 이유는 버튼 위 주석에 적었다.
+
+              flex-1: 넓은 화면에서 이 묶음이 남는 높이를 받아야, 안에 든 예보 카드의
+              flex-1이 예전처럼 칸을 채운다. 묶개를 하나 끼우면서 높이가 여기서
+              끊기지 않게 이어 주는 자리다.
+            */}
+            <div
+              className="region-fade flex min-w-0 flex-1 flex-col gap-3"
+              data-fading={fading}
+            >
             {/*
               가장 한적한 날은 <b>문구로</b> 말한다. 목록에서 그 줄만 색을 깔면
               "선택됨"과 신호가 부딪혀, 어느 것이 내가 고른 것인지 흐려진다.
@@ -807,40 +1130,38 @@ export function HomePage() {
             </div>
 
             {/*
-              좁은 화면: 가로 스크롤.
-              7일을 세로로 쌓으면 화면을 다 잡아먹고, 억지로 줄이면 막대가 짧아져 차이가 안 보인다.
+              좁은 화면: 세로로 쌓는다.
 
-              스크롤 상자는 폭이 확정된 칸 안의 평범한 블록이라 칸 폭을 그대로 받는다
-              (칸에 min-w-0이 걸려 있는 이유가 이것이다). 안쪽 트랙만 w-max로 내용만큼 넓어진다.
+              예전에는 옆으로 미는 띠였는데, 그것이 이 화면의 <b>유일한 가로 스크롤 상자</b>였고
+              휴대폰에서 페이지가 옆으로 밀리는 원인이었다. 상자를 없애니 밀 것도 없어졌다.
 
-              트랙에 mx-auto를 걸지 않는다. 내용이 상자보다 넓을 때 auto 여백이 음수가 되어
-              왼쪽으로도 삐져나간다 — 그쪽은 스크롤로 닿지도 않는다.
+              왼쪽 목록·넓은 화면 예보와 같은 회백 패널에 담는다 — 한 박스 안의 면들은
+              같은 층위로 보여야 한다.
             */}
-            <div className="no-scrollbar overflow-x-auto lg:hidden">
-              <div className="flex w-max gap-2.5 pb-3">
-                {data
-                  ? data.forecast.map((day) => (
-                      <ForecastCard
-                        key={day.date}
-                        day={day}
-                        selected={day.date === activeDate}
-                        onSelect={() => setPickedDate(day.date)}
-                      />
-                    ))
-                  : Array.from({ length: 7 }, (_, index) => (
-                      <div
-                        key={index}
-                        className="bg-surface shadow-rest box-border flex h-39.5 w-26 flex-none flex-col gap-2.5 rounded-[18px] p-3.5"
-                      >
-                        <span className="skeleton h-3 w-10" />
-                        <span className="skeleton w-full flex-1 rounded-[8px]" />
-                      </div>
-                    ))}
-              </div>
+            <div className="bg-bg rounded-card flex flex-col gap-0.5 p-2 lg:hidden">
+              {data
+                ? data.forecast.map((day) => (
+                    <ForecastCompactRow
+                      key={day.date}
+                      day={day}
+                      selected={day.date === activeDate}
+                      onSelect={() => setPickedDate(day.date)}
+                    />
+                  ))
+                : Array.from({ length: 7 }, (_, index) => (
+                    <div key={index} className="flex items-center gap-2.5 px-2.5 py-2.5">
+                      <span className="skeleton h-3 w-4 flex-none" />
+                      <span className="skeleton h-3 w-10 flex-none" />
+                      <span className="flex-1" />
+                      <span className="skeleton h-4 w-7 flex-none" />
+                      <span className="skeleton h-4 w-11 flex-none rounded-full" />
+                    </div>
+                  ))}
             </div>
 
             {/* 넓은 화면: 같은 7일을 가로 막대로 눕혀 세로로 쌓는다 */}
-            <div className={`${CARD} hidden flex-1 flex-col justify-center gap-0.5 p-2.5 lg:flex`}>
+            {/* 왼쪽 목록과 같은 회백 패널. 한 박스 안의 두 면이 같은 층위여야 한다 */}
+            <div className="bg-bg rounded-card hidden flex-1 flex-col justify-center gap-0.5 p-2.5 lg:flex">
               {data
                 ? data.forecast.map((day) => (
                     <ForecastRow
@@ -859,6 +1180,19 @@ export function HomePage() {
                   ))}
             </div>
 
+            </div>
+
+            {/*
+              <b>이 버튼 둘은 지역이 넘어갈 때 사라지지 않는다.</b> 위 묶음 밖에 선 이유다.
+
+              나머지는 "지금 무엇을 보고 있는가"라 지역을 따라 갈려야 하지만, 이 자리는
+              "그래서 무엇을 할 것인가"다. 행동하는 자리가 14초마다 사라졌다 나타나면
+              누르려던 손이 갈 곳을 잃는다 — 붙박이로 두는 편이 맞다.
+
+              ⚠️ 대신 <b>글자는 바뀔 수 있다.</b> 날짜를 직접 고르지 않았으면 기본값이
+              그 지역의 가장 한적한 날이라, 지역이 넘어가는 순간 날짜가 갈린다.
+              고른 날짜가 있으면(pickedDate) 그대로 남는다.
+            */}
             {/*
               고르는 일과 넘어가는 일을 나눈다.
 
@@ -911,15 +1245,23 @@ export function HomePage() {
                 {activeDate ? `${formatCompactDate(activeDate)}로 추천받기` : '추천받기'}
               </button>
             </div>
-
+          </div>
           </section>
 
+          {/*
+            4. 다른 사람들의 여행 — 지역이 넘어가도 그대로 선다.
 
-          {/* 5. 다른 사람들의 여행 — 지역이 넘어가도 그대로 선다 */}
-          <section className={`${CELL} gap-3 lg:col-span-4 lg:gap-3`}>
+            옆 칸과 <b>같은 박스</b>에 담는다. 예전에는 이쪽만 테두리 없이 배경 위에 떠 있어,
+            나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 둘이다.
+          */}
+          <section
+            className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:p-5.5`}
+          >
             <div className="flex flex-col gap-0.75 px-1">
               <h2 className={SECTION_TITLE}>다른 사람들의 여행</h2>
-              <span className="text-hint text-[12.5px]">최근에 저장된 코스예요</span>
+              <span className="text-hint text-[12.5px]">
+                눌러서 어떤 코스인지 볼 수 있어요
+              </span>
             </div>
 
             {others.length > 0 ? (
@@ -928,6 +1270,7 @@ export function HomePage() {
                   <OtherCourseCard
                     key={`${course.region}-${course.startDate}-${course.createdAt}`}
                     course={course}
+                    onOpen={() => setOpenedCourse(course)}
                   />
                 ))}
               </div>
@@ -937,7 +1280,7 @@ export function HomePage() {
                 자리만 비워 두면 고장으로 읽히고, 스켈레톤을 계속 돌리면 영영 오지 않을 것을
                 기다리는 화면이 된다. 대신 첫 사람이 될 수 있다고 말한다.
               */
-              <div className={`${CARD} flex flex-col gap-1.5 p-4.5`}>
+              <div className="bg-bg flex flex-col gap-1.5 rounded-[16px] p-4.5">
                 <span className="text-fg text-[14px] font-semibold">아직 저장된 코스가 없어요</span>
                 <span className="text-hint text-[12.5px] leading-[1.6]">
                   코스를 짜고 저장하면 여기 처음으로 올라와요.
@@ -958,6 +1301,15 @@ export function HomePage() {
           혼잡 예측은 공공데이터 기반 통계·예측값으로, 실제와 다를 수 있어요.
         </p>
       </div>
+
+      {/* 남의 코스 펼쳐 보기. 열 때 서버를 부르지 않는다 — 내용이 이미 목록에 실려 왔다 */}
+      {openedCourse && (
+        <PublicCourseSheet
+          course={openedCourse}
+          onClose={() => setOpenedCourse(null)}
+          onCopyToFlow={copyToFlow}
+        />
+      )}
     </div>
   )
 }

@@ -1086,7 +1086,7 @@ export function DiagnosisPage() {
 
           {/*
             좁은 화면의 다음 단계 버튼. 아래에 붙어 따라온다.
-            bottom-15: BottomNav(60px) 위에 얹는다. 막대가 사라지는 md부터는 바닥으로 내려온다.
+            아래 고정 막대를 걷어내서 이제 어느 폭에서나 바닥에 붙는다.
 
             <b>lg에서는 감춘다.</b> 넓은 화면에서는 이 막대가 화면 아래를 가로질러
             왼쪽 패널의 날짜 목록 끝을 덮었다. 거기서는 같은 버튼이 종합 지수 아래에
@@ -1094,9 +1094,9 @@ export function DiagnosisPage() {
           */}
           {/*
             z-30 — 이 막대는 본문 위에 떠 있어야 한다. 값을 주지 않으면 뒤에 오는
-            형제(특히 지도)에 덮인다. BottomNav(z-40)와 시트(z-50)보다는 아래다.
+            형제(특히 지도)에 덮인다. 시트(z-50)보다는 아래다.
           */}
-          <div className="from-bg/0 to-bg sticky bottom-15 z-30 mt-1 bg-gradient-to-b to-[30%] pt-3.5 pb-5 md:bottom-0 lg:hidden">
+          <div className="from-bg/0 to-bg sticky bottom-0 z-30 mt-1 bg-gradient-to-b to-[30%] pt-3.5 pb-5 lg:hidden">
             {stepActions}
           </div>
         </div>

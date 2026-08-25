@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      viewport-fit=cover가 있어야 env(safe-area-inset-*)이 실제 값을 갖는다.
+      없으면 언제나 0이라, 아래 이동 막대가 아이폰 홈 인디케이터를 피하려고 넣어둔
+      padding-bottom이 아무 일도 하지 않는다. 노치 있는 기기에서만 값이 생긴다.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>PEAKOFF</title>
 
     <!--
