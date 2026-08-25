@@ -67,15 +67,23 @@ public class KtoStartupCheck {
 		warnIfSecretLooksLikeDecodingKey();
 
 		try {
-			RegionForecast forecast = client.forecastOf(SupportedRegion.GYEONGJU.toRegion());
-			if (forecast.isEmpty()) {
-				log.warn("[공사 API] ⚠️ 호출은 됐지만 예측 자료가 비어 있습니다. 지역 코드를 확인하세요.");
-				return;
+			/*
+			 * 지역마다 따로 확인한다. 한 지역만 보고 넘어가면, 새로 넣은 지역의 코드가 틀려도
+			 * 기동 로그가 초록불이라 사용자가 그 지역을 고른 뒤에야 빈 화면으로 알게 된다.
+			 */
+			for (SupportedRegion region : SupportedRegion.values()) {
+				RegionForecast forecast = client.forecastOf(region.toRegion());
+				if (forecast.isEmpty()) {
+					log.warn("[공사 API] ⚠️ {}: 호출은 됐지만 예측 자료가 비어 있습니다. 지역 코드를 확인하세요.",
+							region.displayName());
+					continue;
+				}
+				log.info("[공사 API] ✅ {}: 관광지 {}곳, 예측 가능 기간 {} ~ {}",
+						region.displayName(),
+						forecast.placeNames().size(),
+						forecast.firstDate(),
+						forecast.lastForecastDate().map(LocalDate::toString).orElse("알 수 없음"));
 			}
-			log.info("[공사 API] ✅ 집중률 연결 확인. 관광지 {}곳, 예측 가능 기간 {} ~ {}",
-					forecast.placeNames().size(),
-					forecast.firstDate(),
-					forecast.lastForecastDate().map(LocalDate::toString).orElse("알 수 없음"));
 		}
 		catch (KtoApiException e) {
 			/*

@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 
 import com.peakoff.global.config.DataSourceProfiles;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.SupportedRegion;
+import com.peakoff.place.domain.NearbyPlaces;
+import com.peakoff.place.domain.NearbyPlace;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.Region;
 
@@ -45,6 +48,18 @@ public class MockPlaceProvider implements PlaceProvider {
 	@Override
 	public List<Place> representatives(Region region, int limit) {
 		return placesOf(region).stream().limit(limit).toList();
+	}
+
+	/**
+	 * 목업 카탈로그 전체에서 고른다.
+	 *
+	 * <p>지역이 하나뿐이라 경주 목록을 그대로 훑는다. 규칙 자체는
+	 * {@link NearbyPlaces}가 들고 있어 실데이터 구현과 같은 답을 낸다.
+	 */
+	@Override
+	public List<NearbyPlace> nearby(Place origin, int limit) {
+		return NearbyPlaces.from(placesOf(SupportedRegion.GYEONGJU.toRegion()), origin,
+				NearbyPlaces.DEFAULT_RADIUS_KM, limit);
 	}
 
 	private static List<Place> placesOf(Region region) {

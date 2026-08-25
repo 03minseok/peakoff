@@ -110,7 +110,7 @@ export function FormSheet({
 
           {failure && (
             <div
-              className="bg-crowded-tint rounded-ui text-crowded-deep px-3.5 py-3 text-xs leading-[1.65]"
+              className="bg-crowded-tint rounded-ui text-crowded-deep px-3.5 py-3 text-xs leading-[1.65] whitespace-pre-line"
               role="alert"
             >
               {failure}

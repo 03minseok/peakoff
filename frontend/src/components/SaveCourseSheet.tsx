@@ -111,7 +111,7 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
     phase === 'saved'
       ? '어느 기기에서 로그인해도 이 코스를 다시 열어볼 수 있어요.'
       : phase === 'failed'
-        ? (failure ?? '저장하지 못했어요. 잠시 후 다시 시도해 주세요.')
+        ? (failure ?? '저장하지 못했어요.\n잠시 후 다시 시도해 주세요.')
         : member
           ? '이름을 붙여 계정에 담아두면 나중에 다른 코스와 나란히 볼 수 있어요.'
           : '계정을 만들면 짠 코스를 저장해두고, 다음에 짠 코스와 한적 지수를 나란히 맞대어 볼 수 있어요.'
@@ -159,7 +159,7 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
                 </>
               )}
             </h2>
-            <p className="m-0 text-sm leading-[1.65] text-pretty">{description}</p>
+            <p className="m-0 text-sm leading-[1.65] text-pretty whitespace-pre-line">{description}</p>
           </div>
 
           {/*

@@ -121,7 +121,9 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
 
           {phase.status === 'error' && (
             <p className="bg-crowded-tint text-crowded-deep rounded-card m-0 p-4 text-center text-[13px]">
-              코스를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+              코스를 불러오지 못했어요.
+              <br />
+              잠시 후 다시 시도해 주세요.
             </p>
           )}
 
@@ -205,7 +207,9 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
                   {!comparing &&
                     (isPastDate(course.endDate) ? (
                       <p className="bg-bg text-hint rounded-ui m-0 mt-1 px-3.5 py-3 text-center text-[12.5px] leading-[1.6]">
-                        지난 여행이에요. 저장할 때의 진단 결과를 보여드리고 있어요.
+                        지난 여행이에요.
+                        <br />
+                        저장할 때의 진단 결과를 보여드리고 있어요.
                       </p>
                     ) : (
                       <button

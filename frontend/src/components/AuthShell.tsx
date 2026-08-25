@@ -90,7 +90,7 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
           <h2 className="m-0 text-[30px] leading-[1.35] font-bold tracking-[-0.025em] text-pretty">
             {panelTitle}
           </h2>
-          <p className="m-0 text-[14.5px] leading-[1.7] text-white/60 text-pretty">
+          <p className="m-0 text-[14.5px] leading-[1.7] whitespace-pre-line text-white/60 text-pretty">
             {panelDescription}
           </p>
         </div>

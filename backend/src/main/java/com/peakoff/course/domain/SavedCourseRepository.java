@@ -31,6 +31,22 @@ public interface SavedCourseRepository extends JpaRepository<SavedCourse, Long> 
 	@EntityGraph(attributePaths = "places")
 	Optional<SavedCourse> findByIdAndMemberId(Long id, Long memberId);
 
+	/**
+	 * 최근 저장된 코스. <b>주인을 가리지 않는다</b> — 홈의 "다른 사람들의 여행"에 쓴다.
+	 *
+	 * <p>이 저장소의 다른 메서드가 전부 {@code memberId}를 받는 것과 어긋나 보이지만,
+	 * 여기서 나가는 것은 코스 자체가 아니라 <b>익명 요약</b>이다({@code PublicCourseSummary}).
+	 * 이름도 id도 담기지 않아 열어 볼 길이 없다.
+	 *
+	 * <p>둘로 나눈 이유: 로그인한 사람에게 자기 코스를 "다른 사람들의 여행"이라고
+	 * 보여줄 수는 없다. 게스트는 가릴 것이 없어 위쪽을 쓴다.
+	 */
+	@EntityGraph(attributePaths = "places")
+	List<SavedCourse> findTop12ByOrderByCreatedAtDesc();
+
+	@EntityGraph(attributePaths = "places")
+	List<SavedCourse> findTop12ByMemberIdNotOrderByCreatedAtDesc(Long memberId);
+
 	/** 저장 상한을 넘었는지 확인할 때 쓴다. */
 	long countByMemberId(Long memberId);
 

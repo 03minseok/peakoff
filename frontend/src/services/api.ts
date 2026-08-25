@@ -13,6 +13,8 @@ import type {
   DateAlternatives,
   DeleteAccountRequest,
   LoginRequest,
+  NearbyPlace,
+  PublicCourse,
   Place,
   SaveCourseRequest,
   SavedCourseDetail,
@@ -293,6 +295,31 @@ export function fetchAlternatives(
   })
 }
 
+/**
+ * GET /api/places/{placeId}/nearby — 근처의 같은 분류 장소.
+ *
+ * <b>대안 추천과 다른 함수인 이유</b>: 돌려주는 것이 다르다. 저쪽은 점수와 근거가 붙은
+ * 추천이고 여기는 거리라는 사실뿐이다. 날짜를 받지 않는 것도 그래서다 —
+ * 날짜에 따라 달라지는 값이 하나도 없다.
+ *
+ * 캐시하지 않는다. 무작위가 섞이지 않아 같은 요청이면 늘 같은 답이 온다.
+ */
+export function fetchNearby(
+  placeId: string,
+  limit = 5,
+  signal?: AbortSignal,
+): Promise<NearbyPlace[]> {
+  const query = new URLSearchParams({ limit: String(limit) })
+  return apiRequest<NearbyPlace[]>(
+    `/places/${encodeURIComponent(placeId)}/nearby?${query}`,
+    { signal },
+  ).then((nearby) => {
+    // 고르면 코스에 들어간다. 여기서 기억해 두지 않으면 편집 화면이 그 장소를 모른다.
+    rememberPlaces(nearby.map((one) => one.place))
+    return nearby
+  })
+}
+
 /** POST /api/courses/diagnose */
 export function diagnoseCourse(
   course: CourseDiagnosisRequest,
@@ -336,6 +363,15 @@ export function saveCourse(
   signal?: AbortSignal,
 ): Promise<SavedCourseDetail> {
   return apiRequest<SavedCourseDetail>('/courses', { method: 'POST', body: request, signal })
+}
+
+/**
+ * GET /api/courses/recent — 다른 사람들이 최근에 저장한 코스 (익명).
+ *
+ * 로그인 없이 부를 수 있다. 로그인 상태면 서버가 내 코스를 빼고 준다.
+ */
+export function fetchRecentCourses(limit = 4, signal?: AbortSignal): Promise<PublicCourse[]> {
+  return apiRequest<PublicCourse[]>(`/courses/recent?limit=${limit}`, { signal })
 }
 
 /** GET /api/courses — 내가 저장한 코스 목록. 최근 저장한 것이 먼저 온다 */

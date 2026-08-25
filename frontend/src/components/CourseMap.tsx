@@ -272,16 +272,16 @@ function MapPlaceholder({
   className: string
 }) {
   const message = {
-    'no-key': '지도 키가 설정되지 않았습니다. 아래 목록으로 코스를 짤 수 있어요.',
+    'no-key': '지도 키가 설정되지 않았습니다.\n아래 목록으로 코스를 짤 수 있어요.',
     loading: '지도를 불러오는 중…',
-    error: '지도를 불러오지 못했습니다. 아래 목록으로 코스를 짤 수 있어요.',
+    error: '지도를 불러오지 못했습니다.\n아래 목록으로 코스를 짤 수 있어요.',
   }[status]
 
   return (
     <div
       className={`${MAP_BOX} ${className} bg-surface grid place-items-center p-4 text-center text-[13px]`}
     >
-      <p className="m-0 max-w-[28ch]">{message}</p>
+      <p className="m-0 max-w-[28ch] whitespace-pre-line">{message}</p>
     </div>
   )
 }

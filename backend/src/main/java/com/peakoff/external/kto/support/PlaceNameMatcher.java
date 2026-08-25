@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
@@ -176,6 +177,19 @@ public class PlaceNameMatcher {
 	 *
 	 * @param regionWords 뗄 지자체명. 비우면 떼지 않는다
 	 */
+	/*
+	 * 정규식을 미리 컴파일해 둔다.
+	 *
+	 * String.replaceAll은 <b>부를 때마다 패턴을 새로 컴파일한다.</b> 이 메서드는 이름을 견줄
+	 * 때마다 후보 하나당 두 번씩 불리는데, 대안 추천 한 번이면 후보 621곳을 수십 번 훑는다 —
+	 * 매치 한 번에 컴파일이 3,700번 돌았고 그것이 응답 시간의 대부분이었다.
+	 *
+	 * 결과는 한 글자도 달라지지 않는다. 같은 일을 같은 규칙으로 하되 준비를 한 번만 할 뿐이다.
+	 */
+	private static final Pattern BRACKETS = Pattern.compile("\\[[^\\]]*\\]");
+	private static final Pattern PARENS = Pattern.compile("\\([^)]*\\)");
+	private static final Pattern SPACES = Pattern.compile("\\s+");
+
 	private static String normalize(String raw, List<String> regionWords) {
 		String text = raw.trim();
 
@@ -187,12 +201,13 @@ public class PlaceNameMatcher {
 
 		// "[유네스코 세계유산]", "(경북 동해안 국가지질공원)" 같은 수식을 뗀다.
 		// "천마총(대릉원)"이 "천마총"이 되는 것도 여기다 — 괄호 안은 상위 권역이지 이름이 아니다.
-		text = text.replaceAll("\\[[^\\]]*\\]", " ").replaceAll("\\([^)]*\\)", " ");
+		text = BRACKETS.matcher(text).replaceAll(" ");
+		text = PARENS.matcher(text).replaceAll(" ");
 
 		// 슬래시는 붙임표다. 숙박이 "한화리조트/경주"처럼 지역을 이어 붙인다.
 		text = text.replace('/', ' ').replace('·', ' ');
 
-		String squeezed = text.replaceAll("\\s+", "").toLowerCase();
+		String squeezed = SPACES.matcher(text).replaceAll("").toLowerCase();
 
 		for (String word : regionWords) {
 			if (squeezed.length() > word.length() && squeezed.startsWith(word)) {

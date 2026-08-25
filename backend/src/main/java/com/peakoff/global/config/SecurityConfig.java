@@ -54,6 +54,12 @@ public class SecurityConfig {
 			 * 경로를 정확히 적었으므로 그쪽까지 열리지 않는다.
 			 */
 			"/api/courses/recommend",
+			/*
+			 * 다른 사람들의 최근 코스. 홈에 서는 목록이라 게스트도 봐야 한다.
+			 * 나가는 것은 익명 요약이라 코스 id도 이름도 담기지 않는다.
+			 * 저장과 내 코스 조회(/api/courses)는 여전히 로그인이 필요하다 — 경로를 정확히 적었다.
+			 */
+			"/api/courses/recent",
 			"/api/dates/**" };
 
 	/** API 문서. 심사 때 화면으로 보여줘야 해서 열어 둔다. */

@@ -9,6 +9,7 @@ import com.peakoff.global.error.NotFoundException;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.SupportedRegion;
+import com.peakoff.place.dto.NearbyPlaceResponse;
 import com.peakoff.place.dto.PlaceResponse;
 
 @Service
@@ -30,6 +31,23 @@ public class PlaceService {
 				? placeProvider.representatives(region.toRegion(), limit)
 				: placeProvider.search(region.toRegion(), keyword, limit);
 		return found.stream().map(PlaceResponse::from).toList();
+	}
+
+	/**
+	 * 기준 장소 근처의 같은 분류 장소들. 가까운 순.
+	 *
+	 * <p>한적도를 매길 수 없는 장소(음식점·숙박)에서 <b>장소를 바꾸는</b> 유일한 길이다.
+	 * 진단할 수 없다는 이유로 바꿀 방법까지 막을 이유는 없다 —
+	 * 우리가 점수를 못 매기는 것이지, 사용자가 다른 밥집을 고르고 싶지 않은 것이 아니다.
+	 *
+	 * <p>기준 장소가 없으면 404다. 근처에 아무것도 없으면 <b>빈 목록</b>이다 —
+	 * 요청이 잘못된 것과 답이 없는 것은 다르다.
+	 */
+	public List<NearbyPlaceResponse> findNearby(String placeId, int limit) {
+		Place origin = getById(placeId);
+		return placeProvider.nearby(origin, limit).stream()
+				.map(NearbyPlaceResponse::from)
+				.toList();
 	}
 
 	/** 다른 서비스도 쓰는 조회. 없으면 404가 되도록 예외를 던진다. */
