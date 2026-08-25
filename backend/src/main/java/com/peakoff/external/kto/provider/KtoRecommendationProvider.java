@@ -119,13 +119,14 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	}
 
 	@Override
-	public Alternatives findAlternatives(Place origin, LocalDate date, int limit) {
+	public Alternatives findAlternatives(Place origin, LocalDate date, int limit, Set<String> excluded) {
 		if (origin == null || date == null) {
 			throw new IllegalArgumentException("원래 장소와 날짜는 필수입니다.");
 		}
 		if (limit < 1) {
 			throw new IllegalArgumentException("후보 수는 1 이상이어야 합니다. 입력값: " + limit);
 		}
+		Set<String> skip = excluded == null ? Set.of() : excluded;
 
 		/*
 		 * 원래 장소의 한적도가 먼저다. 이 값이 없으면 "얼마나 나아지는가"를 잴 기준이 없어
@@ -144,21 +145,39 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 		 */
 		Region region = regionOf(origin).orElse(null);
 		if (region == null) {
-			return Alternatives.of(originQuietness, 0, List.of());
+			return Alternatives.of(originQuietness, 0, 0, List.of());
 		}
 
 		Candidates candidates = scoreCandidates(origin, date, region, originQuietness);
-		if (candidates.qualified().isEmpty()) {
-			return Alternatives.of(originQuietness, candidates.consideredCount(), List.of());
+
+		/*
+		 * 이미 코스에 담긴 곳을 뺀다. <b>자격을 따진 뒤, 뽑기 앞이다.</b>
+		 *
+		 * 뽑기 뒤로 미루면 고를 수 없는 곳이 Pool 자리를 차지해 목록이 이유 없이 짧아진다.
+		 * 반대로 자격 심사보다 앞에 두면 "이미 담긴 후보"가 몇이었는지 알 수 없어져,
+		 * 더 한적한 곳을 찾고도 "찾지 못했다"고 말하게 된다.
+		 *
+		 * <p>화면도 같은 것을 걸러내지만 역할이 다르다. 여기는 뽑을 때의 낭비를 줄이고,
+		 * 화면은 <b>이미 뽑아 둔 목록</b>을 최신 코스에 맞춘다 — 다른 자리에서 교체가
+		 * 일어나면 이 자리의 목록은 그대로인 채로 코스만 달라지기 때문이다.
+		 */
+		List<ScoredPlace> available = candidates.qualified().stream()
+				.filter(scored -> !skip.contains(scored.place().id()))
+				.toList();
+		int inCourseCount = candidates.qualified().size() - available.size();
+
+		if (available.isEmpty()) {
+			return Alternatives.of(
+					originQuietness, candidates.consideredCount(), inCourseCount, List.of());
 		}
 
-		List<Alternative> picked = drawWithoutRepeat(candidates.qualified(), limit).stream()
+		List<Alternative> picked = drawWithoutRepeat(available, limit).stream()
 				.map(candidate -> candidate.withReason(reasonFor(origin, candidate)))
 				// 화면에 보이는 값으로 줄을 세운다. 뽑기는 끝났고 여기서는 보기 좋게 정렬만 한다.
 				.sorted(Comparator.comparingInt(Alternative::recommendation).reversed())
 				.toList();
 
-		return Alternatives.of(originQuietness, candidates.consideredCount(), picked);
+		return Alternatives.of(originQuietness, candidates.consideredCount(), inCourseCount, picked);
 	}
 
 	/**

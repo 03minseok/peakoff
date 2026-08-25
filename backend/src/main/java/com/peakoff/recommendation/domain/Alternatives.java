@@ -67,10 +67,15 @@ public record Alternatives(
 	 * @param originQuietness 원래 장소의 그 날 한적도
 	 * @param consideredCount 지역·분류·자료 조건까지 통과해 <b>개선폭을 따져 본</b> 후보 수.
 	 *                        이 값이 0인 것과 0이 아닌데 아무도 못 넘은 것은 다른 상황이다
+	 * @param inCourseCount   개선폭까지 <b>통과했지만 이미 코스에 담겨 있어</b> 뽑을 수 없던 후보 수.
+	 *                        이 값이 있는데 뽑힌 것이 없으면 "못 찾았다"가 아니라 "이미 갖고 있다"이다
 	 * @param picked          최종적으로 뽑힌 후보
 	 */
-	public static Alternatives of(int originQuietness, int consideredCount, List<Alternative> picked) {
-		return new Alternatives(decide(originQuietness, consideredCount, picked), originQuietness, picked);
+	public static Alternatives of(int originQuietness, int consideredCount, int inCourseCount,
+			List<Alternative> picked) {
+
+		return new Alternatives(
+				decide(originQuietness, consideredCount, inCourseCount, picked), originQuietness, picked);
 	}
 
 	/**
@@ -80,10 +85,19 @@ public record Alternatives(
 	 * 순서 자체가 규칙이라 여기 한 곳에 모아 둔다 — 날짜 대안의 {@code decide}와 같은 이유다.
 	 */
 	private static PlaceOffStatus decide(int originQuietness, int consideredCount,
-			List<Alternative> picked) {
+			int inCourseCount, List<Alternative> picked) {
 
 		if (!picked.isEmpty()) {
 			return PlaceOffStatus.RECOMMENDED;
+		}
+		/*
+		 * 자격을 갖춘 후보를 찾긴 했는데 전부 이미 코스에 있다.
+		 *
+		 * 아래 두 갈래보다 먼저 본다. 더 구체적이고, 무엇보다 <b>사실이 다르다</b> —
+		 * 우리는 찾았고 사용자가 갖고 있다. "못 찾았다"고 말하면 거짓말이 된다.
+		 */
+		if (inCourseCount > 0) {
+			return PlaceOffStatus.ALL_CANDIDATES_IN_COURSE;
 		}
 		// 개선폭까지 가 보지도 못했다. "더 나은 곳이 없다"와는 다른 말이다.
 		if (consideredCount == 0) {

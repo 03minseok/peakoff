@@ -1,6 +1,7 @@
 package com.peakoff.recommendation.domain;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 import com.peakoff.place.domain.Place;
 
@@ -24,11 +25,14 @@ public interface RecommendationProvider {
 	 * 구현마다 후보를 어디서 가져오는지는 다르지만 거르는 기준과 순서는 같아야 한다 —
 	 * 뽑은 뒤에 거르면 자격 있는 후보가 Pool에 남아 있는데도 목록이 짧아진다.
 	 *
-	 * @param origin 교체 대상 장소. 이 장소와의 연관성·거리가 추천도의 근거가 된다
-	 * @param date   방문 예정일
-	 * @param limit  최대 후보 수 (1 이상)
+	 * @param origin   교체 대상 장소. 이 장소와의 연관성·거리가 추천도의 근거가 된다
+	 * @param date     방문 예정일
+	 * @param limit    최대 후보 수 (1 이상)
+	 * @param excluded 후보에서 뺄 장소 ID. <b>이미 코스에 담긴 곳</b>이 여기 온다 —
+	 *                 고를 수 없는 것을 뽑아 봐야 Pool 자리만 차지하고 화면에서 걸러진다.
+	 *                 비어 있어도 된다
 	 * @return 추천 순으로 정렬된 후보와 <b>그런 목록이 나온 이유</b>.
 	 *         빈 목록도 이유를 달고 나간다 — 왜 비었는지가 사용자에게 매번 다른 소식이다
 	 */
-	Alternatives findAlternatives(Place origin, LocalDate date, int limit);
+	Alternatives findAlternatives(Place origin, LocalDate date, int limit, Set<String> excluded);
 }
