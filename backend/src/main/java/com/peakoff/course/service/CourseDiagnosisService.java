@@ -70,8 +70,12 @@ public class CourseDiagnosisService {
 			 * 관광지인데 없으면 "우리가 못 매겼다"고 밝힌다 — 침묵하면 사용자는 자기가
 			 * 잘못 담았다고 생각한다. 반대로 음식점·숙박은 애초에 예측 대상이 아니라
 			 * 흔하게 나온다. 밥집마다 안내를 세우면 정작 읽어야 할 점수가 그 사이에 묻힌다.
+			 *
+			 * ⚠️ <b>"예측을 시도했는가"가 아니라 "말을 걸 분류인가"로 묻는다.</b>
+			 * 쇼핑은 시도는 하지만(시장이 이어진다) 실제로 이어지는 것이 극소수라
+			 * 침묵하는 쪽이다 — 상점 하나 담을 때마다 안내가 서면 점수가 묻힌다.
 			 */
-			DiagnosisGap gap = PlaceCategories.isForecastTarget(place.category())
+			DiagnosisGap gap = PlaceCategories.announcesMissingForecast(place.category())
 					? DiagnosisGap.PLACE_NOT_FORECASTED
 					: DiagnosisGap.CATEGORY_NOT_FORECASTED;
 			return CourseSlot.undiagnosed(slotRequest.day(), slotRequest.order(), place, gap);

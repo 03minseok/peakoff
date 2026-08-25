@@ -60,10 +60,61 @@ public final class PlaceCategories {
 	 * 공사가 나중에 음식점을 예측하기 시작하면 이 집합만 고치면 된다. 화면에 코드를 박아 두면
 	 * 그날 화면을 찾아다녀야 한다. 임계값과 가중치를 서버에 둔 것과 같은 이유다.
 	 *
-	 * <p>⚠️ 쇼핑(SH)은 뺐다. 시장은 붐빔이 실제 이슈지만 기념품 가게·상점이 섞여 있어
-	 * "진단해줄 곳"으로 보기 애매하다. 축제(EV)는 넣었다 — 기간이 정해진 행사라 혼잡이 본질이다.
+	 * <p>축제(EV)는 넣었다 — 기간이 정해진 행사라 혼잡이 본질이다.
+	 *
+	 * <h3>쇼핑(SH)을 넣었다 (2026-08-26)</h3>
+	 * 예전에는 뺐다 — 시장은 붐빔이 실제 이슈지만 기념품 가게·상점이 섞여 있어 애매하다고 봤다.
+	 * 실측해 보니 <b>공사가 예측하는 쇼핑은 시장뿐</b>이라, 애매함은 우리 걱정이었지 데이터의
+	 * 성질이 아니었다. 동문재래시장·서귀포매일올레시장·광장시장·강릉 중앙시장이 다 여기 있다.
+	 *
+	 * <p>⚠️ 대신 <b>쇼핑은 이름이 정확히 같을 때만 잇는다</b>({@link #requiresExactNameMatch}).
+	 * 그리고 자료가 없어도 말을 걸지 않는다({@link #announcesMissingForecast}) —
+	 * 셋을 한 집합으로 두면 하나를 열 때 셋이 함께 열린다.
 	 */
-	private static final Set<String> FORECAST_TARGETS = Set.of("HS", "NA", "VE", "LS", "EX", "EV");
+	private static final Set<String> FORECAST_TARGETS =
+			Set.of("HS", "NA", "VE", "LS", "EX", "EV", "SH");
+
+	/**
+	 * 자료가 없을 때 <b>"우리가 못 매겼다"고 말해 줄</b> 분류.
+	 *
+	 * <p>{@link #FORECAST_TARGETS}와 갈라 둔 이유: 쇼핑은 예측 대상이지만
+	 * <b>실제로 이어지는 것은 극소수</b>다. 제주시 296곳 중 6곳, 서귀포 99곳 중 4곳,
+	 * 경주는 31곳 중 0곳이다(2026-08-26 실측).
+	 *
+	 * <p>여기에 쇼핑을 넣으면 상점 하나 담을 때마다 "예상 혼잡 정보가 없는 장소예요"가
+	 * 화면에 서고, 정작 읽어야 할 점수들이 그 사이에 묻힌다.
+	 * <b>애초에 예측되는 일이 드문 것을 "없다"고 알리는 것은 정보가 아니다</b> —
+	 * 음식점·숙박에 침묵하는 것과 같은 이유다.
+	 *
+	 * <p>반대로 역사·유적은 109곳 중 36곳이 예측된다. 세 번 중 두 번은 없는데,
+	 * 여기서 침묵하면 사용자는 <b>담는 방법을 잘못 알았다고 생각한다.</b>
+	 *
+	 * <p>총점의 분모도 이 기준을 따른다({@code Course.forecastTargetCount}) —
+	 * 진단되지 않은 쇼핑은 분모에서 빠지므로, 상점을 담을수록 총점이 사라지는 일이 없다.
+	 * <b>진단된 쇼핑은 분자·분모 양쪽에 들어간다.</b>
+	 */
+	private static final Set<String> ANNOUNCE_MISSING = Set.of("HS", "NA", "VE", "LS", "EX", "EV");
+
+	/**
+	 * <b>이름이 정확히 같을 때만</b> 이어야 하는 분류.
+	 *
+	 * <h3>왜 쇼핑만인가</h3>
+	 * 상호에 지명을 붙이는 관습이 있다. 포함 매칭을 열어 두면 이렇게 된다(종로구 실측):
+	 *
+	 * <pre>
+	 * "다이소 경복궁역점"   → "경복궁"     생활용품점이 궁궐의 혼잡도를 받는다
+	 * "올리브영 대학로점"   → "대학로"
+	 * "CU 도두항점"         → "도두항"
+	 * </pre>
+	 *
+	 * <p><b>좌표 검증으로도 못 막는다.</b> 다이소 경복궁역점은 실제로 경복궁 2km 안에 있다 —
+	 * 이름도 닮고 위치도 가까운데 같은 장소가 아니다. 예전 "불국사밀면 → 불국사"와 같은 부류인데,
+	 * 그쪽은 분류로 걸러 낼 수 있었지만 이쪽은 분류가 같다.
+	 *
+	 * <p>완전 일치만 허용하면 <b>남는 것이 전부 시장·관광시설</b>이 된다.
+	 * 종로구에서 32건이 4건으로 줄면서 오연결 29건이 통째로 사라졌고, 잃은 것은 없다.
+	 */
+	private static final Set<String> EXACT_NAME_ONLY = Set.of("SH");
 
 	/**
 	 * {@code VE} 안에서 <b>자연을 보러 가는</b> 성격. 자연·풍경과 서로 대신할 수 있다.
@@ -229,5 +280,29 @@ public final class PlaceCategories {
 	 */
 	public static boolean isForecastTarget(PlaceCategory category) {
 		return category != null && FORECAST_TARGETS.contains(category.code());
+	}
+
+	/**
+	 * 자료가 없을 때 <b>사용자에게 그 사실을 알릴</b> 분류인가.
+	 *
+	 * <p>{@link #isForecastTarget}과 갈라 물어야 한다. 예측을 시도하는 것과,
+	 * 실패했을 때 말을 거는 것은 다른 판단이다 — 쇼핑은 시도하되 침묵한다.
+	 *
+	 * @see #ANNOUNCE_MISSING 무엇을 왜 넣고 뺐는지
+	 */
+	public static boolean announcesMissingForecast(PlaceCategory category) {
+		return category != null && ANNOUNCE_MISSING.contains(category.code());
+	}
+
+	/**
+	 * 이름이 <b>정확히 같을 때만</b> 이어야 하는 분류인가.
+	 *
+	 * <p>참이면 포함 매칭을 쓰지 않는다. 상호에 지명이 붙는 분류에서
+	 * "다이소 경복궁역점 → 경복궁" 같은 짝이 생기는 것을 막는다.
+	 *
+	 * @see #EXACT_NAME_ONLY 왜 쇼핑만인지
+	 */
+	public static boolean requiresExactNameMatch(PlaceCategory category) {
+		return category != null && EXACT_NAME_ONLY.contains(category.code());
 	}
 }

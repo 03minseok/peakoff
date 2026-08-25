@@ -3,6 +3,7 @@ package com.peakoff.external.kto.provider;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.function.Predicate;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -149,9 +150,12 @@ public class KtoCongestionProvider implements CongestionProvider {
 	 * 배지가 서는 것으로 끝나지 않고 코스 총점까지 오염된다 — 계산하지 않은 것을 근거로
 	 * 말하지 않는다는 규칙이 정확히 이 자리를 막는다.
 	 *
-	 * <p>분류로 먼저 거르면 이 부류가 통째로 사라진다. 공사 집중률은 관광지만 예측하므로
-	 * 음식점·숙박은 <b>이름이 아무리 닮아도 이을 곳이 없는 것이 맞다.</b> 쇼핑·체험·레저·축제
-	 * 14곳을 실제로 진단해 봐도 지금 이어지는 곳이 하나도 없어, 걸러서 잃는 것은 없다.
+	 * <p>분류로 먼저 거르면 이 부류가 통째로 사라진다. 공사 집중률은 음식점·숙박을 예측하지
+	 * 않으므로 <b>이름이 아무리 닮아도 이을 곳이 없는 것이 맞다.</b>
+	 *
+	 * <p>쇼핑은 2026-08-26에 열었다 — 공사가 예측하는 쇼핑은 시장뿐이라(동문재래시장·
+	 * 서귀포매일올레시장·광장시장) 막아 둘 이유가 없었다. 대신 그 분류는
+	 * <b>이름이 정확히 같을 때만</b> 잇는다({@link #plausibilityOf}).
 	 *
 	 * <p>이 자리에 둔 이유는 {@code quietnessOf}와 {@code hasData} 둘이 전부 여기를
 	 * 지나기 때문이다. 한 군데만 막으면 점수·배지·총점이 함께 정리된다.
@@ -160,7 +164,26 @@ public class KtoCongestionProvider implements CongestionProvider {
 		return placeProvider.findById(placeId)
 				.filter(place -> PlaceCategories.isForecastTarget(place.category()))
 				.flatMap(place -> nameMatcher.match(place.name(), region, forecast.placeNames(),
-						forecastName -> couldBeSamePlace(place, forecastName, region)));
+						plausibilityOf(place, region)));
+	}
+
+	/**
+	 * 포함 매칭으로 걸린 후보를 어떻게 거를지. <b>분류마다 다르다.</b>
+	 *
+	 * <p>쇼핑은 아예 통과시키지 않는다 — 상호에 지명을 붙이는 관습이 있어
+	 * "다이소 경복궁역점"이 "경복궁"에 걸린다. <b>좌표로도 못 막는다</b>:
+	 * 그 가게는 실제로 경복궁 2km 안에 있다. 이름도 닮고 위치도 가까운데 같은 장소가 아니다.
+	 *
+	 * <p>완전 일치 단계는 이 거름망을 타지 않으므로, 동문재래시장·광장시장처럼
+	 * <b>공사가 그 이름 그대로 예측하는 시장은 그대로 이어진다.</b>
+	 *
+	 * @see PlaceCategories#requiresExactNameMatch(com.peakoff.place.domain.PlaceCategory)
+	 */
+	private Predicate<String> plausibilityOf(Place origin, Region region) {
+		if (PlaceCategories.requiresExactNameMatch(origin.category())) {
+			return forecastName -> false;
+		}
+		return forecastName -> couldBeSamePlace(origin, forecastName, region);
 	}
 
 	/**
