@@ -13,6 +13,7 @@ import com.peakoff.external.kto.client.KtoCongestionClient;
 import com.peakoff.external.kto.client.RegionForecast;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.global.support.Scores;
+import com.peakoff.place.domain.Distances;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.PlaceProvider;
@@ -36,6 +37,28 @@ import com.peakoff.place.domain.SupportedRegion;
 @ConditionalOnProperty(name = "peakoff.kto.congestion", havingValue = "real")
 @RequiredArgsConstructor
 public class KtoCongestionProvider implements CongestionProvider {
+
+	/**
+	 * 이름이 닮은 두 곳을 같은 장소로 볼 수 있는 최대 직선거리.
+	 *
+	 * <p>실측 분포가 이 값을 정했다(5개 지역, 2026-08-25). 이름으로 이어진 짝들의 실제 거리를
+	 * 재 보면 <b>3.6km와 5.1km 사이가 비어 있다</b> — 아래쪽은 "경주 남산 칠불암 → 경주 남산"
+	 * 처럼 한 권역 안의 짝이고, 위쪽은 "월성원자력홍보관 → 경주 월성"처럼 남남이다.
+	 *
+	 * <p>2km는 그 빈 구간보다 더 좁게 잡은 값이다. 남산 자락 유적 다섯 곳(2.2~3.4km)과
+	 * 우도·차귀도 안의 짝들이 함께 끊기지만, <b>애매하면 잇지 않는다</b>는 원칙을 따랐다 —
+	 * 남산 입구의 혼잡도를 산 반대편 칠불암의 것이라고 말할 근거가 없다.
+	 * 끊긴 자리는 "예상 혼잡 정보가 없는 장소"로 정직하게 표시된다.
+	 */
+	private static final double MAX_LINK_DISTANCE_KM = 2.0;
+
+	/**
+	 * 이름으로 장소를 되찾을 때 훑을 검색 결과 수.
+	 *
+	 * <p>검색은 부분 일치라 "한라산"으로 물으면 둘레길·국립공원까지 딸려 온다. 그중에서
+	 * 이름이 정확히 같은 하나를 고르므로, 넉넉히 받아 두고 걸러야 진짜가 뒤에 밀려 잘리지 않는다.
+	 */
+	private static final int NAME_LOOKUP_LIMIT = 50;
 
 	private final KtoCongestionClient client;
 	private final PlaceProvider placeProvider;
@@ -136,8 +159,62 @@ public class KtoCongestionProvider implements CongestionProvider {
 	private Optional<String> apiNameOf(String placeId, Region region, RegionForecast forecast) {
 		return placeProvider.findById(placeId)
 				.filter(place -> PlaceCategories.isForecastTarget(place.category()))
-				.map(Place::name)
-				.flatMap(name -> nameMatcher.match(name, region, forecast.placeNames()));
+				.flatMap(place -> nameMatcher.match(place.name(), region, forecast.placeNames(),
+						forecastName -> couldBeSamePlace(place, forecastName, region)));
+	}
+
+	/**
+	 * 이름이 닮은 두 곳이 <b>같은 장소일 수 있는가</b>를 좌표로 가른다.
+	 *
+	 * <h3>왜 이름만으로는 안 되는가</h3>
+	 * 이름 매칭은 한쪽이 다른 쪽을 품으면 잇는다. 그 규칙이 "대릉원 ↔ 경주 대릉원 일원"을
+	 * 살리는 동시에 이런 것도 이어 버린다 (5개 지역 실측, 2026-08-25):
+	 *
+	 * <pre>
+	 * "월성원자력홍보관"  → 집중률 "경주 월성(반월성)"   26.4km 떨어져 있다
+	 * "경주 나정"         → 집중률 "나정고운모래해변"    25.4km
+	 * "플래시백 계림"     → 집중률 "경주 계림"            6.6km
+	 * </pre>
+	 *
+	 * <p>글자로는 못 가른다. "나정"과 "나정고운모래해변"은 부모·자식처럼 보이고,
+	 * 길이 비율로 자르면 "경주 남산 칠불암 → 경주 남산"처럼 살려야 할 짝까지 끊긴다.
+	 * 좌표는 그 둘을 정확히 가른다.
+	 *
+	 * <h3>어떻게 좌표를 얻는가</h3>
+	 * 집중률 응답에는 좌표가 없다. 대신 <b>그 이름이 우리 카탈로그에도 있으면</b> 거기에 좌표가
+	 * 있다 — 실측 포함 매칭 126건 중 80건이 이 방법으로 검증됐다.
+	 * 못 찾으면 <b>통과시킨다.</b> 검증하지 못한 것을 끊으면 규칙이 아니라 자료 유무로
+	 * 장소가 사라진다.
+	 *
+	 * <p>자기 자신을 찾은 경우도 통과다. 우리 장소의 이름이 곧 집중률 이름이라는 뜻이라
+	 * 견줄 상대가 없다.
+	 */
+	private boolean couldBeSamePlace(Place origin, String forecastName, Region region) {
+		return placeNamed(forecastName, region)
+				.filter(anchor -> !anchor.id().equals(origin.id()))
+				.map(anchor -> Distances.betweenKm(origin, anchor) <= MAX_LINK_DISTANCE_KM)
+				.orElse(true);
+	}
+
+	/**
+	 * 공사가 부르는 그 이름의 장소를 우리 카탈로그에서 찾는다. 없으면 빈 값.
+	 *
+	 * <p><b>포함이 아니라 정규화 완전 일치다.</b> 검색은 후보를 불러오는 수단일 뿐이고,
+	 * 판정은 {@link PlaceNameMatcher#normalized}가 한다 — 여기서 포함 매칭을 또 쓰면
+	 * 지금 막으려는 그 문제를 검증 단계에서 되풀이하게 된다.
+	 *
+	 * <p>{@code PlaceProvider}를 거치는 이유: 카탈로그 클라이언트를 직접 부르면
+	 * 장소가 목업인 설정에서 이 검증만 실데이터를 보게 된다.
+	 */
+	private Optional<Place> placeNamed(String forecastName, Region region) {
+		String target = nameMatcher.normalized(forecastName, region);
+		if (target.isEmpty()) {
+			return Optional.empty();
+		}
+		return placeProvider
+				.search(region, PlaceNameMatcher.searchKeyword(forecastName), NAME_LOOKUP_LIMIT).stream()
+				.filter(place -> nameMatcher.normalized(place.name(), region).equals(target))
+				.findFirst();
 	}
 
 	/**
