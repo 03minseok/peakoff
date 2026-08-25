@@ -135,13 +135,13 @@ public class KakaoLoginClient implements SocialLoginClient {
 					 * 보고 할 수 있는 일이 없고, 우리 설정 상태를 밖에 알릴 이유도 없다.
 					 */
 					log.warn("카카오 토큰 교환 실패 status={} body={}", res.getStatusCode(), readBody(res));
-					throw new UnauthorizedException("카카오 로그인에 실패했어요. 다시 시도해 주세요.");
+					throw new UnauthorizedException("카카오 로그인에 실패했어요.\n다시 시도해 주세요.");
 				})
 				.body(KakaoTokenResponse.class);
 
 		if (response == null || response.accessToken() == null) {
 			log.warn("카카오 토큰 응답에 access_token이 없다");
-			throw new UnauthorizedException("카카오 로그인에 실패했어요. 다시 시도해 주세요.");
+			throw new UnauthorizedException("카카오 로그인에 실패했어요.\n다시 시도해 주세요.");
 		}
 		return response.accessToken();
 	}
@@ -159,13 +159,13 @@ public class KakaoLoginClient implements SocialLoginClient {
 				.retrieve()
 				.onStatus(HttpStatusCode::isError, (request, res) -> {
 					log.warn("카카오 사용자 조회 실패 status={} body={}", res.getStatusCode(), readBody(res));
-					throw new UnauthorizedException("카카오 로그인에 실패했어요. 다시 시도해 주세요.");
+					throw new UnauthorizedException("카카오 로그인에 실패했어요.\n다시 시도해 주세요.");
 				})
 				.body(KakaoUserResponse.class);
 
 		if (user == null || user.id() == null) {
 			log.warn("카카오 사용자 응답에 id가 없다");
-			throw new UnauthorizedException("카카오 로그인에 실패했어요. 다시 시도해 주세요.");
+			throw new UnauthorizedException("카카오 로그인에 실패했어요.\n다시 시도해 주세요.");
 		}
 
 		KakaoAccount account = user.kakaoAccount();

@@ -1,13 +1,16 @@
 package com.peakoff.external.kto.provider;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +20,7 @@ import com.peakoff.external.kto.client.KtoRelatedClient;
 import com.peakoff.external.kto.client.RegionCatalog;
 import com.peakoff.external.kto.client.RelatedPlaces;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
+import com.peakoff.external.kto.support.RegionCache;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.SupportedRegion;
@@ -56,7 +60,6 @@ import com.peakoff.recommendation.domain.WeightedPicker;
  */
 @Component
 @ConditionalOnProperty(name = "peakoff.kto.recommendation", havingValue = "real")
-@RequiredArgsConstructor
 public class KtoRecommendationProvider implements RecommendationProvider {
 
 	/**
@@ -82,6 +85,37 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	private final RecommendationScorer scorer;
 	private final WeightedPicker picker;
 
+	/**
+	 * 연관 관광지 이름을 <b>우리 장소로 이어 놓은 대응표</b>. 지역별로 한 벌 들고 있는다.
+	 *
+	 * <h3>왜 여기까지 캐시하는가</h3>
+	 * 원자료(연관 목록·지역 카탈로그)는 이미 캐시돼 있었는데도 대안 한 번에 930ms가 걸렸다.
+	 * 남은 비용이 <b>이름 매칭</b>이었다 — 기준 장소의 연관 이름 수십 개를 카탈로그 621곳과
+	 * 견주는데, 후보 하나마다 정규화를 두 번 돌린다.
+	 *
+	 * <h3>⚠️ 추천 분산은 그대로다</h3>
+	 * 여기 담기는 것은 <b>이름과 장소의 대응뿐</b>이다. 점수도, 순서도, 뽑힌 결과도 없다.
+	 * 캐시하면 안 되는 것은 <b>완성된 대안 목록</b>이다 — 그것을 캐시해 모든 사용자에게
+	 * 같은 답을 돌려주면 그곳이 새로운 혼잡지가 된다(2차 오버투어리즘).
+	 * 아래 {@code scoreCandidates}의 점수 계산과 {@code drawWithoutRepeat}의 가중 무작위
+	 * 뽑기는 <b>매 호출마다</b> 그대로 돈다.
+	 *
+	 * <p>표는 <b>물어본 이름만</b> 채워진다. 자세한 이유는 {@link NameIndex}에 적어 두었다.
+	 */
+	private final RegionCache<NameIndex> relatedIndex;
+
+	public KtoRecommendationProvider(KtoRelatedClient relatedClient, KtoPlaceClient placeClient,
+			PlaceNameMatcher nameMatcher, CongestionProvider congestionProvider,
+			RecommendationScorer scorer, WeightedPicker picker, Clock clock) {
+		this.relatedClient = relatedClient;
+		this.placeClient = placeClient;
+		this.nameMatcher = nameMatcher;
+		this.congestionProvider = congestionProvider;
+		this.scorer = scorer;
+		this.picker = picker;
+		this.relatedIndex = new RegionCache<>(clock);
+	}
+
 	@Override
 	public List<Alternative> findAlternatives(Place origin, LocalDate date, int limit) {
 		if (origin == null || date == null) {
@@ -91,7 +125,16 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 			throw new IllegalArgumentException("후보 수는 1 이상이어야 합니다. 입력값: " + limit);
 		}
 
-		Region region = region();
+		/*
+		 * 기준 장소가 든 지역에서만 후보를 찾는다.
+		 *
+		 * 장소 ID에 지역이 묻어 있지 않아 지원 지역을 하나씩 훑는다. 못 찾으면 빈 목록이다 —
+		 * 어느 지역 카탈로그에도 없는 장소는 연관 목록에도 없다.
+		 */
+		Region region = regionOf(origin).orElse(null);
+		if (region == null) {
+			return List.of();
+		}
 		List<ScoredPlace> scored = scoreCandidates(origin, date, region);
 		if (scored.isEmpty()) {
 			return List.of();
@@ -121,13 +164,11 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 			return List.of();
 		}
 
-		Map<String, Place> byName = catalog.byName();
+		NameIndex index = relatedIndex.get(region, this::newIndex);
 		List<ScoredPlace> scored = new ArrayList<>();
 
 		for (String relatedName : related.relatedTo(originName.get())) {
-			Place candidate = nameMatcher.match(relatedName, region, byName.keySet())
-					.map(byName::get)
-					.orElse(null);
+			Place candidate = index.resolve(relatedName, region, nameMatcher);
 			if (candidate == null) {
 				// 우리 카탈로그에 없는 이름. 좌표도 사진도 없어 화면에 세울 수 없다.
 				continue;
@@ -146,6 +187,39 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 			scored.add(scorer.scoreAgainst(origin, candidate, date, ScoreWeights.DEFAULT));
 		}
 		return scored;
+	}
+
+	/**
+	 * 공사 이름 하나를 우리 장소로 이어 놓고 <b>물어본 것만</b> 기억한다.
+	 *
+	 * <h3>왜 통째로 미리 만들지 않는가</h3>
+	 * 처음에는 지역의 연관 이름 전부를 한 번에 이어 표로 만들었다. 두 번째 요청부터는
+	 * 빨랐지만 <b>첫 요청이 2.1초가 됐다</b> — 자기가 쓰지도 않을 수백 개를 대신 이어 주느라
+	 * 그렇다. 사용자는 평균이 아니라 자기가 누른 그 한 번을 기다린다.
+	 *
+	 * <p>그래서 기준 장소의 연관 이름(수십 개)만 잇고 그 결과를 남긴다. 다음 사람이 같은
+	 * 장소를 물으면 공짜고, 다른 장소를 물어도 자기 몫만 치른다.
+	 *
+	 * <h3>⚠️ 여기에 점수는 없다</h3>
+	 * 담기는 것은 이름과 장소의 대응뿐이다. 점수 계산과 가중 무작위 뽑기는 매 호출마다
+	 * 그대로 돈다 — 완성된 대안 목록을 캐시하면 모두가 같은 답을 받아 분산이 죽는다.
+	 *
+	 * @param byName 카탈로그의 이름 → 장소. 한 번만 만들어 들고 있는다
+	 * @param memo   이미 이어 본 이름. 못 이은 것도 빈 값으로 남겨 두 번 헛수고하지 않는다
+	 */
+	private record NameIndex(Map<String, Place> byName, Map<String, Optional<Place>> memo) {
+
+		Place resolve(String ktoName, Region region, PlaceNameMatcher matcher) {
+			return memo.computeIfAbsent(ktoName,
+					name -> matcher.match(name, region, byName.keySet()).map(byName::get))
+					.orElse(null);
+		}
+	}
+
+	private NameIndex newIndex(Region region) {
+		RegionCatalog catalog = placeClient.catalogOf(region);
+		return new NameIndex(catalog.isEmpty() ? Map.of() : catalog.byName(),
+				new ConcurrentHashMap<>());
 	}
 
 	/**
@@ -182,8 +256,14 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 				origin.name(), scored.level().congestionPhrase());
 	}
 
-	/** v1은 파일럿 한 지역이라 경주로 고정한다. 지역을 늘릴 때 손댈 자리를 남겨 둔다. */
-	private static Region region() {
-		return SupportedRegion.GYEONGJU.toRegion();
+	/**
+	 * 그 장소가 어느 지역 카탈로그에 들어 있는지 찾는다.
+	 *
+	 * <p>카탈로그는 6시간 캐시라 대개 메모리에 있다. 첫 조회에서만 지역 수만큼 부른다.
+	 */
+	private Optional<Region> regionOf(Place origin) {
+		return SupportedRegion.allRegions().stream()
+				.filter(region -> placeClient.catalogOf(region).findById(origin.id()).isPresent())
+				.findFirst();
 	}
 }

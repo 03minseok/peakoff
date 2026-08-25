@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDownToLine, Close } from '../components/icons'
 import type { ReactNode } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
@@ -11,6 +11,7 @@ import { CARD } from '../components/styles'
 import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
 import { useAuth } from '../state/authContext'
 import { DEFAULT_REGION, regionNameOf } from '../constants/regions'
+import { useBrowserChromeInset } from '../hooks/useBrowserChromeInset'
 import { useTrip } from '../state/tripContext'
 import type { SavedCourseDetail, SavedCourseSummary } from '../types/api'
 import { isPastDate } from '../utils/date'
@@ -61,6 +62,19 @@ export function MyPage() {
   const navigate = useNavigate()
   const { member, loading: authLoading, logout } = useAuth()
   const { restore } = useTrip()
+  // 아래 고정 CTA가 브라우저 도구막대 뒤로 숨지 않게 하는 보정.
+  const chromeInset = useBrowserChromeInset()
+  /**
+   * 이 화면에 머무는 동안 <b>한 번이라도 로그인 상태였는가.</b>
+   *
+   * <p>아래 로그인 가드가 "튕겨낼 사람"과 "방금 나간 사람"을 가르는 데 쓴다.
+   * 상태가 아니라 ref인 이유: 이 값이 바뀐다고 다시 그릴 일이 없고, 같은 렌더 안에서
+   * member와 함께 읽혀야 하기 때문이다.
+   */
+  const wasSignedIn = useRef(false)
+  if (member) {
+    wasSignedIn.current = true
+  }
 
   const [list, setList] = useState<ListState>({ status: 'loading' })
   const [selecting, setSelecting] = useState(false)
@@ -173,7 +187,7 @@ export function MyPage() {
         text:
           error instanceof ApiRequestError
             ? error.message
-            : '코스를 지우지 못했어요. 잠시 후 다시 시도해 주세요.',
+            : '코스를 지우지 못했어요.\n잠시 후 다시 시도해 주세요.',
       })
     } finally {
       setDeleting(false)
@@ -204,8 +218,23 @@ export function MyPage() {
   if (authLoading) {
     return <div className="text-hint px-5 py-10 text-center text-[13px]">불러오는 중…</div>
   }
+  /*
+   * 로그인 상태가 아니면 이 화면을 보여주지 않는다. <b>어디로 보낼지가 둘로 갈린다.</b>
+   *
+   *   처음부터 로그인 상태가 아니었다 → 주소로 바로 들어온 사람. 로그인 화면으로.
+   *   있었는데 없어졌다              → 스스로 나간 사람(로그아웃·탈퇴). 홈으로.
+   *
+   * 예전에는 무조건 로그인 화면으로 보냈다. 그래서 <b>로그아웃했을 뿐인데 로그인하라는
+   * 화면</b>이 떴다 — 방금 나온 사람에게 다시 들어오라고 말하는 꼴이다. 로그아웃 버튼이
+   * navigate('/')를 부르고 있었지만, member가 비는 순간 이 가드가 먼저 걸렸고
+   * 그 Navigate가 replace라 홈 이동을 덮어썼다.
+   *
+   * 플래그를 따로 두는 대신 <b>"있었는가"로 판단</b>하는 이유: 나가는 길이 로그아웃
+   * 하나가 아니다. 회원 탈퇴도 같은 자리를 지나는데, 플래그 방식이면 그 경로에도
+   * 똑같은 표시를 심어야 하고 나중에 길이 하나 더 생기면 또 빠뜨린다.
+   */
   if (!member) {
-    return <Navigate to="/login" replace />
+    return <Navigate to={wasSignedIn.current ? '/' : '/login'} replace />
   }
 
   const empty = list.status === 'loaded' && courses.length === 0
@@ -320,7 +349,9 @@ export function MyPage() {
 
       {list.status === 'error' && (
         <p className="bg-crowded-tint text-crowded-deep rounded-card m-0 p-4 text-center text-[13px]">
-          저장한 코스를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+          저장한 코스를 불러오지 못했어요.
+          <br />
+          잠시 후 다시 시도해 주세요.
         </p>
       )}
 
@@ -339,7 +370,7 @@ export function MyPage() {
           role={notice.tone === 'error' ? 'alert' : 'status'}
         >
           <span
-            className={`text-[13px] ${
+            className={`text-[13px] whitespace-pre-line ${
               notice.tone === 'error' ? 'text-crowded-deep' : 'text-brand-deep'
             }`}
           >
@@ -497,10 +528,11 @@ export function MyPage() {
         <button
           type="button"
           className="border-crowded-soft text-crowded-deep hover:bg-crowded-tint rounded-ui bg-surface min-h-13 w-full cursor-pointer border text-[15px] font-semibold transition-colors"
-          onClick={() => {
-            logout()
-            navigate('/')
-          }}
+          /*
+            로그아웃만 하고 화면 이동은 시키지 않는다. member가 비면 위 가드가
+            <b>홈으로</b> 보낸다 — 같은 일을 두 곳에서 시키면 둘이 어긋나는 날이 온다.
+          */
+          onClick={logout}
         >
           로그아웃
         </button>
@@ -522,17 +554,25 @@ export function MyPage() {
         </button>
 
         <p className="text-muted m-0 px-1 text-[12px] leading-[1.6]">
-          탈퇴하면 저장한 코스가 함께 사라지고 되돌릴 수 없어요. 저장 기능만 필요 없다면
-          로그아웃으로 충분해요.
+          탈퇴하면 저장한 코스가 함께 사라지고 되돌릴 수 없어요.
+          <br />
+          저장 기능만 필요 없다면 로그아웃으로 충분해요.
         </p>
       </section>
 
       {/*
         모바일 비교 CTA. 목록을 훑으며 고르는 동안 버튼이 따라온다.
-        bottom-15로 BottomNav(60px) 바로 위에 얹는다 — 겹치면 둘 다 못 누른다.
+        아래 고정 막대가 사라져 이제 바닥에 바로 붙는다.
+
+        <b>여전히 브라우저 도구막대만큼 끌어올린다.</b> 화면 바닥에 붙는 요소가 이것
+        하나만 남았을 뿐, 크롬이 레이아웃 화면의 바닥을 도구막대 뒤에 깔아 두는 것은
+        그대로라 보정이 없으면 이 버튼이 막대 뒤로 숨는다.
       */}
       {selecting && (
-        <div className="fixed right-0 bottom-15 left-0 z-40 md:bottom-0">
+        <div
+          className="fixed right-0 bottom-0 left-0 z-40"
+          style={chromeInset > 0 ? { transform: `translateY(-${chromeInset}px)` } : undefined}
+        >
           <div className="from-bg/0 to-bg h-6 bg-linear-to-b" aria-hidden="true" />
           <div className="bg-bg px-4 pb-3">
             <button
@@ -566,7 +606,7 @@ export function MyPage() {
       {pendingDelete && (
         <ConfirmSheet
           title={`"${pendingDelete.name}"을(를) 지울까요?`}
-          description="지운 코스는 되돌릴 수 없어요. 계정에서 완전히 사라집니다."
+          description={'지운 코스는 되돌릴 수 없어요.\n계정에서 완전히 사라집니다.'}
           confirmLabel="지우기"
           cancelLabel="그대로 두기"
           danger

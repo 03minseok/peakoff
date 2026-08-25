@@ -55,7 +55,7 @@ public class AuthService {
 	 * 막히면 맞는 비밀번호가 존재하지 않는 화면을 계속 두드리게 된다.
 	 */
 	private static final String LOGIN_FAILED =
-			"이메일 또는 비밀번호가 올바르지 않습니다. 간편 로그인으로 가입하셨다면 카카오·네이버 버튼을 이용해 주세요.";
+			"이메일 또는 비밀번호가 올바르지 않습니다.\n간편 로그인으로 가입하셨다면 카카오·네이버 버튼을 이용해 주세요.";
 
 	private final MemberRepository memberRepository;
 	/*
@@ -196,7 +196,7 @@ public class AuthService {
 	private Member getMember(Long memberId) {
 		return memberRepository.findById(memberId)
 				// 토큰은 유효한데 회원이 없다 — 탈퇴했거나 DB가 초기화된 경우다.
-				.orElseThrow(() -> new UnauthorizedException("회원 정보를 찾을 수 없습니다. 다시 로그인해 주세요."));
+				.orElseThrow(() -> new UnauthorizedException("회원 정보를 찾을 수 없습니다.\n다시 로그인해 주세요."));
 	}
 
 	/**

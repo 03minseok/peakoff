@@ -79,7 +79,8 @@ function CourseColumn({
 }: {
   title: string
   subtitle: string
-  score: number
+  /** 총점. 진단된 칸이 하나도 없으면 null이다 */
+  score: number | null
   diagnosis: CourseDiagnosis
   /** 교체된 장소 ID. 개선안 열에서만 표시한다 */
   changedPlaceIds?: string[]
@@ -112,10 +113,11 @@ function CourseColumn({
         </div>
         <span
           className={`flex-none font-mono text-[26px] leading-none font-semibold ${
-            highlighted ? 'text-quiet-deep' : 'text-crowded-deep'
+            score === null ? 'text-hint' : highlighted ? 'text-quiet-deep' : 'text-crowded-deep'
           }`}
         >
-          {score}
+          {/* 점수를 못 매긴 코스는 가운뎃점. 0을 쓰면 "최악"으로 읽힌다 */}
+          {score ?? '·'}
         </span>
       </div>
 
@@ -253,7 +255,14 @@ export function ResultPage() {
   const ready = beforeDiagnosis !== null && afterDiagnosis !== null
 
   const changes = ready ? diffCourses(beforeDiagnosis, afterDiagnosis) : []
-  const gain = ready ? afterDiagnosis.totalQuietness - beforeDiagnosis.totalQuietness : 0
+  /*
+    개선폭은 <b>양쪽 총점이 다 있어야</b> 성립한다. 진단된 칸이 하나도 없는 코스는
+    총점이 null이라, 한쪽이라도 비면 0으로 두고 아래에서 비교 문구를 그리지 않는다.
+  */
+  const beforeTotal = ready ? beforeDiagnosis.totalQuietness : null
+  const afterTotal = ready ? afterDiagnosis.totalQuietness : null
+  const comparable = beforeTotal !== null && afterTotal !== null
+  const gain = comparable ? afterTotal - beforeTotal : 0
 
   // 날짜 이동과 장소 교체는 서로 다른 회피 경로다. 무엇을 해서 나아졌는지
   // 구분해 보여줘야 "왜 좋아졌는지"가 화면에 남는다.
@@ -295,7 +304,9 @@ export function ResultPage() {
 
       {(original.phase === 'error' || improved.phase === 'error') && (
         <p className={`${NOTICE} text-crowded-deep text-sm`}>
-          결과를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+          결과를 불러오지 못했습니다.
+          <br />
+          잠시 후 다시 시도해 주세요.
         </p>
       )}
 
@@ -309,8 +320,6 @@ export function ResultPage() {
             "이쪽이 결론"이라는 방향 표시다.
           */}
           <section className="bg-fg rounded-card relative flex flex-col gap-5 overflow-hidden px-5 py-7 text-white lg:flex-row lg:items-center lg:gap-11 lg:px-10 lg:py-9">
-            {/* 팔레트 띠. 발표의 결론 카드이니 정체성 모티프가 이 카드에도 둘린다. */}
-            <div className="palette-band absolute inset-x-0 top-0 h-[3px]" aria-hidden="true" />
             {/*
               글로우가 틸 하나뿐인 것은 장식이 아니라 결론이다 — 이 카드가 말하는 것이
               "한적한 쪽으로 옮겨왔다"이고, 틸이 그 방향(브랜드이자 한적)의 색이다.
@@ -325,13 +334,15 @@ export function ResultPage() {
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[12.5px] font-medium text-white/50">원안</span>
                 <span className="text-crowded-soft font-mono text-[44px] leading-[0.9] font-semibold tracking-[-0.03em] lg:text-[68px]">
-                  {beforeDiagnosis.totalQuietness}
+                  {beforeDiagnosis.totalQuietness ?? '·'}
                 </span>
-                <CongestionBadge
-                  level={beforeDiagnosis.totalLevel}
-                  label={beforeDiagnosis.totalLevelLabel}
-                  size="sm"
-                />
+                {beforeDiagnosis.totalLevel !== null && beforeDiagnosis.totalLevelLabel !== null && (
+                  <CongestionBadge
+                    level={beforeDiagnosis.totalLevel}
+                    label={beforeDiagnosis.totalLevelLabel}
+                    size="sm"
+                  />
+                )}
               </div>
 
               <ArrowRight size={26} className="mt-3.5 text-white/30" />
@@ -339,13 +350,15 @@ export function ResultPage() {
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[12.5px] font-medium text-white/60">개선안</span>
                 <span className="text-quiet-soft font-mono text-[54px] leading-[0.9] font-semibold tracking-[-0.03em] lg:text-[88px]">
-                  {afterDiagnosis.totalQuietness}
+                  {afterDiagnosis.totalQuietness ?? '·'}
                 </span>
-                <CongestionBadge
-                  level={afterDiagnosis.totalLevel}
-                  label={afterDiagnosis.totalLevelLabel}
-                  size="sm"
-                />
+                {afterDiagnosis.totalLevel !== null && afterDiagnosis.totalLevelLabel !== null && (
+                  <CongestionBadge
+                    level={afterDiagnosis.totalLevel}
+                    label={afterDiagnosis.totalLevelLabel}
+                    size="sm"
+                  />
+                )}
               </div>
             </div>
 
@@ -357,10 +370,11 @@ export function ResultPage() {
                     ? `${summary.join(' · ')}로 한적 지수가 ${gain} 올랐어요`
                     : `${summary.join(' · ')} · 총점은 ${gain === 0 ? '같아요' : `${Math.abs(gain)} 내려갔어요`}`}
               </h2>
-              <p className="m-0 max-w-[440px] text-[14px] leading-[1.7] text-white/60 text-pretty lg:text-[14.5px]">
+              <p className="m-0 max-w-[440px] text-[14px] leading-[1.7] whitespace-pre-line text-white/60 text-pretty lg:text-[14.5px]">
                 {summary.length === 0
-                  ? '바꾼 곳이 없어요. 진단 화면에서 붐비는 장소의 대안을 확인해 보세요.'
-                  : `원안대로면 ${crowdedBefore}곳에서 인파와 대기를 만날 가능성이 높았어요. 개선안은 동선과 테마를 유지하면서 붐비는 곳을 ${crowdedAfter}곳으로 줄였습니다.`}
+                  ? '바꾼 곳이 없어요.\n진단 화면에서 붐비는 장소의 대안을 확인해 보세요.'
+                  : `원안대로면 ${crowdedBefore}곳에서 인파와 대기를 만날 가능성이 높았어요.
+개선안은 동선과 테마를 유지하면서 붐비는 곳을 ${crowdedAfter}곳으로 줄였습니다.`}
               </p>
               <div className="flex gap-2.5 pt-1">
                 {[
@@ -553,9 +567,9 @@ export function ResultPage() {
             </div>
 
             {state.days.length > 1 && (
-              <p className="text-hint m-0 px-4.5 pb-4 text-[12.5px]">
+              <p className="text-hint m-0 px-4.5 pb-4 text-[12.5px] whitespace-pre-line">
                 {mapDay === 'all'
-                  ? '마커 번호는 “일차-순서”예요. 일차를 고르면 그 날만 볼 수 있어요.'
+                  ? '마커 번호는 “일차-순서”예요.\n일차를 고르면 그 날만 볼 수 있어요.'
                   : `Day ${mapDay}에 담은 ${visibleRoutes[0].length}곳만 순서대로 보여주고 있어요.`}
               </p>
             )}
@@ -596,15 +610,31 @@ export function ResultPage() {
               >
                 돌아가기
               </Link>
-              {/* 이 화면의 결론. 남는 폭을 다 가져가 가장 크게 선다 */}
+              {/*
+                이 화면의 결론. 남는 폭을 다 가져가 가장 크게 선다.
+
+                <b>총점이 없으면 저장할 수 없다.</b> 저장은 그때의 점수를 스냅샷으로 함께
+                남기는 일인데, 남길 점수가 없으면 나중에 열어도 비교할 것이 없다.
+                버튼을 눌러 보고 실패하게 두는 대신 미리 잠그고 <b>이유를 옆에 적는다</b> —
+                잠긴 채 아무 말 없는 버튼은 고장으로 읽힌다.
+              */}
               <button
                 type="button"
-                className={`${PRIMARY_BUTTON} flex-1`}
+                className={`${PRIMARY_BUTTON} flex-1 disabled:cursor-not-allowed disabled:opacity-45`}
                 onClick={() => setShowSavePrompt(true)}
+                disabled={afterTotal === null}
               >
                 저장하기
               </button>
             </div>
+
+            {afterTotal === null && (
+              <p className="text-hint m-0 text-center text-[12.5px]">
+                코스 점수가 있어야 저장할 수 있어요.
+                <br />
+                관광지를 한 곳 담아 보세요.
+              </p>
+            )}
 
             {/*
               테두리도 배경도 없는 조용한 버튼. 그래도 높이는 넉넉히 준다 —
@@ -632,8 +662,11 @@ export function ResultPage() {
                   region: plan.region,
                   startDate: plan.startDate,
                   nights: plan.nights,
-                  // 방금 진단에서 받은 총점을 그대로 싣는다. 서버가 다시 계산하지 않는다.
-                  totalQuietness: afterDiagnosis.totalQuietness,
+                  /*
+                    방금 진단에서 받은 총점을 그대로 싣는다. 서버가 다시 계산하지 않는다.
+                    총점이 없으면 저장 버튼이 잠겨 있어 여기까지 오지 않는다.
+                  */
+                  totalQuietness: afterTotal ?? 0,
                   slots: toSlots(state.days),
                 })
               }}

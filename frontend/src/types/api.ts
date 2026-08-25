@@ -127,9 +127,17 @@ export interface CourseDiagnosis {
   endDate: string
   nights: number
   days: number
-  totalQuietness: number
-  totalLevel: CongestionLevel
-  totalLevelLabel: string
+  /**
+   * 진단된 칸만의 평균. <b>진단된 칸이 하나도 없으면 null이다</b> — 음식점만 담은 코스가 그렇다.
+   *
+   * 그때는 등급과 라벨도 함께 null이다. 없는 점수에 등급을 붙이면 "붐빔"이 되어,
+   * 밥집만 담았다는 이유로 최악의 코스라고 말하게 된다.
+   */
+  totalQuietness: number | null
+  totalLevel: CongestionLevel | null
+  totalLevelLabel: string | null
+  /** 실제로 점수가 매겨진 칸 수. 화면이 "3곳 중 0곳 기준"이라 말할 수 있게 한다 */
+  diagnosedCount: number
   slots: DiagnosedSlot[]
 }
 
@@ -203,7 +211,28 @@ export interface DraftSlot extends DiagnosedSlot {
  * 뽑기 때문이다 — 모든 사용자에게 같은 곳을 추천하면 그곳이 새로운 혼잡지가 된다.
  */
 export interface CourseDraft extends Omit<CourseDiagnosis, 'slots'> {
+  /*
+   * 총점이 <b>반드시 있다.</b> 초안은 한적도가 있는 후보 중에서만 고르므로
+   * 진단 불가 칸이 생길 수 없다. 진단 결과와 달리 null을 방어하지 않게 좁혀 둔다.
+   */
+  totalQuietness: number
+  totalLevel: CongestionLevel
+  totalLevelLabel: string
   slots: DraftSlot[]
+}
+
+/**
+ * 근처의 같은 분류 장소. <b>추천이 아니다.</b>
+ *
+ * 한적도를 모르는 장소(음식점·숙박)에는 추천도를 매길 수 없다 —
+ * 추천도는 한적도를 가장 큰 비중으로 품는 값이기 때문이다.
+ * 그래서 {@link Alternative}와 <b>일부러 다르게 생겼다.</b> 점수도 근거 문구도 없고
+ * 거리만 있다. 같은 모양으로 맞춰 점수를 null로 채우면 화면이 "아직 안 온 값"으로 읽는다.
+ */
+export interface NearbyPlace {
+  place: Place
+  /** 직선 거리(km). 도로 거리가 아니다 */
+  distanceKm: number
 }
 
 export interface DateOption {
@@ -271,6 +300,39 @@ export interface SavedPlace {
 /** 서버 SavedCourseDetail. 요약에 장소들이 붙은 모양 */
 export interface SavedCourseDetail extends Omit<SavedCourseSummary, 'placeCount'> {
   places: SavedPlace[]
+}
+
+/** 남의 코스에 담긴 장소 한 곳. placeId는 관광지 식별자이지 코스 식별자가 아니다 */
+export interface PublicPlace {
+  day: number
+  order: number
+  placeId: string
+  name: string
+}
+
+/**
+ * 남이 저장한 코스의 <b>익명</b> 요약. 홈의 "다른 사람들의 여행"에 쓴다.
+ *
+ * <b>코스 id도 이름도 없다.</b> 이름은 사용자가 자기만 볼 줄 알고 지은 것이라 공개에
+ * 동의한 적이 없고, id가 없으니 남의 코스를 번호로 가리켜 하나씩 여는 통로가 생기지 않는다.
+ *
+ * <p>대신 <b>장소는 전부 온다.</b> 카드를 눌러 펼쳐 볼 수 있는데, 상세를 따로 부르는 대신
+ * 목록 응답이 내용을 이미 들고 있다 — 주소 없이 내용만 오는 셈이라 위 원칙이 그대로 유지되고,
+ * 누를 때 추가 호출도 없다. 카드에 보이는 앞 세 곳은 화면이 잘라 쓴다.
+ */
+export interface PublicCourse {
+  region: string
+  regionName: string
+  startDate: string
+  endDate: string
+  nights: number
+  days: number
+  totalQuietness: number
+  level: CongestionLevel
+  levelLabel: string
+  /** 담긴 순서(일차·순번)대로 전부 */
+  places: PublicPlace[]
+  createdAt: string
 }
 
 /** 서버 MemberResponse. 비밀번호 관련 값은 어떤 형태로도 내려오지 않는다. */

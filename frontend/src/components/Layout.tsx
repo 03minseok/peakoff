@@ -1,6 +1,5 @@
-import { Link, NavLink, Outlet } from 'react-router'
-import { BottomNav, HeaderNav } from './BottomNav'
-import { useAuth } from '../state/authContext'
+import { Link, Outlet } from 'react-router'
+import { HeaderAuthAction, HeaderNav, MobileMenu } from './Nav'
 
 /**
  * 모든 페이지가 공유하는 껍데기.
@@ -11,7 +10,6 @@ import { useAuth } from '../state/authContext'
  * 라우트의 부모로 두면 페이지를 옮겨도 헤더가 다시 그려지지 않는다.
  */
 export function Layout() {
-  const { member, loading } = useAuth()
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -34,45 +32,36 @@ export function Layout() {
               <span className="text-fg text-xs font-bold tracking-[0.16em]">PEAKOFF</span>
             </Link>
 
-            {/* 넓은 화면에서는 여기, 좁은 화면에서는 아래 BottomNav.
+            {/* 넓은 화면에서는 여기, 좁은 화면에서는 헤더 오른쪽 토글 메뉴.
                 둘은 서로를 가려서 동시에 보이지 않는다. */}
             <HeaderNav />
           </div>
 
           {/*
-            로그인하지 않았을 때만 이 자리를 쓴다.
+            헤더 오른쪽 끝. 좁은 화면에서는 <b>메뉴 토글</b>이 여기 서고, 그 왼쪽에
+            계정 버튼(로그인/로그아웃)이 붙는다. md부터는 토글이 숨고 HeaderNav가 대신한다.
 
-            로그인한 뒤에는 닉네임을 두지 않는다. 마이페이지로 가는 길은 이미
-            HeaderNav("마이페이지")와 BottomNav에 있어서, 닉네임까지 링크로 두면
-            같은 곳으로 가는 문이 나란히 두 개가 된다. 마이페이지에 서 있을 때는
-            눌러도 아무 일이 없어 더 어색하다. 누구로 로그인했는지는 마이페이지가 보여준다.
+            로그인한 뒤에도 닉네임은 두지 않는다. 마이페이지로 가는 길은 이미 이동 메뉴에
+            있어서, 닉네임까지 링크로 두면 같은 곳으로 가는 문이 나란히 두 개가 된다.
+            누구로 로그인했는지는 마이페이지가 보여준다.
 
-            확인이 끝나기 전에는 아무것도 그리지 않는다. "로그인"을 먼저 띄웠다가
-            사라지면 헤더가 깜빡인다.
+            -mr-2는 묶음에 준다. 그래야 좁은 화면에서는 토글이, 넓은 화면에서는
+            계정 버튼이 각각 헤더 가장자리에 붙는다.
           */}
-          {loading ? (
-            <span className="h-4 w-12 flex-none" aria-hidden="true" />
-          ) : member ? null : (
-            <NavLink
-              to="/login"
-              className="text-hint hover:text-fg -mr-2 flex-none rounded-chip p-2 text-[13px] font-medium no-underline"
-            >
-              로그인
-            </NavLink>
-          )}
+          <div className="-mr-2 flex flex-none items-center gap-1 self-stretch">
+            <HeaderAuthAction />
+            <MobileMenu />
+          </div>
         </div>
       </header>
 
       {/* 좌우 여백은 화면이 넓어질수록 조금씩 키운다. 넓은 화면에서 내용이
           가장자리에 붙어 있으면 껍데기 안에 담겼다는 느낌이 나지 않는다.
 
-          아래 여백(pb-24)은 BottomNav가 본문 끝을 가리지 않게 하려는 것이다.
-          막대가 사라지는 md부터는 원래 값으로 돌아간다. */}
-      <main className="max-w-app mx-auto w-full flex-1 px-4.5 pt-6 pb-24 md:px-6 md:pb-8 lg:px-8 lg:pt-8 lg:pb-12">
+          아래 고정 막대를 걷어내면서 그것을 피하려던 여백(pb-24)도 함께 뺐다. */}
+      <main className="max-w-app mx-auto w-full flex-1 px-4.5 pt-6 pb-8 md:px-6 lg:px-8 lg:pt-8 lg:pb-12">
         <Outlet />
       </main>
-
-      <BottomNav />
     </div>
   )
 }

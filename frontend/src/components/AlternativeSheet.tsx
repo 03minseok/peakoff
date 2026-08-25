@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { ApiRequestError, fetchAlternatives } from '../services/api'
+import { ApiRequestError, fetchAlternatives, fetchNearby } from '../services/api'
 import { alternativesFor, forgetAlternatives } from '../services/alternativeCache'
-import type { Alternative, CongestionLevel } from '../types/api'
+import type { Alternative, CongestionLevel, NearbyPlace } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
 
 interface Props {
@@ -9,13 +9,17 @@ interface Props {
   originName: string
   originPlaceId: string
   /**
-   * 지금 이 자리의 한적도와 등급.
+   * 지금 이 자리의 한적도와 등급. <b>둘 다 null이면 시트가 다른 모드로 열린다.</b>
    *
    * 후보를 절대 점수로만 보여주면 "이게 지금보다 나은가"를 사용자가 암산해야 한다.
    * 특히 원래 자리가 이미 한적한 경우, 후보 중에 더 붐비는 곳이 섞여 있을 수 있다.
+   *
+   * <b>null인 경우</b>: 음식점·숙박처럼 공사가 예측하지 않는 장소다. 한적도를 모르면
+   * 추천도를 매길 수 없으므로(추천도는 한적도를 가장 크게 품는 값이다) 추천 대신
+   * <b>가까운 같은 분류 장소</b>를 거리만 붙여 보여준다.
    */
-  originQuietness: number
-  originLevel: CongestionLevel
+  originQuietness: number | null
+  originLevel: CongestionLevel | null
   /** 그 자리를 방문하는 날짜. 같은 후보라도 날짜에 따라 한적도가 다르다 */
   visitDate: string
   /** 이미 그 날에 담겨 있는 장소들. 후보에서 빼야 같은 곳이 두 번 들어가지 않는다 */
@@ -32,10 +36,31 @@ interface Props {
   onSelect: (placeId: string) => void
 }
 
+/**
+ * 불러온 결과.
+ *
+ * 대안과 근처 장소를 <b>한 배열로 합치지 않는다.</b> 대안에는 점수와 근거가 있고
+ * 근처 장소에는 거리뿐이라, 합치면 어느 쪽이든 절반이 빈 항목이 된다.
+ * 화면은 그 빈 자리를 "아직 안 온 값"으로 읽는다.
+ */
 type LoadState =
   | { phase: 'loading' }
   | { phase: 'loaded'; alternatives: Alternative[] }
+  | { phase: 'nearby'; nearby: NearbyPlace[] }
   | { phase: 'error'; message: string }
+
+/**
+ * 거리 표기.
+ *
+ * 1km 미만은 미터로 적는다 — "0.4km"보다 "420m"가 걸어갈 만한 거리인지 판단하기 쉽다.
+ * 10m 단위로 끊는 것은 직선거리라 그보다 정밀하게 말할 근거가 없어서다.
+ */
+function formatDistance(km: number): string {
+  if (km < 1) {
+    return `${Math.round((km * 1000) / 10) * 10}m`
+  }
+  return `${km.toFixed(1)}km`
+}
 
 /**
  * 대안 후보를 보여주는 패널.
@@ -63,6 +88,14 @@ export function AlternativeSheet({
   const panelRef = useRef<HTMLDivElement>(null)
 
   /**
+   * 점수를 매길 수 없는 자리인가.
+   *
+   * 진단 화면이 한적도를 넘겨주지 못했다는 뜻이고, 그런 장소는 음식점·숙박처럼
+   * 공사 예측 대상이 아니다. 추천 대신 <b>가까운 같은 분류 장소</b>를 보여준다.
+   */
+  const nearbyMode = originQuietness === null || originLevel === null
+
+  /**
    * 다시 뽑아 달라고 요청한 횟수.
    *
    * 이 값이 바뀔 때만 새로 뽑는다. 화면이 다시 그려지는 것과 사용자가 새 추천을 원하는 것은
@@ -73,14 +106,28 @@ export function AlternativeSheet({
   useEffect(() => {
     const controller = new AbortController()
 
-    alternativesFor(planKey, originPlaceId, visitDate, () =>
-      fetchAlternatives(originPlaceId, visitDate, 8, controller.signal),
-    )
-      .then((result) => {
-        // 이미 그 날에 담긴 곳은 고를 수 없으므로 아예 보여주지 않는다.
-        const selectable = result.filter((item) => !excludePlaceIds.includes(item.place.id))
-        setLoad({ phase: 'loaded', alternatives: selectable })
-      })
+    /*
+     * 근처 장소는 <b>캐시하지 않는다.</b> 대안 캐시(alternativesFor)는 서버가 매번 다르게
+     * 뽑는 것을 붙잡아 두려고 있는 장치인데, 여기에는 무작위가 없어 같은 요청이면 늘 같은 답이다.
+     */
+    const request = nearbyMode
+      ? fetchNearby(originPlaceId, 8, controller.signal).then((result) => {
+          const selectable = result.filter(
+            (item) => !excludePlaceIds.includes(item.place.id),
+          )
+          setLoad({ phase: 'nearby', nearby: selectable })
+        })
+      : alternativesFor(planKey, originPlaceId, visitDate, () =>
+          fetchAlternatives(originPlaceId, visitDate, 8, controller.signal),
+        ).then((result) => {
+          // 이미 그 날에 담긴 곳은 고를 수 없으므로 아예 보여주지 않는다.
+          const selectable = result.filter(
+            (item) => !excludePlaceIds.includes(item.place.id),
+          )
+          setLoad({ phase: 'loaded', alternatives: selectable })
+        })
+
+    request
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return
@@ -88,7 +135,11 @@ export function AlternativeSheet({
         setLoad({
           phase: 'error',
           message:
-            error instanceof ApiRequestError ? error.message : '대안을 불러오지 못했습니다.',
+            error instanceof ApiRequestError
+              ? error.message
+              : nearbyMode
+                ? '가까운 장소를 불러오지 못했습니다.'
+                : '대안을 불러오지 못했습니다.',
         })
       })
 
@@ -96,7 +147,7 @@ export function AlternativeSheet({
     // excludePlaceIds는 배열이라 매 렌더 새 참조가 될 수 있어 의존성에서 뺀다.
     // 시트는 열릴 때 한 번만 받으면 되고, 여는 동안 담긴 목록은 바뀌지 않는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [originPlaceId, visitDate, planKey, redrawCount])
+  }, [originPlaceId, visitDate, planKey, redrawCount, nearbyMode])
 
   /** 사용자가 명시적으로 새 추천을 요청했을 때만 다시 뽑는다. */
   function handleRedraw() {
@@ -176,7 +227,7 @@ export function AlternativeSheet({
                 id="sheet-title"
                 className="text-fg m-0 text-[19px] font-bold tracking-[-0.015em]"
               >
-                {originName} 대신 어디요?
+                {nearbyMode ? `${originName} 대신 갈 만한 곳` : `${originName} 대신 어디요?`}
               </h2>
             </div>
             <button
@@ -189,14 +240,25 @@ export function AlternativeSheet({
             </button>
           </div>
           {/* 지금 점수를 함께 띄운다. 후보 옆의 증감이 무엇을 기준으로 한 것인지 알려면 필요하다. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-hint text-[12.5px]">지금</span>
-            <CongestionBadge level={originLevel} quietness={originQuietness} size="sm" />
-          </div>
-          <p className="m-0 text-[13px] leading-[1.6] text-pretty">
-            {originLevel === 'CROWDED'
-              ? '추천도가 높은 순이에요. 추천도에는 한적도가 가장 크게 반영됩니다.'
-              : '지금도 크게 붐비지는 않는 곳이에요. 추천도가 높은 순으로 비교해 보세요.'}
+          {originLevel !== null && originQuietness !== null && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-hint text-[12.5px]">지금</span>
+              <CongestionBadge level={originLevel} quietness={originQuietness} size="sm" />
+            </div>
+          )}
+          {/*
+            무엇을 기준으로 줄 세웠는지 첫 줄에서 밝힌다.
+
+            근처 모드에서는 <b>추천이라고 말하지 않는다.</b> 예상 혼잡을 모르는 곳이라
+            "여기가 더 낫다"고 할 근거가 없다. 우리가 아는 것(분류·거리)만 말하고
+            <b>고르는 판단은 사용자에게 남긴다</b> — 계산하지 않은 것을 근거로 말하지 않는다.
+          */}
+          <p className="m-0 text-[13px] leading-[1.6] text-pretty whitespace-pre-line">
+            {nearbyMode
+              ? '예상 혼잡을 알 수 없는 곳이라 추천 순서를 매기지 못해요.\n같은 분류에서 가까운 순으로 보여드릴게요.'
+              : originLevel === 'CROWDED'
+                ? '추천도가 높은 순이에요.\n추천도에는 한적도가 가장 크게 반영됩니다.'
+                : '지금도 크게 붐비지는 않는 곳이에요.\n추천도가 높은 순으로 비교해 보세요.'}
           </p>
         </header>
 
@@ -206,11 +268,73 @@ export function AlternativeSheet({
             <p className="py-6 text-center text-sm">후보를 찾는 중…</p>
           )}
           {load.phase === 'error' && (
-            <p className="text-crowded-deep py-6 text-center text-sm">{load.message}</p>
+            <p className="text-crowded-deep py-6 text-center text-sm whitespace-pre-line">{load.message}</p>
           )}
 
           {load.phase === 'loaded' && load.alternatives.length === 0 && (
             <p className="py-6 text-center text-sm">추천할 만한 다른 곳을 찾지 못했어요.</p>
+          )}
+
+          {/*
+            반경 밖이거나 같은 분류가 없을 때. 억지로 먼 곳을 채우지 않는다 —
+            5km 밖의 밥집은 같은 코스의 같은 칸을 대신할 수 없다.
+          */}
+          {load.phase === 'nearby' && load.nearby.length === 0 && (
+            <p className="py-6 text-center text-sm">
+              근처에 같은 분류의 다른 장소를 찾지 못했어요.
+            </p>
+          )}
+
+          {load.phase === 'nearby' && load.nearby.length > 0 && (
+            <ul className="flex flex-col gap-2.5">
+              {load.nearby.map((item) => (
+                <li
+                  key={item.place.id}
+                  className="bg-surface shadow-rest flex flex-col gap-3 rounded-[18px] p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <span className="text-fg text-base font-semibold tracking-[-0.01em]">
+                        {item.place.name}
+                      </span>
+                      {/*
+                        배지가 없다. 등급을 붙이려면 한적도가 있어야 하고, 없는 값에
+                        아무 등급이나 얹으면 그 자체가 거짓말이 된다.
+                      */}
+                      <span className="text-hint text-[12.5px]">
+                        {item.place.categoryName}
+                      </span>
+                    </div>
+
+                    {/* 목록을 줄 세운 값이 곧 이 숫자다. 추천도 자리에 거리가 선다. */}
+                    <div className="flex flex-none flex-col items-end gap-0.5">
+                      <span className="text-hint text-[11px]">직선거리</span>
+                      <span className="text-fg font-mono text-[22px] leading-none font-semibold">
+                        {formatDistance(item.distanceKm)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="press rounded-ui border-line bg-surface text-fg hover:border-brand hover:text-brand-deep h-11 w-full cursor-pointer border text-sm font-semibold"
+                    onClick={() => onSelect(item.place.id)}
+                  >
+                    이곳으로 바꾸기
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {load.phase === 'nearby' && load.nearby.length > 0 && (
+            <button
+              type="button"
+              className="text-hint mt-2.5 h-11 w-full cursor-pointer bg-transparent text-[13.5px] font-medium"
+              onClick={onClose}
+            >
+              그대로 둘게요
+            </button>
           )}
 
 
@@ -233,7 +357,9 @@ export function AlternativeSheet({
                           한적도가 추천도의 대부분을 차지하지만 전부는 아니라서,
                           훨씬 가까운 후보가 1등으로 올라오는 경우가 남는다.
                         */}
-                        {index === 0 && alternative.quietness > originQuietness && (
+                        {index === 0 &&
+                          originQuietness !== null &&
+                          alternative.quietness > originQuietness && (
                           <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
                             추천
                           </span>

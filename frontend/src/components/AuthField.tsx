@@ -69,7 +69,7 @@ export function AuthField({
       {below}
 
       {error && (
-        <p id={errorId} className="text-crowded-deep m-0 text-xs" role="alert">
+        <p id={errorId} className="text-crowded-deep m-0 text-xs whitespace-pre-line" role="alert">
           {error}
         </p>
       )}

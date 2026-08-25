@@ -105,7 +105,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception e) {
 		log.error("처리하지 못한 예외", e);
-		return toResponse(ErrorCode.INTERNAL_ERROR, "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+		return toResponse(ErrorCode.INTERNAL_ERROR, "일시적인 오류가 발생했습니다.\n잠시 후 다시 시도해 주세요.");
 	}
 
 	private static String readableMessage(Exception e) {

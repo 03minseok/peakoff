@@ -68,7 +68,7 @@ export function OAuthCallbackPage() {
       return
     }
     if (code === null) {
-      setPhase({ status: 'failed', message: '로그인 정보가 없어요. 다시 시도해 주세요.' })
+      setPhase({ status: 'failed', message: '로그인 정보가 없어요.\n다시 시도해 주세요.' })
       return
     }
     /*
@@ -79,7 +79,7 @@ export function OAuthCallbackPage() {
      * 확인이 먼저다. 검사를 통과하지 못한 값을 서버로 보내지 않는다.
      */
     if (!consumeState(state)) {
-      setPhase({ status: 'failed', message: '로그인 요청을 확인하지 못했어요. 다시 시도해 주세요.' })
+      setPhase({ status: 'failed', message: '로그인 요청을 확인하지 못했어요.\n다시 시도해 주세요.' })
       return
     }
 
@@ -99,7 +99,7 @@ export function OAuthCallbackPage() {
           message:
             error instanceof ApiRequestError
               ? error.message
-              : '로그인에 실패했어요. 잠시 후 다시 시도해 주세요.',
+              : '로그인에 실패했어요.\n잠시 후 다시 시도해 주세요.',
         })
       })
   }, [auth, navigate, params, provider])
@@ -122,7 +122,7 @@ export function OAuthCallbackPage() {
             <h1 className="text-fg m-0 text-[22px] font-bold tracking-[-0.02em]">
               로그인하지 못했어요
             </h1>
-            <p className="text-muted m-0 text-[14.5px] leading-[1.6]">{phase.message}</p>
+            <p className="text-muted m-0 text-[14.5px] leading-[1.6] whitespace-pre-line">{phase.message}</p>
             <Link
               to="/login"
               className={`${PRIMARY_BUTTON} mt-2 flex items-center justify-center no-underline`}
@@ -167,7 +167,7 @@ function LinkForm({ candidate }: { candidate: SocialLinkCandidate }) {
       setFailure(
         error instanceof ApiRequestError
           ? error.message
-          : '연결에 실패했어요. 잠시 후 다시 시도해 주세요.',
+          : '연결에 실패했어요.\n잠시 후 다시 시도해 주세요.',
       )
     } finally {
       setSubmitting(false)
@@ -186,8 +186,11 @@ function LinkForm({ candidate }: { candidate: SocialLinkCandidate }) {
         </h1>
         <p className="text-muted m-0 text-[14.5px] leading-[1.65]">
           <strong className="text-fg font-semibold">{candidate.email}</strong>로 가입한 계정이
-          있어요. 비밀번호를 입력하면 {candidate.provider} 계정을 연결해 드릴게요. 저장해둔 코스도
-          그대로 남아요.
+          있어요.
+          <br />
+          비밀번호를 입력하면 {candidate.provider} 계정을 연결해 드릴게요.
+          <br />
+          저장해둔 코스도 그대로 남아요.
         </p>
 
         <AuthField

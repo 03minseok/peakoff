@@ -39,4 +39,17 @@ public interface PlaceProvider {
 	List<Place> representatives(Region region, int limit);
 
 	Optional<Place> findById(String placeId);
+
+	/**
+	 * 기준 장소 근처의 <b>같은 분류</b> 장소들. 가까운 순.
+	 *
+	 * <p>지역을 받지 않는 것은 {@link #findById}와 같은 이유다 — 장소 ID만으로는 지역을 알 수 없어
+	 * 구현이 각자 자기 지역을 안다. v1은 파일럿 한 지역이다.
+	 *
+	 * <p>⚠️ <b>점수가 없다.</b> 한적도를 모르는 장소(음식점·숙박)를 위한 것이라
+	 * 추천도를 매길 수 없다. 거리와 분류라는 사실만 전한다({@link NearbyPlace} 참고).
+	 *
+	 * @return 없으면 빈 목록. 반경 밖에 있거나 같은 분류가 없으면 그렇다
+	 */
+	List<NearbyPlace> nearby(Place origin, int limit);
 }

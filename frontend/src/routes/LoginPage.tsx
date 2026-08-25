@@ -75,7 +75,8 @@ export function LoginPage() {
       setFailure(
         error instanceof ApiRequestError
           ? error.message
-          : `${PROVIDER_LABEL[provider]} 로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.`,
+          : `${PROVIDER_LABEL[provider]} 로그인을 시작하지 못했어요.
+잠시 후 다시 시도해 주세요.`,
       )
     }
   }
@@ -120,7 +121,7 @@ export function LoginPage() {
       }
     } catch (error: unknown) {
       setFailure(
-        error instanceof ApiRequestError ? error.message : '로그인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        error instanceof ApiRequestError ? error.message : '로그인하지 못했습니다.\n잠시 후 다시 시도해 주세요.',
       )
     } finally {
       setSubmitting(false)
@@ -136,7 +137,7 @@ export function LoginPage() {
           계획은 저장해두고
         </>
       }
-      panelDescription="로그인은 코스를 저장할 때만 필요해요. 계획을 짜고 혼잡도를 확인하는 건 계정 없이도 전부 가능합니다."
+      panelDescription={'로그인은 코스를 저장할 때만 필요해요.\n계획을 짜고 혼잡도를 확인하는 건 계정 없이도 전부 가능합니다.'}
     >
       {/* 데스크톱에서는 좌측 패널이 로고를 들고 있다. 두 번 보일 이유가 없다. */}
       <div className="flex items-center gap-2 pt-2 lg:hidden">
@@ -193,7 +194,7 @@ export function LoginPage() {
 
         {failure && (
           <div
-            className="bg-crowded-tint rounded-ui text-crowded-deep px-3.5 py-3 text-xs leading-[1.65]"
+            className="bg-crowded-tint rounded-ui text-crowded-deep px-3.5 py-3 text-xs leading-[1.65] whitespace-pre-line"
             role="alert"
           >
             {failure}

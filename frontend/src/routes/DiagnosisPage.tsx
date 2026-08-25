@@ -27,9 +27,14 @@ interface SheetTarget {
   placeId: string
   placeName: string
   visitDate: string
-  /** 지금 이 자리의 한적도. 후보가 더 나은지 비교해 보여주기 위해 함께 넘긴다 */
-  quietness: number
-  level: CongestionLevel
+  /**
+   * 지금 이 자리의 한적도. 후보가 더 나은지 비교해 보여주기 위해 함께 넘긴다.
+   *
+   * <b>null이면 시트가 다른 모드로 열린다.</b> 음식점·숙박처럼 예측 대상이 아닌 자리에서는
+   * 추천도를 매길 수 없어, 추천 대신 가까운 같은 분류 장소를 보여준다.
+   */
+  quietness: number | null
+  level: CongestionLevel | null
 }
 
 /** 날짜 목록의 한 줄. 원안·적용된 날짜·나머지 후보를 같은 모양으로 다루기 위한 형태 */
@@ -108,23 +113,41 @@ export function DiagnosisPage() {
    * 좌표는 진단 응답이 들고 있다(slot.place). 장소 목록을 따로 부르지 않는다 —
    * 코스에 담긴 곳만 그리면 되고, 그건 이미 손에 있다.
    */
+  /**
+   * 지도에 그릴 일차. <b>한 번에 하루만 그린다.</b>
+   *
+   * <p>여러 날을 겹쳐 두면 선이 서로를 가로질러 "어느 날 어디를 도는지"가 오히려 안 보인다.
+   * 마커 번호도 날마다 1부터 다시 시작해 같은 숫자가 여러 개 뜬다.
+   */
+  const [mapDay, setMapDay] = useState(1)
+
+  /*
+   * 고른 일차가 코스보다 뒤일 수 있다. 2일차를 보다가 편집에서 당일치기로 줄이면
+   * 그렇다. 그때 그대로 두면 지도가 빈 채로 남아 "장소가 없어졌다"로 읽힌다.
+   * 상태를 effect로 되돌리는 대신 <b>쓸 때 가둔다</b> — 되돌리면 한 번 더 그려진다.
+   */
+  const safeDay = diagnosis ? Math.min(mapDay, diagnosis.days) : mapDay
+
   const mapPlaces = useMemo(
-    () => (diagnosis ? diagnosis.slots.map((slot) => slot.place) : []),
-    [diagnosis],
+    () =>
+      diagnosis
+        ? diagnosis.slots.filter((slot) => slot.day === safeDay).map((slot) => slot.place)
+        : [],
+    [diagnosis, safeDay],
   )
 
-  /** 일차별 방문 순서. 하나의 배열이 하루치라 밤사이 이동이 선으로 이어지지 않는다 */
+  /** 그 날의 방문 순서 하나. 배열 하나만 넘기므로 마커 번호가 "1, 2, 3"으로 매겨진다 */
   const mapRoutes = useMemo(
     () =>
       diagnosis
-        ? Array.from({ length: diagnosis.days }, (_, index) =>
+        ? [
             diagnosis.slots
-              .filter((slot) => slot.day === index + 1)
+              .filter((slot) => slot.day === safeDay)
               .sort((a, b) => a.order - b.order)
               .map((slot) => slot.place.id),
-          )
+          ]
         : [],
-    [diagnosis],
+    [diagnosis, safeDay],
   )
 
   /**
@@ -177,8 +200,12 @@ export function DiagnosisPage() {
   }
 
   const baselineTotal = baseline.phase === 'loaded' ? baseline.diagnosis.totalQuietness : null
-  const improvement =
-    diagnosis && baselineTotal !== null ? diagnosis.totalQuietness - baselineTotal : 0
+  /*
+    총점은 <b>없을 수 있다.</b> 진단된 칸이 하나도 없는 코스(밥집만 담은 경우)가 그렇다.
+    한쪽이라도 비면 개선폭이라는 값이 성립하지 않으므로 0으로 둔다 — 아래에서 그리지 않는다.
+  */
+  const total = diagnosis?.totalQuietness ?? null
+  const improvement = total !== null && baselineTotal !== null ? total - baselineTotal : 0
   const dateMoved =
     state.baseline !== null && state.baseline.plan.startDate !== plan.startDate
 
@@ -329,7 +356,7 @@ export function DiagnosisPage() {
       </header>
 
       {current.phase === 'error' && (
-        <p className={`${NOTICE} text-crowded-deep text-sm`}>{current.message}</p>
+        <p className={`${NOTICE} text-crowded-deep text-sm whitespace-pre-line`}>{current.message}</p>
       )}
 
       {diagnosis && (
@@ -370,15 +397,27 @@ export function DiagnosisPage() {
             className={`${CARD_RAISED} flex flex-col items-center gap-4.5 p-5 sm:flex-row sm:items-center sm:gap-7 sm:p-6.5`}
             aria-live="polite"
           >
+            {/*
+              총점이 없으면 <b>게이지를 비운다.</b> 0%로 그리면 눈금이 바닥에 붙어
+              "최악의 코스"로 읽히는데, 실제로는 매길 수 없었을 뿐이다.
+              숫자 자리에는 가운뎃점을 둔다 — 자리를 지켜야 옆 칸이 밀리지 않는다.
+            */}
             <div
               className="grid h-27 w-27 flex-none place-items-center rounded-full lg:h-34 lg:w-34"
               style={{
-                background: `conic-gradient(${LEVEL_COLOR_VAR[diagnosis.totalLevel]} ${diagnosis.totalQuietness}%, var(--c-line) 0)`,
+                background:
+                  diagnosis.totalLevel !== null && diagnosis.totalQuietness !== null
+                    ? `conic-gradient(${LEVEL_COLOR_VAR[diagnosis.totalLevel]} ${diagnosis.totalQuietness}%, var(--c-line) 0)`
+                    : 'var(--c-line)',
               }}
             >
               <div className="bg-surface grid h-22 w-22 place-items-center rounded-full lg:h-28 lg:w-28">
-                <span className="text-fg font-mono text-[34px] leading-none font-semibold tracking-[-0.02em]">
-                  {diagnosis.totalQuietness}
+                <span
+                  className={`font-mono text-[34px] leading-none font-semibold tracking-[-0.02em] ${
+                    diagnosis.totalQuietness === null ? 'text-hint' : 'text-fg'
+                  }`}
+                >
+                  {diagnosis.totalQuietness ?? '·'}
                 </span>
                 <span className="text-hint text-[11.5px]">한적 지수</span>
               </div>
@@ -386,27 +425,47 @@ export function DiagnosisPage() {
 
             <div className="flex min-w-0 flex-1 flex-col items-center gap-2.5 sm:items-start">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <CongestionBadge
-                  level={diagnosis.totalLevel}
-                  label={diagnosis.totalLevelLabel}
-                />
+                {diagnosis.totalLevel !== null && diagnosis.totalLevelLabel !== null && (
+                  <CongestionBadge
+                    level={diagnosis.totalLevel}
+                    label={diagnosis.totalLevelLabel}
+                  />
+                )}
                 {/* 출처 표기(절대 규칙 4). 공사 이름 대신 중립 표현 — 숫자가 서는 화면마다 한 번은 말한다 */}
                 <span className="text-hint text-[13px]">
                   {formatKoreanDate(plan.startDate)} 기준 · 공공데이터 기반 예측
                 </span>
               </div>
 
-              <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
-                {crowdedCount > 0
-                  ? `${crowdedCount}곳이 붐빌 것으로 보여요`
-                  : '전체적으로 여유로운 코스예요'}
-              </p>
+              {/*
+                총점이 없을 때 "전체적으로 여유로운 코스예요"라고 말하면 <b>거짓말이 된다.</b>
+                붐비는 곳이 0곳인 것과 셀 수 있는 곳이 0곳인 것은 다르다.
+                무엇을 못 했는지와 그래서 무엇을 할 수 있는지를 함께 말한다.
+              */}
+              {diagnosis.totalQuietness === null ? (
+                <div className="flex flex-col gap-1">
+                  <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
+                    예상 혼잡을 매길 수 있는 장소가 아직 없어요
+                  </p>
+                  <p className="text-hint m-0 text-center text-[13px] leading-[1.5] text-pretty sm:text-left">
+                    음식점·숙박은 예측 대상이 아니에요.
+                    <br />
+                    관광지를 한 곳 담으면 코스 점수가 나와요.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
+                  {crowdedCount > 0
+                    ? `${crowdedCount}곳이 붐빌 것으로 보여요`
+                    : '전체적으로 여유로운 코스예요'}
+                </p>
+              )}
 
               {improvement !== 0 && baselineTotal !== null && (
                 <p className="m-0 text-center text-[13px] sm:text-left">
                   원안 {baselineTotal} → 지금{' '}
                   <strong className={improvement > 0 ? 'text-quiet-deep' : ''}>
-                    {diagnosis.totalQuietness}
+                    {total}
                     {improvement > 0 ? ` (+${improvement})` : ` (${improvement})`}
                   </strong>
                 </p>
@@ -620,8 +679,18 @@ export function DiagnosisPage() {
                           적용 중
                         </span>
                       ) : !row.selectable ? (
+                        /*
+                          고를 수 없는 날. <b>이유가 둘인데 한 가지 말만 하고 있었다.</b>
+
+                          지난 날짜와 "예측이 아직 안 나온 날"이 서버에서 똑같이
+                          selectable=false로 오는데, 화면이 둘 다 "지난 날"이라고 적었다.
+                          그래서 다음 달 날짜를 보는데 지났다는 말이 붙었다.
+
+                          하나는 지나갔고 하나는 <b>기다리면 생긴다.</b> 같은 말로 뭉개면
+                          사용자가 나중에 다시 와 볼 이유를 잃는다.
+                        */
                         <span className="text-hint bg-line/50 rounded-chip h-9 flex-none px-3 text-center text-[12.5px] leading-9 font-medium whitespace-nowrap">
-                          지난 날
+                          {row.date < todayDate ? '지난 날' : '예측 전'}
                         </span>
                       ) : (
                         <button
@@ -665,9 +734,33 @@ export function DiagnosisPage() {
               첫 코스에는 점수를 노출하지 않기로 했기 때문이다.
             */}
             <section className={`${CARD_RAISED} flex flex-col gap-3 p-4.5`}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-fg text-[15px] font-semibold">코스 지도</h2>
-                <span className="text-hint text-[12.5px]">마커 색이 예상 혼잡도예요</span>
+                {/*
+                  하루짜리 일정에는 고를 것이 없다. 탭이 하나뿐이면 누를 수 있다는
+                  신호만 주고 아무것도 바뀌지 않아 오히려 헷갈린다.
+                */}
+                {diagnosis.days > 1 ? (
+                  <div className="flex gap-1.5" role="group" aria-label="지도에 표시할 일차">
+                    {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map(
+                      (day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                            day === safeDay ? 'bg-fg text-white' : 'bg-bg text-hint hover:text-fg'
+                          }`}
+                          aria-pressed={day === safeDay}
+                          onClick={() => setMapDay(day)}
+                        >
+                          Day {day}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-hint text-[12.5px]">마커 색이 예상 혼잡도예요</span>
+                )}
               </div>
 
               {/* 읽기 전용. onSelect를 넘기지 않으면 마커를 누를 수 없다 */}
@@ -841,15 +934,10 @@ export function DiagnosisPage() {
                       {/*
                         이름과 분류. 넓은 화면에서는 가운데 열이 되어 남는 폭을 가진다.
 
-                        진단된 칸의 아래 여백은 오른쪽 행동 자리가 갖는다(pb-4). 진단되지 않은
-                        칸은 그 자리가 비므로 여기서 직접 갖는다 — 안 그러면 카드 바닥에
-                        글자가 붙는다.
+                        아래 여백은 오른쪽 행동 자리가 갖는다(pb-4). 진단 여부와 상관없이
+                        그 자리에 늘 버튼이 서므로 한 곳에서만 여백을 준다.
                       */}
-                      <div
-                        className={`flex min-w-0 flex-col gap-0.5 px-4 pt-3.5 sm:order-2 sm:flex-1 sm:px-0 sm:pt-0 sm:pb-0 ${
-                          quietness === null || level === null ? 'pb-4' : ''
-                        }`}
-                      >
+                      <div className="flex min-w-0 flex-col gap-0.5 px-4 pt-3.5 sm:order-2 sm:flex-1 sm:px-0 sm:pt-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-fg m-0 text-[17px] font-bold tracking-[-0.01em] sm:text-base sm:font-semibold">
                             {slot.place.name}
@@ -888,11 +976,7 @@ export function DiagnosisPage() {
                         행동 자리. 좁은 화면에서는 카드 아래를 가로지르는 버튼이고,
                         넓은 화면에서는 오른쪽 끝의 작은 버튼이다.
                       */}
-                      <div
-                        className={`sm:order-3 sm:flex sm:w-28 sm:flex-none sm:flex-col sm:items-end sm:gap-2 sm:p-0 ${
-                          quietness === null || level === null ? '' : 'px-4 pt-3 pb-4'
-                        }`}
-                      >
+                      <div className="px-4 pt-3 pb-4 sm:order-3 sm:flex sm:w-28 sm:flex-none sm:flex-col sm:items-end sm:gap-2 sm:p-0">
                         {/*
                           넓은 화면에서는 배지가 사진에서 내려와 버튼 위에 선다.
                           폭을 고정(w-32)하는 이유는 배지 글자 길이가 등급마다 달라서다 —
@@ -915,16 +999,38 @@ export function DiagnosisPage() {
 
                         {quietness === null || level === null ? (
                           /*
-                            진단되지 않은 자리는 <b>그냥 비워 둔다.</b>
+                            진단되지 않은 자리에도 <b>장소를 바꿀 길은 연다.</b>
 
-                            버튼을 잠근 채로 두지 않는 이유: 눌리지 않는 버튼은 "지금은 안 되지만
-                            언젠가 될 것"으로 읽혀 사용자가 계속 시도한다.
+                            예전에는 여기를 비워 뒀다. 점수를 못 매기니 추천도 못 한다는
+                            이유였는데, 그 바람에 밥집 셋으로 코스를 짠 사용자는
+                            <b>바꿀 방법 자체가 없었다.</b> 우리가 점수를 못 매기는 것이지
+                            사용자가 다른 밥집을 고르고 싶지 않은 것이 아니다.
+
+                            문구가 "장소 바꾸기"가 아니라 "가까운 곳"인 이유: 열리는 것이
+                            추천 목록이 아니다. 같은 분류에서 가까운 순으로 늘어놓을 뿐이고,
+                            어디가 더 나은지는 말하지 않는다. 버튼 이름이 그 차이를 미리 알린다.
 
                             사유는 이 자리가 아니라 <b>이름 아래</b>에 적는다. 여기는 폭이 좁아
-                            (sm:w-28) 문장이 서너 줄로 접히고, 무엇보다 "왜 점수가 없는지"는
-                            장소에 딸린 설명이지 행동이 아니다.
+                            (sm:w-28) 문장이 서너 줄로 접힌다.
                           */
-                          null
+                          <button
+                            type="button"
+                            className="press rounded-ui border-line bg-surface text-muted hover:border-brand hover:text-brand-deep h-11 w-full cursor-pointer border text-sm font-semibold whitespace-nowrap sm:h-9 sm:w-full sm:px-3 sm:text-[13px]"
+                            onClick={() =>
+                              setSheet({
+                                day: slot.day,
+                                index: slot.order - 1,
+                                placeId: slot.place.id,
+                                placeName: slot.place.name,
+                                visitDate: slot.visitDate,
+                                quietness: null,
+                                level: null,
+                              })
+                            }
+                            aria-label={`${slot.place.name} 근처의 같은 분류 장소 보기`}
+                          >
+                            가까운 곳
+                          </button>
                         ) : isSwapped(slot.day, slot.order, slot.place.id) ? (
                           /*
                             되돌리기는 날짜 목록의 원안 줄과 <b>같은 모양</b>이다 —
@@ -980,7 +1086,7 @@ export function DiagnosisPage() {
 
           {/*
             좁은 화면의 다음 단계 버튼. 아래에 붙어 따라온다.
-            bottom-15: BottomNav(60px) 위에 얹는다. 막대가 사라지는 md부터는 바닥으로 내려온다.
+            아래 고정 막대를 걷어내서 이제 어느 폭에서나 바닥에 붙는다.
 
             <b>lg에서는 감춘다.</b> 넓은 화면에서는 이 막대가 화면 아래를 가로질러
             왼쪽 패널의 날짜 목록 끝을 덮었다. 거기서는 같은 버튼이 종합 지수 아래에
@@ -988,9 +1094,9 @@ export function DiagnosisPage() {
           */}
           {/*
             z-30 — 이 막대는 본문 위에 떠 있어야 한다. 값을 주지 않으면 뒤에 오는
-            형제(특히 지도)에 덮인다. BottomNav(z-40)와 시트(z-50)보다는 아래다.
+            형제(특히 지도)에 덮인다. 시트(z-50)보다는 아래다.
           */}
-          <div className="from-bg/0 to-bg sticky bottom-15 z-30 mt-1 bg-gradient-to-b to-[30%] pt-3.5 pb-5 md:bottom-0 lg:hidden">
+          <div className="from-bg/0 to-bg sticky bottom-0 z-30 mt-1 bg-gradient-to-b to-[30%] pt-3.5 pb-5 lg:hidden">
             {stepActions}
           </div>
         </div>

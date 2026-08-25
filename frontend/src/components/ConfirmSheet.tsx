@@ -78,7 +78,7 @@ export function ConfirmSheet({
               {title}
             </h2>
             {description && (
-              <p className="m-0 text-sm leading-[1.65] text-pretty">{description}</p>
+              <p className="m-0 text-sm leading-[1.65] whitespace-pre-line text-pretty">{description}</p>
             )}
           </div>
 
