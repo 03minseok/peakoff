@@ -18,6 +18,7 @@ import com.peakoff.place.mock.GyeongjuMockCatalog;
 import com.peakoff.recommendation.domain.Alternative;
 import com.peakoff.recommendation.domain.AlternativeStandard;
 import com.peakoff.recommendation.domain.Alternatives;
+import com.peakoff.recommendation.domain.CandidateSource;
 import com.peakoff.recommendation.domain.RecommendationProvider;
 import com.peakoff.recommendation.domain.RecommendationScorer;
 import com.peakoff.recommendation.domain.ScoreWeights;
@@ -105,8 +106,12 @@ public class MockRecommendationProvider implements RecommendationProvider {
 				.limit(limit)
 				.toList();
 
-		return Alternatives.of(
-				originQuietness, considered.size(), qualified.size() - available.size(), picked);
+		/*
+		 * 목업은 연관 관광지 데이터가 없다. 지역 카탈로그에서 고르므로 출처는 지역이고,
+		 * 근거 문구도 "함께 많이 찾는 곳"이라고 말하지 않는다.
+		 */
+		return Alternatives.of(originQuietness, considered.size(),
+				qualified.size() - available.size(), CandidateSource.REGIONAL_FALLBACK, picked);
 	}
 
 	private static boolean sameCategory(Place candidate, Place origin) {
@@ -114,13 +119,23 @@ public class MockRecommendationProvider implements RecommendationProvider {
 	}
 
 	/**
-	 * 예: "불국사에서 가까운 같은 분류(관광지) · 예상 혼잡 낮음"
+	 * 예: "불국사 근처의 비슷한 분류 · 예상 혼잡 낮음"
 	 *
 	 * <p><b>계산한 것만 말한다.</b> "함께 많이 찾는 곳"은 연관 관광지 데이터가 있어야
-	 * 할 수 있는 말이라 지금은 쓰지 않는다.
+	 * 할 수 있는 말이라 목업에서는 쓰지 않는다.
+	 *
+	 * <p>"같은 분류"가 아니라 "비슷한 분류"인 이유: 역사 유적 자리에 박물관이 올 수 있게
+	 * 호환 범위를 넓혔다({@code PlaceCategories.compatible}). "같은"이라고 하면
+	 * 화면에 뜬 분류명과 어긋난다.
+	 *
+	 * <p>장소 이름 뒤에 <b>조사를 붙이지 않는다.</b> "와/과"는 앞 글자의 받침에 따라 갈리는데
+	 * 장소 이름이 무엇으로 끝날지 알 수 없다 — "경주엑스포대공원와"가 그래서 나왔다.
+	 *
+	 * <p>실데이터 공급자의 지역 후보 문구와 같은 말을 쓴다 — 같은 성격의 추천에
+	 * 화면마다 다른 말이 붙으면 사용자가 규칙이 바뀐 줄 안다.
 	 */
 	private static String reasonFor(Place origin, ScoredPlace scored) {
-		return "%s에서 가까운 같은 분류(%s) · %s".formatted(
-				origin.name(), scored.place().category().name(), scored.level().congestionPhrase());
+		return "%s 근처의 비슷한 분류 · %s".formatted(
+				origin.name(), scored.level().congestionPhrase());
 	}
 }
