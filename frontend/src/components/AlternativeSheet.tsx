@@ -118,7 +118,13 @@ export function AlternativeSheet({
           setLoad({ phase: 'nearby', nearby: selectable })
         })
       : alternativesFor(planKey, originPlaceId, visitDate, () =>
-          fetchAlternatives(originPlaceId, visitDate, 8, controller.signal),
+          fetchAlternatives(
+            originPlaceId,
+            visitDate,
+            8,
+            excludePlaceIds,
+            controller.signal,
+          ),
         ).then((result) => {
           // 이미 그 날에 담긴 곳은 고를 수 없으므로 아예 보여주지 않는다.
           const selectable = result.alternatives.filter(

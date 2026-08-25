@@ -3,6 +3,7 @@ package com.peakoff.recommendation.mock;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -53,13 +54,14 @@ public class MockRecommendationProvider implements RecommendationProvider {
 	}
 
 	@Override
-	public Alternatives findAlternatives(Place origin, LocalDate date, int limit) {
+	public Alternatives findAlternatives(Place origin, LocalDate date, int limit, Set<String> excluded) {
 		if (origin == null || date == null) {
 			throw new IllegalArgumentException("원래 장소와 날짜는 필수입니다.");
 		}
 		if (limit < 1) {
 			throw new IllegalArgumentException("후보 수는 1 이상이어야 합니다. 입력값: " + limit);
 		}
+		Set<String> skip = excluded == null ? Set.of() : excluded;
 
 		// 원래 장소의 한적도를 모르면 "얼마나 나아지는가"를 잴 기준이 없다.
 		if (!congestionProvider.hasData(origin.id(), date)) {
@@ -74,10 +76,23 @@ public class MockRecommendationProvider implements RecommendationProvider {
 				.map(candidate -> scorer.scoreAgainst(origin, candidate, date, ScoreWeights.DEFAULT))
 				.toList();
 
-		List<Alternative> picked = considered.stream()
-				// 원래 장소보다 뚜렷하게 한적하지 않으면 대안이 아니다.
-				// 하한이 없으면 더 붐비는 곳도 "대안"으로 나간다.
+		// 원래 장소보다 뚜렷하게 한적하지 않으면 대안이 아니다.
+		// 하한이 없으면 더 붐비는 곳도 "대안"으로 나간다.
+		List<ScoredPlace> qualified = considered.stream()
 				.filter(scored -> AlternativeStandard.isWorthSuggesting(originQuietness, scored.quietness()))
+				.toList();
+
+		/*
+		 * 이미 코스에 담긴 곳을 뺀다. <b>자격을 따진 뒤, 뽑기 앞이다.</b>
+		 *
+		 * 자격 심사보다 앞에 두면 "이미 담긴 후보"가 몇이었는지 알 수 없어져,
+		 * 더 한적한 곳을 찾고도 "찾지 못했다"고 말하게 된다.
+		 */
+		List<ScoredPlace> available = qualified.stream()
+				.filter(scored -> !skip.contains(scored.place().id()))
+				.toList();
+
+		List<Alternative> picked = available.stream()
 				.map(scored -> scored.withReason(reasonFor(origin, scored)))
 				// 정렬 기준이 곧 화면에 보이는 추천도다. 화면에 없는 값으로 줄을 세우면
 				// "왜 이게 1등인지"를 사용자에게도 심사에서도 설명할 수 없다.
@@ -85,7 +100,8 @@ public class MockRecommendationProvider implements RecommendationProvider {
 				.limit(limit)
 				.toList();
 
-		return Alternatives.of(originQuietness, considered.size(), picked);
+		return Alternatives.of(
+				originQuietness, considered.size(), qualified.size() - available.size(), picked);
 	}
 
 	private static boolean sameCategory(Place candidate, Place origin) {

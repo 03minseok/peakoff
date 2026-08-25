@@ -77,6 +77,8 @@ export interface Alternative {
 export type PlaceOffStatus =
   | 'RECOMMENDED'
   | 'ALREADY_QUIET'
+  /** 더 한적한 곳을 찾긴 했는데 전부 이미 그 날 코스에 담겨 있다 */
+  | 'ALL_CANDIDATES_IN_COURSE'
   | 'NO_MEANINGFUL_IMPROVEMENT'
   | 'NO_VALID_CANDIDATE'
   | 'ORIGIN_NOT_FORECASTED'

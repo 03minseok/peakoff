@@ -286,9 +286,14 @@ export function fetchAlternatives(
   placeId: string,
   date: string,
   limit = 5,
+  excludePlaceIds: string[] = [],
   signal?: AbortSignal,
 ): Promise<Alternatives> {
   const query = new URLSearchParams({ date, limit: String(limit) })
+  // 이미 그 날 코스에 담긴 곳은 고를 수 없다. 서버가 뽑기 전에 빼면 Pool이 낭비되지 않는다.
+  for (const id of excludePlaceIds) {
+    query.append('exclude', id)
+  }
   return apiRequest<Alternatives>(
     `/places/${encodeURIComponent(placeId)}/alternatives?${query}`,
     { signal },

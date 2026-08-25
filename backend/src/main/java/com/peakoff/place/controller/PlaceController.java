@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -90,7 +91,10 @@ public class PlaceController {
 					그래서 목록이 비는 일이 흔하다. <b>왜 비었는지는 status가 말한다</b> —
 					원래 자리가 이미 한적해서(ALREADY_QUIET) 비는 것과 대신할 곳을 못 찾아서
 					(NO_VALID_CANDIDATE) 비는 것은 사용자에게 정반대의 소식이다.
-					statusMessage를 그대로 띄우면 된다.""")
+					statusMessage를 그대로 띄우면 된다.
+
+					exclude로 이미 코스에 담긴 장소를 넘기면 후보에서 빠진다.
+					고를 수 없는 곳이 뽑히면 Pool 자리만 차지하고 화면에서 걸러진다.""")
 	@GetMapping("/{placeId}/alternatives")
 	public ApiResponse<AlternativesResponse> alternatives(
 			@Parameter(description = "교체 대상 장소 ID", example = "mock-bulguksa")
@@ -103,9 +107,19 @@ public class PlaceController {
 			@RequestParam(defaultValue = "" + DEFAULT_ALTERNATIVE_LIMIT)
 			@Min(value = 1, message = "후보 수는 1 이상이어야 합니다.")
 			@Max(value = 20, message = "후보는 한 번에 20곳까지 볼 수 있습니다.")
-			int limit) {
+			int limit,
 
-		return ApiResponse.ok(recommendationService.findAlternatives(placeId, date, limit));
+			@Parameter(
+					description = """
+							후보에서 뺄 장소 ID. 이미 그 날 코스에 담긴 곳을 넘긴다.
+							여러 번 넘길 수 있다""",
+					example = "mock-seokguram")
+			// 코스 슬롯 상한(50)과 같다. 코스에 담긴 것을 넘기는 자리라 그보다 많을 수 없다.
+			@RequestParam(required = false)
+			@Size(max = 50, message = "한 번에 제외할 수 있는 장소는 50곳까지입니다.")
+			List<String> exclude) {
+
+		return ApiResponse.ok(recommendationService.findAlternatives(placeId, date, limit, exclude));
 	}
 
 	/**
