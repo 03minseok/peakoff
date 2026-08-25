@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.OptionalDouble;
 
+import com.peakoff.congestion.domain.DiagnosisGap;
 import com.peakoff.global.support.Scores;
 import com.peakoff.place.domain.Region;
 
@@ -110,6 +111,38 @@ public record Course(
 
 	public LocalDate endDate() {
 		return startDate.plusDays(nights);
+	}
+
+	/** 실제로 한적도가 매겨진 칸 수. 총점의 분자다. */
+	public int diagnosedCount() {
+		return (int) slots.stream().filter(CourseSlot::isDiagnosed).count();
+	}
+
+	/**
+	 * 공사가 <b>예측하기로 되어 있는 분류</b>의 칸 수. 총점의 분모다.
+	 *
+	 * <p>진단된 칸과, 관광지인데 자료가 없어 못 매긴 칸을 함께 센다. 빠지는 것은
+	 * <b>애초에 예측 대상이 아닌 분류</b>뿐이다({@code CATEGORY_NOT_FORECASTED}) —
+	 * 음식점·숙박·쇼핑을 분모에 넣으면 밥집을 담을수록 진단율이 떨어져,
+	 * 코스를 성실히 짤수록 총점이 사라지는 이상한 일이 생긴다.
+	 *
+	 * @see CourseScoreStandard#isTotalPresentable(int, int)
+	 */
+	public int forecastTargetCount() {
+		return (int) slots.stream()
+				.filter(slot -> slot.isDiagnosed() || slot.gap() != DiagnosisGap.CATEGORY_NOT_FORECASTED)
+				.count();
+	}
+
+	/**
+	 * 총점을 <b>숫자로 보여줘도 되는가.</b> 저장 여부와는 상관이 없다.
+	 *
+	 * <p>총점 자체는 {@link #totalQuietness()}에 그대로 있다 — 조건을 못 채워도 저장은 되고,
+	 * 그때는 모수를 함께 남긴다. 자세한 이유는 {@link CourseScoreStandard}에 적어 두었다.
+	 */
+	public boolean isTotalPresentable() {
+		return totalQuietness != null
+				&& CourseScoreStandard.isTotalPresentable(diagnosedCount(), forecastTargetCount());
 	}
 
 	/** 특정 일차의 슬롯만 순서대로 뽑는다. 일자별로 끊어 그리는 화면에서 쓴다. */

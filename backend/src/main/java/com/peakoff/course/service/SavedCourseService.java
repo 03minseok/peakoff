@@ -92,6 +92,8 @@ public class SavedCourseService {
 				request.startDate(),
 				request.nights(),
 				request.totalQuietness(),
+				request.diagnosedCount(),
+				request.forecastTargetCount(),
 				entries,
 				now);
 

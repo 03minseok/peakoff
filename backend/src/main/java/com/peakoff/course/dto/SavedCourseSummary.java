@@ -16,8 +16,10 @@ import com.peakoff.place.domain.SupportedRegion;
  * <p><b>등급을 서버가 매겨 함께 내려보낸다.</b> 화면에서 {@code quietness >= 70}으로
  * 판정하면 임계값이 서버와 화면 두 곳에 생겨, 분석 결과로 기준이 바뀔 때 한쪽만 고쳐진다.
  *
- * @param placeCount 담긴 장소 수
- * @param scoredAt   점수를 매긴 시각. 저장 시점의 판단이라는 것을 화면에서 밝힐 수 있다
+ * @param placeCount          담긴 장소 수
+ * @param diagnosedCount      그 총점을 매긴 칸 수. <b>옛 코스는 {@code null}</b>
+ * @param forecastTargetCount 예측 대상 관광지 수. 총점의 분모. <b>옛 코스는 {@code null}</b>
+ * @param scoredAt            점수를 매긴 시각. 저장 시점의 판단이라는 것을 화면에서 밝힐 수 있다
  */
 public record SavedCourseSummary(
 		Long id,
@@ -32,6 +34,8 @@ public record SavedCourseSummary(
 		CongestionLevel level,
 		String levelLabel,
 		int placeCount,
+		Integer diagnosedCount,
+		Integer forecastTargetCount,
 		Instant scoredAt,
 		Instant createdAt) {
 
@@ -50,6 +54,8 @@ public record SavedCourseSummary(
 				level,
 				level.label(),
 				course.places().size(),
+				course.diagnosedCount(),
+				course.forecastTargetCount(),
 				course.scoredAt(),
 				course.createdAt());
 	}

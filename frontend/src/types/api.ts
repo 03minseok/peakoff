@@ -182,9 +182,41 @@ export interface CourseDiagnosis {
   totalQuietness: number | null
   totalLevel: CongestionLevel | null
   totalLevelLabel: string | null
-  /** 실제로 점수가 매겨진 칸 수. 화면이 "3곳 중 0곳 기준"이라 말할 수 있게 한다 */
+  /**
+   * 총점을 <b>숫자로 보여줘도 되는가.</b> 서버가 판단한다(진단 2곳 이상 · 진단율 50% 이상).
+   *
+   * ⚠️ 이 값이 false여도 `totalQuietness`에는 값이 들어 있다. **저장에 쓰라고 남긴 것**이지
+   * 화면에 띄우라는 뜻이 아니다 — 관광지 셋 중 하나만 진단된 코스에서 그 하나를
+   * "코스 총점"이라 부르면 설명할 수 없다.
+   *
+   * 거짓이면 숫자 대신 `levelCounts` 요약을 편다.
+   */
+  totalPresentable: boolean
+  /** 실제로 점수가 매겨진 칸 수. 총점의 분자 */
   diagnosedCount: number
+  /**
+   * 공사가 예측하기로 되어 있는 분류의 칸 수. 총점의 분모.
+   * 음식점·숙박·쇼핑은 빠진다 — "관광지 3곳 중 2곳 기준"의 3이 이 값이다.
+   */
+  forecastTargetCount: number
+  /** 등급별 칸 수. 총점을 못 보여줄 때 대신 펴는 요약 */
+  levelCounts: LevelCounts
   slots: DiagnosedSlot[]
+}
+
+/**
+ * 등급별 칸 수. 평균이 아니라 <b>사실의 나열</b>이라, 근거가 얇아도 정직하다.
+ */
+export interface LevelCounts {
+  quiet: number
+  moderate: number
+  crowded: number
+  /** 관광지인데 예측 자료가 없다. 날짜를 바꿔도 없다 */
+  notForecasted: number
+  /** 관광지인데 그 날짜가 예측 범위 밖. 기다리면 생긴다 */
+  outOfForecastDate: number
+  /** 애초에 예측 대상 분류가 아니다 (음식점·숙박·쇼핑) */
+  notTargeted: number
 }
 
 /*
@@ -302,6 +334,15 @@ export interface SaveCourseRequest {
   startDate: string
   nights: number
   totalQuietness: number
+  /**
+   * 그 총점이 몇 곳을 근거로 한 값인지. 진단 응답에서 받은 값을 그대로 보낸다.
+   *
+   * 점수만 남기면 나중에 열었을 때 <b>근거가 얇은 점수와 두꺼운 점수가 같은 무게로</b>
+   * 나란히 선다. 화면에 숫자를 못 띄우는 코스도 저장은 되므로(그게 맞다) 더 필요하다 —
+   * 숫자를 감추는 대신 맥락을 붙이는 쪽을 골랐기 때문이다.
+   */
+  diagnosedCount: number
+  forecastTargetCount: number
   slots: CourseSlotRequest[]
 }
 
@@ -324,6 +365,15 @@ export interface SavedCourseSummary {
   level: CongestionLevel
   levelLabel: string
   placeCount: number
+  /**
+   * 그 총점을 매긴 칸 수와 예측 대상 관광지 수.
+   *
+   * ⚠️ **이 컬럼이 생기기 전에 저장한 코스는 null이다.** 그때는 숫자만 보여주고
+   * "몇 곳 중 몇 곳"을 말하지 않는다 — 모르는 것을 0으로 채우면
+   * "근거가 하나도 없는 점수"라는 거짓말이 된다.
+   */
+  diagnosedCount: number | null
+  forecastTargetCount: number | null
   /** 그 점수를 매긴 시각 (ISO). 저장 시점의 판단이라는 것을 화면에서 밝힐 수 있다 */
   scoredAt: string
   createdAt: string

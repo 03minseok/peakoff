@@ -115,6 +115,18 @@ export function SavedCourseCard({
         <div className="flex flex-col gap-0.5">
           <span className="text-[11.5px] opacity-70">예상 한적 지수</span>
           <span className="text-[12px] font-bold">{course.levelLabel}</span>
+          {/*
+            그 점수가 <b>몇 곳을 근거로 한 값인지</b> 밝힌다. 카드가 여럿 늘어서는 화면이라
+            근거가 얇은 점수와 두꺼운 점수가 같은 크기로 나란히 서면 견줄 수가 없다.
+
+            옛 코스는 모수가 없다(null). 그때는 아무 말도 하지 않는다 —
+            0으로 채우면 "근거가 하나도 없는 점수"라는 거짓말이 된다.
+          */}
+          {course.forecastTargetCount !== null && course.diagnosedCount !== null && (
+            <span className="text-[11px] opacity-60">
+              관광지 {course.forecastTargetCount}곳 중 {course.diagnosedCount}곳 기준
+            </span>
+          )}
         </div>
         <span className="font-mono text-[26px] leading-none font-semibold tracking-[-0.02em]">
           {course.totalQuietness}
