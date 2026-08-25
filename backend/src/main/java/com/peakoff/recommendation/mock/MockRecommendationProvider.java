@@ -11,7 +11,9 @@ import org.springframework.stereotype.Component;
 
 import com.peakoff.congestion.domain.CongestionProvider;
 import com.peakoff.global.config.DataSourceProfiles;
+import com.peakoff.place.domain.Distances;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.mock.GyeongjuMockCatalog;
 import com.peakoff.recommendation.domain.Alternative;
 import com.peakoff.recommendation.domain.AlternativeStandard;
@@ -72,6 +74,9 @@ public class MockRecommendationProvider implements RecommendationProvider {
 		List<ScoredPlace> considered = GyeongjuMockCatalog.places().stream()
 				.filter(candidate -> !candidate.id().equals(origin.id()))
 				.filter(candidate -> sameCategory(candidate, origin))
+				// 코스의 한 칸을 대신하기에 너무 멀면 점수를 매기기 전에 자른다.
+				.filter(candidate -> AlternativeStandard.isWithinReach(
+						Distances.betweenKm(origin, candidate)))
 				.filter(candidate -> congestionProvider.hasData(candidate.id(), date))
 				.map(candidate -> scorer.scoreAgainst(origin, candidate, date, ScoreWeights.DEFAULT))
 				.toList();
@@ -105,7 +110,7 @@ public class MockRecommendationProvider implements RecommendationProvider {
 	}
 
 	private static boolean sameCategory(Place candidate, Place origin) {
-		return candidate.category().code().equals(origin.category().code());
+		return PlaceCategories.compatible(origin.category(), candidate.category());
 	}
 
 	/**
