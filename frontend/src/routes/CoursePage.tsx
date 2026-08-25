@@ -200,9 +200,13 @@ export function CoursePage() {
           즉 0까지 눌릴 수 있다. 데스크톱에서는 오른쪽 패널 높이가 화면에 고정돼 있고
           아래 장소 목록이 길어서, 줄어들 수 있는 유일한 항목인 이 줄이 먼저 눌렸다.
           모바일은 높이 제한이 없어 증상이 안 보였다.
+
+          <b>overscroll-x-contain</b>: 끝까지 민 제스처가 페이지로 이어지지 않게 막는다.
+          없으면 탭을 끝까지 민 손가락이 그대로 화면 전체를 옆으로 민다 — 홈의 주간 예보
+          띠에서 겪은 사고이고, 그쪽은 결국 가로로 미는 구조 자체를 걷어냈다.
         */}
         <nav
-          className={`shrink-0 gap-2 overflow-x-auto pb-1 ${totalDays > 1 ? 'flex' : 'hidden'}`}
+          className={`shrink-0 gap-2 overflow-x-auto overscroll-x-contain pb-1 ${totalDays > 1 ? 'flex' : 'hidden'}`}
           aria-label="일차 선택"
         >
           {Array.from({ length: totalDays }, (_, index) => index + 1).map((day) => {
@@ -395,9 +399,9 @@ export function CoursePage() {
           목록이 길어 스크롤이 생기므로 버튼을 아래에 붙여둔다.
           끝까지 내려야 진단 버튼을 만나는 구조면 다 담고도 뭘 해야 할지 모른다.
         */}
-        {/* bottom-15: BottomNav(60px) 위에 얹는다. 막대가 사라지는 md부터는 바닥으로 내려온다. */}
+        {/* 아래 고정 막대를 걷어내서 이제 어느 폭에서나 바닥에 붙는다. */}
         {/* z-30 — 진단 화면과 같은 이유다. 값이 없으면 지도와 겹치는 구간에서 뒤로 숨는다 */}
-        <div className="from-bg/0 to-bg sticky bottom-15 z-30 mt-auto bg-gradient-to-b to-[30%] pt-3.5 pb-5 md:bottom-0">
+        <div className="from-bg/0 to-bg sticky bottom-0 z-30 mt-auto bg-gradient-to-b to-[30%] pt-3.5 pb-5">
           {!allDaysFilled && emptyDays.length > 0 && (
             <p className="mb-2.5 text-center text-[13px]">
               {emptyDays.map((day) => `Day ${day}`).join(', ')}에 장소를 담아주세요.

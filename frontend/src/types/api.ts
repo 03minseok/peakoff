@@ -302,12 +302,23 @@ export interface SavedCourseDetail extends Omit<SavedCourseSummary, 'placeCount'
   places: SavedPlace[]
 }
 
+/** 남의 코스에 담긴 장소 한 곳. placeId는 관광지 식별자이지 코스 식별자가 아니다 */
+export interface PublicPlace {
+  day: number
+  order: number
+  placeId: string
+  name: string
+}
+
 /**
  * 남이 저장한 코스의 <b>익명</b> 요약. 홈의 "다른 사람들의 여행"에 쓴다.
  *
- * <b>id도 이름도 없다.</b> id가 없으니 눌러서 열어 볼 길이 아예 없고,
- * 코스 이름은 사용자가 자기만 볼 줄 알고 지은 것이라 공개에 동의한 적이 없다.
- * 남는 것은 지역·기간·총점과 앞쪽 장소 이름 몇 개뿐이다.
+ * <b>코스 id도 이름도 없다.</b> 이름은 사용자가 자기만 볼 줄 알고 지은 것이라 공개에
+ * 동의한 적이 없고, id가 없으니 남의 코스를 번호로 가리켜 하나씩 여는 통로가 생기지 않는다.
+ *
+ * <p>대신 <b>장소는 전부 온다.</b> 카드를 눌러 펼쳐 볼 수 있는데, 상세를 따로 부르는 대신
+ * 목록 응답이 내용을 이미 들고 있다 — 주소 없이 내용만 오는 셈이라 위 원칙이 그대로 유지되고,
+ * 누를 때 추가 호출도 없다. 카드에 보이는 앞 세 곳은 화면이 잘라 쓴다.
  */
 export interface PublicCourse {
   region: string
@@ -319,9 +330,8 @@ export interface PublicCourse {
   totalQuietness: number
   level: CongestionLevel
   levelLabel: string
-  placeCount: number
-  /** 맛보기로 오는 앞쪽 장소 이름. 코스 전체가 아니다 */
-  places: string[]
+  /** 담긴 순서(일차·순번)대로 전부 */
+  places: PublicPlace[]
   createdAt: string
 }
 
