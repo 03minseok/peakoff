@@ -13,6 +13,13 @@ export type ApiErrorCode =
   | 'UNAUTHORIZED'
   /** 이미 가입된 이메일 */
   | 'CONFLICT'
+  /**
+   * 공공데이터에 닿지 못했다. <b>우리 잘못이 아니라 남의 사정이라 기다리면 낫는다.</b>
+   *
+   * INTERNAL_ERROR와 갈라 받는 이유: 500은 "서버가 깨졌다"이고 이것은 "지금은 안 되지만
+   * 곧 된다"이다. 화면이 같은 말로 뭉개면 사용자가 다시 시도할 이유를 알 수 없다.
+   */
+  | 'EXTERNAL_UNAVAILABLE'
 
 /** 서버 CongestionLevel enum과 같은 값. */
 export type CongestionLevel = 'CROWDED' | 'MODERATE' | 'QUIET'
