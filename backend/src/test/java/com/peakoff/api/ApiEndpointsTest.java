@@ -112,7 +112,7 @@ class ApiEndpointsTest {
 					.andExpect(jsonPath("$.data.alternatives[0].recommendation").isNumber())
 					.andExpect(jsonPath("$.data.alternatives[0].levelLabel").isNotEmpty())
 					.andExpect(jsonPath("$.data.alternatives[0].reason")
-							.value(org.hamcrest.Matchers.startsWith("불국사에서 가까운 같은 분류(")))
+							.value(org.hamcrest.Matchers.startsWith("불국사 근처의 비슷한 분류")))
 					// 추천도가 어떻게 나왔는지 화면에서 설명할 수 있어야 한다.
 					.andExpect(jsonPath("$.data.alternatives[0].factors[0].label").value("한적도"))
 					.andExpect(jsonPath("$.data.alternatives[0].factors[0].score").isNumber())

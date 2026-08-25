@@ -92,8 +92,18 @@ export type PlaceOffStatus =
  * ⚠️ `minQuietnessGain`을 화면에 숫자로 박아두지 말 것. 분석 결과로 기준이 바뀌면
  * 설명과 실제가 어긋난다 — 날짜 대안의 `minImprovement`와 같은 이유다.
  */
+/**
+ * 후보를 어디서 가져왔는가. 서버 CandidateSource.
+ *
+ * ⚠️ 이 값을 화면에 그대로 쓰지 말 것. 사용자에게 필요한 것은 "REGIONAL_FALLBACK"이 아니라
+ * 그 장소가 왜 나왔는지이고, 각 후보의 `reason`이 이미 출처에 맞는 말을 담고 있다.
+ */
+export type CandidateSource = 'RELATED' | 'REGIONAL_FALLBACK'
+
 export interface Alternatives {
   status: PlaceOffStatus
+  /** 목록이 비었으면 null */
+  source: CandidateSource | null
   /** 화면에 그대로 띄우는 문구. 추천이 있으면 null이다 — 목록 자체가 답이다 */
   statusMessage: string | null
   /** 원래 장소의 그 날 한적도. 모르면 null */

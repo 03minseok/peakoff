@@ -29,6 +29,7 @@ import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.recommendation.domain.Alternative;
 import com.peakoff.recommendation.domain.AlternativeStandard;
 import com.peakoff.recommendation.domain.Alternatives;
+import com.peakoff.recommendation.domain.CandidateSource;
 import com.peakoff.recommendation.domain.RecommendationProvider;
 import com.peakoff.recommendation.domain.RecommendationScorer;
 import com.peakoff.recommendation.domain.ScoreWeights;
@@ -147,10 +148,36 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 		 */
 		Region region = regionOf(origin).orElse(null);
 		if (region == null) {
-			return Alternatives.of(originQuietness, 0, 0, List.of());
+			return Alternatives.of(originQuietness, 0, 0, null, List.of());
 		}
 
+		/*
+		 * 연관 관광지가 먼저다. 그 장소 방문객이 실제로 함께 간 곳이라 추천의 맥락이 남는다.
+		 *
+		 * 다만 자주 빈다 — 연관 이름이 우리 카탈로그로 이어지고, 분류가 맞고, 15km 안이고,
+		 * 혼잡 자료가 있고, 5점 이상 한적해야 남기 때문이다. 실측에서 관광지 넷 중 셋은
+		 * 이 경로만으로는 대안을 얻지 못했다(경주 25.6% / 제주시 30.9% / 서귀포 33.7%).
+		 */
 		Candidates candidates = scoreCandidates(origin, date, region, originQuietness);
+		CandidateSource source = CandidateSource.RELATED;
+
+		if (candidates.qualified().isEmpty()) {
+			/*
+			 * 연관 후보가 하나도 남지 않았을 때만 같은 지역 카탈로그로 넘어간다.
+			 *
+			 * <b>둘을 한 Pool에 섞지 않는 이유</b>: 섞으면 같은 목록 안에서 어떤 줄은
+			 * "함께 많이 찾는 곳"이고 어떤 줄은 아니게 되는데, 사용자가 그 차이를 읽어낼
+			 * 방법이 없다. 근거 문구는 목록 전체가 한 출처일 때만 정직해진다.
+			 *
+			 * 맥락은 약해지지만 나머지 조건은 똑같이 지킨다. 이 경로를 열면서 대안이 있는
+			 * 자리가 경주 20→58곳, 제주시 68→192곳, 서귀포 61→159곳이 됐다.
+			 */
+			Candidates regional = scoreRegional(origin, date, region, originQuietness);
+			if (!regional.qualified().isEmpty()) {
+				candidates = regional;
+				source = CandidateSource.REGIONAL_FALLBACK;
+			}
+		}
 
 		/*
 		 * 이미 코스에 담긴 곳을 뺀다. <b>자격을 따진 뒤, 뽑기 앞이다.</b>
@@ -170,16 +197,60 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 
 		if (available.isEmpty()) {
 			return Alternatives.of(
-					originQuietness, candidates.consideredCount(), inCourseCount, List.of());
+					originQuietness, candidates.consideredCount(), inCourseCount, null, List.of());
 		}
 
+		// 위에서 fallback으로 갈아탔을 수 있어 람다가 그대로 쓸 수 없다.
+		final CandidateSource chosen = source;
 		List<Alternative> picked = drawWithoutRepeat(available, limit).stream()
-				.map(candidate -> candidate.withReason(reasonFor(origin, candidate)))
+				.map(candidate -> candidate.withReason(reasonFor(origin, candidate, chosen)))
 				// 화면에 보이는 값으로 줄을 세운다. 뽑기는 끝났고 여기서는 보기 좋게 정렬만 한다.
 				.sorted(Comparator.comparingInt(Alternative::recommendation).reversed())
 				.toList();
 
-		return Alternatives.of(originQuietness, candidates.consideredCount(), inCourseCount, picked);
+		return Alternatives.of(
+				originQuietness, candidates.consideredCount(), inCourseCount, source, picked);
+	}
+
+	/**
+	 * 같은 지역 카탈로그에서 후보를 고른다. <b>연관 후보가 하나도 없을 때만 부른다.</b>
+	 *
+	 * <p>거르는 조건은 연관 경로와 <b>글자 그대로 같다</b> — 자기 자신·분류·거리·혼잡 자료·개선폭.
+	 * 다른 것은 후보를 어디서 가져왔는지뿐이고, 그 차이는 근거 문구에서만 드러난다.
+	 *
+	 * <p>순서가 성능을 좌우한다. 분류와 거리로 먼저 자르면 혼잡 자료 조회가 몇십 번으로 줄어든다 —
+	 * 그것을 앞에 두면 제주시 1,271곳 전부에 이름 매칭이 돈다.
+	 */
+	private Candidates scoreRegional(Place origin, LocalDate date, Region region, int originQuietness) {
+		RegionCatalog catalog = placeClient.catalogOf(region);
+		if (catalog.isEmpty()) {
+			return new Candidates(List.of(), 0);
+		}
+
+		List<ScoredPlace> scored = new ArrayList<>();
+		int considered = 0;
+
+		for (Place candidate : catalog.all()) {
+			if (candidate.id().equals(origin.id())) {
+				continue;
+			}
+			if (!PlaceCategories.compatible(origin.category(), candidate.category())) {
+				continue;
+			}
+			if (!AlternativeStandard.isWithinReach(Distances.betweenKm(origin, candidate))) {
+				continue;
+			}
+			if (!congestionProvider.hasData(candidate.id(), date)) {
+				continue;
+			}
+			ScoredPlace candidateScore = scorer.scoreAgainst(origin, candidate, date, ScoreWeights.DEFAULT);
+			considered++;
+			if (!AlternativeStandard.isWorthSuggesting(originQuietness, candidateScore.quietness())) {
+				continue;
+			}
+			scored.add(candidateScore);
+		}
+		return new Candidates(scored, considered);
 	}
 
 	/**
@@ -325,16 +396,34 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	}
 
 	/**
-	 * 추천 근거. <b>이제 "함께 많이 찾는 곳"이라고 말할 수 있다.</b>
+	 * 추천 근거. <b>후보를 어디서 가져왔느냐에 따라 할 수 있는 말이 다르다.</b>
 	 *
-	 * <p>목업 시절에는 이 문구를 쓸 수 없었다. 계산하지 않은 것을 근거로 말하지 않는다는
-	 * 규칙 때문이다. 연관 관광지 데이터가 실제로 후보를 고르는 지금은 사실이 됐다.
+	 * <pre>
+	 * 연관    "불국사 방문객이 함께 많이 찾는 곳 · 예상 혼잡 낮음"
+	 * 지역    "불국사 근처의 비슷한 분류 · 예상 혼잡 낮음"
+	 * </pre>
 	 *
-	 * <p>예: "불국사 방문객이 함께 많이 찾는 곳 · 예상 혼잡 낮음"
+	 * <p>둘 다 <b>장소 이름 뒤에 조사가 오지 않게</b> 지었다. 한국어의 "와/과"는 앞 글자의
+	 * 받침에 따라 갈리는데, 장소 이름은 무엇으로 끝날지 알 수 없다 — 실제로
+	 * "경주엑스포대공원와"라는 틀린 말이 나왔다. 조사를 붙이려면 받침을 판별하는 코드가
+	 * 하나 더 필요하고, 괄호나 숫자로 끝나는 이름에서는 그것도 답을 못 낸다.
+	 *
+	 * <p>지역 카탈로그에서 고른 후보에게 "함께 많이 찾는 곳"이라고 하면 <b>계산하지 않은 것을
+	 * 근거로 말하는 것</b>이다. 우리가 실제로 본 것은 분류와 거리와 한적도뿐이므로 그것만 말한다.
+	 *
+	 * <p>"같은 분류"가 아니라 "비슷한 분류"인 이유: 역사 유적 자리에 박물관이 올 수 있게
+	 * 호환 범위를 넓혔다({@code PlaceCategories.compatible}). "같은"이라고 하면 화면에 뜬
+	 * 분류명과 어긋나 사용자가 우리 말을 믿지 않게 된다.
+	 *
+	 * <p>기술 용어는 쓰지 않는다. 사용자에게 필요한 것은 "fallback"이 아니라
+	 * 그 장소가 왜 나왔는지다.
 	 */
-	private static String reasonFor(Place origin, ScoredPlace scored) {
-		return "%s 방문객이 함께 많이 찾는 곳 · %s".formatted(
-				origin.name(), scored.level().congestionPhrase());
+	private static String reasonFor(Place origin, ScoredPlace scored, CandidateSource source) {
+		String basis = source == CandidateSource.RELATED
+				? "%s 방문객이 함께 많이 찾는 곳".formatted(origin.name())
+				: "%s 근처의 비슷한 분류".formatted(origin.name());
+
+		return "%s · %s".formatted(basis, scored.level().congestionPhrase());
 	}
 
 	/**
