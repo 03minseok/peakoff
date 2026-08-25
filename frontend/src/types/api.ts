@@ -67,6 +67,40 @@ export interface Alternative {
   reason: string
 }
 
+/**
+ * 왜 이런 대안 목록이 나왔는가. 서버 PlaceOffStatus.
+ *
+ * <b>빈 목록이 비는 이유가 여럿이라 필요해졌다.</b> 원래 자리가 이미 한적해서 비는 것과
+ * 대신할 곳을 못 찾아서 비는 것은 사용자에게 정반대의 소식인데, 같은 빈 화면으로 뭉개면
+ * 둘 다 "이 서비스는 데이터가 부실하다"로 읽힌다.
+ */
+export type PlaceOffStatus =
+  | 'RECOMMENDED'
+  | 'ALREADY_QUIET'
+  | 'NO_MEANINGFUL_IMPROVEMENT'
+  | 'NO_VALID_CANDIDATE'
+  | 'ORIGIN_NOT_FORECASTED'
+
+/**
+ * 서버 AlternativesResponse. 후보 목록과 <b>그 목록이 나온 이유</b>가 한 덩어리다.
+ *
+ * 서버는 원래 장소보다 `minQuietnessGain`점 이상 한적한 곳만 담는다. 하한이 없으면
+ * 더 붐비는 곳도 대안으로 나가, 붐빔을 피하라는 서비스가 더 붐비는 곳을 권하게 된다.
+ *
+ * ⚠️ `minQuietnessGain`을 화면에 숫자로 박아두지 말 것. 분석 결과로 기준이 바뀌면
+ * 설명과 실제가 어긋난다 — 날짜 대안의 `minImprovement`와 같은 이유다.
+ */
+export interface Alternatives {
+  status: PlaceOffStatus
+  /** 화면에 그대로 띄우는 문구. 추천이 있으면 null이다 — 목록 자체가 답이다 */
+  statusMessage: string | null
+  /** 원래 장소의 그 날 한적도. 모르면 null */
+  originQuietness: number | null
+  /** 대안으로 권하려면 필요한 최소 개선폭. 서버가 정한다 */
+  minQuietnessGain: number
+  alternatives: Alternative[]
+}
+
 /** 진단 요청의 슬롯. 한적도가 없는 것이 핵심 — 점수는 서버가 매겨서 돌려준다. */
 export interface CourseSlotRequest {
   day: number

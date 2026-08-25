@@ -13,6 +13,8 @@ import com.peakoff.global.config.DataSourceProfiles;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.mock.GyeongjuMockCatalog;
 import com.peakoff.recommendation.domain.Alternative;
+import com.peakoff.recommendation.domain.AlternativeStandard;
+import com.peakoff.recommendation.domain.Alternatives;
 import com.peakoff.recommendation.domain.RecommendationProvider;
 import com.peakoff.recommendation.domain.RecommendationScorer;
 import com.peakoff.recommendation.domain.ScoreWeights;
@@ -51,7 +53,7 @@ public class MockRecommendationProvider implements RecommendationProvider {
 	}
 
 	@Override
-	public List<Alternative> findAlternatives(Place origin, LocalDate date, int limit) {
+	public Alternatives findAlternatives(Place origin, LocalDate date, int limit) {
 		if (origin == null || date == null) {
 			throw new IllegalArgumentException("원래 장소와 날짜는 필수입니다.");
 		}
@@ -59,17 +61,31 @@ public class MockRecommendationProvider implements RecommendationProvider {
 			throw new IllegalArgumentException("후보 수는 1 이상이어야 합니다. 입력값: " + limit);
 		}
 
-		return GyeongjuMockCatalog.places().stream()
+		// 원래 장소의 한적도를 모르면 "얼마나 나아지는가"를 잴 기준이 없다.
+		if (!congestionProvider.hasData(origin.id(), date)) {
+			return Alternatives.originNotForecasted();
+		}
+		int originQuietness = congestionProvider.quietnessOf(origin.id(), date);
+
+		List<ScoredPlace> considered = GyeongjuMockCatalog.places().stream()
 				.filter(candidate -> !candidate.id().equals(origin.id()))
 				.filter(candidate -> sameCategory(candidate, origin))
-				.filter(candidate -> congestionProvider.hasData(candidate.id()))
+				.filter(candidate -> congestionProvider.hasData(candidate.id(), date))
 				.map(candidate -> scorer.scoreAgainst(origin, candidate, date, ScoreWeights.DEFAULT))
+				.toList();
+
+		List<Alternative> picked = considered.stream()
+				// 원래 장소보다 뚜렷하게 한적하지 않으면 대안이 아니다.
+				// 하한이 없으면 더 붐비는 곳도 "대안"으로 나간다.
+				.filter(scored -> AlternativeStandard.isWorthSuggesting(originQuietness, scored.quietness()))
 				.map(scored -> scored.withReason(reasonFor(origin, scored)))
 				// 정렬 기준이 곧 화면에 보이는 추천도다. 화면에 없는 값으로 줄을 세우면
 				// "왜 이게 1등인지"를 사용자에게도 심사에서도 설명할 수 없다.
 				.sorted(Comparator.comparingInt(Alternative::recommendation).reversed())
 				.limit(limit)
 				.toList();
+
+		return Alternatives.of(originQuietness, considered.size(), picked);
 	}
 
 	private static boolean sameCategory(Place candidate, Place origin) {

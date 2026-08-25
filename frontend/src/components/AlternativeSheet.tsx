@@ -45,7 +45,7 @@ interface Props {
  */
 type LoadState =
   | { phase: 'loading' }
-  | { phase: 'loaded'; alternatives: Alternative[] }
+  | { phase: 'loaded'; alternatives: Alternative[]; emptyMessage: string | null }
   | { phase: 'nearby'; nearby: NearbyPlace[] }
   | { phase: 'error'; message: string }
 
@@ -121,10 +121,24 @@ export function AlternativeSheet({
           fetchAlternatives(originPlaceId, visitDate, 8, controller.signal),
         ).then((result) => {
           // 이미 그 날에 담긴 곳은 고를 수 없으므로 아예 보여주지 않는다.
-          const selectable = result.filter(
+          const selectable = result.alternatives.filter(
             (item) => !excludePlaceIds.includes(item.place.id),
           )
-          setLoad({ phase: 'loaded', alternatives: selectable })
+          /*
+           * 목록이 왜 비었는지는 서버가 말한다. 원래 자리가 이미 한적해서 비는 것과
+           * 대신할 곳을 못 찾아서 비는 것은 정반대의 소식이라, 한 문장으로 뭉개면
+           * 잘 고른 사용자에게 서비스가 못했다고 사과하는 꼴이 된다.
+           *
+           * 다만 걸러낸 것이 우리 쪽 사정(이미 코스에 담긴 곳)일 때는 서버 문구가 맞지 않는다.
+           * 서버는 후보를 줬는데 화면이 뺀 것이라, "못 찾았다"고 말하면 거짓말이 된다.
+           */
+          const emptyMessage =
+            selectable.length > 0
+              ? null
+              : result.alternatives.length > 0
+                ? '남은 후보가 이미 이 날 코스에 담겨 있어요.'
+                : result.statusMessage
+          setLoad({ phase: 'loaded', alternatives: selectable, emptyMessage })
         })
 
     request
@@ -271,8 +285,16 @@ export function AlternativeSheet({
             <p className="text-crowded-deep py-6 text-center text-sm whitespace-pre-line">{load.message}</p>
           )}
 
+          {/*
+            빈 목록에도 이유가 붙는다. 서버가 원래 장소보다 뚜렷하게 한적한 곳만 담기 때문에
+            비는 일이 흔한데, "이미 한적해서"와 "못 찾아서"는 사용자에게 정반대의 말이다.
+            문구를 서버가 들고 있는 이유는 임계값을 서버에 두는 것과 같다 —
+            판단의 근거와 그것을 설명하는 말이 갈라지면 한쪽만 바뀐다.
+          */}
           {load.phase === 'loaded' && load.alternatives.length === 0 && (
-            <p className="py-6 text-center text-sm">추천할 만한 다른 곳을 찾지 못했어요.</p>
+            <p className="py-6 text-center text-sm whitespace-pre-line">
+              {load.emptyMessage ?? '추천할 만한 다른 곳을 찾지 못했어요.'}
+            </p>
           )}
 
           {/*

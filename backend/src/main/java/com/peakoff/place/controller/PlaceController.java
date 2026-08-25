@@ -22,7 +22,7 @@ import com.peakoff.global.response.ApiResponse;
 import com.peakoff.place.dto.NearbyPlaceResponse;
 import com.peakoff.place.dto.PlaceResponse;
 import com.peakoff.place.service.PlaceService;
-import com.peakoff.recommendation.dto.AlternativeResponse;
+import com.peakoff.recommendation.dto.AlternativesResponse;
 import com.peakoff.recommendation.service.RecommendationService;
 
 /**
@@ -81,9 +81,18 @@ public class PlaceController {
 
 					각 후보에는 한적도·추천도와 함께 추천 근거 문구가 담긴다.
 					추천도는 인기도가 아니라 원래 장소와의 연관성·카테고리 적합성·동선 근접도로 매긴다.
-					날짜가 필요한 이유는 같은 후보라도 날짜에 따라 한적도가 다르기 때문이다.""")
+					날짜가 필요한 이유는 같은 후보라도 날짜에 따라 한적도가 다르기 때문이다.
+
+					<b>원래 장소보다 minQuietnessGain점 이상 한적한 곳만 담는다.</b>
+					하한이 없으면 더 붐비는 곳도 "대안"으로 나가, 붐빔을 피하라는 서비스가
+					더 붐비는 곳을 권하게 된다.
+
+					그래서 목록이 비는 일이 흔하다. <b>왜 비었는지는 status가 말한다</b> —
+					원래 자리가 이미 한적해서(ALREADY_QUIET) 비는 것과 대신할 곳을 못 찾아서
+					(NO_VALID_CANDIDATE) 비는 것은 사용자에게 정반대의 소식이다.
+					statusMessage를 그대로 띄우면 된다.""")
 	@GetMapping("/{placeId}/alternatives")
-	public ApiResponse<List<AlternativeResponse>> alternatives(
+	public ApiResponse<AlternativesResponse> alternatives(
 			@Parameter(description = "교체 대상 장소 ID", example = "mock-bulguksa")
 			@PathVariable @NotBlank(message = "장소를 지정해야 합니다.") String placeId,
 

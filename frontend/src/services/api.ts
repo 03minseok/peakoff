@@ -1,5 +1,5 @@
 import type {
-  Alternative,
+  Alternatives,
   ApiErrorCode,
   ApiResponse,
   AuthMember,
@@ -276,22 +276,27 @@ export function fetchPlaces(
   return apiRequest<Place[]>(`/places?${query}`, { signal: options.signal }).then(remember)
 }
 
-/** GET /api/places/{placeId}/alternatives?date=&limit= */
+/**
+ * GET /api/places/{placeId}/alternatives?date=&limit=
+ *
+ * 목록만이 아니라 <b>왜 그런 목록인지</b>를 함께 받는다. 서버가 개선폭 하한을 두기 때문에
+ * 빈 목록이 흔하고, 빈 이유가 매번 다른 소식이다.
+ */
 export function fetchAlternatives(
   placeId: string,
   date: string,
   limit = 5,
   signal?: AbortSignal,
-): Promise<Alternative[]> {
+): Promise<Alternatives> {
   const query = new URLSearchParams({ date, limit: String(limit) })
-  return apiRequest<Alternative[]>(
+  return apiRequest<Alternatives>(
     `/places/${encodeURIComponent(placeId)}/alternatives?${query}`,
     { signal },
-  ).then((alternatives) => {
+  ).then((result) => {
     // 대안으로 교체하면 그 장소가 코스에 들어간다. 여기서 기억해 두지 않으면
     // 코스 편집 화면이 교체된 장소를 모른 채로 id만 들고 있게 된다.
-    rememberPlaces(alternatives.map((alternative) => alternative.place))
-    return alternatives
+    rememberPlaces(result.alternatives.map((alternative) => alternative.place))
+    return result
   })
 }
 

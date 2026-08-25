@@ -1,4 +1,4 @@
-import type { Alternative } from '../types/api'
+import type { Alternatives } from '../types/api'
 
 /**
  * 한 번 받은 대안 목록을 코스 편집 세션 동안 들고 있는다.
@@ -29,7 +29,7 @@ import type { Alternative } from '../types/api'
 /** 여행 조건이 같은지 가리는 열쇠. 이 값이 바뀌면 모아둔 것을 전부 버린다. */
 let currentPlanKey: string | null = null
 
-const entries = new Map<string, Alternative[]>()
+const entries = new Map<string, Alternatives>()
 
 /** 지역·시작일·기간을 한 문자열로 묶는다. 셋 중 하나만 바뀌어도 다른 값이 된다. */
 export function planKeyOf(region: string, startDate: string, nights: number): string {
@@ -49,8 +49,8 @@ export async function alternativesFor(
   planKey: string,
   placeId: string,
   visitDate: string,
-  fetcher: () => Promise<Alternative[]>,
-): Promise<Alternative[]> {
+  fetcher: () => Promise<Alternatives>,
+): Promise<Alternatives> {
   if (planKey !== currentPlanKey) {
     entries.clear()
     currentPlanKey = planKey
