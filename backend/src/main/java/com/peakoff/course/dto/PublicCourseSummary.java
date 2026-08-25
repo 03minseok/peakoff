@@ -23,11 +23,23 @@ import com.peakoff.place.domain.SupportedRegion;
  * "엄마 생신 여행" 같은 이름을 공개에 동의한 적이 없다.
  *
  * <h2>무엇을 남기는가</h2>
- * 지역·기간·총점·장소 수, 그리고 <b>장소 이름 몇 개</b>. 장소는 공공 관광지라
- * 개인을 가리키지 않고, 이것이 없으면 "다른 사람의 여행"이라는 느낌이 남지 않는다 —
- * 숫자만 늘어놓은 표는 남의 여행으로 읽히지 않는다.
+ * 지역·기간·총점, 그리고 <b>담긴 장소 전부</b>. 장소는 공공 관광지라 개인을 가리키지 않고,
+ * 이것이 없으면 "다른 사람의 여행"이라는 느낌이 남지 않는다 — 숫자만 늘어놓은 표는
+ * 남의 여행으로 읽히지 않는다.
  *
- * @param places 앞쪽 몇 곳의 이름. 코스 전체가 아니라 맛보기다
+ * <h2>맛보기 셋에서 전부로 바꾼 이유 (2026-08-25)</h2>
+ * 홈에서 카드를 눌러 코스를 펼쳐 볼 수 있게 됐다. 위 주석이 걱정하던 바로 그 화면인데,
+ * <b>코스 id를 되살리는 대신 목록 응답에 장소를 전부 실었다.</b>
+ *
+ * <p>id를 주고 상세 엔드포인트를 여는 쪽이 흔한 설계지만, 그러면 번호를 훑어 남의 코스를
+ * 하나씩 여는 통로가 생긴다. 여기서는 <b>주소가 없는 채로</b> 내용만 나가므로 그 통로가
+ * 열리지 않는다 — 홈이 고른 최근 몇 개 말고는 아무것도 가리킬 수 없다.
+ * 누를 때 추가 호출이 없다는 것도 덤이다.
+ *
+ * <p>앞쪽 몇 개만 자르던 일은 화면이 맡는다. 카드에는 여전히 세 곳만 보이고,
+ * 나머지는 펼쳤을 때 나온다.
+ *
+ * @param places 담긴 순서(일차·순번)대로 <b>전부</b>. 화면이 앞에서 몇 개만 잘라 쓴다
  */
 public record PublicCourseSummary(
 		String region,
@@ -39,22 +51,33 @@ public record PublicCourseSummary(
 		int totalQuietness,
 		CongestionLevel level,
 		String levelLabel,
-		int placeCount,
-		List<String> places,
+		List<PublicPlace> places,
 		Instant createdAt) {
 
-	/** 맛보기로 보여줄 장소 수. 카드 한 줄에 들어가는 만큼만. */
-	private static final int PREVIEW_PLACES = 3;
+	/**
+	 * 남의 코스에 담긴 장소 한 곳.
+	 *
+	 * @param placeId <b>관광지 식별자이지, 코스 식별자가 아니다.</b> 공사 콘텐츠 ID라
+	 *                누구나 조회할 수 있는 공개 값이고 저장한 사람을 가리키지 않는다.
+	 *                이것이 있어야 "이 코스로 나도 짜보기"가 성립한다 — 이름만으로는
+	 *                같은 장소를 다시 찾을 수 없다(집중률 API의 이름 매칭이 어려운 이유와 같다).
+	 * @param name    저장 시점의 이름. 화면에 보이는 것은 이 값이다
+	 */
+	public record PublicPlace(int day, int order, String placeId, String name) {
+	}
 
 	public static PublicCourseSummary from(SavedCourse course) {
 		CongestionLevel level = CongestionLevel.fromQuietness(course.totalQuietness());
 
-		// 담은 순서대로 앞에서 몇 개. 무작위로 고르면 같은 코스가 볼 때마다 달라 보인다.
-		List<String> preview = course.places().stream()
+		// 담은 순서대로. 무작위로 섞으면 같은 코스가 볼 때마다 달라 보인다.
+		List<PublicPlace> places = course.places().stream()
 				.sorted(Comparator.comparingInt(SavedCoursePlace::day)
 						.thenComparingInt(SavedCoursePlace::visitOrder))
-				.map(SavedCoursePlace::placeName)
-				.limit(PREVIEW_PLACES)
+				.map(place -> new PublicPlace(
+						place.day(),
+						place.visitOrder(),
+						place.placeId(),
+						place.placeName()))
 				.toList();
 
 		return new PublicCourseSummary(
@@ -67,8 +90,7 @@ public record PublicCourseSummary(
 				course.totalQuietness(),
 				level,
 				level.label(),
-				course.places().size(),
-				preview,
+				places,
 				course.createdAt());
 	}
 }
