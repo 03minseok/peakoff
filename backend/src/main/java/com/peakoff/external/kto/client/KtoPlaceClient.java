@@ -133,14 +133,49 @@ public class KtoPlaceClient {
 		if (longitude == null || latitude == null) {
 			return null;
 		}
+		if (!isInKorea(latitude, longitude)) {
+			/*
+			 * 좌표가 깨진 장소는 <b>없는 것보다 나쁘다.</b> 없으면 위에서 버려지지만,
+			 * 틀린 값은 조용히 거짓말을 한다 — 지도에 엉뚱한 데 찍히고, 동선 근접도가
+			 * 그 거리로 계산되어 추천 점수까지 오염된다.
+			 *
+			 * 실측(2026-08-25)에서 두 건이 걸렸다.
+			 *   서귀포 "영주산"   경도 12.797   → 126.797에서 한 자리가 빠졌다. 9,877km 밖
+			 *   경주 "해파랑길"   (0, 0)        → 기니만 앞바다
+			 *
+			 * 영주산은 예측 대상 분류(자연·풍경)라 실제로 대안 후보로 나가고 있었다.
+			 */
+			log.warn("좌표가 서비스 범위를 벗어나 건너뜁니다. contentId={}, 분류={}",
+					id, item.path("lclsSystm1").asText(""));
+			return null;
+		}
 
-		PlaceCategory category = PlaceCategories.of(item.path("lclsSystm1").asText("").trim());
+		// 중분류를 함께 읽는다. VE(문화·명소)에 박물관·워터파크·리조트가 섞여 있어서,
+		// 대분류만으로 대안을 고르면 역사 유적 자리에 워터파크가 올라온다.
+		PlaceCategory category = PlaceCategories.of(
+				item.path("lclsSystm1").asText("").trim(),
+				item.path("lclsSystm2").asText("").trim());
 		if (category == null) {
 			return null;
 		}
 
 		String image = item.path("firstimage").asText("").trim();
 		return new Place(id, title, latitude, longitude, category, image.isEmpty() ? null : image);
+	}
+
+	/**
+	 * 좌표가 우리가 서비스하는 범위 안인가.
+	 *
+	 * <p>위도 -90~90, 경도 -180~180이라는 일반 검사로는 <b>부족하다.</b> 영주산의 경도 12.797은
+	 * 그 범위 안에 있는 멀쩡한 숫자다 — 대서양 한가운데라는 사실은 우리가 한국만 다룬다는 것을
+	 * 알아야 드러난다.
+	 *
+	 * <p>범위는 남한 전체를 넉넉히 감싼다(제주 남단 마라도 33.06, 강원 최북단 38.6,
+	 * 서해 최서단 124.6, 동해 독도 131.9). 지역이 늘어도 이 값은 그대로 쓸 수 있다.
+	 */
+	private static boolean isInKorea(double latitude, double longitude) {
+		return latitude >= 33.0 && latitude <= 38.7
+				&& longitude >= 124.5 && longitude <= 132.0;
 	}
 
 	private static Double parseCoordinate(String raw) {

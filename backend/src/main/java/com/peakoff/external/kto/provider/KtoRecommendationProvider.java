@@ -21,7 +21,9 @@ import com.peakoff.external.kto.client.RegionCatalog;
 import com.peakoff.external.kto.client.RelatedPlaces;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.external.kto.support.RegionCache;
+import com.peakoff.place.domain.Distances;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.recommendation.domain.Alternative;
@@ -229,8 +231,21 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 			if (candidate.id().equals(origin.id())) {
 				continue;
 			}
-			if (!candidate.category().code().equals(origin.category().code())) {
-				// 음식점 자리에 숙박을 넣지 않는다. 분류 적합성은 지금 점수가 아니라 필터다.
+			if (!PlaceCategories.compatible(origin.category(), candidate.category())) {
+				/*
+				 * 음식점 자리에 숙박을 넣지 않는다. 분류 적합성은 지금 점수가 아니라 필터다.
+				 *
+				 * 코드가 정확히 같아야 한다는 규칙에서 바뀌었다 — 그러면 역사 유적 자리에
+				 * 박물관이 못 들어가고, 반대로 VE끼리는 전부 통과해 황리단길 자리에
+				 * 리조트가 올라왔다. 판단은 {@code PlaceCategories}가 중분류까지 보고 한다.
+				 */
+				continue;
+			}
+			if (!AlternativeStandard.isWithinReach(Distances.betweenKm(origin, candidate))) {
+				/*
+				 * 너무 멀다. 점수를 매기기 전에 자른다 — 근접도는 거리를 깎을 뿐 막지 못해서,
+				 * 아주 한적한 곳은 38km 밖에서도 총점이 높게 나온다.
+				 */
 				continue;
 			}
 			if (!congestionProvider.hasData(candidate.id(), date)) {
