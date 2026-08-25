@@ -139,6 +139,49 @@ class PlaceCategoriesTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("예측을 시도하는 것과 말을 거는 것은 다른 판단이다")
+	class ForecastRoles {
+
+		private static final PlaceCategory SHOP = PlaceCategories.of("SH", "SH01");
+
+		/** 공사가 예측하는 쇼핑은 시장뿐이다 — 동문재래시장·광장시장·강릉 중앙시장 */
+		@Test
+		void 쇼핑도_예측을_시도한다() {
+			assertThat(PlaceCategories.isForecastTarget(SHOP)).isTrue();
+		}
+
+		/**
+		 * 다만 실제로 이어지는 것은 극소수다(제주시 296곳 중 6곳).
+		 * 상점 하나 담을 때마다 "정보가 없어요"가 서면 정작 읽어야 할 점수가 묻힌다.
+		 */
+		@Test
+		void 쇼핑은_자료가_없어도_말을_걸지_않는다() {
+			assertThat(PlaceCategories.announcesMissingForecast(SHOP)).isFalse();
+			assertThat(PlaceCategories.announcesMissingForecast(HISTORY)).isTrue();
+			assertThat(PlaceCategories.announcesMissingForecast(NATURE)).isTrue();
+		}
+
+		/**
+		 * 상호에 지명을 붙이는 관습 때문이다 — "다이소 경복궁역점"이 "경복궁"에 걸린다.
+		 * 좌표로도 못 막는다: 그 가게는 실제로 경복궁 2km 안에 있다.
+		 */
+		@Test
+		void 쇼핑만_이름이_정확히_같아야_잇는다() {
+			assertThat(PlaceCategories.requiresExactNameMatch(SHOP)).isTrue();
+			assertThat(PlaceCategories.requiresExactNameMatch(HISTORY)).isFalse();
+			assertThat(PlaceCategories.requiresExactNameMatch(MUSEUM)).isFalse();
+		}
+
+		@Test
+		void 음식점과_숙박은_애초에_시도하지_않는다() {
+			assertThat(PlaceCategories.isForecastTarget(FOOD)).isFalse();
+			assertThat(PlaceCategories.isForecastTarget(STAY)).isFalse();
+			assertThat(PlaceCategories.announcesMissingForecast(FOOD)).isFalse();
+			assertThat(PlaceCategories.announcesMissingForecast(STAY)).isFalse();
+		}
+	}
+
 	@Test
 	@DisplayName("분류를 모르는 장소는 어느 쪽도 될 수 없다")
 	void nullIsNeverCompatible() {
