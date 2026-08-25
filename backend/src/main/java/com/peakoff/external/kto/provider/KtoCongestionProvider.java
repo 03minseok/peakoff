@@ -76,9 +76,22 @@ public class KtoCongestionProvider implements CongestionProvider {
 	}
 
 	private Optional<Located> locate(String placeId) {
+		/*
+		 * 장소는 <b>지역 루프 밖에서 한 번만</b> 찾는다. 장소가 지역마다 달라지지 않는데
+		 * 예전에는 루프 안(apiNameOf)에서 findById를 지역 수만큼 불렀다 — 카탈로그에 있으면
+		 * 메모리 조회라 낭비로 끝나지만, <b>카탈로그 밖 장소는 상세 조회가 지역 수만큼 나갔다.</b>
+		 * 진단 한 칸에 공사 호출이 3배가 되는 자리였다.
+		 */
+		Optional<Place> found = placeProvider.findById(placeId)
+				.filter(place -> PlaceCategories.isForecastTarget(place.category()));
+		if (found.isEmpty()) {
+			return Optional.empty();
+		}
+		Place place = found.get();
+
 		for (Region region : SupportedRegion.allRegions()) {
 			RegionForecast forecast = client.forecastOf(region);
-			Optional<String> apiName = apiNameOf(placeId, region, forecast);
+			Optional<String> apiName = apiNameOf(place, region, forecast);
 			if (apiName.isPresent()) {
 				return Optional.of(new Located(forecast, apiName.get()));
 			}
@@ -135,7 +148,10 @@ public class KtoCongestionProvider implements CongestionProvider {
 	}
 
 	/**
-	 * 우리 장소 id → 이름 → 공사 이름으로 잇는다. 못 이으면 비어 있다.
+	 * 우리 장소의 이름을 그 지역의 공사 이름으로 잇는다. 못 이으면 비어 있다.
+	 *
+	 * <p>장소 조회와 분류 게이트는 {@link #locate}가 루프 밖에서 이미 끝냈다 —
+	 * 여기는 "이 지역의 예측 목록에 이 이름이 있는가"만 답한다.
 	 *
 	 * <h3>이름을 대보기 전에 분류부터 보는 이유</h3>
 	 * 이름 매칭은 <b>양쪽 어느 쪽이 길든 품으면 잇는다.</b> 대릉원(우리) ↔ 대릉원 일원(공사)을
@@ -160,11 +176,9 @@ public class KtoCongestionProvider implements CongestionProvider {
 	 * <p>이 자리에 둔 이유는 {@code quietnessOf}와 {@code hasData} 둘이 전부 여기를
 	 * 지나기 때문이다. 한 군데만 막으면 점수·배지·총점이 함께 정리된다.
 	 */
-	private Optional<String> apiNameOf(String placeId, Region region, RegionForecast forecast) {
-		return placeProvider.findById(placeId)
-				.filter(place -> PlaceCategories.isForecastTarget(place.category()))
-				.flatMap(place -> nameMatcher.match(place.name(), region, forecast.placeNames(),
-						plausibilityOf(place, region)));
+	private Optional<String> apiNameOf(Place place, Region region, RegionForecast forecast) {
+		return nameMatcher.match(place.name(), region, forecast.placeNames(),
+				plausibilityOf(place, region));
 	}
 
 	/**
