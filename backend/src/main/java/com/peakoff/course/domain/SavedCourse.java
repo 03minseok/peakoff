@@ -101,6 +101,28 @@ public class SavedCourse {
 	@Column(nullable = false)
 	private int totalQuietness;
 
+	/**
+	 * 그 총점이 <b>몇 곳을 근거로 한 값인가.</b>
+	 *
+	 * <p>점수만 남기면 나중에 열었을 때 관광지 다섯 곳을 담아 하나만 진단된 코스인지
+	 * 다섯 곳이 다 진단된 코스인지 구분할 수 없다. 코스끼리 견줄 때 특히 그렇다 —
+	 * 근거가 얇은 점수와 두꺼운 점수가 같은 무게로 나란히 선다.
+	 *
+	 * <p>화면에 숫자를 띄울지는 진단 때 이미 갈렸지만({@code CourseScoreStandard}),
+	 * <b>저장은 조건과 무관하게 열려 있다.</b> 그래서 여기에 모수를 함께 남긴다 —
+	 * 숫자를 감추는 대신 맥락을 붙이는 쪽을 골랐다.
+	 *
+	 * <p>⚠️ <b>옛 코스는 {@code null}이다.</b> 이 컬럼이 생기기 전에 저장된 것들이라
+	 * 모수를 알 길이 없다. 화면은 그때 숫자만 보여주고 "몇 곳 중 몇 곳"을 말하지 않는다 —
+	 * 모르는 것을 0으로 채우면 "근거가 하나도 없는 점수"라는 거짓말이 된다.
+	 */
+	@Column
+	private Integer diagnosedCount;
+
+	/** 예측 대상 관광지 수. 총점의 분모. 옛 코스는 {@code null} */
+	@Column
+	private Integer forecastTargetCount;
+
 	/** 그 점수를 매긴 시각. 기준이 바뀌었을 때 다시 계산할 대상을 고르는 데 쓴다 */
 	@Column(nullable = false)
 	private Instant scoredAt;
@@ -129,6 +151,8 @@ public class SavedCourse {
 			LocalDate startDate,
 			int nights,
 			int totalQuietness,
+			Integer diagnosedCount,
+			Integer forecastTargetCount,
 			List<PlaceEntry> entries,
 			Instant now) {
 
@@ -140,6 +164,14 @@ public class SavedCourse {
 		this.nights = validateNights(nights);
 		Scores.validate(totalQuietness, "코스 총점");
 		this.totalQuietness = totalQuietness;
+		/*
+		 * 모수는 <b>둘 다 있거나 둘 다 없어야 한다.</b> 하나만 있으면 "몇 곳 중 몇 곳"을
+		 * 완성할 수 없는데, 화면은 값이 있는 쪽만 보고 말하려 든다.
+		 */
+		if (diagnosedCount != null && forecastTargetCount != null) {
+			this.diagnosedCount = diagnosedCount;
+			this.forecastTargetCount = forecastTargetCount;
+		}
 		this.scoredAt = Objects.requireNonNull(now, "점수를 매긴 시각은 필수입니다.");
 		this.createdAt = now;
 
@@ -149,9 +181,11 @@ public class SavedCourse {
 	/**
 	 * 코스를 저장한다.
 	 *
-	 * @param totalQuietness 진단 화면이 받아 온 총점. 서버가 방금 내려준 값을 그대로 남긴다
-	 * @param entries        담긴 장소들. 비어 있으면 거부한다
-	 * @param now            저장 시각이자 점수를 매긴 시각
+	 * @param totalQuietness      진단 화면이 받아 온 총점. 서버가 방금 내려준 값을 그대로 남긴다
+	 * @param diagnosedCount      그 총점을 매긴 칸 수. 모르면 {@code null}
+	 * @param forecastTargetCount 예측 대상 관광지 수. 모르면 {@code null}
+	 * @param entries             담긴 장소들. 비어 있으면 거부한다
+	 * @param now                 저장 시각이자 점수를 매긴 시각
 	 */
 	public static SavedCourse save(
 			Member member,
@@ -160,10 +194,13 @@ public class SavedCourse {
 			LocalDate startDate,
 			int nights,
 			int totalQuietness,
+			Integer diagnosedCount,
+			Integer forecastTargetCount,
 			List<PlaceEntry> entries,
 			Instant now) {
 
-		return new SavedCourse(member, name, region, startDate, nights, totalQuietness, entries, now);
+		return new SavedCourse(member, name, region, startDate, nights, totalQuietness,
+				diagnosedCount, forecastTargetCount, entries, now);
 	}
 
 	private void addPlaces(List<PlaceEntry> entries) {
@@ -233,6 +270,16 @@ public class SavedCourse {
 
 	public int totalQuietness() {
 		return totalQuietness;
+	}
+
+	/** 총점을 매긴 칸 수. 이 컬럼이 생기기 전에 저장된 코스는 {@code null} */
+	public Integer diagnosedCount() {
+		return diagnosedCount;
+	}
+
+	/** 예측 대상 관광지 수. 이 컬럼이 생기기 전에 저장된 코스는 {@code null} */
+	public Integer forecastTargetCount() {
+		return forecastTargetCount;
 	}
 
 	public Instant scoredAt() {

@@ -199,13 +199,43 @@ export function DiagnosisPage() {
     return <Navigate to="/course" replace />
   }
 
-  const baselineTotal = baseline.phase === 'loaded' ? baseline.diagnosis.totalQuietness : null
+  /*
+    총점을 <b>숫자로 말해도 되는지는 서버가 정한다.</b> 진단된 칸이 둘 미만이거나
+    예측 대상 관광지의 절반에 못 미치면 거짓으로 온다 — 관광지 셋 중 하나만 진단된 코스에서
+    그 하나를 "코스 총점"이라 부를 수는 없기 때문이다.
+
+    ⚠️ 그때도 totalQuietness에는 값이 있다. <b>저장에 쓰라고 남긴 것</b>이지 띄우라는 뜻이 아니다.
+  */
+  const showTotal = diagnosis?.totalPresentable === true
+  const baselineShowsTotal = baseline.phase === 'loaded' && baseline.diagnosis.totalPresentable
+  const baselineTotal = baselineShowsTotal ? baseline.diagnosis.totalQuietness : null
   /*
     총점은 <b>없을 수 있다.</b> 진단된 칸이 하나도 없는 코스(밥집만 담은 경우)가 그렇다.
     한쪽이라도 비면 개선폭이라는 값이 성립하지 않으므로 0으로 둔다 — 아래에서 그리지 않는다.
+
+    양쪽 다 <b>보여줄 수 있는 총점</b>일 때만 견준다. 한쪽이 근거가 얇으면 그 차이가
+    코스가 나아진 것인지 진단된 칸이 달라진 것인지 가릴 수 없다.
   */
-  const total = diagnosis?.totalQuietness ?? null
+  const total = showTotal ? (diagnosis?.totalQuietness ?? null) : null
   const improvement = total !== null && baselineTotal !== null ? total - baselineTotal : 0
+
+  /*
+    총점을 못 보여줄 때 대신 펴는 한 줄. 셀 수 있는 것만 말한다.
+    예: "한적 2곳 · 보통 1곳 · 자료 없음 3곳"
+  */
+  const summaryLine = (() => {
+    const c = diagnosis?.levelCounts
+    if (!c) {
+      return '예상 혼잡을 확인했어요'
+    }
+    const parts: string[] = []
+    if (c.quiet > 0) parts.push(`한적 ${c.quiet}곳`)
+    if (c.moderate > 0) parts.push(`보통 ${c.moderate}곳`)
+    if (c.crowded > 0) parts.push(`붐빔 ${c.crowded}곳`)
+    const unknown = c.notForecasted + c.outOfForecastDate
+    if (unknown > 0) parts.push(`자료 없음 ${unknown}곳`)
+    return parts.join(' · ')
+  })()
   const dateMoved =
     state.baseline !== null && state.baseline.plan.startDate !== plan.startDate
 
@@ -406,7 +436,7 @@ export function DiagnosisPage() {
               className="grid h-27 w-27 flex-none place-items-center rounded-full lg:h-34 lg:w-34"
               style={{
                 background:
-                  diagnosis.totalLevel !== null && diagnosis.totalQuietness !== null
+                  showTotal && diagnosis.totalLevel !== null
                     ? `conic-gradient(${LEVEL_COLOR_VAR[diagnosis.totalLevel]} ${diagnosis.totalQuietness}%, var(--c-line) 0)`
                     : 'var(--c-line)',
               }}
@@ -414,10 +444,10 @@ export function DiagnosisPage() {
               <div className="bg-surface grid h-22 w-22 place-items-center rounded-full lg:h-28 lg:w-28">
                 <span
                   className={`font-mono text-[34px] leading-none font-semibold tracking-[-0.02em] ${
-                    diagnosis.totalQuietness === null ? 'text-hint' : 'text-fg'
+                    showTotal ? 'text-fg' : 'text-hint'
                   }`}
                 >
-                  {diagnosis.totalQuietness ?? '·'}
+                  {showTotal ? diagnosis.totalQuietness : '·'}
                 </span>
                 <span className="text-hint text-[11.5px]">한적 지수</span>
               </div>
@@ -425,7 +455,7 @@ export function DiagnosisPage() {
 
             <div className="flex min-w-0 flex-1 flex-col items-center gap-2.5 sm:items-start">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                {diagnosis.totalLevel !== null && diagnosis.totalLevelLabel !== null && (
+                {showTotal && diagnosis.totalLevel !== null && diagnosis.totalLevelLabel !== null && (
                   <CongestionBadge
                     level={diagnosis.totalLevel}
                     label={diagnosis.totalLevelLabel}
@@ -453,12 +483,35 @@ export function DiagnosisPage() {
                     관광지를 한 곳 담으면 코스 점수가 나와요.
                   </p>
                 </div>
+              ) : !showTotal ? (
+                /*
+                  점수는 있지만 <b>평균이라 부르기엔 근거가 얇다.</b> 관광지 셋 중 하나만
+                  진단된 코스에서 그 하나를 "코스 총점"이라 하면 설명할 수 없다.
+                  숫자를 감추는 대신 <b>셀 수 있는 것을 그대로 편다</b> — 평균이 아니라
+                  사실의 나열이라 근거가 얇아도 정직하다.
+                */
+                <div className="flex flex-col gap-1">
+                  <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
+                    {summaryLine}
+                  </p>
+                  <p className="text-hint m-0 text-center text-[13px] leading-[1.5] text-pretty sm:text-left">
+                    관광지 {diagnosis.forecastTargetCount}곳 중 {diagnosis.diagnosedCount}곳만
+                    예측 자료가 있어, 코스 점수는 아직 매기지 않았어요.
+                  </p>
+                </div>
               ) : (
-                <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
-                  {crowdedCount > 0
-                    ? `${crowdedCount}곳이 붐빌 것으로 보여요`
-                    : '전체적으로 여유로운 코스예요'}
-                </p>
+                <div className="flex flex-col gap-1">
+                  <p className="text-fg m-0 text-center text-base leading-[1.5] font-semibold text-pretty sm:text-left">
+                    {crowdedCount > 0
+                      ? `${crowdedCount}곳이 붐빌 것으로 보여요`
+                      : '전체적으로 여유로운 코스예요'}
+                  </p>
+                  {/* 모수를 함께 밝힌다. 점수 하나만 두면 몇 곳을 근거로 한 값인지 알 수 없다 */}
+                  <p className="text-hint m-0 text-center text-[13px] leading-[1.5] text-pretty sm:text-left">
+                    관광지 {diagnosis.forecastTargetCount}곳 중 {diagnosis.diagnosedCount}곳의
+                    예측 자료 기준
+                  </p>
+                </div>
               )}
 
               {improvement !== 0 && baselineTotal !== null && (

@@ -28,6 +28,8 @@ public record SavedCourseDetail(
 		int totalQuietness,
 		CongestionLevel level,
 		String levelLabel,
+		Integer diagnosedCount,
+		Integer forecastTargetCount,
 		Instant scoredAt,
 		Instant createdAt,
 		List<SavedPlace> places) {
@@ -68,6 +70,8 @@ public record SavedCourseDetail(
 				course.totalQuietness(),
 				level,
 				level.label(),
+				course.diagnosedCount(),
+				course.forecastTargetCount(),
 				course.scoredAt(),
 				course.createdAt(),
 				places);
