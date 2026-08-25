@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import com.peakoff.external.kto.support.KtoApiCaller;
 import com.peakoff.external.kto.support.RegionCache;
 import com.peakoff.external.kto.support.RegionCodes;
+import com.peakoff.external.kto.support.TtlCache;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.PlaceCategory;
@@ -42,12 +43,35 @@ public class KtoPlaceClient {
 	/** 지역 전체가 한 응답에 들어와야 페이지를 넘기지 않는다. 경주 621건 기준 넉넉하게. */
 	private static final int MAX_ROWS = 5_000;
 
+	/**
+	 * 상세 조회 캐시가 담을 수 있는 최대 개수.
+	 *
+	 * <p>지역 캐시와 달리 <b>아무 문자열이나 열쇠가 될 수 있다.</b> 없는 ID로 계속 물으면
+	 * ("못 찾았다"도 담으므로) 캐시가 무한히 자란다. 상한을 두고, 넘으면 통째로 비운다.
+	 */
+	private static final int DETAIL_CACHE_MAX = 1_000;
+
 	private final KtoApiCaller caller;
 	private final RegionCache<RegionCatalog> cache;
+
+	/**
+	 * 장소 하나짜리 상세 조회의 캐시.
+	 *
+	 * <h3>왜 생겼나 — 2026-08-26의 소진 사고</h3>
+	 * {@link #findDetail}은 원래 캐시가 없었다. 카탈로그에 없는 장소를 물을 때마다
+	 * 공사 호출이 그대로 나갔는데, 카탈로그 밖 ID 하나를 반복해서 묻는 클라이언트가 생기자
+	 * <b>요청 수 = 공사 호출 수</b>가 되어 39분 동안 1,912번을 태웠다. 일일 한도가
+	 * 그렇게 소진됐다 — 로그의 실패 1,912건 전부가 이 메서드의 스택이었다.
+	 *
+	 * <p><b>"못 찾았다"({@code Optional.empty()})도 담는다.</b> 없는 장소는 다시 물어도
+	 * 없다 — 그 답을 기억하지 않으면 없는 ID일수록 더 자주 부르게 된다.
+	 */
+	private final TtlCache<Optional<Place>> detailCache;
 
 	public KtoPlaceClient(KtoApiCaller caller, Clock clock) {
 		this.caller = caller;
 		this.cache = new RegionCache<>(clock);
+		this.detailCache = new TtlCache<>(clock, RegionCache.DEFAULT_TTL, DETAIL_CACHE_MAX);
 	}
 
 	/** 그 지역의 관광지 목록 전체. 캐시가 살아 있으면 호출하지 않는다. */
@@ -63,6 +87,10 @@ public class KtoPlaceClient {
 	 * 없다"고만 하면 사용자는 자기가 저장한 코스를 영영 못 연다.
 	 */
 	public Optional<Place> findDetail(String contentId) {
+		return detailCache.get(contentId, this::fetchDetail);
+	}
+
+	private Optional<Place> fetchDetail(String contentId) {
 		JsonNode items = caller.items(DETAIL_PATH, Map.of("contentId", contentId));
 		JsonNode item = items.isArray() ? (items.isEmpty() ? null : items.get(0)) : items;
 		if (item == null || item.isMissingNode() || !item.hasNonNull("contentid")) {
