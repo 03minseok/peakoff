@@ -25,6 +25,8 @@ import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.recommendation.domain.Alternative;
+import com.peakoff.recommendation.domain.AlternativeStandard;
+import com.peakoff.recommendation.domain.Alternatives;
 import com.peakoff.recommendation.domain.RecommendationProvider;
 import com.peakoff.recommendation.domain.RecommendationScorer;
 import com.peakoff.recommendation.domain.ScoreWeights;
@@ -117,7 +119,7 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	}
 
 	@Override
-	public List<Alternative> findAlternatives(Place origin, LocalDate date, int limit) {
+	public Alternatives findAlternatives(Place origin, LocalDate date, int limit) {
 		if (origin == null || date == null) {
 			throw new IllegalArgumentException("원래 장소와 날짜는 필수입니다.");
 		}
@@ -126,33 +128,64 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 		}
 
 		/*
+		 * 원래 장소의 한적도가 먼저다. 이 값이 없으면 "얼마나 나아지는가"를 잴 기준이 없어
+		 * 후보를 아무리 모아도 대안이라고 부를 수 없다.
+		 */
+		if (!congestionProvider.hasData(origin.id(), date)) {
+			return Alternatives.originNotForecasted();
+		}
+		int originQuietness = congestionProvider.quietnessOf(origin.id(), date);
+
+		/*
 		 * 기준 장소가 든 지역에서만 후보를 찾는다.
 		 *
-		 * 장소 ID에 지역이 묻어 있지 않아 지원 지역을 하나씩 훑는다. 못 찾으면 빈 목록이다 —
+		 * 장소 ID에 지역이 묻어 있지 않아 지원 지역을 하나씩 훑는다. 못 찾으면 후보가 없다 —
 		 * 어느 지역 카탈로그에도 없는 장소는 연관 목록에도 없다.
 		 */
 		Region region = regionOf(origin).orElse(null);
 		if (region == null) {
-			return List.of();
-		}
-		List<ScoredPlace> scored = scoreCandidates(origin, date, region);
-		if (scored.isEmpty()) {
-			return List.of();
+			return Alternatives.of(originQuietness, 0, List.of());
 		}
 
-		return drawWithoutRepeat(scored, limit).stream()
+		Candidates candidates = scoreCandidates(origin, date, region, originQuietness);
+		if (candidates.qualified().isEmpty()) {
+			return Alternatives.of(originQuietness, candidates.consideredCount(), List.of());
+		}
+
+		List<Alternative> picked = drawWithoutRepeat(candidates.qualified(), limit).stream()
 				.map(candidate -> candidate.withReason(reasonFor(origin, candidate)))
 				// 화면에 보이는 값으로 줄을 세운다. 뽑기는 끝났고 여기서는 보기 좋게 정렬만 한다.
 				.sorted(Comparator.comparingInt(Alternative::recommendation).reversed())
 				.toList();
+
+		return Alternatives.of(originQuietness, candidates.consideredCount(), picked);
 	}
 
-	/** 1~3단계: 후보를 모으고, 거르고, 점수를 매긴다. */
-	private List<ScoredPlace> scoreCandidates(Place origin, LocalDate date, Region region) {
+	/**
+	 * 거르기의 결과. <b>통과한 것과, 통과를 따져 본 것의 수를 함께 들고 나온다.</b>
+	 *
+	 * <p>통과한 목록만 돌려주면 "후보가 아예 없었다"와 "후보는 있었는데 아무도 하한을
+	 * 넘지 못했다"가 똑같이 빈 목록이 된다. 둘은 사용자에게 정반대의 소식이라
+	 * ({@code NO_VALID_CANDIDATE} / {@code ALREADY_QUIET}) 여기서 갈라 두어야 한다.
+	 *
+	 * @param qualified       개선폭까지 통과한 후보. 뽑기의 재료가 된다
+	 * @param consideredCount 지역·분류·자료 조건을 통과해 <b>개선폭을 따져 본</b> 후보 수
+	 */
+	private record Candidates(List<ScoredPlace> qualified, int consideredCount) {
+	}
+
+	/**
+	 * 1~3단계: 후보를 모으고, 거르고, 점수를 매긴다.
+	 *
+	 * <p>여기서 나온 것이 곧 <b>자격을 갖춘 후보 전부</b>다. 뽑기는 이 다음이다 —
+	 * 순서를 뒤집으면 자격 미달 후보가 무작위로 1등이 될 수 있다.
+	 */
+	private Candidates scoreCandidates(Place origin, LocalDate date, Region region,
+			int originQuietness) {
 		RelatedPlaces related = relatedClient.relatedOf(region);
 		RegionCatalog catalog = placeClient.catalogOf(region);
 		if (related.isEmpty() || catalog.isEmpty()) {
-			return List.of();
+			return new Candidates(List.of(), 0);
 		}
 
 		/*
@@ -161,11 +194,12 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 		 */
 		Optional<String> originName = nameMatcher.match(origin.name(), region, related.originNames());
 		if (originName.isEmpty()) {
-			return List.of();
+			return new Candidates(List.of(), 0);
 		}
 
 		NameIndex index = relatedIndex.get(region, this::newIndex);
 		List<ScoredPlace> scored = new ArrayList<>();
+		int considered = 0;
 
 		for (String relatedName : related.relatedTo(originName.get())) {
 			Place candidate = index.resolve(relatedName, region, nameMatcher);
@@ -184,9 +218,22 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 				// 자료가 없는 곳을 0점으로 뭉개면 화면에서 "매우 붐빔"으로 잘못 읽힌다.
 				continue;
 			}
-			scored.add(scorer.scoreAgainst(origin, candidate, date, ScoreWeights.DEFAULT));
+			ScoredPlace candidateScore = scorer.scoreAgainst(origin, candidate, date, ScoreWeights.DEFAULT);
+			// 여기까지 온 것이 "따져 본 후보"다. 하한을 넘든 못 넘든 자격 심사는 받았다.
+			considered++;
+			/*
+			 * 원래 장소보다 뚜렷하게 한적하지 않으면 대안이 아니다.
+			 *
+			 * 이 문이 없으면 <b>더 붐비는 곳도 "대안"으로 나간다.</b> 추천도에 동선 근접도가
+			 * 섞여 있어서, 아주 가까운 곳은 한적도가 원래보다 낮아도 총점이 높게 나올 수 있다.
+			 * 붐비는 곳을 피하라고 안내해 놓고 더 붐비는 곳을 권하면 과제와 정면으로 어긋난다.
+			 */
+			if (!AlternativeStandard.isWorthSuggesting(originQuietness, candidateScore.quietness())) {
+				continue;
+			}
+			scored.add(candidateScore);
 		}
-		return scored;
+		return new Candidates(scored, considered);
 	}
 
 	/**
