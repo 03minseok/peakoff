@@ -707,17 +707,33 @@ GET /api/places/{placeId}/nearby?limit=5
   색도 경고(붐빔)가 아니라 보통(앰버)이다. 잘못이 아니라 "지금은 아직"이라서다
 - 목업으로 돌면 `lastDate`가 null이고 안내를 그리지 않는다(목업엔 날짜 제한이 없다). 실측 확인
 
-#### ⚠️ 남은 것 — 저장이 막힌다
+#### ✅ 저장도 열었다 (2026-08-26)
 
-총점이 없으면 저장 버튼이 잠긴다. 밥집만 담은 코스를 염두에 둔 규칙인데,
-**"미리 짜 두고 나중에 진단"하려면 저장이 되어야 한다.**
-*영영 점수가 없는 코스*와 *아직 점수가 없는 코스*를 갈라야 한다 —
-`DiagnosisGap`을 둘로 나눈 것과 같은 논리다.
+총점이 없으면 저장 버튼이 잠겨 있었다. 밥집만 담은 코스를 염두에 둔 규칙이었는데,
+**"미리 짜 두고 나중에 진단"이 그 규칙에 막혔다.**
 
-파급: 백엔드 6곳(`SavedCourse` 엔티티 컬럼 nullable · `SaveCourseRequest` ·
-`SavedCourseDetail`/`Summary` · `PublicCourseSummary`는 홈 목록에서 제외 · `SavedCourseService`)
-프론트 4곳(`SavedCourseCard` · `CourseDetailOverlay` · `MyPage`의 평균 계산 · 타입).
-설계를 따로 올린다.
+저장은 <b>재료</b>(지역·날짜·장소·순서)를 남기는 일이고 점수 스냅샷은 있으면 함께 남기는
+것이다. 없다고 재료까지 못 남길 이유가 없다.
+
+- `SavedCourse.totalQuietness` → `Integer`. **0으로 채우지 않는다** (0은 "매우 붐빔"이다)
+- `scoredAt`도 함께 null이 된다 — 매긴 적이 없는데 시각만 남기면 거짓말이다.
+  저장 시각은 `createdAt`이 따로 갖는다
+- 홈의 "다른 사람들의 여행"에서는 **진단 안 된 코스를 뺀다**(`SavedCourseService.recent`).
+  원형 게이지와 배지가 점수를 전제하고, 애초에 재보지도 않은 코스를 남의 여행이라고
+  내밀 이유가 없다. 거르기는 `limit` **앞**이다
+- 마이페이지 평균은 **진단된 코스만**으로 낸다. 0으로 세면 저장만 해도 평균이 떨어진다
+- 카드·겹창은 점수 자리에 `—`, 등급 자리에 "아직 진단 전". 게이지는 테두리 색만 남긴다
+
+실측 확인: 총점 null로 저장 → 목록에 `총점=null 등급=null`로 서고,
+비로그인 홈 목록에는 점수 있는 코스만 내려온다(2개 저장 / 1개 노출).
+
+> ⚠️ **기존 H2 파일은 스키마가 안 따라온다.** `ddl-auto: update`는 NOT NULL 제약을
+> 풀어 주지 않는다. 로컬 DB를 쓰던 중이면 둘 중 하나가 필요하다:
+> ```sql
+> ALTER TABLE saved_courses ALTER COLUMN total_quietness SET NULL;
+> ALTER TABLE saved_courses ALTER COLUMN scored_at SET NULL;
+> ```
+> 또는 `backend/data/` 를 지우고 새로 시작한다(배포 전 어차피 비우는 편이 낫다 — 10번).
 
 ---
 

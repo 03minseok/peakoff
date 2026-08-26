@@ -108,13 +108,23 @@ export function SavedCourseCard({
         {formatDateRange(course.startDate, course.nights)}
       </div>
 
-      {/* 점수 상자. 배경색이 등급을 한 번 더 말해준다 — 배지 글자를 안 읽어도 눈에 들어온다 */}
+      {/*
+        점수 상자. 배경색이 등급을 한 번 더 말해준다 — 배지 글자를 안 읽어도 눈에 들어온다.
+
+        <b>점수가 없는 코스는 등급색을 쓰지 않는다.</b> 여행일이 예측 창 밖이라 아직
+        진단되지 않았거나, 밥집만 담아 영영 진단되지 않는 코스다. 아무 등급색이나 입히면
+        재보지도 않은 코스에 "붐빔"이나 "한적"을 붙이게 된다.
+      */}
       <div
-        className={`flex items-center justify-between rounded-[14px] px-3.5 py-3 ${LEVEL_TINT[course.level]}`}
+        className={`flex items-center justify-between rounded-[14px] px-3.5 py-3 ${
+          course.level === null ? 'bg-bg text-hint' : LEVEL_TINT[course.level]
+        }`}
       >
         <div className="flex flex-col gap-0.5">
           <span className="text-[11.5px] opacity-70">예상 한적 지수</span>
-          <span className="text-[12px] font-bold">{course.levelLabel}</span>
+          <span className="text-[12px] font-bold">
+            {course.levelLabel ?? '아직 진단 전'}
+          </span>
           {/*
             그 점수가 <b>몇 곳을 근거로 한 값인지</b> 밝힌다. 카드가 여럿 늘어서는 화면이라
             근거가 얇은 점수와 두꺼운 점수가 같은 크기로 나란히 서면 견줄 수가 없다.
@@ -129,7 +139,8 @@ export function SavedCourseCard({
           )}
         </div>
         <span className="font-mono text-[26px] leading-none font-semibold tracking-[-0.02em]">
-          {course.totalQuietness}
+          {/* 0으로 채우지 않는다. 0은 "매우 붐빔"으로 읽혀 없는 것과 뜻이 정반대다 */}
+          {course.totalQuietness ?? '—'}
         </span>
       </div>
 

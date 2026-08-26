@@ -33,7 +33,11 @@ import jakarta.validation.constraints.Size;
  * 왜곡되는 것은 자기 마이페이지의 숫자뿐이다. 범위 검증만 걸어 둔다.
  *
  * @param name           사용자가 붙인 여행 이름
- * @param totalQuietness 진단 화면이 받아 온 코스 총점 (0~100)
+ * @param totalQuietness 진단 화면이 받아 온 코스 총점 (0~100).
+ *                       <b>진단되지 않은 코스는 {@code null}</b> — 여행일이 예측 창 밖이거나
+ *                       (아직 없다) 밥집만 담았을 때다(영영 없다). 둘 다 저장을 막지 않는다:
+ *                       저장은 재료를 남기는 일이고 점수는 있으면 함께 남기는 것이다.
+ *                       {@code @Min}/{@code @Max}는 null을 통과시킨다
  */
 public record SaveCourseRequest(
 
@@ -54,7 +58,7 @@ public record SaveCourseRequest(
 
 		@Min(value = Scores.MIN, message = "코스 총점은 0~100 범위여야 합니다.")
 		@Max(value = Scores.MAX, message = "코스 총점은 0~100 범위여야 합니다.")
-		int totalQuietness,
+		Integer totalQuietness,
 
 		/*
 		 * 그 총점이 몇 곳을 근거로 한 값인지. 점수만 남기면 나중에 열었을 때
