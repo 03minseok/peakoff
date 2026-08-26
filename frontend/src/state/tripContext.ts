@@ -21,7 +21,14 @@ export interface TripContextValue {
   changeStartDate: (startDate: string) => void
   addPlace: (day: number, placeId: string) => void
   removePlace: (day: number, index: number) => void
-  movePlace: (day: number, index: number, direction: -1 | 1) => void
+  /**
+   * 잡아 끌어 순서를 바꾼다. from 자리의 장소를 빼내 to 자리에 끼워 넣는다.
+   *
+   * 이웃과 맞바꾸는(swap) 방식이 아니라 <b>뽑아서 끼워 넣는다</b>(splice).
+   * 맞바꾸기로 여러 칸을 건너면 지나온 항목들의 순서가 뒤엉킨다 —
+   * 위/아래 버튼 시절에는 한 칸씩만 움직여 문제가 없었다.
+   */
+  reorderPlace: (day: number, from: number, to: number) => void
   /** 해당 자리의 장소만 다른 곳으로 바꾼다. 일차와 순서는 유지된다 */
   replacePlace: (day: number, index: number, placeId: string) => void
   /** 진단에 들어가며 지금 코스를 원안으로 찍는다. 이후 비교의 기준이 된다 */
