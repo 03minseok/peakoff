@@ -1,4 +1,5 @@
 import type {
+  ForecastWindow,
   Alternatives,
   ApiErrorCode,
   ApiResponse,
@@ -417,6 +418,16 @@ export function deleteSavedCourse(courseId: number, signal?: AbortSignal): Promi
  *
  * @param visits day와 placeId를 가진 방문 목록. `toSlots()`의 결과를 그대로 넣을 수 있다
  */
+/**
+ * 예측이 닿는 기간. 날짜를 고르는 화면이 <b>코스를 짜기 전에</b> 안내하려고 부른다.
+ *
+ * <p>실패해도 화면을 막지 않는다 — 안내가 없을 뿐 날짜는 고를 수 있다.
+ * 부르는 쪽에서 조용히 삼킨다.
+ */
+export function fetchForecastWindow(signal?: AbortSignal): Promise<ForecastWindow> {
+  return apiRequest<ForecastWindow>('/dates/forecast-window', { signal })
+}
+
 export function fetchDateAlternatives(
   visits: { day: number; placeId: string }[],
   date: string,

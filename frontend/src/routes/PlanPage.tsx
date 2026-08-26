@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
+import { fetchForecastWindow } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import { daysFromToday, formatDateRange, formatKoreanDate, today } from '../utils/date'
 
@@ -70,6 +71,35 @@ export function PlanPage() {
   const [nights, setNights] = useState(state.plan?.nights ?? 1)
 
   const isPastDate = startDate < today()
+
+  /*
+   * 예측이 닿는 마지막 날. 서버가 준다 — 상수로 박으면 공사가 창을 늘려도 안 따라간다.
+   *
+   * 실패하거나 목업으로 도는 동안에는 null이고, 그때는 안내를 그리지 않는다.
+   * 없는 제약을 설명하는 것보다 조용한 편이 낫다.
+   */
+  const [forecastEnd, setForecastEnd] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchForecastWindow(controller.signal)
+      .then((window) => setForecastEnd(window.lastDate))
+      .catch(() => setForecastEnd(null))
+    return () => controller.abort()
+  }, [])
+
+  /**
+   * 고른 날짜가 예측 창 밖인가.
+   *
+   * <p><b>막지 않는다.</b> 여행은 원래 미리 계획하는 것이라, 두 달 뒤를 짜려는 사람을
+   * 날짜 입력에서 튕겨내면 그 사람은 서비스를 쓸 수 없다. 코스는 짜 두고 여행이
+   * 가까워지면 다시 진단하면 된다 — 서버도 그때를 위해 "아직 예측이 나오지 않은 날짜"라는
+   * 사유를 따로 갖고 있다(기다려도 안 생기는 사유와 갈라 두었다).
+   *
+   * <p>대신 <b>여기서 미리 말한다.</b> 이 안내가 없으면 코스를 다 짜고 진단 버튼을 누른
+   * 뒤에야 회색 화면을 만난다. 되돌리기에 늦은 자리다.
+   */
+  const beyondForecast = forecastEnd !== null && !isPastDate && startDate > forecastEnd
   const regionName = regionNameOf(region)
   const durationLabel = DURATIONS.find((option) => option.nights === nights)?.label ?? ''
 
@@ -215,6 +245,30 @@ export function PlanPage() {
               {isPastDate ? '오늘 이후 날짜를 골라주세요.' : formatKoreanDate(startDate)}
             </p>
           </div>
+
+          {/*
+            예측 창 밖이라고 <b>막지 않는다.</b> 색도 경고(붐빔)가 아니라 보통(앰버)이다 —
+            무언가 잘못됐다는 뜻이 아니라 "지금은 아직"이라는 뜻이라서다.
+
+            마지막 날을 문장에 그대로 적는다. "예측 범위를 벗어났어요"만으로는
+            사용자가 언제로 옮겨야 할지 모른다.
+          */}
+          {beyondForecast && (
+            <div className="bg-moderate-tint rounded-ui flex items-start gap-2.5 px-3.5 py-3">
+              <span
+                className="bg-moderate mt-1.5 h-2 w-2 flex-none rounded-full"
+                aria-hidden="true"
+              />
+              <p className="text-moderate-deep m-0 text-[12.5px] leading-[1.6]">
+                예상 혼잡은 <strong className="font-semibold">
+                  {formatKoreanDate(forecastEnd!)}
+                </strong>까지만 나와 있어요.
+                <br />
+                이 날짜로도 코스를 짤 수 있지만 지금은 혼잡 진단이 비어 나와요 —
+                여행이 가까워지면 다시 진단할 수 있어요.
+              </p>
+            </div>
+          )}
         </fieldset>
 
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>

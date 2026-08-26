@@ -120,6 +120,20 @@ export interface Alternatives {
   alternatives: Alternative[]
 }
 
+/**
+ * 서버 ForecastWindowResponse. 예측이 닿는 기간.
+ *
+ * <b>고르지 못하게 하는 상한이 아니다.</b> 여행은 미리 계획하는 것이라 창 밖 날짜로도
+ * 코스를 짤 수 있다. 이 값은 "그 날짜는 지금 진단이 비어 나온다"를 <b>미리</b> 알려주는 데 쓴다.
+ *
+ * lastDate가 null이면 안내를 그리지 않는다 — 목업으로 도는 동안이 그렇다(날짜 제한이 없다).
+ */
+export interface ForecastWindow {
+  /** 서버 시계 기준 오늘. 화면 시계로 계산하면 자정 무렵에 하루가 어긋난다 */
+  firstDate: string
+  lastDate: string | null
+}
+
 /** 진단 요청의 슬롯. 한적도가 없는 것이 핵심 — 점수는 서버가 매겨서 돌려준다. */
 export interface CourseSlotRequest {
   day: number
