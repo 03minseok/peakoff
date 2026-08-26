@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp } from '../components/icons'
 import { Navigate, useNavigate } from 'react-router'
 import { CourseMap } from '../components/CourseMap'
+import { useDragSort } from '../hooks/useDragSort'
 import { CARD, CHIP_BUTTON, NOTICE, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { ApiRequestError, fetchPlaces } from '../services/api'
 import { recallPlaces } from '../services/placeCache'
@@ -38,7 +38,7 @@ const ICON_BUTTON =
 
 export function CoursePage() {
   const navigate = useNavigate()
-  const { state, addPlace, removePlace, movePlace, markBaseline } = useTrip()
+  const { state, addPlace, removePlace, reorderPlace, markBaseline } = useTrip()
   const plan = state.plan
 
   const [places, setPlaces] = useState<Place[]>([])
@@ -121,6 +121,17 @@ export function CoursePage() {
   const currentDayPlaceIds = useMemo(
     () => state.days[currentDay - 1] ?? [],
     [state.days, currentDay],
+  )
+
+  /*
+    잡아 끌어 순서 바꾸기. 위/아래 버튼을 대신한다.
+
+    한 칸 넘길 때마다 곧바로 reorderPlace를 부르므로, 손가락 아래에서 목록이 실제로
+    움직인다 — 놓기 전에 결과를 확인할 수 있고, 미리보기 상태를 따로 들 필요도 없다.
+  */
+  const { draggingIndex: dragging, offsetY, handleProps } = useDragSort(
+    currentDayPlaceIds.length,
+    (from, to) => reorderPlace(currentDay, from, to),
   )
 
   const handleSelect = useCallback(
@@ -262,8 +273,43 @@ export function CoursePage() {
                 return (
                   <li
                     key={placeId}
-                    className={`${CARD} flex items-center gap-3 py-3 pr-3 pl-3.5`}
+                    /*
+                      끌리는 줄은 살짝 떠오르고 손가락을 따라간다. transform이라
+                      다른 줄의 자리를 밀지 않는다 — 자리 바꿈은 목록 자체가 이미 했다.
+                      z는 떠오른 줄이 이웃 카드 그림자에 덮이지 않게 한다.
+                    */
+                    style={
+                      dragging === index
+                        ? { transform: `translateY(${offsetY}px)`, zIndex: 10 }
+                        : undefined
+                    }
+                    className={`${CARD} relative flex items-center gap-3 py-3 pr-3 pl-2 ${
+                      dragging === index ? 'shadow-raised' : 'transition-transform'
+                    }`}
                   >
+                    {/*
+                      끌기 손잡이. <b>줄 전체가 아니라 여기서만</b> 잡힌다 —
+                      줄 전체를 잡히게 하면 목록 위에서 화면을 세로로 못 내린다.
+
+                      버튼인 이유: 키보드 초점을 받아야 한다. 위/아래 버튼을 없앤 대신
+                      여기에 초점을 두고 ↑/↓로 옮길 수 있다.
+                    */}
+                    <button
+                      type="button"
+                      data-drag-handle
+                      className="text-hint hover:text-fg hover:bg-bg -ml-0.5 grid h-9 w-7 flex-none cursor-grab place-items-center rounded-[9px] bg-transparent transition-colors active:cursor-grabbing"
+                      aria-label={`${place?.name ?? ''} 순서 바꾸기. 끌어서 옮기거나 위아래 화살표를 누르세요`}
+                      {...handleProps(index)}
+                    >
+                      <svg width="12" height="16" viewBox="0 0 12 16" aria-hidden="true">
+                        {[4, 8, 12].map((y) => (
+                          <g key={y} fill="currentColor">
+                            <circle cx="3.5" cy={y} r="1.3" />
+                            <circle cx="8.5" cy={y} r="1.3" />
+                          </g>
+                        ))}
+                      </svg>
+                    </button>
                     <span className="bg-brand grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold text-fg">
                       {index + 1}
                     </span>
@@ -276,24 +322,6 @@ export function CoursePage() {
                       </span>
                     </div>
                     <span className="ml-auto flex flex-none items-center">
-                      <button
-                        type="button"
-                        className={ICON_BUTTON}
-                        onClick={() => movePlace(currentDay, index, -1)}
-                        disabled={index === 0}
-                        aria-label={`${place?.name ?? ''} 위로 옮기기`}
-                      >
-                        <ArrowUp />
-                      </button>
-                      <button
-                        type="button"
-                        className={ICON_BUTTON}
-                        onClick={() => movePlace(currentDay, index, 1)}
-                        disabled={index === currentDayPlaceIds.length - 1}
-                        aria-label={`${place?.name ?? ''} 아래로 옮기기`}
-                      >
-                        <ArrowDown />
-                      </button>
                       <button
                         type="button"
                         className={`${ICON_BUTTON} hover:bg-crowded-tint hover:text-crowded`}
