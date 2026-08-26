@@ -9,6 +9,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -117,6 +118,25 @@ public class GlobalExceptionHandler {
 		log.warn("공사 OpenAPI에 닿지 못했습니다: {}", e.getMessage());
 		return toResponse(ErrorCode.EXTERNAL_UNAVAILABLE,
 				"공공데이터를 불러오지 못했어요.\n잠시 후 다시 시도해 주세요.");
+	}
+
+	/**
+	 * 그런 경로가 없다.
+	 *
+	 * <p><b>예전에는 500이었다.</b> 이 예외를 잡는 곳이 없어 아래 {@code Exception} 처리기로
+	 * 떨어졌고, 화면에는 "일시적인 오류가 발생했습니다"가 떴다. 주소를 잘못 친 것뿐인데
+	 * <b>서버가 깨진 것처럼 보인다</b> — 실제로 개발 중에 이것 때문에
+	 * "새 엔드포인트가 있는지"를 판별하지 못해 한참 헤맸다.
+	 *
+	 * <p>로그도 남기지 않는다. 없는 주소를 부르는 것은 <b>우리 잘못이 아니라</b>
+	 * 흔한 일이고, 로그에 쌓이면 정작 봐야 할 오류가 묻힌다.
+	 *
+	 * <p>화면 주소({@code /course} 같은 것)는 여기까지 오지 않는다. 프론트는 Vercel이
+	 * 서빙하고 그쪽이 SPA 라우팅을 맡는다 — 이 서버는 API만 답한다.
+	 */
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ApiResponse<Void>> handleNoResource(NoResourceFoundException e) {
+		return toResponse(ErrorCode.NOT_FOUND, "요청하신 주소를 찾을 수 없습니다.");
 	}
 
 	/**
