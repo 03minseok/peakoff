@@ -21,12 +21,18 @@ spring:
   # 회원 정보만 담는 저장소다.
   # 공사 OpenAPI로 받은 한적도·장소 데이터는 여기 적재하지 않는다 — 실시간 호출 규칙 위반이다.
   datasource:
-    # 파일 모드 H2. 서버를 껐다 켜도 가입한 회원이 남는다(메모리 모드면 사라진다).
-    # 배포처를 정하고 나면 이 한 줄만 PostgreSQL URL로 바꾸면 된다.
-    url: jdbc:h2:file:./data/peakoff;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    #
+    # 개발 기본값은 파일 모드 H2다. 서버를 껐다 켜도 가입한 회원이 남는다.
+    #
+    # 배포에서는 환경변수로 갈아끼운다 — SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD.
+    # 값이 코드에 없어야 비밀번호가 저장소에 남지 않는다.
+    #
+    # ⚠️ driver-class-name을 적지 않는다. 적어 두면 H2로 못이 박혀 PostgreSQL URL을 넣어도
+    # H2 드라이버로 열려다 실패한다. 스프링은 URL 앞부분(jdbc:h2 / jdbc:postgresql)을 보고
+    # 알아서 고르므로, 비워 두는 편이 한 곳만 바꿔도 되게 한다.
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:file:./data/peakoff;DB_CLOSE_DELAY=-1}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
 
   jpa:
     hibernate:

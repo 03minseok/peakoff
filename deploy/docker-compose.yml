@@ -1,0 +1,78 @@
+# EC2에서 도는 것 전부. 앱 하나와 DB 하나다.
+#
+# 배포 워크플로(.github/workflows/deploy.yml)가 이 파일과 .env를 서버로 보낸 뒤
+#   docker compose pull && docker compose up -d
+# 를 돌린다. 서버에는 소스가 없다 — 이미지를 받아서 띄우기만 한다.
+#
+# ⚠️ .env는 저장소에 없다. 공사 인증키·DB 비밀번호·JWT 시크릿이 들어가는 파일이라
+# GitHub Secrets에 넣어 두고 배포할 때 만들어 올린다.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: peakoff
+      POSTGRES_USER: peakoff
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD가 필요합니다}
+    # 볼륨이 없으면 컨테이너를 새로 올릴 때마다 회원과 저장 코스가 사라진다.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # ⚠️ ports를 열지 않는다. 앱만 접속하면 되고, 밖으로 열면 5432가 인터넷에 노출된다.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U peakoff -d peakoff']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    # 태그는 배포 워크플로가 .env에 IMAGE로 넣어 준다. 커밋 SHA가 붙으므로
+    # 지금 도는 것이 어느 커밋인지 서버에서 바로 알 수 있고, 되돌리기도 태그만 바꾸면 된다.
+    image: ${IMAGE:?IMAGE가 필요합니다}
+    restart: unless-stopped
+    depends_on:
+      db:
+        # 단순 depends_on은 "컨테이너가 떴는가"까지만 본다. 포스트그레스가 아직 접속을
+        # 받지 못하는 동안 앱이 붙으려다 죽으므로 healthy까지 기다린다.
+        condition: service_healthy
+    environment:
+      # DB는 컨테이너 이름으로 찾는다. 같은 네트워크 안이라 호스트 주소가 필요 없다.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/peakoff
+      SPRING_DATASOURCE_USERNAME: peakoff
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # ⚠️ 셋 다 real이어야 실데이터로 돈다. 하나라도 빠지면 심사위원이 목업을 본다.
+      # 기본이 real이다. 목업으로 떨어지려면 .env에서 일부러 덮어야 한다 —
+      # 배포에서 조용히 목업이 되는 사고를 막으려고 방향을 이렇게 잡았다.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-real}
+      KTO_CONGESTION: ${KTO_CONGESTION:-real}
+      KTO_PLACE: ${KTO_PLACE:-real}
+      KTO_RECOMMENDATION: ${KTO_RECOMMENDATION:-real}
+      KTO_SERVICE_KEY: ${KTO_SERVICE_KEY:?KTO_SERVICE_KEY가 필요합니다}
+
+      # 비어 있으면 재시작할 때마다 토큰이 무효가 되어 로그인이 풀린다.
+      PEAKOFF_JWT_SECRET: ${PEAKOFF_JWT_SECRET:?PEAKOFF_JWT_SECRET가 필요합니다}
+
+      # 소셜 로그인. 콘솔의 redirect-uri를 Vercel 주소로 맞춰 두어야 한다.
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-}
+      NAVER_REDIRECT_URI: ${NAVER_REDIRECT_URI:-}
+    ports:
+      # 밖에서 오는 것은 Vercel의 리라이트뿐이다. 브라우저가 직접 부르지 않는다.
+      - '8080:8080'
+    healthcheck:
+      # 스프링이 뜨는 데 몇 초 걸린다. start_period 동안의 실패는 세지 않는다.
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8080/health || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    # 앱이 메모리를 다 먹어 DB까지 말려 죽이는 것을 막는다.
+    # t3.micro(1GB)면 이 값이 특히 중요하다.
+    mem_limit: 700m
+
+volumes:
+  pgdata:
