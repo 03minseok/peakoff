@@ -30,7 +30,10 @@ dependencies {
 
 	// 회원 저장. 공사 OpenAPI 데이터는 여기에 적재하지 않는다 — 회원 정보 전용이다.
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	// 개발은 H2 파일, 배포는 PostgreSQL. 어느 쪽을 쓸지는 SPRING_DATASOURCE_URL이 정한다 —
+	// 드라이버는 스프링이 URL을 보고 고르므로 둘 다 넣어 둔다.
 	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'org.postgresql:postgresql'
 
 	// 비밀번호 해시(BCrypt)와 인증 필터 체인.
 	implementation 'org.springframework.boot:spring-boot-starter-security'
