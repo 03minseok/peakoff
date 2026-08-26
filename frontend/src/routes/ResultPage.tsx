@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight } from '../components/icons'
-import { Link, Navigate, useLocation } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { SaveCourseSheet } from '../components/SaveCourseSheet'
+import { useAuth } from '../state/authContext'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import {
   CARD_RAISED,
@@ -198,6 +199,9 @@ export function ResultPage() {
    * 그 화면들이 "돌아와 바로 저장할 수 있어요"라고 약속하고 보냈다.
    */
   const location = useLocation()
+  const navigate = useNavigate()
+  // 저장은 계정이 있어야 하는 일이라 여기서만 로그인 여부를 본다.
+  const { member, loading: authLoading } = useAuth()
   const [showSavePrompt, setShowSavePrompt] = useState(
     () => (location.state as { resumeSave?: boolean } | null)?.resumeSave === true,
   )
@@ -640,10 +644,27 @@ export function ResultPage() {
                 "관광지 5곳 중 2곳 기준"이라고 정직하게 말한다. 숫자를 감추는 것과
                 저장을 막는 것은 다른 일이고, 묶어 두면 경주 코스의 41.7%가 저장 불가가 된다.
               */}
+              {/*
+                로그인하지 않았으면 <b>로그인 화면으로 바로 보낸다.</b>
+
+                예전에는 시트를 먼저 열어 "회원가입하고 저장하기 / 이미 계정이 있어요"를
+                고르게 했다. 그런데 <b>카카오·네이버 로그인은 로그인 화면에만 있다</b> —
+                가입을 먼저 권하는 바람에 소셜로 들어오려던 사람에게 그 길이 아예 안 보였다.
+                로그인 화면에서 회원가입으로 넘어가는 링크는 이미 있고 돌아올 곳(state)도
+                함께 넘어가므로, 한쪽만 열어 두는 편이 길이 짧다.
+
+                확인이 끝나기 전에는 잠근다. 그 사이에 누르면 로그인한 사람도
+                로그인 화면으로 튕긴다.
+              */}
               <button
                 type="button"
                 className={`${PRIMARY_BUTTON} flex-1 disabled:cursor-not-allowed disabled:opacity-45`}
-                onClick={() => setShowSavePrompt(true)}
+                disabled={authLoading}
+                onClick={() =>
+                  member
+                    ? setShowSavePrompt(true)
+                    : navigate('/login', { state: { from: location.pathname } })
+                }
               >
                 저장하기
               </button>
