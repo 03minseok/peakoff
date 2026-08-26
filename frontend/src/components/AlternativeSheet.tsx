@@ -4,6 +4,34 @@ import { alternativesFor, forgetAlternatives } from '../services/alternativeCach
 import type { Alternative, CongestionLevel, NearbyPlace } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
 
+/**
+ * 한 번에 보여줄 대안 수. <b>이 숫자가 추천 분산의 세기를 정한다.</b>
+ *
+ * <h3>왜 8에서 줄였나 (2026-08-26)</h3>
+ * 서버는 자격 후보들 중에서 가중 무작위로 이만큼을 뽑는다. 그런데 <b>요청 수가 후보 수보다
+ * 크거나 같으면 전부 뽑히므로 뽑기가 고를 것이 없다</b> — 실측상 자격 후보가 8곳 이하인
+ * 자리가 89.2%였다. 분산 장치가 대부분의 장소에서 아무 일도 하지 않고 있었다.
+ *
+ * <p>같은 자리를 40번씩 불러 실제로 재 봤다(서귀포해양도립공원·가새기오름·경주 동부
+ * 사적지대·협재해수욕장, 자격 후보 10~20곳):
+ *
+ * <pre>
+ *   요청 8 → 1등이 같은 곳으로 나온 비율 95~100%
+ *   요청 5 → 90~98%   (거의 나아지지 않는다)
+ *   요청 3 → 68~82%
+ * </pre>
+ *
+ * <p>5는 8과 다를 바가 없어서 3으로 내렸다. 후보 수를 넘지 않아야 뽑기가 일한다.
+ *
+ * <h3>⚠️ 이것만으로는 부족하다</h3>
+ * 3으로 내려도 1등은 여전히 열 번 중 일곱 번쯤 같은 곳이다. <b>뽑은 뒤 추천도 순으로
+ * 다시 정렬</b>하기 때문에, 최고점이 뽑히기만 하면 언제나 맨 위로 올라온다.
+ * 그 정렬을 없애는 것이 분산에는 훨씬 세지만 CLAUDE.md의
+ * <i>"정렬 기준이 곧 화면에 보이는 값이어야 한다"</i>와 부딪힌다.
+ * 남은 판단은 {@code docs/OPEN_DECISIONS.md} 14번에 적어 두었다.
+ */
+const ALTERNATIVE_COUNT = 3
+
 interface Props {
   /** 교체 대상 장소 */
   originName: string
@@ -121,7 +149,7 @@ export function AlternativeSheet({
           fetchAlternatives(
             originPlaceId,
             visitDate,
-            8,
+            ALTERNATIVE_COUNT,
             excludePlaceIds,
             controller.signal,
           ),
