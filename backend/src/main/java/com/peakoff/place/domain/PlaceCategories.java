@@ -60,10 +60,92 @@ public final class PlaceCategories {
 	 * 공사가 나중에 음식점을 예측하기 시작하면 이 집합만 고치면 된다. 화면에 코드를 박아 두면
 	 * 그날 화면을 찾아다녀야 한다. 임계값과 가중치를 서버에 둔 것과 같은 이유다.
 	 *
-	 * <p>⚠️ 쇼핑(SH)은 뺐다. 시장은 붐빔이 실제 이슈지만 기념품 가게·상점이 섞여 있어
-	 * "진단해줄 곳"으로 보기 애매하다. 축제(EV)는 넣었다 — 기간이 정해진 행사라 혼잡이 본질이다.
+	 * <p>축제(EV)는 넣었다 — 기간이 정해진 행사라 혼잡이 본질이다.
+	 *
+	 * <h3>쇼핑(SH)을 넣었다 (2026-08-26)</h3>
+	 * 예전에는 뺐다 — 시장은 붐빔이 실제 이슈지만 기념품 가게·상점이 섞여 있어 애매하다고 봤다.
+	 * 실측해 보니 <b>공사가 예측하는 쇼핑은 시장뿐</b>이라, 애매함은 우리 걱정이었지 데이터의
+	 * 성질이 아니었다. 동문재래시장·서귀포매일올레시장·광장시장·강릉 중앙시장이 다 여기 있다.
+	 *
+	 * <p>⚠️ 대신 <b>쇼핑은 이름이 정확히 같을 때만 잇는다</b>({@link #requiresExactNameMatch}).
+	 * 그리고 자료가 없어도 말을 걸지 않는다({@link #announcesMissingForecast}) —
+	 * 셋을 한 집합으로 두면 하나를 열 때 셋이 함께 열린다.
 	 */
-	private static final Set<String> FORECAST_TARGETS = Set.of("HS", "NA", "VE", "LS", "EX", "EV");
+	private static final Set<String> FORECAST_TARGETS =
+			Set.of("HS", "NA", "VE", "LS", "EX", "EV", "SH");
+
+	/**
+	 * 자료가 없을 때 <b>"우리가 못 매겼다"고 말해 줄</b> 분류.
+	 *
+	 * <p>{@link #FORECAST_TARGETS}와 갈라 둔 이유: 쇼핑은 예측 대상이지만
+	 * <b>실제로 이어지는 것은 극소수</b>다. 제주시 296곳 중 6곳, 서귀포 99곳 중 4곳,
+	 * 경주는 31곳 중 0곳이다(2026-08-26 실측).
+	 *
+	 * <p>여기에 쇼핑을 넣으면 상점 하나 담을 때마다 "예상 혼잡 정보가 없는 장소예요"가
+	 * 화면에 서고, 정작 읽어야 할 점수들이 그 사이에 묻힌다.
+	 * <b>애초에 예측되는 일이 드문 것을 "없다"고 알리는 것은 정보가 아니다</b> —
+	 * 음식점·숙박에 침묵하는 것과 같은 이유다.
+	 *
+	 * <p>반대로 역사·유적은 109곳 중 36곳이 예측된다. 세 번 중 두 번은 없는데,
+	 * 여기서 침묵하면 사용자는 <b>담는 방법을 잘못 알았다고 생각한다.</b>
+	 *
+	 * <p>총점의 분모도 이 기준을 따른다({@code Course.forecastTargetCount}) —
+	 * 진단되지 않은 쇼핑은 분모에서 빠지므로, 상점을 담을수록 총점이 사라지는 일이 없다.
+	 * <b>진단된 쇼핑은 분자·분모 양쪽에 들어간다.</b>
+	 */
+	private static final Set<String> ANNOUNCE_MISSING = Set.of("HS", "NA", "VE", "LS", "EX", "EV");
+
+	/**
+	 * <b>이름이 정확히 같을 때만</b> 이어야 하는 분류.
+	 *
+	 * <h3>왜 쇼핑만인가</h3>
+	 * 상호에 지명을 붙이는 관습이 있다. 포함 매칭을 열어 두면 이렇게 된다(종로구 실측):
+	 *
+	 * <pre>
+	 * "다이소 경복궁역점"   → "경복궁"     생활용품점이 궁궐의 혼잡도를 받는다
+	 * "올리브영 대학로점"   → "대학로"
+	 * "CU 도두항점"         → "도두항"
+	 * </pre>
+	 *
+	 * <p><b>좌표 검증으로도 못 막는다.</b> 다이소 경복궁역점은 실제로 경복궁 2km 안에 있다 —
+	 * 이름도 닮고 위치도 가까운데 같은 장소가 아니다. 예전 "불국사밀면 → 불국사"와 같은 부류인데,
+	 * 그쪽은 분류로 걸러 낼 수 있었지만 이쪽은 분류가 같다.
+	 *
+	 * <p>완전 일치만 허용하면 <b>남는 것이 전부 시장·관광시설</b>이 된다.
+	 * 종로구에서 32건이 4건으로 줄면서 오연결 29건이 통째로 사라졌고, 잃은 것은 없다.
+	 */
+	private static final Set<String> EXACT_NAME_ONLY = Set.of("SH");
+
+	/**
+	 * {@code VE} 안에서 <b>자연을 보러 가는</b> 성격. 자연·풍경과 서로 대신할 수 있다.
+	 *
+	 * <p>전망대·등대(VE01)와 공원(VE03)이다. 실측한 이름들이 성격을 그대로 보여준다 —
+	 * 양남 주상절리 전망대, 거린사슴전망대, 사라봉공원, 노리매공원.
+	 */
+	private static final Set<String> VE_SCENIC = Set.of("VE01", "VE03");
+
+	/**
+	 * {@code VE} 안에서 <b>보고 배우러 가는</b> 성격. 역사·유적과 서로 대신할 수 있다.
+	 *
+	 * <p>박물관·미술관(VE07), 공연장(VE06), 책방·소규모 문화공간(VE12).
+	 * 국립경주박물관·김영갑갤러리가 여기다.
+	 */
+	private static final Set<String> VE_CULTURE = Set.of("VE07", "VE06", "VE12");
+
+	/**
+	 * {@code VE}지만 <b>관광 대상으로 보지 않는</b> 중분류. 후보에서 뺀다.
+	 *
+	 * <ul>
+	 *   <li>{@code VE05} 리조트·관광단지 — 마우나오션 리조트, 라온호텔. 숙박이 본질이라
+	 *       관광지 자리를 대신할 수 없다. 분석 문서도 명시적으로 제외한다</li>
+	 *   <li>{@code VE09} 도서관·문화원 — 경주중앙도서관, 조천읍도서관. 생활 시설이다</li>
+	 *   <li>{@code VE10} 수련관·경기장 — 청소년수련관, 제주월드컵경기장</li>
+	 * </ul>
+	 *
+	 * <p>이것들을 빼면서 경주의 대안 자리가 둘 줄었다. <b>줄어드는 것이 맞다</b> —
+	 * 불국사를 바꾸려는 사람에게 보문관광단지를 권할 이유가 없다.
+	 */
+	private static final Set<String> VE_NOT_TOURABLE = Set.of("VE05", "VE09", "VE10");
 
 	/** 코드를 못 알아볼 때 쓰는 이름. 빈 이름으로 두면 화면 곳곳이 빈자리가 된다. */
 	private static final String UNKNOWN = "기타";
@@ -77,10 +159,110 @@ public final class PlaceCategories {
 	 * 스타일 필터가 조용히 통과시킨다.
 	 */
 	public static PlaceCategory of(String largeCode) {
+		return of(largeCode, null);
+	}
+
+	/**
+	 * 대분류와 중분류로 분류를 만든다.
+	 *
+	 * <p>중분류는 없어도 된다. 있으면 {@link #compatible}이 {@code VE} 안을 가를 수 있고,
+	 * 없으면 대분류만으로 판단한다.
+	 */
+	public static PlaceCategory of(String largeCode, String mediumCode) {
 		if (largeCode == null || largeCode.isBlank()) {
 			return null;
 		}
-		return new PlaceCategory(largeCode, labelOf(largeCode));
+		return new PlaceCategory(largeCode, mediumCode, labelOf(largeCode));
+	}
+
+	/**
+	 * 이 후보가 그 자리를 대신할 수 있는 분류인가.
+	 *
+	 * <h3>왜 "같은 대분류"만으로는 부족했는가</h3>
+	 * 코드가 정확히 같아야 통과시켰더니, 역사·유적 자리에 <b>박물관</b>이 못 들어갔다.
+	 * 경주 국립경주박물관과 제주 김영갑갤러리는 유적을 보러 온 사람이 충분히 갈 만한 곳인데
+	 * 분류 코드가 {@code VE}라는 이유로 잘렸다. 반대로 {@code VE}끼리는 전부 통과해서
+	 * 황리단길 자리에 <b>리조트</b>가 올라왔다.
+	 *
+	 * <p>중분류로 {@code VE}를 갈라 양쪽을 함께 고친다.
+	 * <pre>
+	 * 역사·유적(HS) ↔ HS · 박물관·공연장·책방(VE07/06/12)
+	 * 자연·풍경(NA) ↔ NA · 전망대·공원(VE01/03)
+	 * 문화·명소(VE) ↔ 관광 대상인 VE 전부
+	 * 그 밖(LS·EX·EV·FD·AC·SH) ↔ 같은 대분류만
+	 * </pre>
+	 *
+	 * <p><b>양방향이 맞아떨어진다.</b> 유적에서 박물관으로 갈 수 있으면 박물관에서 유적으로도
+	 * 갈 수 있어야 한다 — 한쪽만 열어 두면 같은 두 장소가 어느 쪽을 누르느냐에 따라
+	 * 다른 답을 준다.
+	 *
+	 * <p>실측 효과(2026-08-25): 대안이 있는 자리가 제주시 72→77곳, 서귀포 62→68곳으로 늘고,
+	 * 경주는 24→22곳으로 줄었다. 경주가 줄어든 것은 리조트·관광단지가 빠졌기 때문이다.
+	 *
+	 * @param origin    교체 대상 장소의 분류
+	 * @param candidate 후보의 분류
+	 */
+	public static boolean compatible(PlaceCategory origin, PlaceCategory candidate) {
+		if (origin == null || candidate == null) {
+			return false;
+		}
+		// 관광 대상이 아닌 곳은 어느 자리도 대신할 수 없다.
+		if (!isTourable(candidate)) {
+			return false;
+		}
+
+		String from = origin.code();
+		String to = candidate.code();
+
+		if ("HS".equals(from)) {
+			return "HS".equals(to) || ("VE".equals(to) && isOneOf(VE_CULTURE, candidate.subCode()));
+		}
+		if ("NA".equals(from)) {
+			return "NA".equals(to) || ("VE".equals(to) && isOneOf(VE_SCENIC, candidate.subCode()));
+		}
+		if ("VE".equals(from)) {
+			if ("VE".equals(to)) {
+				return true;
+			}
+			if (isOneOf(VE_SCENIC, origin.subCode())) {
+				return "NA".equals(to);
+			}
+			if (isOneOf(VE_CULTURE, origin.subCode())) {
+				return "HS".equals(to);
+			}
+			/*
+			 * 남는 것은 놀러 가는 곳(VE02 테마파크·워터파크, VE04 거리·마을)과
+			 * 중분류를 모르는 VE다. 이들은 VE 안에서만 바꾼다 — 강동 워터파크나
+			 * 황리단길을 역사 유적·자연과 바꿔치면 여행의 성격이 통째로 달라진다.
+			 */
+			return false;
+		}
+		return from.equals(to);
+	}
+
+	/**
+	 * 관광 대상으로 볼 수 있는 분류인가.
+	 *
+	 * <p>중분류를 모르면 <b>대상으로 본다.</b> 목업 카탈로그처럼 중분류가 없는 자리에서
+	 * 전부 제외해 버리면 후보가 통째로 사라진다 — 모르는 것을 "아니다"로 단정하지 않는다.
+	 *
+	 * @see #VE_NOT_TOURABLE 무엇을 왜 뺐는지
+	 */
+	private static boolean isTourable(PlaceCategory category) {
+		return !"VE".equals(category.code())
+				|| !isOneOf(VE_NOT_TOURABLE, category.subCode());
+	}
+
+	/**
+	 * 중분류가 그 집합에 드는가. <b>모르면 아니다.</b>
+	 *
+	 * <p>{@code Set.of(...)}는 불변 집합이라 {@code contains(null)}이
+	 * <b>{@code NullPointerException}을 던진다.</b> 그냥 {@code false}를 돌려주지 않는다.
+	 * 중분류가 없는 장소가 하나만 섞여도 추천이 통째로 터지므로 여기서 먼저 막는다 —
+	 * 실제로 목업 카탈로그가 그 경우였다.
+	 */
+	private static boolean isOneOf(Set<String> codes, String subCode) {
+		return subCode != null && codes.contains(subCode);
 	}
 
 	public static String labelOf(String largeCode) {
@@ -98,5 +280,29 @@ public final class PlaceCategories {
 	 */
 	public static boolean isForecastTarget(PlaceCategory category) {
 		return category != null && FORECAST_TARGETS.contains(category.code());
+	}
+
+	/**
+	 * 자료가 없을 때 <b>사용자에게 그 사실을 알릴</b> 분류인가.
+	 *
+	 * <p>{@link #isForecastTarget}과 갈라 물어야 한다. 예측을 시도하는 것과,
+	 * 실패했을 때 말을 거는 것은 다른 판단이다 — 쇼핑은 시도하되 침묵한다.
+	 *
+	 * @see #ANNOUNCE_MISSING 무엇을 왜 넣고 뺐는지
+	 */
+	public static boolean announcesMissingForecast(PlaceCategory category) {
+		return category != null && ANNOUNCE_MISSING.contains(category.code());
+	}
+
+	/**
+	 * 이름이 <b>정확히 같을 때만</b> 이어야 하는 분류인가.
+	 *
+	 * <p>참이면 포함 매칭을 쓰지 않는다. 상호에 지명이 붙는 분류에서
+	 * "다이소 경복궁역점 → 경복궁" 같은 짝이 생기는 것을 막는다.
+	 *
+	 * @see #EXACT_NAME_ONLY 왜 쇼핑만인지
+	 */
+	public static boolean requiresExactNameMatch(PlaceCategory category) {
+		return category != null && EXACT_NAME_ONLY.contains(category.code());
 	}
 }

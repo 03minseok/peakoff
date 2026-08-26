@@ -156,6 +156,32 @@ export function LoginPage() {
         </p>
       </div>
 
+      {/*
+        코스를 저장하려다 넘어온 사람에게만 뜬다.
+
+        <b>게스트가 가장 걱정하는 것은 "지금 짠 것이 날아가나"다.</b> 그 답을 먼저 주지 않으면
+        로그인 화면이 위험해 보여서 뒤로 가버린다. 예전에는 저장 시트가 이 말을 했는데,
+        게스트를 로그인 화면으로 바로 보내면서 이 자리로 옮겨 왔다.
+      */}
+      {from && (
+        <div className="bg-moderate-tint mb-5 flex items-start gap-2.75 rounded-[16px] px-3.75 py-3.5">
+          <span
+            className="bg-moderate-soft text-moderate-deep mt-px grid h-4.5 w-4.5 flex-none place-items-center rounded-full text-[11px] font-bold"
+            aria-hidden="true"
+          >
+            !
+          </span>
+          <div className="flex flex-col gap-0.75">
+            <span className="text-moderate-deep text-[13.5px] font-semibold">
+              지금 짠 코스는 그대로 있어요
+            </span>
+            <span className="text-moderate-deep/85 text-[12.5px] leading-[1.6]">
+              로그인을 마치면 그 화면으로 돌아와 바로 저장할 수 있어요.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* noValidate: 브라우저 기본 말풍선 대신 우리 문구를 쓴다. 기본 말풍선은
           영어로 나올 수 있고 화면 디자인과도 따로 논다. */}
       <form className="flex flex-col gap-3" onSubmit={handleSubmit} noValidate>

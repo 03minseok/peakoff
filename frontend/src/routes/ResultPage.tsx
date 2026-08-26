@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight } from '../components/icons'
-import { Link, Navigate, useLocation } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { SaveCourseSheet } from '../components/SaveCourseSheet'
+import { useAuth } from '../state/authContext'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import {
   CARD_RAISED,
@@ -198,6 +199,9 @@ export function ResultPage() {
    * 그 화면들이 "돌아와 바로 저장할 수 있어요"라고 약속하고 보냈다.
    */
   const location = useLocation()
+  const navigate = useNavigate()
+  // 저장은 계정이 있어야 하는 일이라 여기서만 로그인 여부를 본다.
+  const { member, loading: authLoading } = useAuth()
   const [showSavePrompt, setShowSavePrompt] = useState(
     () => (location.state as { resumeSave?: boolean } | null)?.resumeSave === true,
   )
@@ -261,7 +265,23 @@ export function ResultPage() {
   */
   const beforeTotal = ready ? beforeDiagnosis.totalQuietness : null
   const afterTotal = ready ? afterDiagnosis.totalQuietness : null
-  const comparable = beforeTotal !== null && afterTotal !== null
+
+  /*
+    총점을 <b>숫자로 말해도 되는지는 서버가 정한다.</b> 진단된 칸이 둘 미만이거나
+    예측 대상 관광지의 절반에 못 미치면 거짓으로 온다.
+
+    ⚠️ 그때도 총점 값 자체는 있다 — <b>저장에 쓰라고 남긴 것</b>이다.
+    그래서 아래 저장 버튼은 잠기지 않는다. 잠그는 것은 총점이 아예 없을 때(null)뿐이다.
+  */
+  const showBefore = ready && beforeDiagnosis.totalPresentable
+  const showAfter = ready && afterDiagnosis.totalPresentable
+
+  /*
+    <b>양쪽 다 보여줄 수 있을 때만 견준다.</b> 한쪽이라도 근거가 얇으면 그 차이가
+    코스가 나아진 것인지 진단된 칸 수가 달라진 것인지 가릴 수 없다 —
+    이 화면은 발표에서 가리킬 자리라, 설명할 수 없는 숫자를 세워 둘 수 없다.
+  */
+  const comparable = showBefore && showAfter && beforeTotal !== null && afterTotal !== null
   const gain = comparable ? afterTotal - beforeTotal : 0
 
   // 날짜 이동과 장소 교체는 서로 다른 회피 경로다. 무엇을 해서 나아졌는지
@@ -334,9 +354,9 @@ export function ResultPage() {
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[12.5px] font-medium text-white/50">원안</span>
                 <span className="text-crowded-soft font-mono text-[44px] leading-[0.9] font-semibold tracking-[-0.03em] lg:text-[68px]">
-                  {beforeDiagnosis.totalQuietness ?? '·'}
+                  {showBefore ? beforeDiagnosis.totalQuietness : '·'}
                 </span>
-                {beforeDiagnosis.totalLevel !== null && beforeDiagnosis.totalLevelLabel !== null && (
+                {showBefore && beforeDiagnosis.totalLevel !== null && beforeDiagnosis.totalLevelLabel !== null && (
                   <CongestionBadge
                     level={beforeDiagnosis.totalLevel}
                     label={beforeDiagnosis.totalLevelLabel}
@@ -350,9 +370,9 @@ export function ResultPage() {
               <div className="flex flex-col items-center gap-2">
                 <span className="text-[12.5px] font-medium text-white/60">개선안</span>
                 <span className="text-quiet-soft font-mono text-[54px] leading-[0.9] font-semibold tracking-[-0.03em] lg:text-[88px]">
-                  {afterDiagnosis.totalQuietness ?? '·'}
+                  {showAfter ? afterDiagnosis.totalQuietness : '·'}
                 </span>
-                {afterDiagnosis.totalLevel !== null && afterDiagnosis.totalLevelLabel !== null && (
+                {showAfter && afterDiagnosis.totalLevel !== null && afterDiagnosis.totalLevelLabel !== null && (
                   <CongestionBadge
                     level={afterDiagnosis.totalLevel}
                     label={afterDiagnosis.totalLevelLabel}
@@ -412,7 +432,7 @@ export function ResultPage() {
             <CourseColumn
               title="원안"
               subtitle="내가 처음 짠 코스"
-              score={beforeDiagnosis.totalQuietness}
+              score={showBefore ? beforeDiagnosis.totalQuietness : null}
               diagnosis={beforeDiagnosis}
             />
             <CourseColumn
@@ -420,7 +440,7 @@ export function ResultPage() {
               subtitle={
                 changes.length > 0 ? `장소 ${changes.length}곳 교체` : '더 한적한 코스'
               }
-              score={afterDiagnosis.totalQuietness}
+              score={showAfter ? afterDiagnosis.totalQuietness : null}
               diagnosis={afterDiagnosis}
               changedPlaceIds={changes.map((change) => change.after.place.id)}
               highlighted
@@ -617,22 +637,55 @@ export function ResultPage() {
                 남기는 일인데, 남길 점수가 없으면 나중에 열어도 비교할 것이 없다.
                 버튼을 눌러 보고 실패하게 두는 대신 미리 잠그고 <b>이유를 옆에 적는다</b> —
                 잠긴 채 아무 말 없는 버튼은 고장으로 읽힌다.
+
+                ⚠️ <b>잠그는 것은 점수가 아예 없을 때(null)뿐이다.</b> 근거가 얇아 화면에
+                숫자를 안 띄우는 코스(totalPresentable=false)는 저장할 수 있다 —
+                그때는 점수와 함께 <b>모수</b>를 남겨서, 나중에 열었을 때
+                "관광지 5곳 중 2곳 기준"이라고 정직하게 말한다. 숫자를 감추는 것과
+                저장을 막는 것은 다른 일이고, 묶어 두면 경주 코스의 41.7%가 저장 불가가 된다.
+              */}
+              {/*
+                로그인하지 않았으면 <b>로그인 화면으로 바로 보낸다.</b>
+
+                예전에는 시트를 먼저 열어 "회원가입하고 저장하기 / 이미 계정이 있어요"를
+                고르게 했다. 그런데 <b>카카오·네이버 로그인은 로그인 화면에만 있다</b> —
+                가입을 먼저 권하는 바람에 소셜로 들어오려던 사람에게 그 길이 아예 안 보였다.
+                로그인 화면에서 회원가입으로 넘어가는 링크는 이미 있고 돌아올 곳(state)도
+                함께 넘어가므로, 한쪽만 열어 두는 편이 길이 짧다.
+
+                확인이 끝나기 전에는 잠근다. 그 사이에 누르면 로그인한 사람도
+                로그인 화면으로 튕긴다.
               */}
               <button
                 type="button"
                 className={`${PRIMARY_BUTTON} flex-1 disabled:cursor-not-allowed disabled:opacity-45`}
-                onClick={() => setShowSavePrompt(true)}
-                disabled={afterTotal === null}
+                disabled={authLoading}
+                onClick={() =>
+                  member
+                    ? setShowSavePrompt(true)
+                    : navigate('/login', { state: { from: location.pathname } })
+                }
               >
                 저장하기
               </button>
             </div>
 
+            {/*
+              <b>점수가 없어도 저장을 막지 않는다.</b> 예전에는 버튼을 잠갔는데, 그러면
+              여행일이 예측 창 밖이라 <b>아직</b> 진단되지 않은 코스를 짜 둘 수가 없었다 —
+              미리 계획해 두고 여행이 가까워지면 다시 진단하는 흐름이 통째로 막힌다.
+
+              저장은 <b>재료</b>(지역·날짜·장소·순서)를 남기는 일이고, 점수 스냅샷은 있으면
+              함께 남기는 것이다. 없는 채로 저장된 코스는 마이페이지에서 "아직 진단 전"으로 선다.
+
+              대신 무엇이 빠진 채 저장되는지는 말해 준다. 아무 말 없이 저장하면
+              나중에 열었을 때 점수가 왜 비어 있는지 알 수 없다.
+            */}
             {afterTotal === null && (
-              <p className="text-hint m-0 text-center text-[12.5px]">
-                코스 점수가 있어야 저장할 수 있어요.
+              <p className="text-hint m-0 text-center text-[12.5px] leading-[1.6]">
+                아직 예상 혼잡을 매기지 못한 코스예요.
                 <br />
-                관광지를 한 곳 담아 보세요.
+                저장은 되고, 나중에 열어 다시 진단할 수 있어요.
               </p>
             )}
 
@@ -665,8 +718,17 @@ export function ResultPage() {
                   /*
                     방금 진단에서 받은 총점을 그대로 싣는다. 서버가 다시 계산하지 않는다.
                     총점이 없으면 저장 버튼이 잠겨 있어 여기까지 오지 않는다.
+
+                    <b>모수를 함께 남긴다.</b> 점수만 남기면 나중에 열었을 때 관광지 다섯 곳 중
+                    하나만 진단된 코스인지 다섯이 다 진단된 코스인지 구분할 수 없다.
                   */
-                  totalQuietness: afterTotal ?? 0,
+                  /*
+                    <b>0으로 채우지 않는다.</b> 0은 화면에서 "매우 붐빔"으로 읽혀,
+                    재보지도 않은 코스를 최악이라고 말하게 된다. 서버도 null을 받는다.
+                  */
+                  totalQuietness: afterTotal,
+                  diagnosedCount: afterDiagnosis.diagnosedCount,
+                  forecastTargetCount: afterDiagnosis.forecastTargetCount,
                   slots: toSlots(state.days),
                 })
               }}

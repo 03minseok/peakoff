@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
@@ -41,6 +42,14 @@ import com.peakoff.place.domain.Region;
  */
 @Component
 public class PlaceNameMatcher {
+
+	/**
+	 * 지자체명을 떼고 남은 조각을 견주기에 쓸 최소 길이.
+	 *
+	 * <p>왜 이 값이 필요한지는 {@link #variantsOf}에 적어 두었다 — 한 글자로 줄어든 조각이
+	 * 아무 이름에나 걸리는 것을 막는다.
+	 */
+	private static final int MIN_STRIPPED_LENGTH = 2;
 
 	/**
 	 * 자동으로는 가릴 수 없어 사람이 정한 짝. <b>키는 정규화된 이름</b>이다.
@@ -82,8 +91,59 @@ public class PlaceNameMatcher {
 	 * @return 짝지어진 <b>상대편 원문 이름</b>. 못 찾았거나 애매하면 빈 값
 	 */
 	public Optional<String> match(String name, Region region, Set<String> candidates) {
+		return match(name, region, candidates, candidate -> true);
+	}
+
+	/**
+	 * 이름으로 찾되, <b>포함 매칭으로 걸린 후보는 부르는 쪽이 한 번 더 거른다.</b>
+	 *
+	 * <h3>왜 포함 매칭에만 거름망을 다는가</h3>
+	 * 완전 일치는 이름이 같으니 더 볼 것이 없다. 위험한 것은 포함 매칭이다 —
+	 * 한쪽이 다른 쪽을 품기만 하면 이어지므로 <b>이름만 닮은 다른 장소</b>가 걸린다.
+	 * 5개 지역 실측(2026-08-25)에서 나온 것들이다:
+	 *
+	 * <pre>
+	 * "월성원자력홍보관"   → "경주 월성(반월성)"      실제 거리 26.4km
+	 * "경주 나정"          → "나정고운모래해변"        실제 거리 25.4km
+	 * "플래시백 계림"      → "경주 계림"              실제 거리  6.6km
+	 * "강릉아기동물농장"   → "대관령아기동물농장"      실제 거리  6.1km
+	 * </pre>
+	 *
+	 * <p>이름 규칙을 아무리 정교하게 만들어도 이것들은 못 가른다. "나정"과
+	 * "나정고운모래해변"은 글자로는 부모·자식처럼 보이고, 길이 비율로 잘라내려 하면
+	 * "경주 남산 칠불암"처럼 <b>살려야 할 짝까지 함께 끊긴다.</b>
+	 *
+	 * <p>그래서 글자 대신 <b>좌표</b>로 가른다. 다만 이 클래스는 이름만 아는 자리라
+	 * 판단을 밖에서 받는다 — 여기는 "누구와 누구가 닮았는가"까지만 답하고,
+	 * "그 둘이 같은 곳일 수 있는가"는 좌표를 가진 쪽이 답한다.
+	 *
+	 * <h3>거름망은 열려 있는 쪽으로 실패해야 한다</h3>
+	 * 상대 이름의 좌표를 알 수 없을 때는 통과시킨다. 집중률 응답에는 좌표가 없어서
+	 * 우리 카탈로그에 같은 이름이 있을 때만 검증할 수 있는데(실측 126건 중 80건),
+	 * 검증하지 못한 것을 끊어 버리면 <b>규칙이 아니라 자료 유무로 장소가 사라진다.</b>
+	 *
+	 * @param plausible 포함 매칭으로 걸린 상대 이름을 받아, 그 짝이 성립할 수 있으면 참.
+	 *                  판단할 근거가 없으면 <b>참</b>을 돌려준다
+	 */
+	public Optional<String> match(String name, Region region, Set<String> candidates,
+			Predicate<String> plausible) {
 		if (name == null || name.isBlank() || candidates.isEmpty()) {
 			return Optional.empty();
+		}
+
+		/*
+		 * 0) 원문이 그대로 같은 것. 괄호를 떼기 전에 먼저 본다.
+		 *
+		 * 뒷단계는 괄호 안을 수식으로 보고 떼어내는데, 그것이 <b>이름의 일부</b>인 경우가 있다.
+		 * 제주 "열안지오름(봉개동)"과 "열안지오름(오라동)"은 괄호를 떼면 둘 다 "열안지오름"이 되어
+		 * 서로 충돌하고, 자기 자신이 후보에 있는데도 <b>둘 다 버려졌다.</b>
+		 * 글자 하나 다르지 않은 짝을 정규화 때문에 놓치는 것은 어느 규칙으로도 변호할 수 없다.
+		 */
+		Optional<String> sameText = onlyOne(candidates.stream()
+				.filter(candidate -> rawKey(candidate).equals(rawKey(name)))
+				.toList());
+		if (sameText.isPresent()) {
+			return sameText;
 		}
 
 		List<String> regionWords = regionWordsOf(region);
@@ -124,19 +184,73 @@ public class PlaceNameMatcher {
 		 * 자동으로 일어난다. 정확히 같은 지점이 아니라 그 권역의 값을 쓰게 된다.
 		 * 이 절충은 docs/OPEN_DECISIONS.md에 적어 두었다 — 실제 분포를 보고 다시 판단할 자리다.
 		 *
-		 * 안전장치는 그대로다 — <b>후보가 정확히 하나일 때만</b> 잇는다.
+		 * 안전장치는 셋이다 — <b>후보가 정확히 하나일 때만</b> 잇고, 지자체명을 뗀 조각이
+		 * 너무 짧으면 그 조각으로는 견주지 않으며({@link #variantsOf}), 걸린 후보를
+		 * 좌표로 한 번 더 거른다({@code plausible}).
 		 * 애매하면 잇지 않는 원칙은 유지되고, 걱정되는 자리는 위의 수동 표가 먼저 잡는다.
 		 */
-		String full = normalize(name, List.of());
-		String stripped = normalize(name, regionWords);
 		return onlyOne(candidates.stream()
-				.filter(candidate -> {
-					String candidateFull = normalize(candidate, List.of());
-					String candidateStripped = normalize(candidate, regionWords);
-					return candidateFull.contains(full) || candidateStripped.contains(stripped)
-							|| full.contains(candidateFull) || stripped.contains(candidateStripped);
-				})
+				.filter(candidate -> eitherContains(targets, variantsOf(candidate, regionWords)))
+				// 이름으로는 닮았다. 같은 곳일 수 있는지는 좌표를 가진 쪽이 답한다.
+				.filter(plausible)
 				.toList());
+	}
+
+	/**
+	 * 두 이름의 변형들 중 <b>어느 한 쌍이라도</b> 한쪽이 다른 쪽을 품는가.
+	 *
+	 * <p>여기서도 {@link #variantsOf}가 만든 변형만 쓴다. 예전에는 이 자리에서
+	 * {@code normalize}를 직접 불렀는데, 그러면 <b>짧은 조각을 버리는 규칙을 건너뛴다</b> —
+	 * 완전 일치 단계에서는 "항"을 버려 놓고 포함 매칭에서 되살려 쓰는 셈이라,
+	 * 규칙이 있으나 마나 한 상태가 된다. 실제로 "김녕항"이 "제주항"에 그대로 걸렸다.
+	 */
+	private static boolean eitherContains(Set<String> targets, Set<String> candidateVariants) {
+		for (String target : targets) {
+			for (String variant : candidateVariants) {
+				String shorter = target.length() <= variant.length() ? target : variant;
+				String longer = target.length() <= variant.length() ? variant : target;
+				if (longer.contains(shorter)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * 정규화를 거친 이름. <b>같은 장소인지 밖에서 견줄 때 쓴다.</b>
+	 *
+	 * <p>이 규칙을 밖으로 여는 이유: 좌표 검증을 하려면 "집중률이 부르는 그 이름이 우리
+	 * 카탈로그의 어느 장소인가"를 먼저 찾아야 하는데, 그 비교를 부르는 쪽이 자기 식으로
+	 * 하면 여기와 다른 규칙이 하나 더 생긴다. 정규화는 이 파일에만 있어야 한다.
+	 */
+	public String normalized(String name, Region region) {
+		return name == null ? "" : normalize(name, regionWordsOf(region));
+	}
+
+	/**
+	 * 정규화 전의 이름을 검색어로 쓸 수 있게만 다듬는다. 괄호·수식은 그대로 둔다.
+	 *
+	 * <p>{@link #normalize}와 달리 <b>거의 아무것도 지우지 않는다.</b> 이것은 견주기 위한
+	 * 모양이 아니라 카탈로그에서 후보를 <b>불러오기 위한</b> 모양이다.
+	 */
+	public static String searchKeyword(String name) {
+		if (name == null) {
+			return "";
+		}
+		String text = name.trim();
+		int comma = text.indexOf(',');
+		if (comma > 0) {
+			text = text.substring(0, comma);
+		}
+		text = BRACKETS.matcher(text).replaceAll(" ");
+		text = PARENS.matcher(text).replaceAll(" ");
+		return SPACES.matcher(text).replaceAll(" ").trim();
+	}
+
+	/** 원문 비교용 열쇠. 공백과 대소문자만 없앤다 — 괄호도 수식도 그대로 둔다. */
+	private static String rawKey(String raw) {
+		return SPACES.matcher(raw.trim()).replaceAll("").toLowerCase();
 	}
 
 	/** 후보가 정확히 하나일 때만 답한다. 둘 이상이면 <b>고르지 않는다.</b> */
@@ -155,6 +269,19 @@ public class PlaceNameMatcher {
 	 *
 	 * <p>지자체명을 뗀 것과 안 뗀 것을 모두 만든다. 어느 API가 어느 표기를 쓰는지 미리 알 수
 	 * 없고, 앞으로 늘어날 지역에서도 규칙이 같으리라는 보장이 없어서다.
+	 *
+	 * <h3>⚠️ 지자체명을 떼고 남은 조각이 너무 짧으면 버린다</h3>
+	 * 지역명이 이름의 <b>일부</b>인 장소가 있다. 그런 이름에서 지역명을 떼면 남는 것이
+	 * 뜻 없는 한 글자가 되고, 그 한 글자가 포함 매칭에서 <b>아무 이름에나 걸린다.</b>
+	 *
+	 * <pre>
+	 * "제주항" → "항"    "스타벅스 제주공항DT점"·"항몽유적지"·"김녕항"·"한림항" 이 전부 제주항이 됐다
+	 * "강릉항" → "항"    "교항면옥"·"옥계항"·"안목항물회"가 전부 강릉항이 됐다
+	 * </pre>
+	 *
+	 * <p>실측(2026-08-25)에서 제주시 한 곳만 34건이 이 경로로 잘못 이어져 있었다.
+	 * 뗀 조각이 두 글자가 안 되면 <b>그 조각으로는 견주지 않는다</b> — 지역명을 붙여 쓴
+	 * 원래 이름("제주항")은 그대로 남아 있으므로, 진짜 제주항을 찾는 데는 지장이 없다.
 	 */
 	private static Set<String> variantsOf(String raw, List<String> regionWords) {
 		Set<String> variants = new LinkedHashSet<>();
@@ -163,7 +290,7 @@ public class PlaceNameMatcher {
 			variants.add(full);
 		}
 		String stripped = normalize(raw, regionWords);
-		if (!stripped.isEmpty()) {
+		if (!stripped.isEmpty() && (stripped.equals(full) || stripped.length() >= MIN_STRIPPED_LENGTH)) {
 			variants.add(stripped);
 		}
 		return variants;

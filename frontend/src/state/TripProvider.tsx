@@ -19,7 +19,7 @@ type TripAction =
   | { type: 'CHANGE_START_DATE'; startDate: string }
   | { type: 'ADD_PLACE'; day: number; placeId: string }
   | { type: 'REMOVE_PLACE'; day: number; index: number }
-  | { type: 'MOVE_PLACE'; day: number; index: number; direction: -1 | 1 }
+  | { type: 'REORDER_PLACE'; day: number; from: number; to: number }
   | { type: 'REPLACE_PLACE'; day: number; index: number; placeId: string }
   | { type: 'MARK_BASELINE' }
   | { type: 'RESTORE'; plan: TripPlan; days: string[][] }
@@ -99,15 +99,26 @@ function reducer(state: TripState, action: TripAction): TripState {
       }
     }
 
-    case 'MOVE_PLACE': {
+    /**
+     * 잡아 끌어 옮기기. <b>이웃과 맞바꾸는 것이 아니라 뽑아서 끼워 넣는다.</b>
+     *
+     * 예전 위/아래 버튼은 두 항목을 맞바꿨다(swap). 한 칸씩만 움직이니 그래도 됐다.
+     * 끌어 옮기기는 임의의 거리를 한 번에 가는데, 맞바꾸기로 세 칸을 건너면
+     * 지나온 항목들의 순서가 뒤엉킨다. 그래서 <b>splice</b>여야 한다.
+     */
+    case 'REORDER_PLACE': {
       const current = state.days[dayIndex(action.day)] ?? []
-      const target = action.index + action.direction
-      // 첫 항목의 "위로", 마지막 항목의 "아래로"는 아무 일도 하지 않는다.
-      if (target < 0 || target >= current.length) {
+      const { from, to } = action
+      if (
+        from === to ||
+        from < 0 || from >= current.length ||
+        to < 0 || to >= current.length
+      ) {
         return state
       }
       const next = [...current]
-      ;[next[action.index], next[target]] = [next[target], next[action.index]]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
       return { ...state, days: replaceDay(state.days, action.day, next) }
     }
 
@@ -163,8 +174,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
       changeStartDate: (startDate) => dispatch({ type: 'CHANGE_START_DATE', startDate }),
       addPlace: (day, placeId) => dispatch({ type: 'ADD_PLACE', day, placeId }),
       removePlace: (day, index) => dispatch({ type: 'REMOVE_PLACE', day, index }),
-      movePlace: (day, index, direction) =>
-        dispatch({ type: 'MOVE_PLACE', day, index, direction }),
+      reorderPlace: (day, from, to) => dispatch({ type: 'REORDER_PLACE', day, from, to }),
       replacePlace: (day, index, placeId) =>
         dispatch({ type: 'REPLACE_PLACE', day, index, placeId }),
       markBaseline: () => dispatch({ type: 'MARK_BASELINE' }),

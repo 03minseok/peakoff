@@ -2,6 +2,7 @@ package com.peakoff.congestion.mock;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.Optional;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -67,6 +68,18 @@ public class MockCongestionProvider implements CongestionProvider {
 	@Override
 	public boolean hasData(String placeId, LocalDate date) {
 		return hasData(placeId);
+	}
+
+	/**
+	 * <b>목업에는 마지막 날이 없다.</b> 요일 보정만 하므로 어느 날을 물어도 값이 나온다.
+	 *
+	 * <p>비어 있는 값을 돌려주면 화면이 "예측 창" 안내를 아예 그리지 않는다.
+	 * 목업으로 볼 때 있지도 않은 제약을 설명하는 것보다 그편이 정직하다 —
+	 * 실데이터로 바꾸는 순간 안내가 저절로 나타난다.
+	 */
+	@Override
+	public Optional<LocalDate> lastForecastDate() {
+		return Optional.empty();
 	}
 
 	private static double factorFor(DayOfWeek dayOfWeek) {

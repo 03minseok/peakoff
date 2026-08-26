@@ -27,7 +27,16 @@ public enum ErrorCode {
 	CONFLICT(HttpStatus.CONFLICT),
 
 	/** 서버 내부 오류. 원인은 로그에만 남기고 밖으로는 알리지 않는다. */
-	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
+	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR),
+
+	/**
+	 * 공사 OpenAPI에 닿지 못했다. <b>우리 잘못이 아니라 남의 사정이다.</b>
+	 *
+	 * <p>500과 갈라 두는 이유: 500은 "우리 코드가 깨졌다"는 뜻이라 로그를 뒤져야 하지만,
+	 * 이것은 기다리면 낫는다. 화면도 다르게 말할 수 있어야 한다 —
+	 * "일시적인 오류"가 아니라 "잠시 뒤 다시"다.
+	 */
+	EXTERNAL_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE);
 
 	private final HttpStatus status;
 

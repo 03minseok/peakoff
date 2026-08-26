@@ -33,7 +33,11 @@ import jakarta.validation.constraints.Size;
  * 왜곡되는 것은 자기 마이페이지의 숫자뿐이다. 범위 검증만 걸어 둔다.
  *
  * @param name           사용자가 붙인 여행 이름
- * @param totalQuietness 진단 화면이 받아 온 코스 총점 (0~100)
+ * @param totalQuietness 진단 화면이 받아 온 코스 총점 (0~100).
+ *                       <b>진단되지 않은 코스는 {@code null}</b> — 여행일이 예측 창 밖이거나
+ *                       (아직 없다) 밥집만 담았을 때다(영영 없다). 둘 다 저장을 막지 않는다:
+ *                       저장은 재료를 남기는 일이고 점수는 있으면 함께 남기는 것이다.
+ *                       {@code @Min}/{@code @Max}는 null을 통과시킨다
  */
 public record SaveCourseRequest(
 
@@ -54,7 +58,19 @@ public record SaveCourseRequest(
 
 		@Min(value = Scores.MIN, message = "코스 총점은 0~100 범위여야 합니다.")
 		@Max(value = Scores.MAX, message = "코스 총점은 0~100 범위여야 합니다.")
-		int totalQuietness,
+		Integer totalQuietness,
+
+		/*
+		 * 그 총점이 몇 곳을 근거로 한 값인지. 점수만 남기면 나중에 열었을 때
+		 * 근거가 얇은 점수와 두꺼운 점수가 같은 무게로 나란히 선다.
+		 *
+		 * 없어도 저장은 된다 — 옛 화면이 보내는 요청을 거절하면 그 사용자는 저장을 못 한다.
+		 */
+		@Min(value = 0, message = "진단된 칸 수는 0 이상이어야 합니다.")
+		Integer diagnosedCount,
+
+		@Min(value = 0, message = "예측 대상 관광지 수는 0 이상이어야 합니다.")
+		Integer forecastTargetCount,
 
 		@NotEmpty(message = "코스에 장소가 하나 이상 있어야 저장할 수 있습니다.")
 		@Size(max = 50, message = "한 번에 저장할 수 있는 장소는 50곳까지입니다.")
