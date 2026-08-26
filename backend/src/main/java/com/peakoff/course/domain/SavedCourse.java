@@ -97,9 +97,25 @@ public class SavedCourse {
 	@Column(nullable = false)
 	private int nights;
 
-	/** 저장 시점의 코스 총점 (0~100, 클수록 한적) */
-	@Column(nullable = false)
-	private int totalQuietness;
+	/**
+	 * 저장 시점의 코스 총점 (0~100, 클수록 한적). <b>없을 수 있다.</b>
+	 *
+	 * <h3>점수 없이 저장되는 코스 (2026-08-26)</h3>
+	 * 두 경우가 있고 <b>사용자에게 뜻이 다르다.</b>
+	 * <ul>
+	 *   <li><b>아직</b> 없다 — 여행일이 예측 창 밖이다. 여행이 가까워지면 생긴다</li>
+	 *   <li><b>영영</b> 없다 — 밥집만 담은 코스다. 집중률이 관광지만 예측한다</li>
+	 * </ul>
+	 *
+	 * <p>둘 다 저장을 막지 않는다. 저장은 <b>재료</b>(지역·날짜·장소·순서)를 남기는 일이고,
+	 * 점수 스냅샷은 있으면 함께 남기는 것이다. 미리 짜 두고 여행이 가까워지면 다시 진단하는
+	 * 흐름이 성립하려면 점수가 없어도 저장이 되어야 한다.
+	 *
+	 * <p>⚠️ 0으로 채우지 않는다. 0은 화면에서 "매우 붐빔"으로 읽혀, 아직 재보지도 않은 코스를
+	 * 최악이라고 말하게 된다.
+	 */
+	@Column
+	private Integer totalQuietness;
 
 	/**
 	 * 그 총점이 <b>몇 곳을 근거로 한 값인가.</b>
@@ -123,8 +139,14 @@ public class SavedCourse {
 	@Column
 	private Integer forecastTargetCount;
 
-	/** 그 점수를 매긴 시각. 기준이 바뀌었을 때 다시 계산할 대상을 고르는 데 쓴다 */
-	@Column(nullable = false)
+	/**
+	 * 그 점수를 매긴 시각. 기준이 바뀌었을 때 다시 계산할 대상을 고르는 데 쓴다.
+	 *
+	 * <p><b>총점과 운명을 같이한다</b> — 점수가 없으면 점수를 매긴 시각도 없다.
+	 * 저장 시각으로 채워 두면 "언제 매긴 점수인가"에 매기지도 않은 시각이 답하게 된다.
+	 * 저장 시각은 {@link #createdAt}이 따로 갖고 있다.
+	 */
+	@Column
 	private Instant scoredAt;
 
 	@Column(nullable = false, updatable = false)
@@ -150,7 +172,7 @@ public class SavedCourse {
 			String region,
 			LocalDate startDate,
 			int nights,
-			int totalQuietness,
+			Integer totalQuietness,
 			Integer diagnosedCount,
 			Integer forecastTargetCount,
 			List<PlaceEntry> entries,
@@ -162,7 +184,10 @@ public class SavedCourse {
 		this.region = SupportedRegion.fromSlug(region).slug();
 		this.startDate = Objects.requireNonNull(startDate, "시작일은 필수입니다.");
 		this.nights = validateNights(nights);
-		Scores.validate(totalQuietness, "코스 총점");
+		// 총점은 없을 수 있다. 있을 때만 범위를 본다.
+		if (totalQuietness != null) {
+			Scores.validate(totalQuietness, "코스 총점");
+		}
 		this.totalQuietness = totalQuietness;
 		/*
 		 * 모수는 <b>둘 다 있거나 둘 다 없어야 한다.</b> 하나만 있으면 "몇 곳 중 몇 곳"을
@@ -172,7 +197,9 @@ public class SavedCourse {
 			this.diagnosedCount = diagnosedCount;
 			this.forecastTargetCount = forecastTargetCount;
 		}
-		this.scoredAt = Objects.requireNonNull(now, "점수를 매긴 시각은 필수입니다.");
+		Objects.requireNonNull(now, "저장 시각은 필수입니다.");
+		// 점수가 없으면 점수를 매긴 시각도 없다.
+		this.scoredAt = totalQuietness == null ? null : now;
 		this.createdAt = now;
 
 		addPlaces(entries);
@@ -181,7 +208,8 @@ public class SavedCourse {
 	/**
 	 * 코스를 저장한다.
 	 *
-	 * @param totalQuietness      진단 화면이 받아 온 총점. 서버가 방금 내려준 값을 그대로 남긴다
+	 * @param totalQuietness      진단 화면이 받아 온 총점. 서버가 방금 내려준 값을 그대로 남긴다.
+	 *                            <b>아직/영영 진단되지 않은 코스는 {@code null}</b>
 	 * @param diagnosedCount      그 총점을 매긴 칸 수. 모르면 {@code null}
 	 * @param forecastTargetCount 예측 대상 관광지 수. 모르면 {@code null}
 	 * @param entries             담긴 장소들. 비어 있으면 거부한다
@@ -193,7 +221,7 @@ public class SavedCourse {
 			String region,
 			LocalDate startDate,
 			int nights,
-			int totalQuietness,
+			Integer totalQuietness,
 			Integer diagnosedCount,
 			Integer forecastTargetCount,
 			List<PlaceEntry> entries,
@@ -268,7 +296,7 @@ public class SavedCourse {
 		return nights;
 	}
 
-	public int totalQuietness() {
+	public Integer totalQuietness() {
 		return totalQuietness;
 	}
 

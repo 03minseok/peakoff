@@ -354,7 +354,11 @@ export interface SaveCourseRequest {
   region: string
   startDate: string
   nights: number
-  totalQuietness: number
+  /**
+   * 진단에서 받은 총점. <b>진단되지 않은 코스는 null</b>이고 그대로 보낸다.
+   * 0으로 채우면 서버가 "매우 붐빔"인 코스로 저장한다.
+   */
+  totalQuietness: number | null
   /**
    * 그 총점이 몇 곳을 근거로 한 값인지. 진단 응답에서 받은 값을 그대로 보낸다.
    *
@@ -382,9 +386,16 @@ export interface SavedCourseSummary {
   endDate: string
   nights: number
   days: number
-  totalQuietness: number
-  level: CongestionLevel
-  levelLabel: string
+  /**
+   * 저장 시점의 총점. <b>없을 수 있다.</b>
+   *
+   * 두 경우이고 사용자에게 뜻이 다르다 — 여행일이 예측 창 밖이라 <b>아직</b> 없거나,
+   * 밥집만 담아 <b>영영</b> 없거나. 둘 다 저장은 된다. 저장은 재료를 남기는 일이고
+   * 점수는 있으면 함께 남기는 것이다.
+   */
+  totalQuietness: number | null
+  level: CongestionLevel | null
+  levelLabel: string | null
   placeCount: number
   /**
    * 그 총점을 매긴 칸 수와 예측 대상 관광지 수.
@@ -395,8 +406,8 @@ export interface SavedCourseSummary {
    */
   diagnosedCount: number | null
   forecastTargetCount: number | null
-  /** 그 점수를 매긴 시각 (ISO). 저장 시점의 판단이라는 것을 화면에서 밝힐 수 있다 */
-  scoredAt: string
+  /** 그 점수를 매긴 시각 (ISO). 총점이 없으면 이것도 null이다 — 매긴 적이 없으니까 */
+  scoredAt: string | null
   createdAt: string
 }
 

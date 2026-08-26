@@ -644,17 +644,27 @@ export function ResultPage() {
                 type="button"
                 className={`${PRIMARY_BUTTON} flex-1 disabled:cursor-not-allowed disabled:opacity-45`}
                 onClick={() => setShowSavePrompt(true)}
-                disabled={afterTotal === null}
               >
                 저장하기
               </button>
             </div>
 
+            {/*
+              <b>점수가 없어도 저장을 막지 않는다.</b> 예전에는 버튼을 잠갔는데, 그러면
+              여행일이 예측 창 밖이라 <b>아직</b> 진단되지 않은 코스를 짜 둘 수가 없었다 —
+              미리 계획해 두고 여행이 가까워지면 다시 진단하는 흐름이 통째로 막힌다.
+
+              저장은 <b>재료</b>(지역·날짜·장소·순서)를 남기는 일이고, 점수 스냅샷은 있으면
+              함께 남기는 것이다. 없는 채로 저장된 코스는 마이페이지에서 "아직 진단 전"으로 선다.
+
+              대신 무엇이 빠진 채 저장되는지는 말해 준다. 아무 말 없이 저장하면
+              나중에 열었을 때 점수가 왜 비어 있는지 알 수 없다.
+            */}
             {afterTotal === null && (
-              <p className="text-hint m-0 text-center text-[12.5px]">
-                코스 점수가 있어야 저장할 수 있어요.
+              <p className="text-hint m-0 text-center text-[12.5px] leading-[1.6]">
+                아직 예상 혼잡을 매기지 못한 코스예요.
                 <br />
-                관광지를 한 곳 담아 보세요.
+                저장은 되고, 나중에 열어 다시 진단할 수 있어요.
               </p>
             )}
 
@@ -691,7 +701,11 @@ export function ResultPage() {
                     <b>모수를 함께 남긴다.</b> 점수만 남기면 나중에 열었을 때 관광지 다섯 곳 중
                     하나만 진단된 코스인지 다섯이 다 진단된 코스인지 구분할 수 없다.
                   */
-                  totalQuietness: afterTotal ?? 0,
+                  /*
+                    <b>0으로 채우지 않는다.</b> 0은 화면에서 "매우 붐빔"으로 읽혀,
+                    재보지도 않은 코스를 최악이라고 말하게 된다. 서버도 null을 받는다.
+                  */
+                  totalQuietness: afterTotal,
                   diagnosedCount: afterDiagnosis.diagnosedCount,
                   forecastTargetCount: afterDiagnosis.forecastTargetCount,
                   slots: toSlots(state.days),

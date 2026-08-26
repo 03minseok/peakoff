@@ -30,7 +30,7 @@ public record SavedCourseSummary(
 		LocalDate endDate,
 		int nights,
 		int days,
-		int totalQuietness,
+		Integer totalQuietness,
 		CongestionLevel level,
 		String levelLabel,
 		int placeCount,
@@ -40,7 +40,12 @@ public record SavedCourseSummary(
 		Instant createdAt) {
 
 	public static SavedCourseSummary from(SavedCourse course) {
-		CongestionLevel level = CongestionLevel.fromQuietness(course.totalQuietness());
+		/*
+		 * 총점이 없으면 등급도 없다. 없는 점수에 등급을 붙이면 "붐빔"이 되어,
+		 * 아직 재보지도 않은 코스를 최악이라고 말하게 된다.
+		 */
+		Integer total = course.totalQuietness();
+		CongestionLevel level = total == null ? null : CongestionLevel.fromQuietness(total);
 		return new SavedCourseSummary(
 				course.id(),
 				course.name(),
@@ -50,9 +55,9 @@ public record SavedCourseSummary(
 				course.endDate(),
 				course.nights(),
 				course.days(),
-				course.totalQuietness(),
+				total,
 				level,
-				level.label(),
+				level == null ? null : level.label(),
 				course.places().size(),
 				course.diagnosedCount(),
 				course.forecastTargetCount(),
