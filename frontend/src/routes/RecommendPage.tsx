@@ -524,9 +524,14 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
                 다음 화면에서 직접 담아보세요.
               </p>
             ) : (
+              /*
+                키를 day-order로 만든다. 장소 id만 쓰면 여러 날에 같은 곳이 담겼을 때
+                키가 겹쳐 React가 항목을 복제하거나 잃는다 — 코스 편집에서 실제로 겪은 결함이다.
+                서버가 day와 order를 주므로 그 짝이 이미 고유하다.
+              */
               <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
                 {slots.map((slot) => (
-                  <DraftSlotCard key={slot.place.id} slot={slot} />
+                  <DraftSlotCard key={`${slot.day}-${slot.order}`} slot={slot} />
                 ))}
               </ul>
             )}
