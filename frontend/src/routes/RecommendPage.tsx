@@ -57,6 +57,14 @@ const DURATIONS = [
 const STYLE_OPTIONS: { value: TravelStyle; label: string; hint: string }[] = [
   { value: 'HISTORY', label: '역사·유적', hint: '왕릉 · 사찰 · 유적지' },
   { value: 'NATURE', label: '자연·풍경', hint: '호수 · 바다 · 숲길' },
+  /*
+    2026-08-26 추가. 예측이 있는 곳이 경주 7 · 제주시 12 · 서귀포 12로
+    세 지역 모두 넉넉하다 — 어느 지역을 골라도 후보가 남는 것이 조건이었다.
+
+    "체험"은 아직 없다. 제주에는 있지만 경주가 0곳이라, 경주를 고른 사람에게는
+    골라도 후보가 없는 선택지가 된다.
+  */
+  { value: 'CULTURE', label: '문화·명소', hint: '박물관 · 전시 · 테마파크' },
 ]
 
 const DENSITY_OPTIONS: { value: ItineraryDensity; label: string }[] = [

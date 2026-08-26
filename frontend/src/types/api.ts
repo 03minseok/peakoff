@@ -256,7 +256,7 @@ export interface LevelCounts {
  * 맛집·체험·레저를 고르면 후보가 하나도 남지 않아 추천이 실패했다.
  * 밥집은 코스 편집에서 직접 담는다 — 담는 것은 막지 않고 진단에서만 빠진다.
  */
-export type TravelStyle = 'HISTORY' | 'NATURE'
+export type TravelStyle = 'HISTORY' | 'NATURE' | 'CULTURE'
 
 /** 설문 2번 — 일정 밀도. 일자별로 몇 곳을 담을지 */
 export type ItineraryDensity = 'RELAXED' | 'BALANCED' | 'PACKED'
