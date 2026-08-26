@@ -60,7 +60,12 @@ public class SecurityConfig {
 			 * 저장과 내 코스 조회(/api/courses)는 여전히 로그인이 필요하다 — 경로를 정확히 적었다.
 			 */
 			"/api/courses/recent",
-			"/api/dates/**" };
+			"/api/dates/**",
+			/*
+			 * 헬스체크. 도커와 배포 스크립트가 부르는 자리라 토큰을 들려 보낼 수 없다.
+			 * 나가는 것은 {"status":"UP"}뿐이라 열어 두어도 알려지는 것이 없다.
+			 */
+			"/health" };
 
 	/** API 문서. 심사 때 화면으로 보여줘야 해서 열어 둔다. */
 	private static final String[] PUBLIC_DOCS = {
