@@ -3,7 +3,6 @@ package com.peakoff.external.kto.provider;
 import java.time.LocalDate;
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,17 +77,17 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	 * 지금은 개선폭·거리·분류·중복이 앞에서 걸러 내므로 Pool에 남는 것은 이미
 	 * "충분히 좋은 후보"뿐이다.
 	 *
-	 * <p>⚠️ <b>다만 지금 이 값은 화면에 거의 아무 영향도 주지 못한다.</b> 실측(2026-08-25)에서
-	 * 두 가지가 확인됐다.
+	 * <p>이 값이 실제로 일하게 되기까지 두 가지를 더 고쳐야 했다(2026-08-26).
 	 * <ul>
-	 *   <li>뽑기가 끝난 뒤 {@code findAlternatives}가 추천도 순으로 <b>다시 정렬</b>한다 —
-	 *       뽑힌 순서가 통째로 덮인다</li>
-	 *   <li>자격 후보가 화면 요청 수(8) 이하인 자리가 <b>89.2%</b>다 —
-	 *       그런 자리에서는 후보가 전부 목록에 오르므로 뽑기가 고를 것이 없다</li>
+	 *   <li><b>화면이 8개를 요청했다.</b> Pool이 셋인데 여덟을 달라고 하면
+	 *       "다 가져가라"와 같아 Pool이라는 개념이 무의미해진다.
+	 *       {@code AlternativeSheet.ALTERNATIVE_COUNT}를 3으로 내렸다</li>
+	 *   <li><b>뽑기가 끝난 뒤 추천도 순으로 다시 정렬했다.</b> 뽑힌 순서가 통째로 덮여
+	 *       최고점이 언제나 1등이었다. {@code findAlternatives}에서 걷어냈다</li>
 	 * </ul>
-	 * 같은 자리를 40번 물어도 1등이 한 번도 바뀌지 않았다. 분산을 실제로 살리려면
-	 * 정렬과 노출 개수 중 하나를 손봐야 하는데, 둘 다 화면에 보이는 것이 달라지는 결정이라
-	 * 값만 먼저 맞춰 두고 별도로 판단한다.
+	 *
+	 * <p>둘을 고치기 전에는 자격 후보가 20곳인 자리에서도 1등이 68~82% 고정이었다 —
+	 * 값이나 데이터가 모자라서가 아니었다.
 	 */
 	private static final int POOL_SIZE = 3;
 
@@ -223,10 +222,28 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 
 		// 위에서 fallback으로 갈아탔을 수 있어 람다가 그대로 쓸 수 없다.
 		final CandidateSource chosen = source;
+		/*
+		 * <b>뽑힌 순서를 그대로 내보낸다. 다시 정렬하지 않는다.</b>
+		 *
+		 * <p>예전에는 여기서 추천도 순으로 다시 세웠다. 그러면 <b>최고점이 뽑히기만 하면
+		 * 언제나 1등</b>이 되어, 뽑기가 정한 순서가 통째로 덮인다. 실측(2026-08-26)에서
+		 * 자격 후보가 20곳이나 되는 자리에서도 1등이 68~82% 고정이었다 —
+		 * 데이터가 모자라서가 아니라 이 정렬 때문이었다.
+		 *
+		 * <p>CLAUDE.md의 <i>"대안 후보는 추천도 순으로 정렬한다. 정렬 기준이 곧 화면에
+		 * 보이는 값이어야 한다"</i>와 부딪히는 자리다. 두 규칙 중 <b>분산을 택했다</b>:
+		 * <ul>
+		 *   <li>그 규칙의 목적은 "설명 가능해야 한다"인데, 뽑기 순서도 설명된다 —
+		 *       화면이 "추천도 상위 후보에서 매번 새로 뽑아요"라고 말한다</li>
+		 *   <li>보이는 것은 상위 Pool에서 뽑은 소수라 점수 차가 작다. 순위표가 아니라 후보 묶음이다</li>
+		 *   <li>분산은 과제(2차 오버투어리즘) 직결이고, 정렬은 표현 규칙이다</li>
+		 * </ul>
+		 *
+		 * <p>⚠️ 화면 문구와 <b>한 몸이다.</b> "추천도가 높은 순"이라고 적어 두면
+		 * 82점 아래 79점이 선 목록이 거짓말이 된다.
+		 */
 		List<Alternative> picked = drawWithoutRepeat(available, limit).stream()
 				.map(candidate -> candidate.withReason(reasonFor(origin, candidate, chosen)))
-				// 화면에 보이는 값으로 줄을 세운다. 뽑기는 끝났고 여기서는 보기 좋게 정렬만 한다.
-				.sorted(Comparator.comparingInt(Alternative::recommendation).reversed())
 				.toList();
 
 		return Alternatives.of(
