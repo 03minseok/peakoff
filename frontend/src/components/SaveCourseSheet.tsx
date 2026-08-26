@@ -191,27 +191,10 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
           )}
 
           {/*
-            게스트가 가장 걱정하는 것은 "지금 짠 것이 날아가나"다. 그 답을 먼저 준다.
-            이 안내가 없으면 로그인 버튼이 위험해 보여서 그냥 닫게 된다.
+            "지금 짠 코스는 그대로 있어요" 안내는 <b>로그인 화면으로 옮겼다.</b>
+            결과 화면이 게스트를 시트 없이 로그인 화면으로 바로 보내면서,
+            그 말이 필요한 자리도 그쪽이 됐다.
           */}
-          {!member && phase === 'asking' && (
-            <div className="bg-moderate-tint flex items-start gap-2.75 rounded-[16px] px-3.75 py-3.5">
-              <span
-                className="bg-moderate-soft text-moderate-deep mt-px grid h-4.5 w-4.5 flex-none place-items-center rounded-full text-[11px] font-bold"
-                aria-hidden="true"
-              >
-                !
-              </span>
-              <div className="flex flex-col gap-0.75">
-                <span className="text-moderate-deep text-[13.5px] font-semibold">
-                  지금 짠 코스는 그대로 있어요
-                </span>
-                <span className="text-moderate-deep/85 text-[12.5px] leading-[1.6]">
-                  로그인을 마치면 이 화면으로 돌아와 바로 저장할 수 있어요.
-                </span>
-              </div>
-            </div>
-          )}
 
           <div className="flex flex-col gap-2.25">
             {phase === 'saved' ? (
@@ -243,22 +226,20 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
             ) : (
               <>
                 {/*
-                  가입을 먼저 권한다. 여기까지 온 게스트는 계정이 없을 가능성이 높다 —
-                  있었다면 진작 로그인해서 이 화면을 안 봤을 것이다.
+                  <b>여기까지 오는 일은 드물다.</b> 결과 화면이 게스트를 로그인 화면으로
+                  바로 보내므로, 이 갈래는 시트가 열린 뒤에 로그인이 풀린 경우
+                  (토큰 만료 등)의 안전망이다.
+
+                  ⚠️ <b>가입 버튼을 따로 두지 않는다.</b> 카카오·네이버 로그인은 로그인
+                  화면에만 있어서, 가입을 먼저 권하면 소셜로 들어오려던 사람에게 그 길이
+                  아예 안 보인다. 로그인 화면에 회원가입 링크가 있고 돌아올 곳도 함께 넘어간다.
                 */}
-                <Link
-                  to="/signup"
-                  state={returnTo}
-                  className={`${PRIMARY_BUTTON} grid place-items-center no-underline`}
-                >
-                  회원가입하고 저장하기
-                </Link>
                 <Link
                   to="/login"
                   state={returnTo}
-                  className={`${OUTLINE_BUTTON} grid place-items-center no-underline`}
+                  className={`${PRIMARY_BUTTON} grid place-items-center no-underline`}
                 >
-                  이미 계정이 있어요
+                  로그인하고 저장하기
                 </Link>
                 <button type="button" className={GHOST_BUTTON} onClick={onClose}>
                   나중에 할게요
