@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.peakoff.external.kto.support.KtoApiException;
 import com.peakoff.global.response.ApiResponse;
 import com.peakoff.global.response.ApiResponse.FieldError;
 
@@ -96,6 +97,26 @@ public class GlobalExceptionHandler {
 			MethodArgumentTypeMismatchException.class })
 	public ResponseEntity<ApiResponse<Void>> handleBadRequest(Exception e) {
 		return toResponse(ErrorCode.INVALID_REQUEST, readableMessage(e));
+	}
+
+	/**
+	 * 공사 OpenAPI에 닿지 못했다. <b>500이 아니라 503이고, 스택을 남기지 않는다.</b>
+	 *
+	 * <h3>왜 따로 잡는가</h3>
+	 * 예전에는 맨 아래 {@code Exception} 핸들러가 받아 "처리하지 못한 예외"로 <b>전체 스택</b>을
+	 * 찍었다. 남의 서버가 잠깐 막힌 것을 우리 버그처럼 기록하는 셈이라, 실제로 사고가 났을 때
+	 * 로그가 스택 수백 줄로 뒤덮여 <b>진짜 원인을 찾을 수 없었다</b>(2026-08-26, 1,912건).
+	 *
+	 * <p>예상 가능한 실패다 — 한도 초과, 공사 점검, 네트워크. 한 줄로 남기고 503으로 답한다.
+	 * 503은 "지금은 안 되지만 기다리면 된다"는 뜻이라 화면이 다른 말을 할 수 있다.
+	 *
+	 * <p>⚠️ <b>메시지를 그대로 내보내지 않는다.</b> 공사 응답에 인증키가 섞여 나올 수 있다.
+	 */
+	@ExceptionHandler(KtoApiException.class)
+	public ResponseEntity<ApiResponse<Void>> handleExternalUnavailable(KtoApiException e) {
+		log.warn("공사 OpenAPI에 닿지 못했습니다: {}", e.getMessage());
+		return toResponse(ErrorCode.EXTERNAL_UNAVAILABLE,
+				"공공데이터를 불러오지 못했어요.\n잠시 후 다시 시도해 주세요.");
 	}
 
 	/**

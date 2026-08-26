@@ -1,4 +1,4 @@
-import type { Alternative } from '../types/api'
+import type { Alternatives } from '../types/api'
 
 /**
  * 한 번 받은 대안 목록을 코스 편집 세션 동안 들고 있는다.
@@ -24,12 +24,22 @@ import type { Alternative } from '../types/api'
  *
  * <b>장소를 교체하는 것은 여기에 포함되지 않는다.</b> 교체 후에도 다른 자리의 목록은
  * 그대로여야 하고, 되돌린 뒤 다시 열었을 때도 같은 후보가 보여야 한다.
+ *
+ * <h3>⚠️ 열쇠에 "이미 담긴 장소"는 넣지 않는다</h3>
+ * 요청에는 그 목록을 실어 보낸다(서버가 뽑기 전에 빼 준다). 그런데 그것까지 열쇠에 넣으면
+ * <b>다른 자리에서 장소를 교체할 때마다 이 자리의 목록이 다시 뽑힌다.</b>
+ * A자리 시트에서 후보를 봐 두고, C자리를 교체한 뒤 A자리를 다시 열면 목록이 통째로 바뀐다 —
+ * 되돌아갈 후보가 사라지는 바로 그 상황이다.
+ *
+ * 그래서 둘의 역할을 나눈다. <b>서버 exclude는 뽑을 때의 낭비를 줄이고, 화면 필터는
+ * 이미 뽑아 둔 목록을 최신 코스에 맞춘다.</b> 화면 필터를 없애면 안 되는 이유다 —
+ * 목록은 처음 뽑힌 그대로인데 코스만 계속 달라지기 때문이다.
  */
 
 /** 여행 조건이 같은지 가리는 열쇠. 이 값이 바뀌면 모아둔 것을 전부 버린다. */
 let currentPlanKey: string | null = null
 
-const entries = new Map<string, Alternative[]>()
+const entries = new Map<string, Alternatives>()
 
 /** 지역·시작일·기간을 한 문자열로 묶는다. 셋 중 하나만 바뀌어도 다른 값이 된다. */
 export function planKeyOf(region: string, startDate: string, nights: number): string {
@@ -49,8 +59,8 @@ export async function alternativesFor(
   planKey: string,
   placeId: string,
   visitDate: string,
-  fetcher: () => Promise<Alternative[]>,
-): Promise<Alternative[]> {
+  fetcher: () => Promise<Alternatives>,
+): Promise<Alternatives> {
   if (planKey !== currentPlanKey) {
     entries.clear()
     currentPlanKey = planKey

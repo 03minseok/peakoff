@@ -66,6 +66,10 @@ public record PublicCourseSummary(
 	public record PublicPlace(int day, int order, String placeId, String name) {
 	}
 
+	/**
+	 * ⚠️ <b>총점이 있는 코스만 넘어온다.</b> {@code SavedCourseService.recent()}가 걸러 준다 —
+	 * 이 응답에는 점수를 비울 자리가 없다(원형 게이지와 배지가 그 값을 전제한다).
+	 */
 	public static PublicCourseSummary from(SavedCourse course) {
 		CongestionLevel level = CongestionLevel.fromQuietness(course.totalQuietness());
 

@@ -100,17 +100,39 @@ class ApiEndpointsTest {
 					.param("date", "2026-09-16")
 					.param("limit", "3"))
 					.andExpect(status().isOk())
-					.andExpect(jsonPath("$.data.length()").value(3))
-					.andExpect(jsonPath("$.data[0].quietness").isNumber())
-					.andExpect(jsonPath("$.data[0].recommendation").isNumber())
-					.andExpect(jsonPath("$.data[0].levelLabel").isNotEmpty())
-					.andExpect(jsonPath("$.data[0].reason")
-							.value(org.hamcrest.Matchers.startsWith("불국사에서 가까운 같은 분류(")))
+					.andExpect(jsonPath("$.data.status").value("RECOMMENDED"))
+					// 추천이 있으면 덧붙일 말이 없다. 목록 자체가 답이다.
+					.andExpect(jsonPath("$.data.statusMessage").doesNotExist())
+					// 후보의 절대 점수만으로는 "지금보다 나은가"를 알 수 없다.
+					.andExpect(jsonPath("$.data.originQuietness").isNumber())
+					// 임계값은 서버가 내려보낸다. 화면에 숫자를 박으면 한쪽만 바뀐다.
+					.andExpect(jsonPath("$.data.minQuietnessGain").isNumber())
+					.andExpect(jsonPath("$.data.alternatives.length()").value(3))
+					.andExpect(jsonPath("$.data.alternatives[0].quietness").isNumber())
+					.andExpect(jsonPath("$.data.alternatives[0].recommendation").isNumber())
+					.andExpect(jsonPath("$.data.alternatives[0].levelLabel").isNotEmpty())
+					.andExpect(jsonPath("$.data.alternatives[0].reason")
+							.value(org.hamcrest.Matchers.startsWith("불국사 근처의 비슷한 분류")))
 					// 추천도가 어떻게 나왔는지 화면에서 설명할 수 있어야 한다.
-					.andExpect(jsonPath("$.data[0].factors[0].label").value("한적도"))
-					.andExpect(jsonPath("$.data[0].factors[0].score").isNumber())
-					.andExpect(jsonPath("$.data[0].factors[0].weightPercent").isNumber())
-					.andExpect(jsonPath("$.data[0].factors[0].detail").isNotEmpty());
+					.andExpect(jsonPath("$.data.alternatives[0].factors[0].label").value("한적도"))
+					.andExpect(jsonPath("$.data.alternatives[0].factors[0].score").isNumber())
+					.andExpect(jsonPath("$.data.alternatives[0].factors[0].weightPercent").isNumber())
+					.andExpect(jsonPath("$.data.alternatives[0].factors[0].detail").isNotEmpty());
+		}
+
+		/**
+		 * 하한이 생기면서 목록이 비는 일이 흔해졌다. 빈 목록이 <b>왜</b> 비었는지를
+		 * 함께 내려보내지 않으면 화면은 "데이터가 부실하다"로만 말하게 된다.
+		 */
+		@Test
+		@DisplayName("추천할 것이 없어도 이유가 함께 온다")
+		void emptyListCarriesItsReason() throws Exception {
+			// 음식점은 공사 예측 대상이 아니라 개선폭을 잴 기준 자체가 없다.
+			mockMvc.perform(get("/api/places/mock-gyorigimbap/alternatives")
+					.param("date", "2026-09-16"))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.data.status").isNotEmpty())
+					.andExpect(jsonPath("$.data.minQuietnessGain").isNumber());
 		}
 
 		@Test

@@ -4,6 +4,34 @@ import { alternativesFor, forgetAlternatives } from '../services/alternativeCach
 import type { Alternative, CongestionLevel, NearbyPlace } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
 
+/**
+ * 한 번에 보여줄 대안 수. <b>이 숫자가 추천 분산의 세기를 정한다.</b>
+ *
+ * <h3>왜 8에서 줄였나 (2026-08-26)</h3>
+ * 서버는 자격 후보들 중에서 가중 무작위로 이만큼을 뽑는다. 그런데 <b>요청 수가 후보 수보다
+ * 크거나 같으면 전부 뽑히므로 뽑기가 고를 것이 없다</b> — 실측상 자격 후보가 8곳 이하인
+ * 자리가 89.2%였다. 분산 장치가 대부분의 장소에서 아무 일도 하지 않고 있었다.
+ *
+ * <p>같은 자리를 40번씩 불러 실제로 재 봤다(서귀포해양도립공원·가새기오름·경주 동부
+ * 사적지대·협재해수욕장, 자격 후보 10~20곳):
+ *
+ * <pre>
+ *   요청 8 → 1등이 같은 곳으로 나온 비율 95~100%
+ *   요청 5 → 90~98%   (거의 나아지지 않는다)
+ *   요청 3 → 68~82%
+ * </pre>
+ *
+ * <p>5는 8과 다를 바가 없어서 3으로 내렸다. 후보 수를 넘지 않아야 뽑기가 일한다.
+ *
+ * <h3>⚠️ 이것만으로는 부족하다</h3>
+ * 3으로 내려도 1등은 여전히 열 번 중 일곱 번쯤 같은 곳이다. <b>뽑은 뒤 추천도 순으로
+ * 다시 정렬</b>하기 때문에, 최고점이 뽑히기만 하면 언제나 맨 위로 올라온다.
+ * 그 정렬을 없애는 것이 분산에는 훨씬 세지만 CLAUDE.md의
+ * <i>"정렬 기준이 곧 화면에 보이는 값이어야 한다"</i>와 부딪힌다.
+ * 남은 판단은 {@code docs/OPEN_DECISIONS.md} 14번에 적어 두었다.
+ */
+const ALTERNATIVE_COUNT = 3
+
 interface Props {
   /** 교체 대상 장소 */
   originName: string
@@ -45,7 +73,7 @@ interface Props {
  */
 type LoadState =
   | { phase: 'loading' }
-  | { phase: 'loaded'; alternatives: Alternative[] }
+  | { phase: 'loaded'; alternatives: Alternative[]; emptyMessage: string | null }
   | { phase: 'nearby'; nearby: NearbyPlace[] }
   | { phase: 'error'; message: string }
 
@@ -118,13 +146,33 @@ export function AlternativeSheet({
           setLoad({ phase: 'nearby', nearby: selectable })
         })
       : alternativesFor(planKey, originPlaceId, visitDate, () =>
-          fetchAlternatives(originPlaceId, visitDate, 8, controller.signal),
+          fetchAlternatives(
+            originPlaceId,
+            visitDate,
+            ALTERNATIVE_COUNT,
+            excludePlaceIds,
+            controller.signal,
+          ),
         ).then((result) => {
           // 이미 그 날에 담긴 곳은 고를 수 없으므로 아예 보여주지 않는다.
-          const selectable = result.filter(
+          const selectable = result.alternatives.filter(
             (item) => !excludePlaceIds.includes(item.place.id),
           )
-          setLoad({ phase: 'loaded', alternatives: selectable })
+          /*
+           * 목록이 왜 비었는지는 서버가 말한다. 원래 자리가 이미 한적해서 비는 것과
+           * 대신할 곳을 못 찾아서 비는 것은 정반대의 소식이라, 한 문장으로 뭉개면
+           * 잘 고른 사용자에게 서비스가 못했다고 사과하는 꼴이 된다.
+           *
+           * 다만 걸러낸 것이 우리 쪽 사정(이미 코스에 담긴 곳)일 때는 서버 문구가 맞지 않는다.
+           * 서버는 후보를 줬는데 화면이 뺀 것이라, "못 찾았다"고 말하면 거짓말이 된다.
+           */
+          const emptyMessage =
+            selectable.length > 0
+              ? null
+              : result.alternatives.length > 0
+                ? '남은 후보가 이미 이 날 코스에 담겨 있어요.'
+                : result.statusMessage
+          setLoad({ phase: 'loaded', alternatives: selectable, emptyMessage })
         })
 
     request
@@ -252,13 +300,21 @@ export function AlternativeSheet({
             근처 모드에서는 <b>추천이라고 말하지 않는다.</b> 예상 혼잡을 모르는 곳이라
             "여기가 더 낫다"고 할 근거가 없다. 우리가 아는 것(분류·거리)만 말하고
             <b>고르는 판단은 사용자에게 남긴다</b> — 계산하지 않은 것을 근거로 말하지 않는다.
+
+            ⚠️ <b>"추천도가 높은 순"이라고 쓰지 않는다.</b> 서버가 상위 후보 Pool에서
+            가중 무작위로 뽑은 순서를 그대로 내려보내므로, 82점 아래 79점이 설 수 있다.
+            순서를 오해하게 두면 화면이 거짓말을 하는 셈이다.
+
+            대신 <b>매번 새로 뽑는다는 사실 자체를 말한다.</b> 같은 대안이 모든 사용자에게
+            반복 추천되면 그곳이 새로운 혼잡지가 되기 때문인데(2차 오버투어리즘),
+            그 장치가 여기서 눈에 보여야 "왜 순서가 이런가"에 답이 된다.
           */}
           <p className="m-0 text-[13px] leading-[1.6] text-pretty whitespace-pre-line">
             {nearbyMode
               ? '예상 혼잡을 알 수 없는 곳이라 추천 순서를 매기지 못해요.\n같은 분류에서 가까운 순으로 보여드릴게요.'
               : originLevel === 'CROWDED'
-                ? '추천도가 높은 순이에요.\n추천도에는 한적도가 가장 크게 반영됩니다.'
-                : '지금도 크게 붐비지는 않는 곳이에요.\n추천도가 높은 순으로 비교해 보세요.'}
+                ? '추천도 상위 후보에서 매번 새로 뽑아요.\n추천도에는 한적도가 가장 크게 반영됩니다.'
+                : '지금도 크게 붐비지는 않는 곳이에요.\n추천도 상위 후보에서 매번 새로 뽑았어요.'}
           </p>
         </header>
 
@@ -271,8 +327,16 @@ export function AlternativeSheet({
             <p className="text-crowded-deep py-6 text-center text-sm whitespace-pre-line">{load.message}</p>
           )}
 
+          {/*
+            빈 목록에도 이유가 붙는다. 서버가 원래 장소보다 뚜렷하게 한적한 곳만 담기 때문에
+            비는 일이 흔한데, "이미 한적해서"와 "못 찾아서"는 사용자에게 정반대의 말이다.
+            문구를 서버가 들고 있는 이유는 임계값을 서버에 두는 것과 같다 —
+            판단의 근거와 그것을 설명하는 말이 갈라지면 한쪽만 바뀐다.
+          */}
           {load.phase === 'loaded' && load.alternatives.length === 0 && (
-            <p className="py-6 text-center text-sm">추천할 만한 다른 곳을 찾지 못했어요.</p>
+            <p className="py-6 text-center text-sm whitespace-pre-line">
+              {load.emptyMessage ?? '추천할 만한 다른 곳을 찾지 못했어요.'}
+            </p>
           )}
 
           {/*

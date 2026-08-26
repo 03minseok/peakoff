@@ -13,6 +13,13 @@ export type ApiErrorCode =
   | 'UNAUTHORIZED'
   /** 이미 가입된 이메일 */
   | 'CONFLICT'
+  /**
+   * 공공데이터에 닿지 못했다. <b>우리 잘못이 아니라 남의 사정이라 기다리면 낫는다.</b>
+   *
+   * INTERNAL_ERROR와 갈라 받는 이유: 500은 "서버가 깨졌다"이고 이것은 "지금은 안 되지만
+   * 곧 된다"이다. 화면이 같은 말로 뭉개면 사용자가 다시 시도할 이유를 알 수 없다.
+   */
+  | 'EXTERNAL_UNAVAILABLE'
 
 /** 서버 CongestionLevel enum과 같은 값. */
 export type CongestionLevel = 'CROWDED' | 'MODERATE' | 'QUIET'
@@ -65,6 +72,66 @@ export interface Alternative {
   levelLabel: string
   factors: ScoreFactor[]
   reason: string
+}
+
+/**
+ * 왜 이런 대안 목록이 나왔는가. 서버 PlaceOffStatus.
+ *
+ * <b>빈 목록이 비는 이유가 여럿이라 필요해졌다.</b> 원래 자리가 이미 한적해서 비는 것과
+ * 대신할 곳을 못 찾아서 비는 것은 사용자에게 정반대의 소식인데, 같은 빈 화면으로 뭉개면
+ * 둘 다 "이 서비스는 데이터가 부실하다"로 읽힌다.
+ */
+export type PlaceOffStatus =
+  | 'RECOMMENDED'
+  | 'ALREADY_QUIET'
+  /** 더 한적한 곳을 찾긴 했는데 전부 이미 그 날 코스에 담겨 있다 */
+  | 'ALL_CANDIDATES_IN_COURSE'
+  | 'NO_MEANINGFUL_IMPROVEMENT'
+  | 'NO_VALID_CANDIDATE'
+  | 'ORIGIN_NOT_FORECASTED'
+
+/**
+ * 서버 AlternativesResponse. 후보 목록과 <b>그 목록이 나온 이유</b>가 한 덩어리다.
+ *
+ * 서버는 원래 장소보다 `minQuietnessGain`점 이상 한적한 곳만 담는다. 하한이 없으면
+ * 더 붐비는 곳도 대안으로 나가, 붐빔을 피하라는 서비스가 더 붐비는 곳을 권하게 된다.
+ *
+ * ⚠️ `minQuietnessGain`을 화면에 숫자로 박아두지 말 것. 분석 결과로 기준이 바뀌면
+ * 설명과 실제가 어긋난다 — 날짜 대안의 `minImprovement`와 같은 이유다.
+ */
+/**
+ * 후보를 어디서 가져왔는가. 서버 CandidateSource.
+ *
+ * ⚠️ 이 값을 화면에 그대로 쓰지 말 것. 사용자에게 필요한 것은 "REGIONAL_FALLBACK"이 아니라
+ * 그 장소가 왜 나왔는지이고, 각 후보의 `reason`이 이미 출처에 맞는 말을 담고 있다.
+ */
+export type CandidateSource = 'RELATED' | 'REGIONAL_FALLBACK'
+
+export interface Alternatives {
+  status: PlaceOffStatus
+  /** 목록이 비었으면 null */
+  source: CandidateSource | null
+  /** 화면에 그대로 띄우는 문구. 추천이 있으면 null이다 — 목록 자체가 답이다 */
+  statusMessage: string | null
+  /** 원래 장소의 그 날 한적도. 모르면 null */
+  originQuietness: number | null
+  /** 대안으로 권하려면 필요한 최소 개선폭. 서버가 정한다 */
+  minQuietnessGain: number
+  alternatives: Alternative[]
+}
+
+/**
+ * 서버 ForecastWindowResponse. 예측이 닿는 기간.
+ *
+ * <b>고르지 못하게 하는 상한이 아니다.</b> 여행은 미리 계획하는 것이라 창 밖 날짜로도
+ * 코스를 짤 수 있다. 이 값은 "그 날짜는 지금 진단이 비어 나온다"를 <b>미리</b> 알려주는 데 쓴다.
+ *
+ * lastDate가 null이면 안내를 그리지 않는다 — 목업으로 도는 동안이 그렇다(날짜 제한이 없다).
+ */
+export interface ForecastWindow {
+  /** 서버 시계 기준 오늘. 화면 시계로 계산하면 자정 무렵에 하루가 어긋난다 */
+  firstDate: string
+  lastDate: string | null
 }
 
 /** 진단 요청의 슬롯. 한적도가 없는 것이 핵심 — 점수는 서버가 매겨서 돌려준다. */
@@ -136,9 +203,41 @@ export interface CourseDiagnosis {
   totalQuietness: number | null
   totalLevel: CongestionLevel | null
   totalLevelLabel: string | null
-  /** 실제로 점수가 매겨진 칸 수. 화면이 "3곳 중 0곳 기준"이라 말할 수 있게 한다 */
+  /**
+   * 총점을 <b>숫자로 보여줘도 되는가.</b> 서버가 판단한다(진단 2곳 이상 · 진단율 50% 이상).
+   *
+   * ⚠️ 이 값이 false여도 `totalQuietness`에는 값이 들어 있다. **저장에 쓰라고 남긴 것**이지
+   * 화면에 띄우라는 뜻이 아니다 — 관광지 셋 중 하나만 진단된 코스에서 그 하나를
+   * "코스 총점"이라 부르면 설명할 수 없다.
+   *
+   * 거짓이면 숫자 대신 `levelCounts` 요약을 편다.
+   */
+  totalPresentable: boolean
+  /** 실제로 점수가 매겨진 칸 수. 총점의 분자 */
   diagnosedCount: number
+  /**
+   * 공사가 예측하기로 되어 있는 분류의 칸 수. 총점의 분모.
+   * 음식점·숙박·쇼핑은 빠진다 — "관광지 3곳 중 2곳 기준"의 3이 이 값이다.
+   */
+  forecastTargetCount: number
+  /** 등급별 칸 수. 총점을 못 보여줄 때 대신 펴는 요약 */
+  levelCounts: LevelCounts
   slots: DiagnosedSlot[]
+}
+
+/**
+ * 등급별 칸 수. 평균이 아니라 <b>사실의 나열</b>이라, 근거가 얇아도 정직하다.
+ */
+export interface LevelCounts {
+  quiet: number
+  moderate: number
+  crowded: number
+  /** 관광지인데 예측 자료가 없다. 날짜를 바꿔도 없다 */
+  notForecasted: number
+  /** 관광지인데 그 날짜가 예측 범위 밖. 기다리면 생긴다 */
+  outOfForecastDate: number
+  /** 애초에 예측 대상 분류가 아니다 (음식점·숙박·쇼핑) */
+  notTargeted: number
 }
 
 /*
@@ -157,7 +256,7 @@ export interface CourseDiagnosis {
  * 맛집·체험·레저를 고르면 후보가 하나도 남지 않아 추천이 실패했다.
  * 밥집은 코스 편집에서 직접 담는다 — 담는 것은 막지 않고 진단에서만 빠진다.
  */
-export type TravelStyle = 'HISTORY' | 'NATURE'
+export type TravelStyle = 'HISTORY' | 'NATURE' | 'CULTURE'
 
 /** 설문 2번 — 일정 밀도. 일자별로 몇 곳을 담을지 */
 export type ItineraryDensity = 'RELAXED' | 'BALANCED' | 'PACKED'
@@ -255,7 +354,20 @@ export interface SaveCourseRequest {
   region: string
   startDate: string
   nights: number
-  totalQuietness: number
+  /**
+   * 진단에서 받은 총점. <b>진단되지 않은 코스는 null</b>이고 그대로 보낸다.
+   * 0으로 채우면 서버가 "매우 붐빔"인 코스로 저장한다.
+   */
+  totalQuietness: number | null
+  /**
+   * 그 총점이 몇 곳을 근거로 한 값인지. 진단 응답에서 받은 값을 그대로 보낸다.
+   *
+   * 점수만 남기면 나중에 열었을 때 <b>근거가 얇은 점수와 두꺼운 점수가 같은 무게로</b>
+   * 나란히 선다. 화면에 숫자를 못 띄우는 코스도 저장은 되므로(그게 맞다) 더 필요하다 —
+   * 숫자를 감추는 대신 맥락을 붙이는 쪽을 골랐기 때문이다.
+   */
+  diagnosedCount: number
+  forecastTargetCount: number
   slots: CourseSlotRequest[]
 }
 
@@ -274,12 +386,28 @@ export interface SavedCourseSummary {
   endDate: string
   nights: number
   days: number
-  totalQuietness: number
-  level: CongestionLevel
-  levelLabel: string
+  /**
+   * 저장 시점의 총점. <b>없을 수 있다.</b>
+   *
+   * 두 경우이고 사용자에게 뜻이 다르다 — 여행일이 예측 창 밖이라 <b>아직</b> 없거나,
+   * 밥집만 담아 <b>영영</b> 없거나. 둘 다 저장은 된다. 저장은 재료를 남기는 일이고
+   * 점수는 있으면 함께 남기는 것이다.
+   */
+  totalQuietness: number | null
+  level: CongestionLevel | null
+  levelLabel: string | null
   placeCount: number
-  /** 그 점수를 매긴 시각 (ISO). 저장 시점의 판단이라는 것을 화면에서 밝힐 수 있다 */
-  scoredAt: string
+  /**
+   * 그 총점을 매긴 칸 수와 예측 대상 관광지 수.
+   *
+   * ⚠️ **이 컬럼이 생기기 전에 저장한 코스는 null이다.** 그때는 숫자만 보여주고
+   * "몇 곳 중 몇 곳"을 말하지 않는다 — 모르는 것을 0으로 채우면
+   * "근거가 하나도 없는 점수"라는 거짓말이 된다.
+   */
+  diagnosedCount: number | null
+  forecastTargetCount: number | null
+  /** 그 점수를 매긴 시각 (ISO). 총점이 없으면 이것도 null이다 — 매긴 적이 없으니까 */
+  scoredAt: string | null
   createdAt: string
 }
 

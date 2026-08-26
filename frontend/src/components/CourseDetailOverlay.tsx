@@ -149,15 +149,27 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
                       원형 게이지. 색은 CSS 변수로 넘긴다 — 값이 실행 중에 정해져
                       클래스로 만들 수 없지만, 색 정의는 여전히 index.css 한 곳에만 남는다.
                     */}
+                    {/*
+                      점수가 없으면 <b>게이지를 비워 둔다.</b> 0%로 그리면 텅 빈 고리가
+                      "매우 붐빔"으로 읽히고, 100%로 채우면 반대 거짓말이 된다.
+                      테두리 색(--c-line)만 남겨 "아직 재지 않았다"를 모양으로 말한다.
+                    */}
                     <div
                       className="grid h-[92px] w-[92px] flex-none place-items-center rounded-full p-2"
                       style={{
-                        background: `conic-gradient(${LEVEL_COLOR_VAR[course.level]} ${course.totalQuietness}%, var(--c-line) 0)`,
+                        background:
+                          course.level === null || course.totalQuietness === null
+                            ? 'var(--c-line)'
+                            : `conic-gradient(${LEVEL_COLOR_VAR[course.level]} ${course.totalQuietness}%, var(--c-line) 0)`,
                       }}
                     >
                       <div className="bg-surface flex h-[76px] w-[76px] flex-col items-center justify-center rounded-full">
-                        <span className="text-fg font-mono text-[26px] leading-none font-semibold">
-                          {course.totalQuietness}
+                        <span
+                          className={`font-mono text-[26px] leading-none font-semibold ${
+                            course.totalQuietness === null ? 'text-hint' : 'text-fg'
+                          }`}
+                        >
+                          {course.totalQuietness ?? '—'}
                         </span>
                         <span className="text-hint text-[10.5px]">한적 지수</span>
                       </div>
@@ -165,9 +177,11 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
 
                     <div className="flex flex-col items-start gap-1.5">
                       <span
-                        className={`rounded-full px-2.75 py-1 text-[12.5px] font-semibold ${LEVEL_TINT[course.level]}`}
+                        className={`rounded-full px-2.75 py-1 text-[12.5px] font-semibold ${
+                          course.level === null ? 'bg-bg text-hint' : LEVEL_TINT[course.level]
+                        }`}
                       >
-                        {course.levelLabel}
+                        {course.levelLabel ?? '아직 진단 전'}
                       </span>
                       <span className="text-muted text-[12.5px]">
                         담긴 장소 {course.places.length}곳

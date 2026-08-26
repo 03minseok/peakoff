@@ -92,6 +92,8 @@ public class SavedCourseService {
 				request.startDate(),
 				request.nights(),
 				request.totalQuietness(),
+				request.diagnosedCount(),
+				request.forecastTargetCount(),
 				entries,
 				now);
 
@@ -147,7 +149,16 @@ public class SavedCourseService {
 				? savedCourseRepository.findTop12ByOrderByCreatedAtDesc()
 				: savedCourseRepository.findTop12ByMemberIdNotOrderByCreatedAtDesc(viewerId);
 
+		/*
+		 * <b>진단되지 않은 코스는 뺀다.</b> 총점이 없으면 홈 카드의 원형 게이지와 배지가
+		 * 성립하지 않는다 — 그리고 애초에 "다른 사람들의 여행"으로 아직 재보지도 않은
+		 * 코스를 내밀 이유가 없다. 이 목록의 값은 "남들은 얼마나 한적하게 다녔나"다.
+		 *
+		 * 거르기를 limit 앞에 둔다. 뒤에 두면 진단 안 된 코스가 자리를 차지해
+		 * 보여줄 수 있는 코스가 있는데도 목록이 짧아진다.
+		 */
 		return courses.stream()
+				.filter(course -> course.totalQuietness() != null)
 				.limit(limit)
 				.map(PublicCourseSummary::from)
 				.toList();

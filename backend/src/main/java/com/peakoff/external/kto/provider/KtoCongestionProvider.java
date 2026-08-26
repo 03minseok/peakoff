@@ -3,6 +3,7 @@ package com.peakoff.external.kto.provider;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.function.Predicate;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,6 +14,7 @@ import com.peakoff.external.kto.client.KtoCongestionClient;
 import com.peakoff.external.kto.client.RegionForecast;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.global.support.Scores;
+import com.peakoff.place.domain.Distances;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.PlaceProvider;
@@ -37,6 +39,28 @@ import com.peakoff.place.domain.SupportedRegion;
 @RequiredArgsConstructor
 public class KtoCongestionProvider implements CongestionProvider {
 
+	/**
+	 * 이름이 닮은 두 곳을 같은 장소로 볼 수 있는 최대 직선거리.
+	 *
+	 * <p>실측 분포가 이 값을 정했다(5개 지역, 2026-08-25). 이름으로 이어진 짝들의 실제 거리를
+	 * 재 보면 <b>3.6km와 5.1km 사이가 비어 있다</b> — 아래쪽은 "경주 남산 칠불암 → 경주 남산"
+	 * 처럼 한 권역 안의 짝이고, 위쪽은 "월성원자력홍보관 → 경주 월성"처럼 남남이다.
+	 *
+	 * <p>2km는 그 빈 구간보다 더 좁게 잡은 값이다. 남산 자락 유적 다섯 곳(2.2~3.4km)과
+	 * 우도·차귀도 안의 짝들이 함께 끊기지만, <b>애매하면 잇지 않는다</b>는 원칙을 따랐다 —
+	 * 남산 입구의 혼잡도를 산 반대편 칠불암의 것이라고 말할 근거가 없다.
+	 * 끊긴 자리는 "예상 혼잡 정보가 없는 장소"로 정직하게 표시된다.
+	 */
+	private static final double MAX_LINK_DISTANCE_KM = 2.0;
+
+	/**
+	 * 이름으로 장소를 되찾을 때 훑을 검색 결과 수.
+	 *
+	 * <p>검색은 부분 일치라 "한라산"으로 물으면 둘레길·국립공원까지 딸려 온다. 그중에서
+	 * 이름이 정확히 같은 하나를 고르므로, 넉넉히 받아 두고 걸러야 진짜가 뒤에 밀려 잘리지 않는다.
+	 */
+	private static final int NAME_LOOKUP_LIMIT = 50;
+
 	private final KtoCongestionClient client;
 	private final PlaceProvider placeProvider;
 	private final PlaceNameMatcher nameMatcher;
@@ -52,9 +76,22 @@ public class KtoCongestionProvider implements CongestionProvider {
 	}
 
 	private Optional<Located> locate(String placeId) {
+		/*
+		 * 장소는 <b>지역 루프 밖에서 한 번만</b> 찾는다. 장소가 지역마다 달라지지 않는데
+		 * 예전에는 루프 안(apiNameOf)에서 findById를 지역 수만큼 불렀다 — 카탈로그에 있으면
+		 * 메모리 조회라 낭비로 끝나지만, <b>카탈로그 밖 장소는 상세 조회가 지역 수만큼 나갔다.</b>
+		 * 진단 한 칸에 공사 호출이 3배가 되는 자리였다.
+		 */
+		Optional<Place> found = placeProvider.findById(placeId)
+				.filter(place -> PlaceCategories.isForecastTarget(place.category()));
+		if (found.isEmpty()) {
+			return Optional.empty();
+		}
+		Place place = found.get();
+
 		for (Region region : SupportedRegion.allRegions()) {
 			RegionForecast forecast = client.forecastOf(region);
-			Optional<String> apiName = apiNameOf(placeId, region, forecast);
+			Optional<String> apiName = apiNameOf(place, region, forecast);
 			if (apiName.isPresent()) {
 				return Optional.of(new Located(forecast, apiName.get()));
 			}
@@ -111,7 +148,10 @@ public class KtoCongestionProvider implements CongestionProvider {
 	}
 
 	/**
-	 * 우리 장소 id → 이름 → 공사 이름으로 잇는다. 못 이으면 비어 있다.
+	 * 우리 장소의 이름을 그 지역의 공사 이름으로 잇는다. 못 이으면 비어 있다.
+	 *
+	 * <p>장소 조회와 분류 게이트는 {@link #locate}가 루프 밖에서 이미 끝냈다 —
+	 * 여기는 "이 지역의 예측 목록에 이 이름이 있는가"만 답한다.
 	 *
 	 * <h3>이름을 대보기 전에 분류부터 보는 이유</h3>
 	 * 이름 매칭은 <b>양쪽 어느 쪽이 길든 품으면 잇는다.</b> 대릉원(우리) ↔ 대릉원 일원(공사)을
@@ -126,18 +166,92 @@ public class KtoCongestionProvider implements CongestionProvider {
 	 * 배지가 서는 것으로 끝나지 않고 코스 총점까지 오염된다 — 계산하지 않은 것을 근거로
 	 * 말하지 않는다는 규칙이 정확히 이 자리를 막는다.
 	 *
-	 * <p>분류로 먼저 거르면 이 부류가 통째로 사라진다. 공사 집중률은 관광지만 예측하므로
-	 * 음식점·숙박은 <b>이름이 아무리 닮아도 이을 곳이 없는 것이 맞다.</b> 쇼핑·체험·레저·축제
-	 * 14곳을 실제로 진단해 봐도 지금 이어지는 곳이 하나도 없어, 걸러서 잃는 것은 없다.
+	 * <p>분류로 먼저 거르면 이 부류가 통째로 사라진다. 공사 집중률은 음식점·숙박을 예측하지
+	 * 않으므로 <b>이름이 아무리 닮아도 이을 곳이 없는 것이 맞다.</b>
+	 *
+	 * <p>쇼핑은 2026-08-26에 열었다 — 공사가 예측하는 쇼핑은 시장뿐이라(동문재래시장·
+	 * 서귀포매일올레시장·광장시장) 막아 둘 이유가 없었다. 대신 그 분류는
+	 * <b>이름이 정확히 같을 때만</b> 잇는다({@link #plausibilityOf}).
 	 *
 	 * <p>이 자리에 둔 이유는 {@code quietnessOf}와 {@code hasData} 둘이 전부 여기를
 	 * 지나기 때문이다. 한 군데만 막으면 점수·배지·총점이 함께 정리된다.
 	 */
-	private Optional<String> apiNameOf(String placeId, Region region, RegionForecast forecast) {
-		return placeProvider.findById(placeId)
-				.filter(place -> PlaceCategories.isForecastTarget(place.category()))
-				.map(Place::name)
-				.flatMap(name -> nameMatcher.match(name, region, forecast.placeNames()));
+	private Optional<String> apiNameOf(Place place, Region region, RegionForecast forecast) {
+		return nameMatcher.match(place.name(), region, forecast.placeNames(),
+				plausibilityOf(place, region));
+	}
+
+	/**
+	 * 포함 매칭으로 걸린 후보를 어떻게 거를지. <b>분류마다 다르다.</b>
+	 *
+	 * <p>쇼핑은 아예 통과시키지 않는다 — 상호에 지명을 붙이는 관습이 있어
+	 * "다이소 경복궁역점"이 "경복궁"에 걸린다. <b>좌표로도 못 막는다</b>:
+	 * 그 가게는 실제로 경복궁 2km 안에 있다. 이름도 닮고 위치도 가까운데 같은 장소가 아니다.
+	 *
+	 * <p>완전 일치 단계는 이 거름망을 타지 않으므로, 동문재래시장·광장시장처럼
+	 * <b>공사가 그 이름 그대로 예측하는 시장은 그대로 이어진다.</b>
+	 *
+	 * @see PlaceCategories#requiresExactNameMatch(com.peakoff.place.domain.PlaceCategory)
+	 */
+	private Predicate<String> plausibilityOf(Place origin, Region region) {
+		if (PlaceCategories.requiresExactNameMatch(origin.category())) {
+			return forecastName -> false;
+		}
+		return forecastName -> couldBeSamePlace(origin, forecastName, region);
+	}
+
+	/**
+	 * 이름이 닮은 두 곳이 <b>같은 장소일 수 있는가</b>를 좌표로 가른다.
+	 *
+	 * <h3>왜 이름만으로는 안 되는가</h3>
+	 * 이름 매칭은 한쪽이 다른 쪽을 품으면 잇는다. 그 규칙이 "대릉원 ↔ 경주 대릉원 일원"을
+	 * 살리는 동시에 이런 것도 이어 버린다 (5개 지역 실측, 2026-08-25):
+	 *
+	 * <pre>
+	 * "월성원자력홍보관"  → 집중률 "경주 월성(반월성)"   26.4km 떨어져 있다
+	 * "경주 나정"         → 집중률 "나정고운모래해변"    25.4km
+	 * "플래시백 계림"     → 집중률 "경주 계림"            6.6km
+	 * </pre>
+	 *
+	 * <p>글자로는 못 가른다. "나정"과 "나정고운모래해변"은 부모·자식처럼 보이고,
+	 * 길이 비율로 자르면 "경주 남산 칠불암 → 경주 남산"처럼 살려야 할 짝까지 끊긴다.
+	 * 좌표는 그 둘을 정확히 가른다.
+	 *
+	 * <h3>어떻게 좌표를 얻는가</h3>
+	 * 집중률 응답에는 좌표가 없다. 대신 <b>그 이름이 우리 카탈로그에도 있으면</b> 거기에 좌표가
+	 * 있다 — 실측 포함 매칭 126건 중 80건이 이 방법으로 검증됐다.
+	 * 못 찾으면 <b>통과시킨다.</b> 검증하지 못한 것을 끊으면 규칙이 아니라 자료 유무로
+	 * 장소가 사라진다.
+	 *
+	 * <p>자기 자신을 찾은 경우도 통과다. 우리 장소의 이름이 곧 집중률 이름이라는 뜻이라
+	 * 견줄 상대가 없다.
+	 */
+	private boolean couldBeSamePlace(Place origin, String forecastName, Region region) {
+		return placeNamed(forecastName, region)
+				.filter(anchor -> !anchor.id().equals(origin.id()))
+				.map(anchor -> Distances.betweenKm(origin, anchor) <= MAX_LINK_DISTANCE_KM)
+				.orElse(true);
+	}
+
+	/**
+	 * 공사가 부르는 그 이름의 장소를 우리 카탈로그에서 찾는다. 없으면 빈 값.
+	 *
+	 * <p><b>포함이 아니라 정규화 완전 일치다.</b> 검색은 후보를 불러오는 수단일 뿐이고,
+	 * 판정은 {@link PlaceNameMatcher#normalized}가 한다 — 여기서 포함 매칭을 또 쓰면
+	 * 지금 막으려는 그 문제를 검증 단계에서 되풀이하게 된다.
+	 *
+	 * <p>{@code PlaceProvider}를 거치는 이유: 카탈로그 클라이언트를 직접 부르면
+	 * 장소가 목업인 설정에서 이 검증만 실데이터를 보게 된다.
+	 */
+	private Optional<Place> placeNamed(String forecastName, Region region) {
+		String target = nameMatcher.normalized(forecastName, region);
+		if (target.isEmpty()) {
+			return Optional.empty();
+		}
+		return placeProvider
+				.search(region, PlaceNameMatcher.searchKeyword(forecastName), NAME_LOOKUP_LIMIT).stream()
+				.filter(place -> nameMatcher.normalized(place.name(), region).equals(target))
+				.findFirst();
 	}
 
 	/**

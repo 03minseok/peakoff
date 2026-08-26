@@ -25,9 +25,11 @@ public record SavedCourseDetail(
 		LocalDate endDate,
 		int nights,
 		int days,
-		int totalQuietness,
+		Integer totalQuietness,
 		CongestionLevel level,
 		String levelLabel,
+		Integer diagnosedCount,
+		Integer forecastTargetCount,
 		Instant scoredAt,
 		Instant createdAt,
 		List<SavedPlace> places) {
@@ -46,7 +48,12 @@ public record SavedCourseDetail(
 
 	/** 저장된 내용만으로 만든다. 장소 쪽에 묻지 않는다. */
 	public static SavedCourseDetail from(SavedCourse course) {
-		CongestionLevel level = CongestionLevel.fromQuietness(course.totalQuietness());
+		/*
+		 * 총점이 없으면 등급도 없다. 없는 점수에 등급을 붙이면 "붐빔"이 되어,
+		 * 아직 재보지도 않은 코스를 최악이라고 말하게 된다.
+		 */
+		Integer total = course.totalQuietness();
+		CongestionLevel level = total == null ? null : CongestionLevel.fromQuietness(total);
 
 		List<SavedPlace> places = course.places().stream()
 				.map(place -> new SavedPlace(
@@ -65,9 +72,11 @@ public record SavedCourseDetail(
 				course.endDate(),
 				course.nights(),
 				course.days(),
-				course.totalQuietness(),
+				total,
 				level,
-				level.label(),
+				level == null ? null : level.label(),
+				course.diagnosedCount(),
+				course.forecastTargetCount(),
 				course.scoredAt(),
 				course.createdAt(),
 				places);

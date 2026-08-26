@@ -1,6 +1,7 @@
 package com.peakoff.congestion.domain;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 /**
  * 특정 장소가 특정 날짜에 얼마나 한적할지 공급한다. (0~100, 클수록 한적)
@@ -38,4 +39,21 @@ public interface CongestionProvider {
 	 * 사용자는 서비스의 데이터가 부실하다고 읽는다.
 	 */
 	boolean hasData(String placeId, LocalDate date);
+
+	/**
+	 * 예측이 닿는 <b>마지막 날</b>. 자료가 하나도 없으면 비어 있다.
+	 *
+	 * <h3>왜 인터페이스에 있어야 하는가</h3>
+	 * 화면이 날짜를 고르는 자리에서 <b>미리</b> 안내하려면 이 값이 필요하다.
+	 * 없으면 사용자는 코스를 다 짠 뒤 진단 버튼을 누르고 나서야 "아직 예측이 나오지 않은
+	 * 날짜"라는 회색 화면을 만난다 — 되돌리기에는 너무 늦은 자리다.
+	 *
+	 * <p><b>상수로 박으면 안 된다.</b> 공사가 예측 창을 늘리면 저절로 따라가야 한다.
+	 * 지금은 조회 시점부터 24일쯤이지만 그것은 관측값이지 약속이 아니다.
+	 *
+	 * <p>⚠️ 이 값을 <b>막는 데</b> 쓰지 않는다. 여행은 원래 미리 계획하는 것이라
+	 * 창 밖 날짜를 고르는 것 자체는 막지 않는다. 진단이 그때 비는 것은
+	 * {@link DiagnosisGap#DATE_OUT_OF_FORECAST}가 "기다리면 생긴다"고 이미 말하고 있다.
+	 */
+	Optional<LocalDate> lastForecastDate();
 }

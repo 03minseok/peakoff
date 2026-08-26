@@ -144,10 +144,19 @@ export function MyPage() {
         { label: '다녀온 여행', value: '0' },
       ]
     }
-    const total = loaded.reduce((sum, course) => sum + course.totalQuietness, 0)
+    /*
+     * 평균은 <b>진단된 코스만</b>으로 낸다. 점수 없는 코스를 0으로 세면 아직 재보지도 않은
+     * 코스가 평균을 끌어내리고, 분모에 넣으면 저장만 해도 평균이 떨어진다.
+     * 진단된 코스가 하나도 없으면 평균이라는 값 자체가 성립하지 않는다.
+     */
+    const scored = loaded.filter((course) => course.totalQuietness !== null)
+    const total = scored.reduce((sum, course) => sum + (course.totalQuietness ?? 0), 0)
     return [
       { label: '저장한 코스', value: String(loaded.length) },
-      { label: '평균 한적 지수', value: String(Math.round(total / loaded.length)) },
+      {
+        label: '평균 한적 지수',
+        value: scored.length === 0 ? '—' : String(Math.round(total / scored.length)),
+      },
       {
         label: '다녀온 여행',
         value: String(loaded.filter((course) => isPastDate(course.endDate)).length),

@@ -1,5 +1,6 @@
 package com.peakoff.congestion.controller;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -17,8 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.peakoff.congestion.domain.CongestionProvider;
 import com.peakoff.congestion.domain.PlannedVisit;
 import com.peakoff.congestion.dto.DateAlternativeResponse;
+import com.peakoff.congestion.dto.ForecastWindowResponse;
 import com.peakoff.congestion.service.DateAlternativeService;
 import com.peakoff.global.response.ApiResponse;
 
@@ -37,6 +40,34 @@ public class DateAlternativeController {
 	private static final int DEFAULT_RANGE_DAYS = 3;
 
 	private final DateAlternativeService dateAlternativeService;
+	private final CongestionProvider congestionProvider;
+	private final Clock clock;
+
+	/**
+	 * GET /api/dates/forecast-window — 예측이 닿는 기간.
+	 *
+	 * <p>날짜를 고르는 화면이 <b>코스를 짜기 전에</b> 안내하려고 부른다.
+	 * 여기서 막지는 않는다 — 자세한 이유는 {@link ForecastWindowResponse}에 적어 두었다.
+	 */
+	@Operation(
+			summary = "예측 가능 기간",
+			description = """
+					공사 예측이 닿는 첫날과 마지막 날. 마지막 날은 조회 시점부터 24일쯤이지만
+					<b>관측값이지 약속이 아니다</b> — 공사가 창을 늘리면 이 값도 따라 늘어난다.
+
+					지역마다 창이 다를 수 있어 <b>가장 이른 마지막 날</b>을 준다.
+					가장 늦은 날을 약속하면 창이 짧은 지역을 고른 사용자가 진단되지 않는 날짜를 고른다.
+
+					목업으로 도는 동안에는 마지막 날이 null이다. 목업에는 날짜 제한이 없다.
+
+					⚠️ 이 값은 <b>고르지 못하게 하는 상한이 아니다.</b> 여행은 미리 계획하는 것이라
+					창 밖 날짜로도 코스를 짤 수 있다. 그때 진단은 막히지 않고 칸마다
+					"아직 예측이 나오지 않은 날짜예요"가 뜬다.""")
+	@GetMapping("/forecast-window")
+	public ApiResponse<ForecastWindowResponse> forecastWindow() {
+		return ApiResponse.ok(ForecastWindowResponse.of(
+				LocalDate.now(clock), congestionProvider.lastForecastDate()));
+	}
 
 	/**
 	 * GET /api/dates/alternatives?slot=1:mock-bulguksa&slot=2:mock-seokguram&date=2026-09-12&range=3

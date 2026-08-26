@@ -5,12 +5,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import com.peakoff.external.kto.client.KtoHubClient;
 import com.peakoff.external.kto.client.KtoPlaceClient;
 import com.peakoff.external.kto.client.RegionCatalog;
+import com.peakoff.external.kto.support.KtoApiException;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.external.kto.support.RegionCache;
 import com.peakoff.place.domain.Place;
@@ -36,6 +39,8 @@ import com.peakoff.place.domain.SupportedRegion;
 @Component
 @ConditionalOnProperty(name = "peakoff.kto.place", havingValue = "real")
 public class KtoPlaceProvider implements PlaceProvider {
+
+	private static final Logger log = LoggerFactory.getLogger(KtoPlaceProvider.class);
 
 	private final KtoPlaceClient placeClient;
 	private final KtoHubClient hubClient;
@@ -122,7 +127,27 @@ public class KtoPlaceProvider implements PlaceProvider {
 				return cached;
 			}
 		}
-		return placeClient.findDetail(placeId);
+
+		/*
+		 * 카탈로그에 없다. 마지막 수단으로 낱개 조회를 해 보되, <b>실패는 "못 찾았다"로 다룬다.</b>
+		 *
+		 * 공사 상세 조회가 막혀 있을 때(한도 초과·장애·백오프) 예외를 그대로 올리면
+		 * <b>500 + 전체 스택</b>이 된다. 실제로 그렇게 터졌다(2026-08-26) — 화면이 들고 있던
+		 * 옛 장소 ID 하나 때문에 요청마다 스택 수백 줄이 로그를 채웠다.
+		 *
+		 * 우리가 아는 것은 "지역 카탈로그에 없다"까지다. 확인할 길이 막혔다고 서버 오류라고
+		 * 말할 일은 아니다 — 없는 장소와 같은 404로 답하는 편이 화면에도 로그에도 정직하다.
+		 * 카탈로그 자체를 못 받아온 경우는 위쪽 {@code catalogOf}에서 그대로 터지므로,
+		 * <b>여기서 삼키는 것은 낱개 조회 실패뿐이다.</b>
+		 */
+		try {
+			return placeClient.findDetail(placeId);
+		}
+		catch (KtoApiException e) {
+			log.warn("카탈로그에 없는 장소의 상세 조회에 실패했습니다. 없는 것으로 답합니다. placeId={}, 사유={}",
+					placeId, e.getMessage());
+			return Optional.empty();
+		}
 	}
 
 	/**
