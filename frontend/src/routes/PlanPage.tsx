@@ -138,7 +138,7 @@ export function PlanPage() {
           페이지 전체에 가로 스크롤이 생긴다. 줄바꿈은 text-pretty에 맡긴다.
         */}
         <p className="text-[15.5px] leading-[1.65] text-pretty">
-          날짜만 정하면 {regionName}의 각 장소가 그날 얼마나 붐빌지 미리 알려드려요.
+          날짜만 정하면 각 장소가 그날 얼마나 붐빌지 미리 알려드려요.
           <br />
           가입 없이 바로 시작할 수 있어요.
         </p>
@@ -152,7 +152,7 @@ export function PlanPage() {
           to="/recommend"
           className="text-brand-deep -mx-1 w-fit rounded-chip px-1 py-0.5 text-[13.5px] font-semibold no-underline hover:underline"
         >
-          {regionName}이 처음이라면? 몇 가지 답하고 코스 추천받기
+          여행지가 안 정해졌다면? 몇 가지 답하고 코스 추천받기
         </Link>
 
         {/*
