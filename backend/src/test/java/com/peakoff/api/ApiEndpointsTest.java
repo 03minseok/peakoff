@@ -273,10 +273,8 @@ class ApiEndpointsTest {
 				  "region": "gyeongju",
 				  "startDate": "2026-09-16",
 				  "nights": 1,
-				  "styles": ["HISTORY", "NATURE"],
 				  "density": "BALANCED",
-				  "sensitivity": "QUIET",
-				  "transport": "TRANSIT"
+				  "sensitivity": "QUIET"
 				}
 				""";
 
@@ -311,13 +309,12 @@ class ApiEndpointsTest {
 		}
 
 		@Test
-		@DisplayName("여행 스타일을 하나도 고르지 않으면 400 — 어느 칸인지 함께 알려준다")
-		void requiresAtLeastOneStyle() throws Exception {
+		@DisplayName("설문 답을 빠뜨리면 400 — 어느 칸인지 함께 알려준다")
+		void requiresEveryAnswer() throws Exception {
 			String json = """
 					{
 					  "region": "gyeongju", "startDate": "2026-09-16", "nights": 0,
-					  "styles": [], "density": "BALANCED",
-					  "sensitivity": "MIXED", "transport": "CAR"
+					  "sensitivity": "MIXED"
 					}
 					""";
 
@@ -326,7 +323,7 @@ class ApiEndpointsTest {
 					.content(json))
 					.andExpect(status().isBadRequest())
 					.andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
-					.andExpect(jsonPath("$.error.fields[0].field").value("styles"));
+					.andExpect(jsonPath("$.error.fields[0].field").value("density"));
 		}
 
 		@Test
@@ -335,8 +332,8 @@ class ApiEndpointsTest {
 			String json = """
 					{
 					  "region": "gyeongju", "startDate": "2026-09-16", "nights": 0,
-					  "styles": ["HISTORY"], "density": "초고속",
-					  "sensitivity": "MIXED", "transport": "CAR"
+					  "density": "초고속",
+					  "sensitivity": "MIXED"
 					}
 					""";
 

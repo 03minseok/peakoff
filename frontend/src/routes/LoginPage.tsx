@@ -4,6 +4,7 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { AuthField } from '../components/AuthField'
 import { AuthShell } from '../components/AuthShell'
+import { BrandLockup } from '../components/BrandMark'
 import { PRIMARY_BUTTON } from '../components/styles'
 import { ApiRequestError } from '../services/api'
 import { startSocialLogin } from '../services/socialLogin'
@@ -140,12 +141,7 @@ export function LoginPage() {
       panelDescription={'로그인은 코스를 저장할 때만 필요해요.\n계획을 짜고 혼잡도를 확인하는 건 계정 없이도 전부 가능합니다.'}
     >
       {/* 데스크톱에서는 좌측 패널이 로고를 들고 있다. 두 번 보일 이유가 없다. */}
-      <div className="flex items-center gap-2 pt-2 lg:hidden">
-        <span className="bg-brand relative h-5.5 w-5.5 rounded-[8px]" aria-hidden="true">
-          <span className="bg-fg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
-        </span>
-        <span className="text-fg text-xs font-bold tracking-[0.16em]">PEAKOFF</span>
-      </div>
+      <BrandLockup size={24} className="pt-2 lg:hidden" />
 
       <div className="flex flex-col gap-2.5 pt-3 pb-6">
         <h1 className="text-fg m-0 text-[27px] leading-[1.3] font-bold tracking-[-0.025em]">

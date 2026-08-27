@@ -97,15 +97,13 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-6">
           <article className="bg-surface shadow-rest flex flex-col gap-3.5 rounded-[20px] p-4.5 lg:p-5">
-            {/*
-              코스 이름 자리에 <b>지역과 기간</b>이 선다. 이름은 감추지만 제목이 비면
-              카드가 무엇에 대한 것인지 첫 줄에서 안 읽힌다.
-            */}
+            {/* 홈 카드와 같은 제목을 쓴다. 눌러서 열었는데 제목이 달라지면 같은 코스로 안 읽힌다 */}
             <div className="flex flex-col gap-1">
               <span className="text-fg text-[16.5px] font-bold tracking-[-0.01em]">
-                {shortRegion} {formatNights(course.nights)}
+                {course.name}
               </span>
               <span className="text-hint text-[12.5px]">
+                {shortRegion} {formatNights(course.nights)} ·{' '}
                 {formatDateRange(course.startDate, course.nights)}
               </span>
             </div>

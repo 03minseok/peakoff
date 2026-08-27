@@ -140,6 +140,20 @@ public class SavedCourse {
 	private Integer forecastTargetCount;
 
 	/**
+	 * 홈의 "다른 사람들의 여행"에 보일지. 저장할 때 사용자가 고른다.
+	 *
+	 * <p>예전에는 고를 수 없었고 <b>이름을 감추는 것</b>으로 대신했다. 그런데 감추면
+	 * 어느 카드나 "경주 1박 2일"이라 서로 구분되지 않았고, 그렇다고 이름만 공개하면
+	 * 사용자가 동의한 적 없는 것을 내보내게 된다. <b>고르게 하는 것이 둘 다 푼다.</b>
+	 *
+	 * <p>⚠️ <b>옛 코스는 {@code null}이다.</b> 이 컬럼이 생기기 전에 저장된 것들이라
+	 * 사용자가 고른 적이 없다. {@link #isPublic()}이 그때를 <b>비공개로</b> 읽는다 —
+	 * 고른 적 없는 것을 공개로 두면 묻지 않고 내보내는 셈이 된다.
+	 */
+	@Column
+	private Boolean publicCourse;
+
+	/**
 	 * 그 점수를 매긴 시각. 기준이 바뀌었을 때 다시 계산할 대상을 고르는 데 쓴다.
 	 *
 	 * <p><b>총점과 운명을 같이한다</b> — 점수가 없으면 점수를 매긴 시각도 없다.
@@ -175,6 +189,7 @@ public class SavedCourse {
 			Integer totalQuietness,
 			Integer diagnosedCount,
 			Integer forecastTargetCount,
+			boolean publicCourse,
 			List<PlaceEntry> entries,
 			Instant now) {
 
@@ -197,6 +212,7 @@ public class SavedCourse {
 			this.diagnosedCount = diagnosedCount;
 			this.forecastTargetCount = forecastTargetCount;
 		}
+		this.publicCourse = publicCourse;
 		Objects.requireNonNull(now, "저장 시각은 필수입니다.");
 		// 점수가 없으면 점수를 매긴 시각도 없다.
 		this.scoredAt = totalQuietness == null ? null : now;
@@ -224,11 +240,12 @@ public class SavedCourse {
 			Integer totalQuietness,
 			Integer diagnosedCount,
 			Integer forecastTargetCount,
+			boolean publicCourse,
 			List<PlaceEntry> entries,
 			Instant now) {
 
 		return new SavedCourse(member, name, region, startDate, nights, totalQuietness,
-				diagnosedCount, forecastTargetCount, entries, now);
+				diagnosedCount, forecastTargetCount, publicCourse, entries, now);
 	}
 
 	private void addPlaces(List<PlaceEntry> entries) {
@@ -298,6 +315,11 @@ public class SavedCourse {
 
 	public Integer totalQuietness() {
 		return totalQuietness;
+	}
+
+	/** 고른 적 없는 옛 코스는 비공개로 읽는다 — 묻지 않고 내보내지 않기 위해서다 */
+	public boolean isPublic() {
+		return Boolean.TRUE.equals(publicCourse);
 	}
 
 	/** 총점을 매긴 칸 수. 이 컬럼이 생기기 전에 저장된 코스는 {@code null} */

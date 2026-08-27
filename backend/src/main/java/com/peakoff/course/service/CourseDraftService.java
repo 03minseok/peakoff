@@ -16,10 +16,10 @@ import com.peakoff.course.domain.CourseDraft;
 import com.peakoff.course.domain.CourseDraft.DraftedSlot;
 import com.peakoff.course.domain.CourseSlot;
 import com.peakoff.course.domain.survey.SurveyAnswers;
-import com.peakoff.course.domain.survey.TravelStyle;
 import com.peakoff.global.error.NotFoundException;
 import com.peakoff.place.domain.Distances;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.recommendation.domain.RecommendationScorer;
@@ -56,6 +56,28 @@ public class CourseDraftService {
 	/** 코스를 채울 후보를 어디까지 볼지. 실데이터에서는 중심 관광지가 이 목록을 준다(지역당 100곳 안팎). */
 	private static final int POOL_SIZE = 100;
 
+	/**
+	 * 그 날 첫 장소로부터의 최대 반경.
+	 *
+	 * <p>슬롯 간 거리만 제한하면 짧은 이동이 이어져 하루 동안 한 방향으로 계속 밀려날 수 있다.
+	 * 5km씩 네 번이면 20km다. 날 단위 반경이 그 표류를 막는다.
+	 *
+	 * <h3>⚠️ 이동수단 문항을 걷어내고 남긴 값이다 (2026-08-27)</h3>
+	 * 자차(25km)와 대중교통(8km) 중 <b>넓은 쪽</b>을 남겼다. 좁은 쪽으로 두면
+	 * 이번에 고치려던 "추천이 안 뜬다"가 그대로 다시 생긴다 — 특히 제주에서
+	 * 8km 반경은 후보를 크게 잘라낸다.
+	 *
+	 * <p>거리는 <b>좌표 기반 직선거리</b>다. 실제 도로·환승 시간이 아니다.
+	 * 최단 경로 최적화는 이 서비스의 범위가 아니고, "하루에 다닐 만한가"만 가리면 충분하다.
+	 * 경주 기준으로 시내권(대릉원·첨성대 반경 2km)에서 불국사·석굴암·양동마을까지 닿는다.
+	 *
+	 * <p><b>분석 검증 전 임시값이다.</b>
+	 */
+	public static final double DAY_RADIUS_KM = 25.0;
+
+	/** 직전 장소에서 다음 장소까지의 최대 이동거리. 근거는 {@link #DAY_RADIUS_KM}과 같다. */
+	public static final double MAX_HOP_KM = 15.0;
+
 	private final PlaceProvider placeProvider;
 	private final CongestionProvider congestionProvider;
 	private final RecommendationScorer scorer;
@@ -64,9 +86,9 @@ public class CourseDraftService {
 
 	/** 요청의 모양(필수값·범위)은 컨트롤러의 {@code @Valid}가 이미 걸렀다. */
 	public CourseDraft draft(SupportedRegion region, LocalDate startDate, int nights, SurveyAnswers answers) {
-		List<Place> pool = candidatePool(region, answers);
+		List<Place> pool = candidatePool(region);
 		if (pool.isEmpty()) {
-			throw new NotFoundException("고른 여행 스타일에 맞는 장소를 찾지 못했습니다.\n스타일을 더 골라 보세요.");
+			throw new NotFoundException("이 지역에서 예상 혼잡을 계산할 수 있는 장소를 찾지 못했습니다.\n다른 날짜로 시도해 보세요.");
 		}
 
 		Set<String> used = new HashSet<>();
@@ -85,19 +107,29 @@ public class CourseDraftService {
 	/**
 	 * 코스에 올릴 수 있는 장소 전체.
 	 *
-	 * <p>거르는 기준은 둘이다 — <b>고른 스타일에 맞는 분류</b>인지, 그리고
+	 * <p>거르는 기준은 둘이다 — <b>코스 슬롯에 어울리는 분류</b>인지, 그리고
 	 * <b>혼잡 예측 데이터가 있는지</b>. 데이터가 없는 곳을 0점으로 뭉개면 화면에서 "붐빔"으로
 	 * 잘못 읽히므로, 애초에 후보로 올리지 않는다.
 	 *
-	 * <p>숙박은 어떤 스타일에도 매핑돼 있지 않아 여기서 자연히 빠진다.
+	 * <h3>⚠️ 스타일로 고르게 하던 것을 걷어냈다 (2026-08-27)</h3>
+	 * 예전에는 설문 1번의 여행 스타일(역사·자연·문화)이 여기서 후보를 걸렀다.
+	 * <b>하나만 고르면 후보가 통째로 쪼그라들었다</b> — 실측 기준 제주시에서 역사만 고르면
+	 * 3곳, 서귀포는 2곳이다. 1박 2일에 네댓 칸을 채워야 하는데 거기서 이미 못 채운다.
+	 *
+	 * <p>골라 남기는 대신 <b>빼는 쪽으로 뒤집었다.</b> 예측이 있으면 기본적으로 후보이고,
+	 * 코스에 어울리지 않는 것만 {@link PlaceCategories#isCourseCandidate}가 뺀다
+	 * (음식점·숙박·축제, 그리고 VE에 섞여 있는 리조트·도서관·수련관).
+	 *
+	 * <p>후보가 넓어진 만큼 <b>같은 곳으로 몰릴 위험은 오히려 줄어든다</b> — 뽑기는 그대로
+	 * 가중 무작위라, Pool이 클수록 사람마다 다른 코스가 나온다.
 	 *
 	 * <p>지역 전체(경주 621곳)를 훑지 않고 대표 관광지까지만 본다. 대부분이 음식점·숙박이고,
 	 * 코스의 뼈대가 될 만한 곳은 앞쪽에 몰려 있다. <b>그 순서는 인기 순이라 추천 점수에는
 	 * 쓰지 않는다</b> — 여기서는 "아무도 모르는 곳만 뽑히지 않게" 하는 하한으로만 쓴다.
 	 */
-	private List<Place> candidatePool(SupportedRegion region, SurveyAnswers answers) {
+	private List<Place> candidatePool(SupportedRegion region) {
 		return placeProvider.representatives(region.toRegion(), POOL_SIZE).stream()
-				.filter(place -> TravelStyle.anyMatches(answers.styles(), place.category()))
+				.filter(place -> PlaceCategories.isCourseCandidate(place.category()))
 				.filter(place -> congestionProvider.hasData(place.id()))
 				.toList();
 	}
@@ -158,16 +190,15 @@ public class CourseDraftService {
 	/**
 	 * 직전 장소에 이어붙일 다음 장소.
 	 *
-	 * <p>거리 제한이 둘인 이유: 이동거리만 막으면 짧은 이동이 이어져 하루 동안 한 방향으로
-	 * 계속 밀려날 수 있다. 5km씩 네 번이면 20km다. 날 단위 반경이 그 표류를 막는다.
+	 * <p>거리 제한이 둘인 이유는 {@link #DAY_RADIUS_KM}에 적어 두었다.
 	 */
 	private Optional<ScoredPlace> pickNext(Place previous, Place dayOrigin, LocalDate visitDate,
 			List<Place> pool, Set<String> used, SurveyAnswers answers) {
 
 		List<Place> reachable = pool.stream()
 				.filter(place -> !used.contains(place.id()))
-				.filter(place -> Distances.betweenKm(previous, place) <= answers.transport().maxHopKm())
-				.filter(place -> Distances.betweenKm(dayOrigin, place) <= answers.transport().dayRadiusKm())
+				.filter(place -> Distances.betweenKm(previous, place) <= MAX_HOP_KM)
+				.filter(place -> Distances.betweenKm(dayOrigin, place) <= DAY_RADIUS_KM)
 				.toList();
 
 		List<ScoredPlace> candidates = reachable.stream()
@@ -231,20 +262,18 @@ public class CourseDraftService {
 	}
 
 	/**
-	 * 근거 문구. 예: {@code "역사·유적 선호 · 예상 혼잡 낮음 · 대릉원에서 1.2km"}
+	 * 근거 문구. 예: {@code "역사·유적 · 예상 혼잡 낮음 · 대릉원에서 1.2km"}
 	 *
 	 * <p><b>실제로 계산에 쓴 것만 말한다.</b> "함께 많이 찾는 곳"은 연관 관광지 데이터가
 	 * 있어야 할 수 있는 말이라 지금은 쓰지 않는다.
 	 *
-	 * <p>스타일 이름을 사용자가 고른 답에서 가져오지 않고 <b>장소의 분류에서</b> 되짚는다.
-	 * 고른 답을 그대로 붙이면, 맛집이라서 뽑힌 곳에 "역사·유적 선호"라고 적히는 일이 생긴다.
+	 * <p>⚠️ 예전에는 <b>"역사·유적 선호"</b>였다. 스타일을 묻지 않게 된 뒤로는 할 수 없는
+	 * 말이다 — 고른 적 없는 것을 선호한다고 적으면, 계산하지 않은 것을 근거로 삼는 셈이다.
+	 * 지금은 그 장소가 실제로 무슨 분류인지만 말한다.
 	 */
 	private static String reasonFor(ScoredPlace scored, Place previous, double km) {
-		String style = TravelStyle.of(scored.place().category())
-				.map(TravelStyle::label)
-				.orElse(scored.place().category().name());
-
-		String base = "%s 선호 · %s".formatted(style, scored.level().congestionPhrase());
+		String base = "%s · %s".formatted(
+				scored.place().category().name(), scored.level().congestionPhrase());
 		if (previous == null) {
 			return base;
 		}
