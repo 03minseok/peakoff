@@ -94,7 +94,8 @@ public class SavedCourseService {
 				request.totalQuietness(),
 				request.diagnosedCount(),
 				request.forecastTargetCount(),
-				request.isPublic(),
+				// 고른 적 없는 요청은 비공개다. wantsPublic()이 null을 그렇게 읽는다.
+				request.wantsPublic(),
 				entries,
 				now);
 
