@@ -12,7 +12,6 @@ import type {
   CrowdSensitivity,
   DraftSlot,
   ItineraryDensity,
-  Transport,
 } from '../types/api'
 import { daysFromToday, formatCompactDate, formatDateRange, formatWeekday, today } from '../utils/date'
 
@@ -65,11 +64,6 @@ const SENSITIVITY_OPTIONS: { value: CrowdSensitivity; label: string; hint: strin
   { value: 'QUIET', label: '한적한 곳 위주로', hint: '붐빌 것으로 보이는 곳은 빼요' },
 ]
 
-const TRANSPORT_OPTIONS: { value: Transport; label: string; hint: string }[] = [
-  { value: 'CAR', label: '자차', hint: '외곽까지 넉넉하게' },
-  { value: 'TRANSIT', label: '대중교통·도보', hint: '가까운 곳 위주로' },
-]
-
 /* /plan의 선택 버튼과 같은 구조다. 라디오를 sr-only로 숨기고 옆의 span을 버튼처럼 꾸민다.
    sr-only는 화면에서만 감추고 초점은 살려둔다 — display:none이면 키보드로 못 고른다. */
 const SEGMENT_BASE =
@@ -85,7 +79,7 @@ const REGION_SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-
 const SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-[15px] font-medium text-muted peer-checked:border-fg peer-checked:bg-fg peer-checked:font-semibold peer-checked:text-white`
 
 /**
- * 설명이 함께 붙는 세로 선택 (민감도·이동수단).
+ * 설명이 함께 붙는 세로 선택 (혼잡 민감도).
  *
  * 한 줄짜리 선택과 달리 <b>브랜드색으로 꽉 채우지 않는다.</b> 밝은 틸 위에서는
  * 둘째 줄의 옅은 설명 글자가 3.5:1까지 떨어져 읽히지 않는다.
@@ -99,7 +93,6 @@ const CARD_TITLE = 'text-fg text-sm font-semibold'
 interface Answers {
   density: ItineraryDensity
   sensitivity: CrowdSensitivity
-  transport: Transport
 }
 
 type Phase =
@@ -134,7 +127,6 @@ export function RecommendPage() {
   const [answers, setAnswers] = useState<Answers>({
     density: 'BALANCED',
     sensitivity: 'QUIET',
-    transport: 'CAR',
   })
   const [view, setView] = useState<Phase>({ phase: 'survey' })
 
@@ -221,7 +213,7 @@ export function RecommendPage() {
       <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
         {/*
           지역이 맨 앞에 오는 이유: 뒤의 답들이 전부 <b>그 지역 안에서</b> 어떻게 다닐지다.
-          "대중교통으로 다닌다"를 고른 뒤에 지역을 바꾸면 앞의 답을 다시 읽어야 한다.
+          "한적한 곳 위주로"를 고른 뒤에 지역을 바꾸면 앞의 답을 다시 읽어야 한다.
           코스 짜기 화면도 지역을 첫 칸에 두고 있어 두 화면의 순서가 맞는다.
         */}
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
@@ -314,33 +306,16 @@ export function RecommendPage() {
           </p>
         </fieldset>
 
-        <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
-          {/*
-            legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로
-            끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
-          */}
-          <div>
-            <legend className={`${CARD_TITLE} p-0`}>어떻게 이동하세요</legend>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {TRANSPORT_OPTIONS.map((option) => (
-              <label key={option.value}>
-                <input
-                  type="radio"
-                  name="transport"
-                  className="peer sr-only"
-                  checked={answers.transport === option.value}
-                  onChange={() => setAnswers((prev) => ({ ...prev, transport: option.value }))}
-                />
-                <span className={STACKED}>
-                  <span className="text-fg text-[14.5px] font-semibold">{option.label}</span>
-                  <span className="text-hint text-[11.5px]">{option.hint}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        {/*
+          "어떻게 이동하세요"(자차/대중교통)를 2026-08-27에 걷어냈다.
 
+          이 답이 후보 반경을 정했는데, 대중교통(8km)을 고르면 후보가 다시 크게 잘렸다 —
+          여행 스타일과 같은 증상이다. 거리 제한은 남기되 넉넉한 쪽 하나로 고정했다
+          (CourseDraftService.DAY_RADIUS_KM).
+
+          설문에서 무언가를 고르게 하려면 어느 답을 골라도 코스가 나와야 한다.
+          고른 대가로 결과가 비는 문항은 선택지가 아니라 함정이다.
+        */}
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
           {/*
             legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로

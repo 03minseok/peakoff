@@ -56,6 +56,28 @@ public class CourseDraftService {
 	/** 코스를 채울 후보를 어디까지 볼지. 실데이터에서는 중심 관광지가 이 목록을 준다(지역당 100곳 안팎). */
 	private static final int POOL_SIZE = 100;
 
+	/**
+	 * 그 날 첫 장소로부터의 최대 반경.
+	 *
+	 * <p>슬롯 간 거리만 제한하면 짧은 이동이 이어져 하루 동안 한 방향으로 계속 밀려날 수 있다.
+	 * 5km씩 네 번이면 20km다. 날 단위 반경이 그 표류를 막는다.
+	 *
+	 * <h3>⚠️ 이동수단 문항을 걷어내고 남긴 값이다 (2026-08-27)</h3>
+	 * 자차(25km)와 대중교통(8km) 중 <b>넓은 쪽</b>을 남겼다. 좁은 쪽으로 두면
+	 * 이번에 고치려던 "추천이 안 뜬다"가 그대로 다시 생긴다 — 특히 제주에서
+	 * 8km 반경은 후보를 크게 잘라낸다.
+	 *
+	 * <p>거리는 <b>좌표 기반 직선거리</b>다. 실제 도로·환승 시간이 아니다.
+	 * 최단 경로 최적화는 이 서비스의 범위가 아니고, "하루에 다닐 만한가"만 가리면 충분하다.
+	 * 경주 기준으로 시내권(대릉원·첨성대 반경 2km)에서 불국사·석굴암·양동마을까지 닿는다.
+	 *
+	 * <p><b>분석 검증 전 임시값이다.</b>
+	 */
+	public static final double DAY_RADIUS_KM = 25.0;
+
+	/** 직전 장소에서 다음 장소까지의 최대 이동거리. 근거는 {@link #DAY_RADIUS_KM}과 같다. */
+	public static final double MAX_HOP_KM = 15.0;
+
 	private final PlaceProvider placeProvider;
 	private final CongestionProvider congestionProvider;
 	private final RecommendationScorer scorer;
@@ -168,16 +190,15 @@ public class CourseDraftService {
 	/**
 	 * 직전 장소에 이어붙일 다음 장소.
 	 *
-	 * <p>거리 제한이 둘인 이유: 이동거리만 막으면 짧은 이동이 이어져 하루 동안 한 방향으로
-	 * 계속 밀려날 수 있다. 5km씩 네 번이면 20km다. 날 단위 반경이 그 표류를 막는다.
+	 * <p>거리 제한이 둘인 이유는 {@link #DAY_RADIUS_KM}에 적어 두었다.
 	 */
 	private Optional<ScoredPlace> pickNext(Place previous, Place dayOrigin, LocalDate visitDate,
 			List<Place> pool, Set<String> used, SurveyAnswers answers) {
 
 		List<Place> reachable = pool.stream()
 				.filter(place -> !used.contains(place.id()))
-				.filter(place -> Distances.betweenKm(previous, place) <= answers.transport().maxHopKm())
-				.filter(place -> Distances.betweenKm(dayOrigin, place) <= answers.transport().dayRadiusKm())
+				.filter(place -> Distances.betweenKm(previous, place) <= MAX_HOP_KM)
+				.filter(place -> Distances.betweenKm(dayOrigin, place) <= DAY_RADIUS_KM)
 				.toList();
 
 		List<ScoredPlace> candidates = reachable.stream()

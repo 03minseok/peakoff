@@ -20,7 +20,6 @@ import com.peakoff.course.domain.CourseSlot;
 import com.peakoff.course.domain.survey.CrowdSensitivity;
 import com.peakoff.course.domain.survey.ItineraryDensity;
 import com.peakoff.course.domain.survey.SurveyAnswers;
-import com.peakoff.course.domain.survey.Transport;
 import com.peakoff.place.domain.Distances;
 import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.SupportedRegion;
@@ -52,14 +51,14 @@ class CourseDraftServiceTest {
 	}
 
 	private static SurveyAnswers answers(
-			ItineraryDensity density, CrowdSensitivity sensitivity, Transport transport) {
-		return new SurveyAnswers(density, sensitivity, transport);
+			ItineraryDensity density, CrowdSensitivity sensitivity) {
+		return new SurveyAnswers(density, sensitivity);
 	}
 
 	@Test
 	@DisplayName("같은 장소가 코스에 두 번 들어가지 않는다")
 	void neverRepeatsAPlace() {
-		CourseDraft draft = draft(2, answers(ItineraryDensity.PACKED, CrowdSensitivity.MIXED, Transport.CAR));
+		CourseDraft draft = draft(2, answers(ItineraryDensity.PACKED, CrowdSensitivity.MIXED));
 
 		List<String> placeIds = draft.slots().stream()
 				.map(slot -> slot.slot().place().id())
@@ -78,7 +77,7 @@ class CourseDraftServiceTest {
 	@DisplayName("음식점·카페·숙박은 코스에 오르지 않는다")
 	void neverDraftsPlacesThatCannotFillASlot() {
 		CourseDraft draft = draft(2, answers(
-				ItineraryDensity.PACKED, CrowdSensitivity.POPULAR, Transport.CAR));
+				ItineraryDensity.PACKED, CrowdSensitivity.POPULAR));
 
 		assertThat(draft.slots()).allSatisfy(slot ->
 				assertThat(PlaceCategories.isCourseCandidate(slot.slot().place().category()))
@@ -87,10 +86,10 @@ class CourseDraftServiceTest {
 	}
 
 	@Test
-	@DisplayName("대중교통을 고르면 슬롯 간 이동거리가 제한을 넘지 않는다")
-	void respectsTransitHopLimit() {
+	@DisplayName("슬롯 간 이동거리가 제한을 넘지 않는다")
+	void respectsHopLimit() {
 		CourseDraft draft = draft(2, answers(
-				ItineraryDensity.PACKED, CrowdSensitivity.MIXED, Transport.TRANSIT));
+				ItineraryDensity.PACKED, CrowdSensitivity.MIXED));
 
 		for (int day = 1; day <= draft.course().days(); day++) {
 			List<CourseSlot> slots = draft.course().slotsOfDay(day);
@@ -98,7 +97,7 @@ class CourseDraftServiceTest {
 				double km = Distances.betweenKm(slots.get(i - 1).place(), slots.get(i).place());
 				assertThat(km)
 						.as("%d일차 %d→%d번째 이동".formatted(day, i, i + 1))
-						.isLessThanOrEqualTo(Transport.TRANSIT.maxHopKm());
+						.isLessThanOrEqualTo(CourseDraftService.MAX_HOP_KM);
 			}
 		}
 	}
@@ -111,7 +110,7 @@ class CourseDraftServiceTest {
 	@DisplayName("하루 동선이 그 날 첫 장소의 반경 안에 머문다")
 	void staysWithinDayRadius() {
 		CourseDraft draft = draft(2, answers(
-				ItineraryDensity.PACKED, CrowdSensitivity.MIXED, Transport.TRANSIT));
+				ItineraryDensity.PACKED, CrowdSensitivity.MIXED));
 
 		for (int day = 1; day <= draft.course().days(); day++) {
 			List<CourseSlot> slots = draft.course().slotsOfDay(day);
@@ -121,7 +120,7 @@ class CourseDraftServiceTest {
 			CourseSlot first = slots.get(0);
 			assertThat(slots).allSatisfy(slot -> assertThat(
 					Distances.betweenKm(first.place(), slot.place()))
-					.isLessThanOrEqualTo(Transport.TRANSIT.dayRadiusKm()));
+					.isLessThanOrEqualTo(CourseDraftService.DAY_RADIUS_KM));
 		}
 	}
 
@@ -129,7 +128,7 @@ class CourseDraftServiceTest {
 	@DisplayName("일자별 슬롯 수가 밀도가 정한 범위를 넘지 않는다")
 	void respectsDensityRange() {
 		ItineraryDensity density = ItineraryDensity.RELAXED;
-		CourseDraft draft = draft(2, answers(density, CrowdSensitivity.MIXED, Transport.CAR));
+		CourseDraft draft = draft(2, answers(density, CrowdSensitivity.MIXED));
 
 		for (int day = 1; day <= draft.course().days(); day++) {
 			assertThat(draft.course().slotsOfDay(day).size())
@@ -142,7 +141,7 @@ class CourseDraftServiceTest {
 	@DisplayName("'한적한 곳 위주'를 고르면 붐빌 것으로 예측되는 곳이 코스에 없다")
 	void quietAnswerExcludesCrowdedPlaces() {
 		CourseDraft draft = draft(2, answers(
-				ItineraryDensity.PACKED, CrowdSensitivity.QUIET, Transport.CAR));
+				ItineraryDensity.PACKED, CrowdSensitivity.QUIET));
 
 		assertThat(draft.slots()).allSatisfy(slot ->
 				assertThat(CongestionLevel.fromQuietness(slot.slot().quietness()))
@@ -158,7 +157,7 @@ class CourseDraftServiceTest {
 	@DisplayName("모든 슬롯에 근거 문구와 추천도 구성 내역이 붙는다")
 	void everySlotCarriesItsReason() {
 		CourseDraft draft = draft(1, answers(
-				ItineraryDensity.BALANCED, CrowdSensitivity.MIXED, Transport.CAR));
+				ItineraryDensity.BALANCED, CrowdSensitivity.MIXED));
 
 		assertThat(draft.slots()).allSatisfy(slot -> {
 			assertThat(slot.reason()).isNotBlank();
@@ -182,7 +181,7 @@ class CourseDraftServiceTest {
 	@DisplayName("그 날 첫 장소는 비교 대상이 없어 한적도 항목만 갖는다")
 	void firstSlotOfDayIsScoredByQuietnessAlone() {
 		CourseDraft draft = draft(1, answers(
-				ItineraryDensity.BALANCED, CrowdSensitivity.MIXED, Transport.CAR));
+				ItineraryDensity.BALANCED, CrowdSensitivity.MIXED));
 
 		DraftedSlot first = draft.slots().get(0);
 
@@ -196,7 +195,7 @@ class CourseDraftServiceTest {
 	@DisplayName("코스 총점은 슬롯 한적도의 평균이다 — 추천도가 섞이지 않는다")
 	void totalIsAverageOfSlotQuietness() {
 		CourseDraft draft = draft(1, answers(
-				ItineraryDensity.BALANCED, CrowdSensitivity.MIXED, Transport.CAR));
+				ItineraryDensity.BALANCED, CrowdSensitivity.MIXED));
 
 		int expected = (int) Math.round(draft.course().slots().stream()
 				.mapToInt(CourseSlot::quietness)
@@ -213,7 +212,7 @@ class CourseDraftServiceTest {
 	@DisplayName("같은 설문 답이라도 매번 같은 코스가 나오지는 않는다")
 	void spreadsAcrossUsers() {
 		SurveyAnswers sameAnswers = answers(
-				ItineraryDensity.BALANCED, CrowdSensitivity.MIXED, Transport.CAR);
+				ItineraryDensity.BALANCED, CrowdSensitivity.MIXED);
 		CourseDraftService spreading = newService(new Random(7));
 
 		Set<String> shapes = IntStream.range(0, 20)
@@ -230,7 +229,7 @@ class CourseDraftServiceTest {
 	@DisplayName("'유명한 곳 위주'를 고르면 대표 명소도 코스에 오른다")
 	void popularAnswerCanSurfaceFamousPlaces() {
 		SurveyAnswers popular = answers(
-				ItineraryDensity.PACKED, CrowdSensitivity.POPULAR, Transport.CAR);
+				ItineraryDensity.PACKED, CrowdSensitivity.POPULAR);
 		CourseDraftService spreading = newService(new Random(7));
 
 		Set<String> seen = IntStream.range(0, 30)
@@ -248,7 +247,7 @@ class CourseDraftServiceTest {
 	@DisplayName("추천도 구성 항목의 반영 비율은 설문의 혼잡 민감도를 따른다")
 	void factorWeightsFollowSensitivity() {
 		CourseDraft draft = draft(1, answers(
-				ItineraryDensity.PACKED, CrowdSensitivity.QUIET, Transport.CAR));
+				ItineraryDensity.PACKED, CrowdSensitivity.QUIET));
 
 		// 첫 장소를 뺀 슬롯들은 한적도 + 근접도 두 항목을 갖는다.
 		List<DraftedSlot> withAnchor = draft.slots().stream()
