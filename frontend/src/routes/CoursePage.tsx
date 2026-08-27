@@ -314,7 +314,7 @@ export function CoursePage() {
                         ? { transform: `translateY(${offsetY}px)`, zIndex: 10 }
                         : undefined
                     }
-                    className={`${CARD} relative flex items-center gap-3 py-3 pr-3 pl-2 ${
+                    className={`${CARD} relative flex items-center gap-3 py-3 pr-3 pl-1 ${
                       dragging === index ? 'shadow-raised' : 'transition-transform'
                     }`}
                   >
@@ -328,7 +328,16 @@ export function CoursePage() {
                     <button
                       type="button"
                       data-drag-handle
-                      className="text-hint hover:text-fg hover:bg-bg -ml-0.5 grid h-9 w-7 flex-none cursor-grab place-items-center rounded-[9px] bg-transparent transition-colors active:cursor-grabbing"
+                      /*
+                        손잡이는 좁고, 오른쪽 간격을 음수로 당긴다.
+
+                        손잡이가 생기면서 <b>번호 원이 오른쪽으로 밀려</b> 줄 왼쪽이 허전해졌다.
+                        줄 전체의 gap을 줄이면 이름·분류 쪽 간격까지 좁아지므로,
+                        여기만 -mr로 당겨 번호를 원래 자리에 가깝게 되돌린다.
+
+                        w-6이어도 h-9이라 <b>누를 면적은 충분하다</b> — 좁아진 것은 폭뿐이다.
+                      */
+                      className="text-hint hover:text-fg hover:bg-bg -mr-1 grid h-9 w-6 flex-none cursor-grab place-items-center rounded-[9px] bg-transparent transition-colors active:cursor-grabbing"
                       aria-label={`${place?.name ?? ''} 순서 바꾸기. 끌어서 옮기거나 위아래 화살표를 누르세요`}
                       {...handleProps(index)}
                     >
