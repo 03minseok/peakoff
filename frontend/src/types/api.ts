@@ -359,6 +359,8 @@ export interface SaveCourseRequest {
    * 0으로 채우면 서버가 "매우 붐빔"인 코스로 저장한다.
    */
   totalQuietness: number | null
+  /** 홈의 "다른 사람들의 여행"에 보일지. 저장 화면의 토글이 정한다 */
+  isPublic: boolean
   /**
    * 그 총점이 몇 곳을 근거로 한 값인지. 진단 응답에서 받은 값을 그대로 보낸다.
    *

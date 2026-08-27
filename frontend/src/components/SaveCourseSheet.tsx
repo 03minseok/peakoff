@@ -12,7 +12,7 @@ interface Props {
   defaultName: string
   onClose: () => void
   /** 계정 저장. 실패하면 예외를 던진다 */
-  onSave: (name: string) => Promise<void>
+  onSave: (name: string, isPublic: boolean) => Promise<void>
 }
 
 type Phase = 'asking' | 'saved' | 'failed'
@@ -46,6 +46,11 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
   const location = useLocation()
 
   const [name, setName] = useState(defaultName)
+  /*
+    홈에 보일지. 기본은 켜 둔다 — 토글이 눈앞에 있어 사용자가 알고 고르고,
+    아무도 공개하지 않으면 "다른 사람들의 여행"이 늘 비어 아무에게도 쓸모가 없다.
+  */
+  const [isPublic, setIsPublic] = useState(true)
   const [phase, setPhase] = useState<Phase>('asking')
   const [saving, setSaving] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
@@ -78,7 +83,7 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
     setFailure(null)
     setSaving(true)
     try {
-      await onSave(trimmedName)
+      await onSave(trimmedName, isPublic)
       setPhase('saved')
     } catch (error: unknown) {
       // 서버가 이유를 준다(저장 개수 초과 등). 그대로 보여주는 편이 친절하다.
@@ -188,16 +193,35 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
                 placeholder="예: 한적한 경주 첫 여행"
               />
               {/*
-                ⚠️ <b>이 안내와 홈 카드는 한 몸이다.</b> 홈의 "다른 사람들의 여행"이
-                이 이름을 제목으로 쓴다. 알리지 않으면 사용자는 자기만 볼 줄 알고
-                이름을 짓고, 그 이름이 남에게 보인다.
+                공개 여부. <b>알리는 대신 고르게 한다.</b>
 
-                경고색(붐빔)이 아니라 흐린 글자다 — 위험을 알리는 것이 아니라
-                사실을 알려주는 자리라서다.
+                예전에는 "이 이름은 홈에 보일 수 있어요"라고 알리기만 했다. 알리는 것도
+                감추는 것보다는 낫지만, 싫은 사람에게 선택지가 없었다.
+
+                기본을 켜 두는 이유: 토글이 이름 바로 아래 있어 저장 전에 반드시 눈에 들어오고,
+                아무도 공개하지 않으면 "다른 사람들의 여행"이 늘 비어 아무에게도 쓸모가 없다.
+
+                체크박스를 label로 감싸 글자를 눌러도 켜지게 한다 — 네모 하나만 누르게 하면
+                손가락으로는 잘 안 맞는다.
               */}
-              <span className="text-hint text-[12px] leading-[1.6]">
-                이 이름은 홈의 &lsquo;다른 사람들의 여행&rsquo;에 보일 수 있어요.
-              </span>
+              <label className="hover:bg-bg -mx-1.5 flex cursor-pointer items-start gap-2.5 rounded-[12px] px-1.5 py-2 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(event) => setIsPublic(event.target.checked)}
+                  className="accent-brand mt-0.5 h-4 w-4 flex-none cursor-pointer"
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-fg text-[13.5px] font-medium">
+                    다른 사람들에게도 보여주기
+                  </span>
+                  <span className="text-hint text-[12px] leading-[1.55]">
+                    홈의 &lsquo;다른 사람들의 여행&rsquo;에 이 이름과 장소가 보여요.
+                    <br />
+                    누가 저장했는지는 알려지지 않아요.
+                  </span>
+                </span>
+              </label>
             </div>
           )}
 

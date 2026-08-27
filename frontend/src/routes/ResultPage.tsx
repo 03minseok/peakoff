@@ -709,7 +709,7 @@ export function ResultPage() {
             <SaveCourseSheet
               defaultName={defaultCourseName}
               onClose={() => setShowSavePrompt(false)}
-              onSave={async (name) => {
+              onSave={async (name, isPublic) => {
                 await saveCourse({
                   name,
                   region: plan.region,
@@ -727,6 +727,8 @@ export function ResultPage() {
                     재보지도 않은 코스를 최악이라고 말하게 된다. 서버도 null을 받는다.
                   */
                   totalQuietness: afterTotal,
+                  // 저장 시트의 토글이 정한다. 서버는 값이 없으면 비공개로 받는다.
+                  isPublic,
                   diagnosedCount: afterDiagnosis.diagnosedCount,
                   forecastTargetCount: afterDiagnosis.forecastTargetCount,
                   slots: toSlots(state.days),

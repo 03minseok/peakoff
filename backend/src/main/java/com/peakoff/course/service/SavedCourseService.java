@@ -94,6 +94,7 @@ public class SavedCourseService {
 				request.totalQuietness(),
 				request.diagnosedCount(),
 				request.forecastTargetCount(),
+				request.isPublic(),
 				entries,
 				now);
 
@@ -158,6 +159,11 @@ public class SavedCourseService {
 		 * 보여줄 수 있는 코스가 있는데도 목록이 짧아진다.
 		 */
 		return courses.stream()
+				/*
+				 * 저장할 때 <b>공개하기로 고른 코스만</b> 내보낸다.
+				 * 고른 적 없는 옛 코스도 여기서 빠진다(SavedCourse.isPublic 참고).
+				 */
+				.filter(SavedCourse::isPublic)
 				.filter(course -> course.totalQuietness() != null)
 				.limit(limit)
 				.map(PublicCourseSummary::from)
