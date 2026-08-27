@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { BrandLockup } from '../components/BrandMark'
 import { ChevronRight } from '../components/icons'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
@@ -736,15 +737,8 @@ export function HomePage() {
               어떤 화면에서는 안 뜨면, 사용자는 로고가 링크인지 아닌지를 매번 시험하게 된다.
               누를 수 있게 생긴 것은 어디서나 누를 수 있어야 한다.
             */}
-            <Link
-              to="/"
-              className="flex flex-none items-center gap-2 no-underline"
-              aria-label="PEAKOFF 처음으로"
-            >
-              <span className="bg-brand relative h-5 w-5 rounded-[7px]" aria-hidden="true">
-                <span className="bg-fg absolute top-1.5 left-1.5 h-2 w-2 rounded-full" />
-              </span>
-              <span className="text-fg text-xs font-bold tracking-[0.16em]">PEAKOFF</span>
+            <Link to="/" className="flex-none no-underline" aria-label="PEAK OFF 처음으로">
+              <BrandLockup />
             </Link>
             <HeaderNav />
           </div>
