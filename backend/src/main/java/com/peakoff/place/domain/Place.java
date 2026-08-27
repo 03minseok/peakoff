@@ -33,7 +33,36 @@ public record Place(
 		validateCoordinate(longitude, -180, 180, "경도");
 		Objects.requireNonNull(category, "분류는 필수입니다.");
 		// 이미지가 없는 관광지는 정상이므로 null을 허용하되, 공백 문자열은 없는 것으로 통일한다.
-		imageUrl = Texts.trimToNull(imageUrl);
+		imageUrl = toHttps(Texts.trimToNull(imageUrl));
+	}
+
+	/**
+	 * 이미지 주소를 {@code https}로 눕힌다.
+	 *
+	 * <h3>왜 필요한가</h3>
+	 * 공사가 주는 {@code firstimage}가 {@code http://tong.visitkorea.or.kr/…}이다.
+	 * 서비스는 https로 열리므로 브라우저가 <b>혼합 콘텐츠(mixed content)</b>로 본다.
+	 *
+	 * <p>크롬은 이런 이미지를 알아서 https로 올려 주지만, 그때마다 콘솔에 경고가 쌓인다.
+	 * 심사위원이 개발자 도구를 열면 <b>붉은 경고가 화면을 채운다</b> — 실제로 멀쩡히 도는
+	 * 서비스가 고장 난 것처럼 보인다. 자동 승격을 하지 않는 브라우저에서는 사진이 통째로
+	 * 빠지고, 그러면 장소 카드가 회색 네모만 남는다.
+	 *
+	 * <h3>왜 여기인가</h3>
+	 * 장소가 만들어지는 길이 여럿이다 — 공사 검색 응답, 목업 카탈로그, 대안 후보.
+	 * 클라이언트나 응답 DTO에서 고치면 <b>이미지를 쓰는 화면마다</b> 같은 처리를 되풀이해야
+	 * 하고, 한 곳을 빠뜨리면 그 화면에서만 경고가 남는다. 생성자는 그 길이 전부 지나는
+	 * 한 점이라 여기서 한 번 눕히면 끝난다.
+	 *
+	 * <p>⚠️ <b>https를 http로 내리지는 않는다.</b> 이미 https인 주소는 그대로 둔다.
+	 * 그리고 프로토콜만 갈아끼울 뿐 호스트·경로는 건드리지 않는다 — 공사가 준 주소를
+	 * 우리가 다시 쓰는 것이 아니라, 같은 자원을 안전한 통로로 부르는 것뿐이다.
+	 */
+	private static String toHttps(String url) {
+		if (url == null || !url.startsWith("http://")) {
+			return url;
+		}
+		return "https://" + url.substring("http://".length());
 	}
 
 	/**
