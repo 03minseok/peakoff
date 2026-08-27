@@ -210,9 +210,22 @@ export function MyPage() {
       days[saved.day - 1]?.push(saved.placeId)
     })
 
+    /*
+     * 어느 코스에서 왔는지를 함께 올린다. 이것이 있어야 결과 화면의 저장이
+     * <b>새로 만드는 대신 이 코스를 덮어쓴다.</b>
+     *
+     * 예전에는 장소와 날짜만 올렸다. 그래서 "수정하기"로 들어가 고친 뒤 저장하면
+     * <b>옛 코스는 그대로 남고 새 코스가 하나 더 생겼다</b> — 이름이 같은 코스가
+     * 목록에 둘씩 쌓여, 어느 것이 최신인지 열어보기 전에는 알 수 없었다.
+     *
+     * 이름과 공개 여부까지 싣는 이유는 저장 시트가 <b>지금 값</b>으로 열려야 하기
+     * 때문이다. 특히 공개 여부를 빠뜨리면 토글이 기본값(켜짐)으로 서서,
+     * 비공개로 저장해둔 코스가 고치는 것만으로 홈에 나간다.
+     */
     restore(
       { region: course.region, startDate: course.startDate, nights: course.nights },
       days,
+      { courseId: course.id, name: course.name, isPublic: course.isPublic },
     )
     /*
      * 편집 화면이 아니라 진단 화면으로 간다. 버튼 이름이 "다시 진단하기"다 —

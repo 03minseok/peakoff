@@ -248,6 +248,67 @@ public class SavedCourse {
 				diagnosedCount, forecastTargetCount, publicCourse, entries, now);
 	}
 
+	/**
+	 * 이미 저장된 코스를 <b>제자리에서</b> 고쳐 쓴다.
+	 *
+	 * <p>마이페이지의 "수정하기"로 들어와 다시 저장할 때 쓴다. 예전에는 이 자리가 없어서
+	 * 늘 새 코스가 만들어졌고, 한 번 고칠 때마다 <b>목록에 비슷한 코스가 하나씩 쌓였다.</b>
+	 *
+	 * <h3>지역은 바꾸지 않는다</h3>
+	 * 지역을 바꾸려면 조건 화면으로 돌아가야 하는데, 그 화면은 흐름을 새로 시작하므로
+	 * 여기까지 오지 않는다. 인자로 받지 않아 <b>애초에 바뀔 수 없게</b> 둔다 —
+	 * 지역이 바뀌면 담긴 장소가 전부 그 지역 밖이 되어 다른 코스가 된다.
+	 *
+	 * <h3>장소는 지우고 다시 담는다</h3>
+	 * 자리마다 맞춰 고치는 대신 목록을 비우고 새로 채운다. 순서가 바뀌고 개수가 달라지는
+	 * 편집이라, 짝을 맞춰 고치려면 "몇 번째가 몇 번째로 갔는가"를 따져야 한다.
+	 * {@code orphanRemoval}이 걸려 있어 목록에서 빠진 행은 함께 지워진다.
+	 *
+	 * <p>⚠️ {@code places.clear()}가 아니라 <b>새 리스트로 갈아끼우면 안 된다.</b>
+	 * JPA는 자기가 준 컬렉션을 지켜보고 있어서, 참조를 바꾸면 지워진 행을 알아채지 못한다.
+	 *
+	 * @param now 다시 저장한 시각. 점수가 있을 때만 {@code scoredAt}도 이때로 옮긴다
+	 */
+	public void update(
+			String name,
+			LocalDate startDate,
+			int nights,
+			Integer totalQuietness,
+			Integer diagnosedCount,
+			Integer forecastTargetCount,
+			boolean publicCourse,
+			List<PlaceEntry> entries,
+			Instant now) {
+
+		this.name = validateName(name);
+		this.startDate = Objects.requireNonNull(startDate, "시작일은 필수입니다.");
+		this.nights = validateNights(nights);
+		if (totalQuietness != null) {
+			Scores.validate(totalQuietness, "코스 총점");
+		}
+		this.totalQuietness = totalQuietness;
+		/*
+		 * 모수는 둘 다 있을 때만 갈아끼운다 — 저장 때와 같은 규칙이다.
+		 *
+		 * ⚠️ else로 null을 채워 넣는다. 점수를 다시 매겼는데 모수만 옛것이 남으면
+		 * "세 곳 중 두 곳"이라던 코스가 실제로는 다섯 곳짜리인 채로 옛 문구를 달게 된다.
+		 */
+		if (diagnosedCount != null && forecastTargetCount != null) {
+			this.diagnosedCount = diagnosedCount;
+			this.forecastTargetCount = forecastTargetCount;
+		} else {
+			this.diagnosedCount = null;
+			this.forecastTargetCount = null;
+		}
+		this.publicCourse = publicCourse;
+		Objects.requireNonNull(now, "저장 시각은 필수입니다.");
+		// 점수가 없어졌으면 점수를 매긴 시각도 없어진다. 둘은 늘 함께 움직인다.
+		this.scoredAt = totalQuietness == null ? null : now;
+
+		places.clear();
+		addPlaces(entries);
+	}
+
 	private void addPlaces(List<PlaceEntry> entries) {
 		if (entries == null || entries.isEmpty()) {
 			throw new IllegalArgumentException("장소가 하나도 없는 코스는 저장할 수 없습니다.");

@@ -14,7 +14,7 @@ import {
 } from '../components/styles'
 import { regionNameOf } from '../constants/regions'
 import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
-import { saveCourse } from '../services/api'
+import { saveCourse, updateCourse } from '../services/api'
 import { recallPlaces } from '../services/placeCache'
 import { useTrip } from '../state/tripContext'
 import type { CongestionLevel, CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
@@ -297,9 +297,16 @@ export function ResultPage() {
    * 빈칸으로 두면 "이름 짓기"가 저장을 막는 관문이 된다. 지역과 기간으로 무난한 이름을
    * 미리 채워두고, 고치고 싶은 사람만 고치게 한다.
    */
-  const defaultCourseName = `${
-    regionNameOf(plan.region)
-  } ${plan.nights === 0 ? '당일치기' : `${plan.nights}박 ${plan.nights + 1}일`}`.trim()
+  const defaultCourseName =
+    /*
+     * 고쳐 쓰는 중이면 <b>저장해둔 이름</b>이 먼저다. 지역·기간으로 새로 지어 채우면
+     * 사용자가 붙여둔 이름이 조용히 지워진다 — 저장 버튼을 누르는 순간 코스 이름이
+     * "경주 1박 2일"로 되돌아간다.
+     */
+    state.source?.name ??
+    `${regionNameOf(plan.region)} ${
+      plan.nights === 0 ? '당일치기' : `${plan.nights}박 ${plan.nights + 1}일`
+    }`.trim()
 
   const crowdedBefore = beforeDiagnosis
     ? beforeDiagnosis.slots.filter((slot) => slot.level === 'CROWDED').length
@@ -708,9 +715,15 @@ export function ResultPage() {
           {showSavePrompt && (
             <SaveCourseSheet
               defaultName={defaultCourseName}
+              /*
+                고쳐 쓰는 중이면 시트가 그렇게 말하고, 공개 토글도 저장해둔 값으로 선다.
+                켜짐을 기본으로 두면 비공개로 저장한 코스가 고치는 것만으로 홈에 나간다.
+              */
+              editing={state.source !== null}
+              defaultPublic={state.source?.isPublic ?? true}
               onClose={() => setShowSavePrompt(false)}
               onSave={async (name, isPublic) => {
-                await saveCourse({
+                const body = {
                   name,
                   region: plan.region,
                   startDate: plan.startDate,
@@ -732,7 +745,23 @@ export function ResultPage() {
                   diagnosedCount: afterDiagnosis.diagnosedCount,
                   forecastTargetCount: afterDiagnosis.forecastTargetCount,
                   slots: toSlots(state.days),
-                })
+                }
+
+                /*
+                  <b>어디서 왔는지가 새로 만들지 고쳐 쓸지를 가른다.</b>
+
+                  마이페이지의 "수정하기"로 들어왔으면 source가 있고, 그 코스를 덮어쓴다.
+                  예전에는 이 갈래가 없어 늘 새로 만들었고, 한 번 고칠 때마다 목록에
+                  같은 이름의 코스가 하나씩 쌓였다.
+
+                  ⚠️ 조건 화면을 다시 지나면 source가 지워진다. 장소를 전부 버린 코스로
+                  옛 것을 덮어쓰면 되돌릴 수 없기 때문이다.
+                */
+                if (state.source) {
+                  await updateCourse(state.source.courseId, body)
+                } else {
+                  await saveCourse(body)
+                }
               }}
             />
           )}
