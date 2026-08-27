@@ -274,8 +274,7 @@ class ApiEndpointsTest {
 				  "startDate": "2026-09-16",
 				  "nights": 1,
 				  "density": "BALANCED",
-				  "sensitivity": "QUIET",
-				  "transport": "TRANSIT"
+				  "sensitivity": "QUIET"
 				}
 				""";
 
@@ -315,7 +314,7 @@ class ApiEndpointsTest {
 			String json = """
 					{
 					  "region": "gyeongju", "startDate": "2026-09-16", "nights": 0,
-					  "sensitivity": "MIXED", "transport": "CAR"
+					  "sensitivity": "MIXED"
 					}
 					""";
 
@@ -334,7 +333,7 @@ class ApiEndpointsTest {
 					{
 					  "region": "gyeongju", "startDate": "2026-09-16", "nights": 0,
 					  "density": "초고속",
-					  "sensitivity": "MIXED", "transport": "CAR"
+					  "sensitivity": "MIXED"
 					}
 					""";
 

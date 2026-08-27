@@ -10,7 +10,6 @@ import jakarta.validation.constraints.NotNull;
 import com.peakoff.course.domain.survey.CrowdSensitivity;
 import com.peakoff.course.domain.survey.ItineraryDensity;
 import com.peakoff.course.domain.survey.SurveyAnswers;
-import com.peakoff.course.domain.survey.Transport;
 
 /**
  * 설문 기반 코스 추천 요청.
@@ -22,15 +21,15 @@ import com.peakoff.course.domain.survey.Transport;
  * 보내고 그것이 85%인지 90%인지 모른다 — 분석 결과로 값이 바뀔 때 화면을 고치지 않기 위해서다.
  * 한적도 임계값을 서버에 둔 것과 같은 이유다.
  *
- * <p>⚠️ {@code styles}(여행 스타일)를 <b>2026-08-27에 뺐다.</b> 요청 본문이 바뀌는
- * 변경이라 화면과 함께 나가야 한다. 이유는 {@code SurveyAnswers}에 적어 두었다.
+ * <p>⚠️ {@code styles}(여행 스타일)와 {@code transport}(이동수단)를
+ * <b>2026-08-27에 뺐다.</b> 요청 본문이 바뀌는 변경이라 화면과 함께 나가야 한다.
+ * 이유는 {@code SurveyAnswers}에 적어 두었다.
  *
  * @param region      지역 슬러그 (예: "gyeongju")
  * @param startDate   여행 시작일 (yyyy-MM-dd)
  * @param nights      박 수. 당일치기는 0
  * @param density     일정 밀도
  * @param sensitivity 혼잡 민감도
- * @param transport   이동수단
  */
 public record CourseRecommendRequest(
 		@NotBlank(message = "지역이 필요합니다.")
@@ -47,13 +46,10 @@ public record CourseRecommendRequest(
 		ItineraryDensity density,
 
 		@NotNull(message = "혼잡 민감도를 골라야 합니다.")
-		CrowdSensitivity sensitivity,
-
-		@NotNull(message = "이동수단을 골라야 합니다.")
-		Transport transport) {
+		CrowdSensitivity sensitivity) {
 
 	/** 바깥과의 계약(DTO)을 안에서 쓰는 값(도메인)으로 옮긴다. */
 	public SurveyAnswers toAnswers() {
-		return new SurveyAnswers(density, sensitivity, transport);
+		return new SurveyAnswers(density, sensitivity);
 	}
 }
