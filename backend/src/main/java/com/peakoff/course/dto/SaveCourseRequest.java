@@ -74,15 +74,43 @@ public record SaveCourseRequest(
 
 		/**
 		 * 홈의 "다른 사람들의 여행"에 보일지. 저장 화면의 토글이 정한다.
+		 * 값이 없으면 <b>비공개</b>다 — 고르지 않은 것을 공개로 받으면 묻지 않고 내보내는
+		 * 셈이 된다. {@link SavedCourse#isPublic()}이 옛 코스를 다루는 방식과 같다.
 		 *
-		 * <p>{@code boolean}이라 값이 없으면 false(비공개)다. 고르지 않은 요청을
-		 * 공개로 받으면 묻지 않고 내보내는 셈이 된다.
+		 * <h3>⚠️ {@code boolean}(원시 타입)으로 되돌리지 말 것 (2026-08-27)</h3>
+		 * 원시 타입으로 두면 <b>이 값을 안 보내는 요청이 통째로 400이 된다.</b> 필드 하나가
+		 * 비는 게 아니라 저장 API 전체가 막힌다 — 실제로 그렇게 깨졌고 CI가 잡았다.
+		 *
+		 * <pre>Cannot map `null` into type `boolean`</pre>
+		 *
+		 * <p>Jackson 3(Spring Boot 4)은 {@code FAIL_ON_NULL_FOR_PRIMITIVES}가 <b>켜져 있는
+		 * 것이 기본</b>이다. Jackson 2에서는 빠진 값이 조용히 {@code false}가 되던 자리라,
+		 * "boolean이니 없으면 false"라는 통념이 여기서는 통하지 않는다.
+		 *
+		 * <p>기본값을 {@code false}로 두고 싶다는 이유로 원시 타입을 고르면, 실제로는
+		 * <b>필수 필드</b>가 된다. 없어도 되는 값이면 {@code Boolean}으로 받고 빈 경우를
+		 * 코드가 직접 정해야 한다 — 그것이 {@link #wantsPublic()}이다.
+		 *
+		 * <p>⚠️ 다른 요청 DTO에 원시 타입 필드를 새로 넣을 때도 같은 것을 확인한다.
+		 * 프론트가 늘 보내는 값이면 문제가 드러나지 않다가, <b>옛 화면이나 다른 클라이언트가
+		 * 보내는 순간</b> 그 API가 통째로 400이 된다.
 		 */
-		boolean isPublic,
+		Boolean isPublic,
 
 		@NotEmpty(message = "코스에 장소가 하나 이상 있어야 저장할 수 있습니다.")
 		@Size(max = 50, message = "한 번에 저장할 수 있는 장소는 50곳까지입니다.")
 		// 목록 안쪽 원소까지 검사하려면 @Valid가 필요하다. 없으면 목록 크기만 보고 넘어간다.
 		@Valid
 		List<SlotRequest> slots) {
+
+	/**
+	 * 공개를 고른 요청인가. <b>고른 적이 없으면 비공개다.</b>
+	 *
+	 * <p>{@link #isPublic}이 {@code Boolean}이라 "안 보냈다"와 "false를 보냈다"가
+	 * 갈리는데, 저장하는 쪽에는 둘 다 <b>비공개</b> 하나로 내려가야 한다. 그 판단을
+	 * 서비스마다 되풀이하면 한 곳이 {@code null}을 그대로 넘겨 NPE로 넘어진다.
+	 */
+	public boolean wantsPublic() {
+		return Boolean.TRUE.equals(isPublic);
+	}
 }
