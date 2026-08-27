@@ -10,6 +10,16 @@ const NAME_MAX_LENGTH = 30
 interface Props {
   /** 이름 입력란에 미리 채워둘 값. 예: "경주 2박 3일" */
   defaultName: string
+  /**
+   * 이미 저장한 코스를 고쳐 쓰는 중인가. 마이페이지의 "수정하기"로 들어온 경우다.
+   *
+   * <p>문구만 바뀐다 — 하는 일은 부르는 쪽이 정한다(이쪽은 {@code onSave}를 부를 뿐이다).
+   * 그래도 문구는 갈려야 한다. "저장할까요?"라고 물어놓고 옛 코스를 덮어쓰면,
+   * <b>사용자는 코스가 하나 더 생기는 줄 알고 눌렀다가 원래 것을 잃는다.</b>
+   */
+  editing?: boolean
+  /** 공개 토글의 처음 상태. 고쳐 쓰는 중이면 저장해둔 값이 온다 */
+  defaultPublic?: boolean
   onClose: () => void
   /** 계정 저장. 실패하면 예외를 던진다 */
   onSave: (name: string, isPublic: boolean) => Promise<void>
@@ -41,16 +51,25 @@ const GHOST_BUTTON =
  * <p>그래서 게스트에게는 <b>이름을 묻지 않는다.</b> 아직 저장할 수 없는데 이름부터 짓게 하면
  * 채워 넣은 것이 버려진다.
  */
-export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
+export function SaveCourseSheet({
+  defaultName,
+  editing = false,
+  defaultPublic = true,
+  onClose,
+  onSave,
+}: Props) {
   const { member } = useAuth()
   const location = useLocation()
 
   const [name, setName] = useState(defaultName)
   /*
-    홈에 보일지. 기본은 켜 둔다 — 토글이 눈앞에 있어 사용자가 알고 고르고,
+    홈에 보일지. 새 코스의 기본은 켜 둔다 — 토글이 눈앞에 있어 사용자가 알고 고르고,
     아무도 공개하지 않으면 "다른 사람들의 여행"이 늘 비어 아무에게도 쓸모가 없다.
+
+    ⚠️ 고쳐 쓰는 중이면 <b>저장해둔 값</b>이 온다. 늘 켜짐으로 열면 비공개로 둔 코스가
+    고치는 것만으로 홈에 나간다 — 사용자가 그 화면에서 한 일은 장소를 바꾼 것뿐인데.
   */
-  const [isPublic, setIsPublic] = useState(true)
+  const [isPublic, setIsPublic] = useState(defaultPublic)
   const [phase, setPhase] = useState<Phase>('asking')
   const [saving, setSaving] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
@@ -103,22 +122,35 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
    */
   const returnTo = { from: location.pathname }
 
+  /*
+    고쳐 쓰는 중에는 <b>하는 일이 다르다는 것을 문구가 말한다.</b>
+    "저장할까요?"로 물으면 코스가 하나 더 생기는 줄 알고 누르게 되는데,
+    실제로는 원래 코스를 덮어쓴다. 되돌릴 수 없는 일은 누르기 전에 알려야 한다.
+  */
   const title =
     phase === 'saved'
-      ? '계정에 저장했어요'
+      ? editing
+        ? '수정한 내용을 저장했어요'
+        : '계정에 저장했어요'
       : phase === 'failed'
         ? '저장하지 못했어요'
         : member
-          ? '코스를 저장할까요?'
+          ? editing
+            ? '수정한 내용으로 바꿀까요?'
+            : '코스를 저장할까요?'
           : null
 
   const description =
     phase === 'saved'
-      ? '어느 기기에서 로그인해도 이 코스를 다시 열어볼 수 있어요.'
+      ? editing
+        ? '원래 코스가 방금 고친 내용으로 바뀌었어요.'
+        : '어느 기기에서 로그인해도 이 코스를 다시 열어볼 수 있어요.'
       : phase === 'failed'
         ? (failure ?? '저장하지 못했어요.\n잠시 후 다시 시도해 주세요.')
         : member
-          ? '이름을 붙여 계정에 담아두면 나중에 다른 코스와 나란히 볼 수 있어요.'
+          ? editing
+            ? '새 코스로 따로 남지 않고, 마이페이지에 있던 그 코스가 이 내용으로 바뀌어요.'
+            : '이름을 붙여 계정에 담아두면 나중에 다른 코스와 나란히 볼 수 있어요.'
           : '계정을 만들면 짠 코스를 저장해두고, 다음에 짠 코스와 한적 지수를 나란히 맞대어 볼 수 있어요.'
 
   return (
@@ -252,7 +284,7 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
                   onClick={() => void handleSave()}
                   disabled={!nameIsValid || saving}
                 >
-                  {saving ? '저장 중…' : '저장하기'}
+                  {saving ? '저장 중…' : editing ? '이 내용으로 바꾸기' : '저장하기'}
                 </button>
                 <button type="button" className={GHOST_BUTTON} onClick={onClose}>
                   나중에 할게요

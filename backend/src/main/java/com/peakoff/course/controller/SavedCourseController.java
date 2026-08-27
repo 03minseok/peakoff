@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -68,6 +69,26 @@ public class SavedCourseController {
 
 		// 여기 도달했다는 것은 SecurityConfig가 이미 인증을 확인했다는 뜻이라 null 검사가 필요 없다.
 		return ApiResponse.ok(savedCourseService.save(member.id(), request));
+	}
+
+	@Operation(
+			summary = "코스 수정",
+			description = """
+					이미 저장한 코스를 고쳐 쓴다. 마이페이지의 "수정하기"로 들어온 저장이다.
+
+					본문은 저장과 같은 모양이다. 이름·날짜·장소·점수 스냅샷·공개 여부가 갈리고,
+					지역은 바뀌지 않는다 — 지역을 바꾸려면 조건 화면부터 다시 시작해야 한다.
+
+					남의 코스 번호를 넣으면 저장 상세와 같은 이유로 404가 나간다.
+					저장 개수 상한은 보지 않는다. 고쳐 쓰기는 개수를 늘리지 않으므로,
+					여기서 막으면 이미 가득 찬 사용자가 가진 코스를 고칠 수조차 없게 된다.""")
+	@PutMapping("/{courseId}")
+	public ApiResponse<SavedCourseDetail> update(
+			@AuthenticationPrincipal AuthenticatedMember member,
+			@PathVariable Long courseId,
+			@Valid @RequestBody SaveCourseRequest request) {
+
+		return ApiResponse.ok(savedCourseService.update(member.id(), courseId, request));
 	}
 
 	@Operation(

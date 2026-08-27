@@ -61,28 +61,7 @@ public class SavedCourseService {
 							.formatted(SavedCourse.MAX_PER_MEMBER));
 		}
 
-		/*
-		 * 장소 이름을 여기서 찾아 함께 저장한다.
-		 *
-		 * 저장은 자주 일어나는 일이 아니다. 여기서 한 번 조회해두면 이후 목록·상세를
-		 * 열 때마다 하던 조회가 통째로 사라진다 — 자주 도는 쪽에서 비용을 걷어내고
-		 * 가끔 도는 쪽에 한 번 두는 맞바꿈이다.
-		 *
-		 * 요청에서 이름을 받지 않는 이유: 화면에 남을 이름을 클라이언트가 정하게 두면
-		 * 저장된 코스가 실제 장소와 다른 것을 가리킬 수 있다. 출처가 서버여야 믿을 수 있다.
-		 */
-		List<PlaceEntry> entries = request.slots().stream()
-				.map(slot -> new PlaceEntry(
-						slot.day(),
-						slot.order(),
-						slot.placeId(),
-						placeProvider.findById(slot.placeId())
-								// 없는 장소가 섞인 코스를 저장하면 열 때마다 빈칸이 남는다.
-								// 진단도 같은 이유로 거절하므로 여기서도 막는다.
-								.orElseThrow(() -> new NotFoundException(
-										"존재하지 않는 장소입니다: " + slot.placeId()))
-								.name()))
-				.toList();
+		List<PlaceEntry> entries = toEntries(request);
 
 		Instant now = Instant.now(clock);
 		SavedCourse course = SavedCourse.save(
@@ -102,6 +81,40 @@ public class SavedCourseService {
 		return toDetail(savedCourseRepository.save(course));
 	}
 
+	/**
+	 * 이미 저장한 코스를 고쳐 쓴다. 마이페이지의 "수정하기"로 들어온 저장이다.
+	 *
+	 * <p>예전에는 이 길이 없어서 수정해 들어온 코스도 {@link #save}로 떨어졌고,
+	 * 한 번 고칠 때마다 <b>목록에 비슷한 코스가 하나씩 쌓였다.</b> 사용자가 지우기 전까지
+	 * 어느 것이 최신인지 이름만 보고는 알 수 없었다.
+	 *
+	 * <p>{@code getOwned}가 <b>존재 확인과 소유권 확인을 함께</b> 한다. 남의 코스 번호를
+	 * 넣으면 404다 — 403으로 답하면 "있긴 한데 네 것이 아니다"를 알려주는 셈이 된다.
+	 *
+	 * <p>⚠️ <b>저장 개수 상한을 보지 않는다.</b> 고쳐 쓰기는 개수를 늘리지 않는다.
+	 * 여기서 상한을 걸면 이미 가득 찬 사용자가 <b>가진 코스를 고칠 수조차 없게</b> 된다.
+	 *
+	 * <p>장소 이름을 다시 조회하는 것은 {@link #save}와 같다. 편집으로 장소가 통째로
+	 * 바뀌었을 수 있어, 옛 이름을 그대로 두면 다른 장소에 옛 이름이 붙는다.
+	 */
+	@Transactional
+	public SavedCourseDetail update(Long memberId, Long courseId, SaveCourseRequest request) {
+		SavedCourse course = getOwned(memberId, courseId);
+
+		course.update(
+				request.name(),
+				request.startDate(),
+				request.nights(),
+				request.totalQuietness(),
+				request.diagnosedCount(),
+				request.forecastTargetCount(),
+				request.wantsPublic(),
+				toEntries(request),
+				Instant.now(clock));
+
+		return toDetail(course);
+	}
+
 	public List<SavedCourseSummary> findMine(Long memberId) {
 		return savedCourseRepository.findByMemberIdOrderByCreatedAtDesc(memberId).stream()
 				.map(SavedCourseSummary::from)
@@ -116,6 +129,34 @@ public class SavedCourseService {
 	public void delete(Long memberId, Long courseId) {
 		// 존재 확인과 소유권 확인이 같은 질의에서 끝난다.
 		savedCourseRepository.delete(getOwned(memberId, courseId));
+	}
+
+	/**
+	 * 요청의 슬롯을 저장할 형태로 옮긴다. <b>장소 이름을 여기서 찾아 함께 담는다.</b>
+	 *
+	 * <p>저장·수정은 자주 일어나는 일이 아니다. 여기서 한 번 조회해두면 이후 목록·상세를
+	 * 열 때마다 하던 조회가 통째로 사라진다 — 자주 도는 쪽에서 비용을 걷어내고
+	 * 가끔 도는 쪽에 한 번 두는 맞바꿈이다.
+	 *
+	 * <p>요청에서 이름을 받지 않는 이유: 화면에 남을 이름을 클라이언트가 정하게 두면
+	 * 저장된 코스가 실제 장소와 다른 것을 가리킬 수 있다. 출처가 서버여야 믿을 수 있다.
+	 *
+	 * <p>저장과 수정이 <b>이 한 곳</b>을 함께 쓴다. 각자 갖고 있으면 "없는 장소는 거절한다"
+	 * 같은 규칙이 한쪽에만 남는 날이 온다.
+	 */
+	private List<PlaceEntry> toEntries(SaveCourseRequest request) {
+		return request.slots().stream()
+				.map(slot -> new PlaceEntry(
+						slot.day(),
+						slot.order(),
+						slot.placeId(),
+						placeProvider.findById(slot.placeId())
+								// 없는 장소가 섞인 코스를 저장하면 열 때마다 빈칸이 남는다.
+								// 진단도 같은 이유로 거절하므로 여기서도 막는다.
+								.orElseThrow(() -> new NotFoundException(
+										"존재하지 않는 장소입니다: " + slot.placeId()))
+								.name()))
+				.toList();
 	}
 
 	/**
