@@ -187,6 +187,17 @@ export function SaveCourseSheet({ defaultName, onClose, onSave }: Props) {
                 maxLength={NAME_MAX_LENGTH}
                 placeholder="예: 한적한 경주 첫 여행"
               />
+              {/*
+                ⚠️ <b>이 안내와 홈 카드는 한 몸이다.</b> 홈의 "다른 사람들의 여행"이
+                이 이름을 제목으로 쓴다. 알리지 않으면 사용자는 자기만 볼 줄 알고
+                이름을 짓고, 그 이름이 남에게 보인다.
+
+                경고색(붐빔)이 아니라 흐린 글자다 — 위험을 알리는 것이 아니라
+                사실을 알려주는 자리라서다.
+              */}
+              <span className="text-hint text-[12px] leading-[1.6]">
+                이 이름은 홈의 &lsquo;다른 사람들의 여행&rsquo;에 보일 수 있어요.
+              </span>
             </div>
           )}
 

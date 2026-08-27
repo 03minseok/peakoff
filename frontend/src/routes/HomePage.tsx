@@ -384,8 +384,9 @@ const PREVIEW_PLACES = 3
  * 목록 응답이 장소를 전부 들고 온다 — 열어 보는 데 필요한 것이 이미 손에 있으므로
  * 남의 코스에 주소를 주지 않고도 펼칠 수 있다. 그래서 누를 때 서버를 다시 부르지 않는다.
  *
- * <p>이름 대신 <b>장소 이름 몇 개</b>를 세운다. 코스 이름은 사용자가 자기만 볼 줄 알고
- * 지은 것이라 공개하지 않는다. 어차피 "어디를 도는 여행인가"는 장소가 더 잘 말해준다.
+ * <p>제목은 <b>저장한 사람이 붙인 이름</b>이다. 지역과 기간만 세웠더니 어느 카드나
+ * "경주 1박 2일"이라 서로 구분되지 않았다 — 이름이 있어야 남의 여행이 남의 여행답게 읽힌다.
+ * 지역·기간은 그 아래 줄로 내렸다.
  *
  * <p>흰 카드가 아니라 <b>바탕색으로 눌러 담은 칸</b>이다. 이 카드가 흰 박스 안에 들어가서,
  * 흰 면 위에 흰 카드를 얹으면 그림자로만 갈려 층이 흐릿해진다.
@@ -435,12 +436,8 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
-            {/*
-              코스 이름 자리에 <b>지역과 기간</b>이 선다. 이름은 사용자가 자기만 볼 줄 알고
-              지은 것이라 공개하지 않는다 — 서버도 내려보내지 않는다.
-            */}
             <span className="text-fg min-w-0 flex-1 truncate text-[14.5px] font-semibold tracking-[-0.01em]">
-              {shortRegion} {formatNights(course.nights)}
+              {course.name}
             </span>
             {/* 한적도는 어디서나 3단계 배지로 말한다. 게이지는 정도를, 배지는 등급을 맡는다 */}
             <span
@@ -449,8 +446,8 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
               {course.levelLabel}
             </span>
           </div>
-          <span className="text-hint text-[12px]">
-            {formatCompactDate(course.startDate)} 출발 · {course.places.length}곳
+          <span className="text-hint truncate text-[12px]">
+            {shortRegion} {formatNights(course.nights)} · {formatCompactDate(course.startDate)} 출발
           </span>
         </div>
       </div>
