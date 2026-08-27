@@ -411,6 +411,14 @@ export interface SavedCourseSummary {
   /** 그 점수를 매긴 시각 (ISO). 총점이 없으면 이것도 null이다 — 매긴 적이 없으니까 */
   scoredAt: string | null
   createdAt: string
+  /**
+   * 홈의 "다른 사람들의 여행"에 나가는가.
+   *
+   * <b>목록에 표시하려고 받는 값이 아니다.</b> "수정하기"로 들어가 다시 저장할 때
+   * 저장 시트의 공개 토글을 <b>지금 값</b>으로 채우기 위해 받는다. 없으면 기본값(켜짐)으로
+   * 돌아가, 비공개로 둔 코스가 고치는 것만으로 공개된다.
+   */
+  isPublic: boolean
 }
 
 /**

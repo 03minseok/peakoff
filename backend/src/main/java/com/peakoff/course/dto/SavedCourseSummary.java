@@ -20,6 +20,11 @@ import com.peakoff.place.domain.SupportedRegion;
  * @param diagnosedCount      그 총점을 매긴 칸 수. <b>옛 코스는 {@code null}</b>
  * @param forecastTargetCount 예측 대상 관광지 수. 총점의 분모. <b>옛 코스는 {@code null}</b>
  * @param scoredAt            점수를 매긴 시각. 저장 시점의 판단이라는 것을 화면에서 밝힐 수 있다
+ * @param isPublic            홈의 "다른 사람들의 여행"에 나가는가.
+ *                            <b>화면에 표시하려고 넣은 값이 아니라 되돌려주기 위한 값이다</b> —
+ *                            "수정하기"로 들어가 다시 저장할 때 저장 시트의 토글을 지금 값으로
+ *                            채워야 한다. 없으면 기본값(켜짐)으로 돌아가,
+ *                            <b>비공개로 둔 코스가 고치는 것만으로 공개된다</b>
  */
 public record SavedCourseSummary(
 		Long id,
@@ -37,7 +42,8 @@ public record SavedCourseSummary(
 		Integer diagnosedCount,
 		Integer forecastTargetCount,
 		Instant scoredAt,
-		Instant createdAt) {
+		Instant createdAt,
+		boolean isPublic) {
 
 	public static SavedCourseSummary from(SavedCourse course) {
 		/*
@@ -62,6 +68,7 @@ public record SavedCourseSummary(
 				course.diagnosedCount(),
 				course.forecastTargetCount(),
 				course.scoredAt(),
-				course.createdAt());
+				course.createdAt(),
+				course.isPublic());
 	}
 }

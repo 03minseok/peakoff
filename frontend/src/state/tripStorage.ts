@@ -1,4 +1,4 @@
-import type { TripBaseline, TripState } from './tripTypes'
+import type { TripBaseline, TripSource, TripState } from './tripTypes'
 
 /**
  * 여행 상태를 sessionStorage에 보관한다.
@@ -10,7 +10,12 @@ import type { TripBaseline, TripState } from './tripTypes'
  */
 const STORAGE_KEY = 'peakoff.trip'
 
-export const EMPTY_TRIP_STATE: TripState = { plan: null, days: [], baseline: null }
+export const EMPTY_TRIP_STATE: TripState = {
+  plan: null,
+  days: [],
+  baseline: null,
+  source: null,
+}
 
 /**
  * 저장된 값이 지금 코드가 기대하는 모양인지 확인한다.
@@ -45,6 +50,26 @@ function isValidBaseline(value: unknown): boolean {
   return isValidPlan(baseline.plan) && isValidDays(baseline.days)
 }
 
+/**
+ * 고쳐 쓰는 중인 코스 표시가 성한 모양인지 본다.
+ *
+ * ⚠️ 세 값이 <b>모두</b> 맞아야 한다. 하나라도 어긋나면 없는 것으로 친다 —
+ * 번호만 남고 이름이 날아가면 저장 시트가 빈 이름으로 열리고, 공개 여부가 날아가면
+ * 비공개로 저장해둔 코스가 고치는 것만으로 공개될 수 있다. 반쯤 살리는 것보다
+ * 새 코스로 떨어지는 편이 안전하다.
+ */
+function isValidSource(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const source = value as Record<string, unknown>
+  return (
+    typeof source.courseId === 'number' &&
+    typeof source.name === 'string' &&
+    typeof source.isPublic === 'boolean'
+  )
+}
+
 export function loadTripState(): TripState {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
@@ -60,6 +85,8 @@ export function loadTripState(): TripState {
       days: parsed.days as string[][],
       // 원안은 없을 수 있다(아직 진단에 들어가지 않은 상태). 모양이 이상하면 없는 것으로 친다.
       baseline: isValidBaseline(parsed.baseline) ? (parsed.baseline as TripBaseline) : null,
+      // 대개 없다. 마이페이지에서 "수정하기"로 들어온 흐름에만 있다.
+      source: isValidSource(parsed.source) ? (parsed.source as TripSource) : null,
     }
   } catch {
     // 저장소를 못 쓰는 환경(사파리 시크릿 모드 등)에서도 앱은 돌아가야 한다.

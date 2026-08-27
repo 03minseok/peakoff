@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { TripPlan, TripState } from './tripTypes'
+import type { TripPlan, TripSource, TripState } from './tripTypes'
 
 /**
  * Context 정의와 훅.
@@ -33,8 +33,14 @@ export interface TripContextValue {
   replacePlace: (day: number, index: number, placeId: string) => void
   /** 진단에 들어가며 지금 코스를 원안으로 찍는다. 이후 비교의 기준이 된다 */
   markBaseline: () => void
-  /** 기기에 저장해둔 코스를 흐름에 다시 올린다. 원안 기준은 초기화된다 */
-  restore: (plan: TripPlan, days: string[][]) => void
+  /**
+   * 저장해둔 코스를 흐름에 다시 올린다. 원안 기준은 초기화된다.
+   *
+   * @param source 고쳐 쓸 코스. 주면 결과 화면의 저장이 <b>그 코스를 덮어쓴다.</b>
+   *               <b>주지 않으면 새 코스가 된다</b> — 남의 코스를 "나도 짜보기"로
+   *               담아 오는 길이 그렇다. 빠뜨렸을 때 새로 만들어지는 쪽으로 넘어진다
+   */
+  restore: (plan: TripPlan, days: string[][], source?: TripSource | null) => void
   reset: () => void
 }
 

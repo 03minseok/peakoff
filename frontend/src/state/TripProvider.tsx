@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { TripContext } from './tripContext'
 import type { TripContextValue } from './tripContext'
 import { EMPTY_TRIP_STATE, loadTripState, saveTripState } from './tripStorage'
-import type { TripPlan, TripState } from './tripTypes'
+import type { TripPlan, TripSource, TripState } from './tripTypes'
 
 /**
  * 여행 흐름의 공유 상태.
@@ -22,7 +22,7 @@ type TripAction =
   | { type: 'REORDER_PLACE'; day: number; from: number; to: number }
   | { type: 'REPLACE_PLACE'; day: number; index: number; placeId: string }
   | { type: 'MARK_BASELINE' }
-  | { type: 'RESTORE'; plan: TripPlan; days: string[][] }
+  | { type: 'RESTORE'; plan: TripPlan; days: string[][]; source?: TripSource | null }
   | { type: 'RESET' }
 
 /** day는 1부터 시작한다. 배열 인덱스로 바꿔 쓴다. */
@@ -53,8 +53,14 @@ function reducer(state: TripState, action: TripAction): TripState {
        * 반대는 되돌릴 수 없다 — 새 여행인데 옛 장소가 섞이면 어디까지가 이번 것인지 모른다.
        */
       const days = Array.from({ length: action.plan.nights + 1 }, () => [] as string[])
-      // 조건 화면에서 처음부터 다시 정하는 것이므로 비교 기준도 새로 잡는다.
-      return { plan: action.plan, days, baseline: null }
+      /*
+       * 조건 화면에서 처음부터 다시 정하는 것이므로 비교 기준도 새로 잡는다.
+       *
+       * source도 함께 버린다. 저장해둔 코스를 고치러 들어왔더라도 조건 화면을 지났다는 것은
+       * <b>새로 짜겠다는 뜻</b>이다 — 장소를 전부 버린 마당에 저장할 때만 옛 코스를
+       * 덮어쓰면, 이름은 그대로인데 내용이 전혀 다른 코스가 되어 되돌릴 수 없다.
+       */
+      return { plan: action.plan, days, baseline: null, source: null }
     }
 
     case 'CHANGE_START_DATE': {
@@ -151,8 +157,13 @@ function reducer(state: TripState, action: TripAction): TripState {
        * 그때의 원안이 무엇이었는지는 남아 있지 않다. 불러온 코스를 원안이라고 우기면
        * 최종 비교 화면이 "아무것도 개선되지 않았다"는 거짓 결과를 보여준다.
        * 다시 진단에 들어가는 순간 이 코스가 새 원안으로 찍힌다.
+       *
+       * source는 부르는 쪽이 정한다. 마이페이지의 "수정하기"는 코스를 넘겨 고쳐 쓰게 하고,
+       * 남의 코스 "나도 짜보기"는 넘기지 않아 새 코스가 된다. 기본이 null이라
+       * <b>빠뜨리면 새로 만들어지는 쪽</b>으로 넘어진다 — 남의 코스를 덮어쓰는 사고보다
+       * 코스가 하나 더 생기는 쪽이 훨씬 낫다.
        */
-      return { plan: action.plan, days: action.days, baseline: null }
+      return { plan: action.plan, days: action.days, baseline: null, source: action.source ?? null }
 
     case 'RESET':
       return EMPTY_TRIP_STATE
@@ -178,7 +189,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
       replacePlace: (day, index, placeId) =>
         dispatch({ type: 'REPLACE_PLACE', day, index, placeId }),
       markBaseline: () => dispatch({ type: 'MARK_BASELINE' }),
-      restore: (plan, days) => dispatch({ type: 'RESTORE', plan, days }),
+      restore: (plan, days, source) => dispatch({ type: 'RESTORE', plan, days, source }),
       reset: () => dispatch({ type: 'RESET' }),
     }),
     [state],
