@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router'
+import { BrandLockup } from './BrandMark'
 import { ChevronLeft, ChevronRight } from './icons'
 import type { ReactNode } from 'react'
 
@@ -76,14 +77,10 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
           aria-hidden="true"
         />
 
-        <Link to="/" className="relative flex items-center gap-2.25 no-underline">
-          {/* 어두운 면에서는 로고 마크를 그린틸(quiet-soft)로 바꾼다. 브랜드 틸을 그대로 두면
-              뒤에 깔린 틸 글로우에 묻히고, 같은 면의 틸 버튼과 무게가 겹쳐
-              로고가 행동 유도로 읽힌다. */}
-          <span className="bg-quiet-soft relative h-5.5 w-5.5 rounded-[8px]" aria-hidden="true">
-            <span className="bg-fg absolute top-1.75 left-1.75 h-2 w-2 rounded-full" />
-          </span>
-          <span className="text-xs font-bold tracking-[0.16em] text-white">PEAKOFF</span>
+        <Link to="/" className="relative no-underline">
+          {/* tone="dark"가 두 색을 함께 바꾼다 — 봉우리는 흰색, 비껴간 조각은 그린틸.
+              까닭은 BrandMark에 적어 두었다. */}
+          <BrandLockup tone="dark" size={24} />
         </Link>
 
         <div className="relative flex flex-col gap-3.5">

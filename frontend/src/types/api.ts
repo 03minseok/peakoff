@@ -249,23 +249,25 @@ export interface LevelCounts {
  * 한적도 임계값이나 추천도 반영 비율을 서버에 둔 것과 같은 이유다.
  */
 
-/**
- * 설문 1번 — 여행 스타일. <b>복수 선택</b>이라 배열로 보낸다.
+/*
+ * ⚠️ 2026-08-27에 문항 둘을 걷어냈다 — 여행 스타일과 이동수단.
  *
- * 공사 집중률이 예측하는 분류만 둔다. 경주 65곳의 분류가 역사·자연·문화명소뿐이라,
- * 맛집·체험·레저를 고르면 후보가 하나도 남지 않아 추천이 실패했다.
- * 밥집은 코스 편집에서 직접 담는다 — 담는 것은 막지 않고 진단에서만 빠진다.
+ * 둘 다 같은 증상이었다. 고른 답이 후보를 걸러서, 좁게 고르면 코스가 비었다.
+ * 스타일은 제주시에서 역사만 고르면 후보가 3곳(서귀포 2곳)이었고,
+ * 이동수단은 대중교통을 고르면 반경 8km 밖이 통째로 잘렸다.
+ *
+ * 설문에서 무언가를 고르게 하려면 어느 답을 골라도 코스가 나와야 한다.
+ * 고른 대가로 결과가 비는 문항은 선택지가 아니라 함정이다.
+ *
+ * 지금은 서버가 코스에 어울리지 않는 분류만 빼고(음식점·숙박·축제·리조트),
+ * 거리 제한은 넉넉한 쪽 하나로 고정한다.
  */
-export type TravelStyle = 'HISTORY' | 'NATURE' | 'CULTURE'
 
-/** 설문 2번 — 일정 밀도. 일자별로 몇 곳을 담을지 */
+/** 설문 1번 — 일정 밀도. 일자별로 몇 곳을 담을지 */
 export type ItineraryDensity = 'RELAXED' | 'BALANCED' | 'PACKED'
 
-/** 설문 3번 — 혼잡 민감도. 서비스 정체성이 걸린 문항이다 */
+/** 설문 2번 — 혼잡 민감도. 서비스 정체성이 걸린 문항이다 */
 export type CrowdSensitivity = 'POPULAR' | 'MIXED' | 'QUIET'
-
-/** 설문 4번 — 이동수단. 후보 반경과 슬롯 간 이동거리를 정한다 */
-export type Transport = 'CAR' | 'TRANSIT'
 
 export interface CourseRecommendRequest {
   /** 지역 슬러그. 예: "gyeongju" */
@@ -274,10 +276,8 @@ export interface CourseRecommendRequest {
   startDate: string
   /** 박 수. 당일치기는 0 */
   nights: number
-  styles: TravelStyle[]
   density: ItineraryDensity
   sensitivity: CrowdSensitivity
-  transport: Transport
 }
 
 /**
@@ -359,6 +359,8 @@ export interface SaveCourseRequest {
    * 0으로 채우면 서버가 "매우 붐빔"인 코스로 저장한다.
    */
   totalQuietness: number | null
+  /** 홈의 "다른 사람들의 여행"에 보일지. 저장 화면의 토글이 정한다 */
+  isPublic: boolean
   /**
    * 그 총점이 몇 곳을 근거로 한 값인지. 진단 응답에서 받은 값을 그대로 보낸다.
    *
@@ -441,14 +443,18 @@ export interface PublicPlace {
 /**
  * 남이 저장한 코스의 <b>익명</b> 요약. 홈의 "다른 사람들의 여행"에 쓴다.
  *
- * <b>코스 id도 이름도 없다.</b> 이름은 사용자가 자기만 볼 줄 알고 지은 것이라 공개에
- * 동의한 적이 없고, id가 없으니 남의 코스를 번호로 가리켜 하나씩 여는 통로가 생기지 않는다.
+ * <b>코스 id가 없다.</b> 남의 코스를 번호로 가리켜 하나씩 여는 통로가 생기지 않는다.
+ *
+ * <p>이름은 <b>나온다.</b> 대신 저장 화면이 "홈에 보일 수 있다"고 알려주므로,
+ * 사용자가 알고 짓는다 — 감추는 것보다 알리는 쪽이 정직하다.
  *
  * <p>대신 <b>장소는 전부 온다.</b> 카드를 눌러 펼쳐 볼 수 있는데, 상세를 따로 부르는 대신
  * 목록 응답이 내용을 이미 들고 있다 — 주소 없이 내용만 오는 셈이라 위 원칙이 그대로 유지되고,
  * 누를 때 추가 호출도 없다. 카드에 보이는 앞 세 곳은 화면이 잘라 쓴다.
  */
 export interface PublicCourse {
+  /** 저장한 사람이 붙인 이름. 홈 카드의 제목이 된다 */
+  name: string
   region: string
   regionName: string
   startDate: string

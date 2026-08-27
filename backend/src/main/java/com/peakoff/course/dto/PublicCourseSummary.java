@@ -14,13 +14,22 @@ import com.peakoff.place.domain.SupportedRegion;
  * 남이 저장한 코스를 <b>익명으로</b> 요약한 것. 홈의 "다른 사람들의 여행"에 쓴다.
  *
  * <h2>무엇을 빼는가</h2>
- * <b>코스 id·이름·저장한 사람</b>이 없다.
+ * <b>코스 id와 저장한 사람</b>이 없다.
  *
  * <p>id가 없는 것은 열어 볼 길을 아예 두지 않기 위해서다. 있으면 언젠가 "눌러서 자세히"가
  * 붙고, 그때 남의 코스가 통째로 열린다. 목록에 담지 않으면 그 유혹이 생기지 않는다.
  *
- * <p>이름을 빼는 것은 <b>사용자가 자기만 볼 줄 알고 지은 것</b>이기 때문이다.
- * "엄마 생신 여행" 같은 이름을 공개에 동의한 적이 없다.
+ * <h2>이름은 내보낸다 (2026-08-27)</h2>
+ * 예전에는 뺐다. <b>"사용자가 자기만 볼 줄 알고 지은 것"</b>이라는 이유였고,
+ * "엄마 생신 여행" 같은 이름이 공개에 동의 없이 나가는 것을 걱정했다.
+ *
+ * <p>대신 <b>저장할 때 그 사실을 알린다.</b> 이름 입력칸 아래에 홈에 보일 수 있다고 적어 두면,
+ * 사용자가 알고 짓는다 — 감추는 것보다 알리는 쪽이 정직하고, 그러면 이름은
+ * "남의 여행"을 남의 여행답게 만드는 재료가 된다. 지역과 기간만으로는
+ * 어느 카드나 "경주 1박 2일"이라 서로 구분되지 않았다.
+ *
+ * <p>⚠️ 이름을 내보내기로 한 이상 <b>저장 화면의 안내와 한 몸이다.</b> 그 안내를 떼면
+ * 사용자는 다시 자기만 볼 줄 알고 이름을 짓는다.
  *
  * <h2>무엇을 남기는가</h2>
  * 지역·기간·총점, 그리고 <b>담긴 장소 전부</b>. 장소는 공공 관광지라 개인을 가리키지 않고,
@@ -42,6 +51,7 @@ import com.peakoff.place.domain.SupportedRegion;
  * @param places 담긴 순서(일차·순번)대로 <b>전부</b>. 화면이 앞에서 몇 개만 잘라 쓴다
  */
 public record PublicCourseSummary(
+		String name,
 		String region,
 		String regionName,
 		LocalDate startDate,
@@ -85,6 +95,7 @@ public record PublicCourseSummary(
 				.toList();
 
 		return new PublicCourseSummary(
+				course.name(),
 				course.region(),
 				SupportedRegion.fromSlug(course.region()).displayName(),
 				course.startDate(),

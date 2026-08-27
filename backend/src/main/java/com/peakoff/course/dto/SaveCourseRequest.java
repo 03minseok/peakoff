@@ -72,6 +72,14 @@ public record SaveCourseRequest(
 		@Min(value = 0, message = "예측 대상 관광지 수는 0 이상이어야 합니다.")
 		Integer forecastTargetCount,
 
+		/**
+		 * 홈의 "다른 사람들의 여행"에 보일지. 저장 화면의 토글이 정한다.
+		 *
+		 * <p>{@code boolean}이라 값이 없으면 false(비공개)다. 고르지 않은 요청을
+		 * 공개로 받으면 묻지 않고 내보내는 셈이 된다.
+		 */
+		boolean isPublic,
+
 		@NotEmpty(message = "코스에 장소가 하나 이상 있어야 저장할 수 있습니다.")
 		@Size(max = 50, message = "한 번에 저장할 수 있는 장소는 50곳까지입니다.")
 		// 목록 안쪽 원소까지 검사하려면 @Valid가 필요하다. 없으면 목록 크기만 보고 넘어간다.

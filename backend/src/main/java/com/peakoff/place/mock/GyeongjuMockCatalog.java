@@ -28,11 +28,16 @@ public final class GyeongjuMockCatalog {
 	public static final Region GYEONGJU = SupportedRegion.GYEONGJU.toRegion();
 
 	/*
-	 * 관광지를 셋으로 나눠 뒀다(역사·자연·체험). 설문의 "여행 스타일" 문항이 분류 코드로
-	 * 후보를 거르는데, 관광지가 한 덩어리면 어떤 스타일을 골라도 같은 후보가 나온다.
+	 * 관광지를 셋으로 나눠 뒀다(역사·자연·체험). 원래는 설문의 "여행 스타일" 문항이
+	 * 이 코드로 후보를 걸렀는데, 그 문항은 2026-08-27에 걷어냈다.
 	 *
-	 * 실제 신분류 코드가 붙으면 어차피 갈리는 축이라 미리 갈라 뒀다. 스타일과 코드의
-	 * 짝은 TravelStyle 한 곳에만 적혀 있으므로, 코드가 바뀌면 그 파일만 고치면 된다.
+	 * 나눠 둔 것은 그대로 둔다. 실데이터의 신분류도 이 축으로 갈리고, 코스를 채울 때
+	 * "같은 분류를 연달아 넣지 않는다"는 규칙이 이 값을 본다 — 한 덩어리로 두면
+	 * 하루가 통째로 같은 성격의 장소로 채워진다.
+	 *
+	 * ⚠️ 음식점·카페·숙박 코드는 PlaceCategories.NOT_FOR_COURSE에도 적혀 있다.
+	 * 목업 집중률은 카탈로그의 모든 장소에 값을 주므로, 거기서 빼지 않으면
+	 * 목업 구간에서 밥집이 코스에 올라온다.
 	 */
 	static final PlaceCategory HISTORY = new PlaceCategory("MOCK-HISTORY", "역사·유적");
 	static final PlaceCategory NATURE = new PlaceCategory("MOCK-NATURE", "자연·풍경");
