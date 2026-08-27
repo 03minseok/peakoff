@@ -54,7 +54,9 @@ export class ApiRequestError extends Error {
 
 interface RequestOptions {
   signal?: AbortSignal
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  // PUT은 코스 수정 하나가 쓴다. PATCH와 갈라 둔 이유는 그쪽은 일부만 고치는데
+  // 코스 수정은 이름·날짜·장소를 통째로 갈아끼우기 때문이다.
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
 }
 
@@ -374,6 +376,27 @@ export function saveCourse(
   signal?: AbortSignal,
 ): Promise<SavedCourseDetail> {
   return apiRequest<SavedCourseDetail>('/courses', { method: 'POST', body: request, signal })
+}
+
+/**
+ * PUT /api/courses/{id} — 이미 저장한 코스를 고쳐 쓴다.
+ *
+ * 마이페이지의 "수정하기"로 들어온 저장이다. 본문은 {@link saveCourse}와 같은 모양이고,
+ * 지역만 서버가 무시한다 — 지역을 바꾸려면 조건 화면부터 다시 시작해야 한다.
+ *
+ * <p>이 길이 없던 동안에는 수정해 들어온 코스도 POST로 떨어져, 한 번 고칠 때마다
+ * <b>목록에 비슷한 코스가 하나씩 쌓였다.</b>
+ */
+export function updateCourse(
+  courseId: number,
+  request: SaveCourseRequest,
+  signal?: AbortSignal,
+): Promise<SavedCourseDetail> {
+  return apiRequest<SavedCourseDetail>(`/courses/${courseId}`, {
+    method: 'PUT',
+    body: request,
+    signal,
+  })
 }
 
 /**
