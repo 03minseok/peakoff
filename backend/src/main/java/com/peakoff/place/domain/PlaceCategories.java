@@ -24,9 +24,8 @@ public final class PlaceCategories {
 	 * 대분류 코드 → 화면 이름. 경주 실측 분포(2026-08-22)를 괄호에 적어 둔다.
 	 *
 	 * <p>{@code VE}가 가장 애매하다 — 워터파크·리조트·금리단길·동궁원이 한데 묶여 있어
-	 * 하나의 성격으로 부르기 어렵다. 그래서 설문 스타일 매핑에서는 빼 두었다
-	 * ({@code TravelStyle} 참고). 잘못 넣으면 "역사를 좋아한다"고 답한 사람에게
-	 * 워터파크가 나온다.
+	 * 하나의 성격으로 부르기 어렵다. 그래서 이름만으로 판단하지 않고 중분류를 함께 본다
+	 * ({@link #VE_NOT_TOURABLE}, {@link #VE_SCENIC}, {@link #VE_CULTURE}).
 	 */
 	private static final Map<String, String> LABELS = Map.ofEntries(
 			Map.entry("HS", "역사·유적"),     // 109건 — 왕릉·사지·유적
@@ -146,6 +145,44 @@ public final class PlaceCategories {
 	 * 불국사를 바꾸려는 사람에게 보문관광단지를 권할 이유가 없다.
 	 */
 	private static final Set<String> VE_NOT_TOURABLE = Set.of("VE05", "VE09", "VE10");
+
+	/**
+	 * 설문 코스에 <b>올리지 않는</b> 대분류.
+	 *
+	 * <h3>왜 생겼는가 (2026-08-27)</h3>
+	 * 예전에는 설문의 "여행 스타일"({@code TravelStyle})이 후보를 걸렀다. 스타일이
+	 * 역사·자연·문화 셋뿐이라 <b>하나만 고르면 후보가 통째로 쪼그라들었다</b> —
+	 * 제주시에서 역사만 고르면 3곳, 서귀포는 2곳이었다. 1박 2일에 네댓 칸을 채워야 하는데
+	 * 거기서 이미 못 채운다.
+	 *
+	 * <p>그래서 <b>고르게 하는 대신 빼는 쪽으로 뒤집었다.</b> 예측이 있는 곳은 기본적으로
+	 * 다 후보이고, 코스 슬롯에 어울리지 않는 것만 여기서 뺀다.
+	 *
+	 * <ul>
+	 *   <li>{@code FD} 음식점 — 집중률이 예측하지 않아 한적도를 매길 수 없다.
+	 *       코스 추천은 혼잡을 분산하는 장치인데, 한적도를 모르는 곳을 권하면
+	 *       "덜 붐비는 곳으로 안내한다"는 말이 성립하지 않는다. 사용자가 코스 편집에서
+	 *       직접 담는 것은 막지 않는다</li>
+	 *   <li>{@code AC} 숙박 — 코스 슬롯은 "그 날 어디를 가는가"이지 "어디서 자는가"가 아니다</li>
+	 *   <li>{@code EV} 축제·행사 — 기간이 정해져 있어 여행 날짜에 안 열릴 수 있다.
+	 *       안 하는 축제가 코스에 박히면 그대로 오답이 된다</li>
+	 * </ul>
+	 *
+	 * <p>⚠️ 쇼핑({@code SH})은 <b>남긴다.</b> 공사가 예측하는 쇼핑은 사실상 시장뿐이라
+	 * (동문재래시장·서귀포매일올레시장) 관광 대상으로 볼 만하고, 빼면 제주 후보가 다시 준다.
+	 *
+	 * <p>여기 없는 {@code VE}는 {@link #VE_NOT_TOURABLE}이 한 번 더 거른다 —
+	 * 리조트·도서관·수련관이 그 코드 아래 섞여 있다.
+	 *
+	 * <h3>⚠️ 목업 코드를 함께 적는다</h3>
+	 * 목업 집중률은 카탈로그에 있는 <b>모든 장소에 값을 준다</b>(요일 보정만 하므로).
+	 * 실데이터에서는 음식점·숙박에 예측이 없어 {@code hasData}가 알아서 걸러 주지만,
+	 * 목업 구간에서는 그 그물이 없다 — {@code MOCK-*}를 빼먹으면 목업으로 화면을 볼 때
+	 * <b>밥집과 숙소가 코스에 올라온다.</b>
+	 */
+	private static final Set<String> NOT_FOR_COURSE = Set.of(
+			"FD", "AC", "EV",
+			"MOCK-RESTAURANT", "MOCK-CAFE", "MOCK-STAY");
 
 	/** 코드를 못 알아볼 때 쓰는 이름. 빈 이름으로 두면 화면 곳곳이 빈자리가 된다. */
 	private static final String UNKNOWN = "기타";
@@ -292,6 +329,24 @@ public final class PlaceCategories {
 	 */
 	public static boolean announcesMissingForecast(PlaceCategory category) {
 		return category != null && ANNOUNCE_MISSING.contains(category.code());
+	}
+
+	/**
+	 * 설문 코스의 슬롯에 올릴 수 있는 분류인가.
+	 *
+	 * <p>분류를 모르는 장소({@code null})는 <b>올리지 않는다.</b> 무엇인지 모르는 것을
+	 * 코스에 넣으면 근거 문구에 적을 이름조차 없다.
+	 *
+	 * <p>이 판단이 화면이 아니라 여기 있는 이유는 {@link #FORECAST_TARGETS}와 같다 —
+	 * 무엇을 코스에 올릴지가 바뀌면 이 파일만 고치면 된다.
+	 *
+	 * @see #NOT_FOR_COURSE 무엇을 왜 뺐는지
+	 * @see #VE_NOT_TOURABLE {@code VE} 안에서 한 번 더 거르는 것
+	 */
+	public static boolean isCourseCandidate(PlaceCategory category) {
+		return category != null
+				&& !NOT_FOR_COURSE.contains(category.code())
+				&& isTourable(category);
 	}
 
 	/**

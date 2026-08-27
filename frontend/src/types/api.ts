@@ -249,22 +249,24 @@ export interface LevelCounts {
  * 한적도 임계값이나 추천도 반영 비율을 서버에 둔 것과 같은 이유다.
  */
 
-/**
- * 설문 1번 — 여행 스타일. <b>복수 선택</b>이라 배열로 보낸다.
+/*
+ * ⚠️ "여행 스타일"(TravelStyle) 문항을 2026-08-27에 걷어냈다.
  *
- * 공사 집중률이 예측하는 분류만 둔다. 경주 65곳의 분류가 역사·자연·문화명소뿐이라,
- * 맛집·체험·레저를 고르면 후보가 하나도 남지 않아 추천이 실패했다.
- * 밥집은 코스 편집에서 직접 담는다 — 담는 것은 막지 않고 진단에서만 빠진다.
+ * 역사·자연·문화 셋 중 고르게 했는데, 하나만 고르면 후보가 통째로 쪼그라들었다 —
+ * 제주시에서 역사만 고르면 3곳, 서귀포는 2곳이다. 네댓 칸을 채워야 하는 코스가
+ * 거기서 이미 막혔다.
+ *
+ * 지금은 서버가 코스에 어울리지 않는 것만 뺀다(음식점·숙박·축제, 그리고 분류상
+ * 문화·명소에 섞여 있는 리조트·도서관·수련관). 남은 세 문항은 전부 "어떻게 다닐지"다.
  */
-export type TravelStyle = 'HISTORY' | 'NATURE' | 'CULTURE'
 
-/** 설문 2번 — 일정 밀도. 일자별로 몇 곳을 담을지 */
+/** 설문 1번 — 일정 밀도. 일자별로 몇 곳을 담을지 */
 export type ItineraryDensity = 'RELAXED' | 'BALANCED' | 'PACKED'
 
-/** 설문 3번 — 혼잡 민감도. 서비스 정체성이 걸린 문항이다 */
+/** 설문 2번 — 혼잡 민감도. 서비스 정체성이 걸린 문항이다 */
 export type CrowdSensitivity = 'POPULAR' | 'MIXED' | 'QUIET'
 
-/** 설문 4번 — 이동수단. 후보 반경과 슬롯 간 이동거리를 정한다 */
+/** 설문 3번 — 이동수단. 후보 반경과 슬롯 간 이동거리를 정한다 */
 export type Transport = 'CAR' | 'TRANSIT'
 
 export interface CourseRecommendRequest {
@@ -274,7 +276,6 @@ export interface CourseRecommendRequest {
   startDate: string
   /** 박 수. 당일치기는 0 */
   nights: number
-  styles: TravelStyle[]
   density: ItineraryDensity
   sensitivity: CrowdSensitivity
   transport: Transport
