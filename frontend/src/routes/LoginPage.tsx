@@ -210,7 +210,7 @@ export function LoginPage() {
               type="button"
               className="text-hint hover:text-muted cursor-pointer bg-transparent text-[12.5px] font-medium"
               onClick={() =>
-                setNotice('비밀번호 찾기도 계정 기능과 함께 열릴 예정이에요.')
+                setNotice('비밀번호 찾기는 준비 중이에요.')
               }
             >
               비밀번호 찾기
