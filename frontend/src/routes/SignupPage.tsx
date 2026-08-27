@@ -3,7 +3,9 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { AuthField } from '../components/AuthField'
 import { AuthShell } from '../components/AuthShell'
+import { LegalSheet } from '../components/LegalSheet'
 import { PRIMARY_BUTTON } from '../components/styles'
+import type { LegalDocId } from '../content/legal'
 import { ApiRequestError } from '../services/api'
 import { useAuth } from '../state/authContext'
 import { useTrip } from '../state/tripContext'
@@ -17,18 +19,33 @@ const NICKNAME_MAX_LENGTH = 12
  *
  * 필수와 선택을 구조로 구분한다. 라벨 문구에만 "(필수)"를 적어두면
  * 제출 가능 여부를 판단하는 코드가 문자열을 뒤져야 한다.
+ *
+ * <p>{@code doc}이 있으면 "보기"가 붙어 전문을 펼친다. 있고 없고로 버튼을 가르므로
+ * "볼 것이 있다"와 "실제로 볼 수 있다"가 어긋나지 않는다 — 별도 플래그를 두면
+ * 문서를 지웠는데 버튼만 남는 상태가 만들어진다.
+ *
+ * <h3>⚠️ 마케팅 수신 동의를 뺐다 (2026-08-27)</h3>
+ * "혼잡도 알림 및 소식 받기(선택)"가 있었는데 셋 다 사실이 아니었다 —
+ * 메일을 보낼 수단이 없고, {@code SignupRequest}에 담을 자리가 없어 화면에서 체크해도
+ * 그대로 버려졌으며, 마케팅 수신 동의는 정보통신망법상 <b>동의 시각과 내역을 보관</b>해야
+ * 하는 항목인데 보관하지도 않았다. <b>없는 기능을 약속하는 자리였다.</b>
+ * 알림을 실제로 붙이는 날 함께 되살린다.
  */
 const TERMS = [
-  { id: 'age', label: '만 14세 이상입니다 (필수)', required: true, hasDetail: false },
-  { id: 'tos', label: '서비스 이용약관 (필수)', required: true, hasDetail: true },
-  { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, hasDetail: true },
-  { id: 'marketing', label: '혼잡도 알림 및 소식 받기 (선택)', required: false, hasDetail: true },
-] as const
+  { id: 'age', label: '만 14세 이상입니다 (필수)', required: true, doc: null },
+  { id: 'tos', label: '서비스 이용약관 (필수)', required: true, doc: 'tos' },
+  { id: 'privacy', label: '개인정보 처리방침 (필수)', required: true, doc: 'privacy' },
+] as const satisfies readonly {
+  id: string
+  label: string
+  required: boolean
+  doc: LegalDocId | null
+}[]
 
 type TermId = (typeof TERMS)[number]['id']
 type Agreed = Record<TermId, boolean>
 
-const NO_AGREEMENT: Agreed = { age: false, tos: false, privacy: false, marketing: false }
+const NO_AGREEMENT: Agreed = { age: false, tos: false, privacy: false }
 
 const CHECKBOX_BASE =
   'grid h-5.5 w-5.5 flex-none place-items-center rounded-[7px] text-xs font-bold'
@@ -61,7 +78,8 @@ export function SignupPage() {
   const [nickname, setNickname] = useState('')
   const [agreed, setAgreed] = useState<Agreed>(NO_AGREEMENT)
   const [errors, setErrors] = useState<Errors>({})
-  const [notice, setNotice] = useState<string | null>(null)
+  /** 펼쳐 놓은 약관. null이면 시트가 닫혀 있다 */
+  const [openDoc, setOpenDoc] = useState<LegalDocId | null>(null)
   /** 서버가 거절한 이유. 이메일 중복처럼 화면에서 미리 알 수 없는 것들이다 */
   const [failure, setFailure] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -88,7 +106,7 @@ export function SignupPage() {
 
   function toggleAll() {
     const next = !allAgreed
-    setAgreed({ age: next, tos: next, privacy: next, marketing: next })
+    setAgreed({ age: next, tos: next, privacy: next })
   }
 
   function toggle(id: TermId) {
@@ -204,7 +222,6 @@ export function SignupPage() {
           onChange={(value) => {
             setEmail(value)
             setErrors((current) => ({ ...current, email: undefined }))
-            setNotice(null)
           }}
           error={errors.email}
           autoComplete="email"
@@ -219,7 +236,6 @@ export function SignupPage() {
           onChange={(value) => {
             setPassword(value)
             setErrors((current) => ({ ...current, password: undefined }))
-            setNotice(null)
           }}
           error={errors.password}
           autoComplete="new-password"
@@ -247,10 +263,7 @@ export function SignupPage() {
           label="비밀번호 확인"
           type="password"
           value={confirm}
-          onChange={(value) => {
-            setConfirm(value)
-            setNotice(null)
-          }}
+          onChange={setConfirm}
           error={mismatch ? '비밀번호가 일치하지 않아요' : undefined}
           autoComplete="new-password"
           placeholder="한 번 더 입력해주세요"
@@ -261,10 +274,7 @@ export function SignupPage() {
           label="닉네임"
           type="text"
           value={nickname}
-          onChange={(value) => {
-            setNickname(value)
-            setNotice(null)
-          }}
+          onChange={setNickname}
           autoComplete="nickname"
           placeholder="코스에 표시될 이름"
           maxLength={NICKNAME_MAX_LENGTH}
@@ -301,11 +311,11 @@ export function SignupPage() {
                 <span className="text-muted text-sm">{term.label}</span>
               </button>
               <span className="flex-1" />
-              {term.hasDetail && (
+              {term.doc && (
                 <button
                   type="button"
                   className="text-hint hover:text-muted cursor-pointer bg-transparent px-0.5 py-1.5 text-[12.5px]"
-                  onClick={() => setNotice('약관 전문은 준비 중이에요.')}
+                  onClick={() => setOpenDoc(term.doc)}
                 >
                   보기
                 </button>
@@ -323,15 +333,6 @@ export function SignupPage() {
           </div>
         )}
 
-        {notice && (
-          <div
-            className="bg-brand-tint rounded-ui text-brand-deep px-3.5 py-3 text-xs leading-[1.65]"
-            role="status"
-          >
-            {notice}
-          </div>
-        )}
-
         <p className="text-hint m-0 pt-1 pb-2 text-center text-[13.5px]">
           이미 계정이 있으신가요?{' '}
           <Link to="/login" state={location.state} className="text-brand-deep font-semibold">
@@ -339,6 +340,12 @@ export function SignupPage() {
           </Link>
         </p>
       </form>
+
+      {/*
+        폼 <b>바깥</b>에 둔다. 안에 두면 시트의 버튼들이 이 폼에 속하게 되어,
+        닫기를 누르는 순간 가입이 제출된다(button의 기본 type이 submit이다).
+      */}
+      {openDoc && <LegalSheet docId={openDoc} onClose={() => setOpenDoc(null)} />}
     </AuthShell>
   )
 }
