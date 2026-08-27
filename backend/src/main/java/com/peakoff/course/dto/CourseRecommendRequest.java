@@ -1,19 +1,15 @@
 package com.peakoff.course.dto;
 
 import java.time.LocalDate;
-import java.util.List;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 import com.peakoff.course.domain.survey.CrowdSensitivity;
 import com.peakoff.course.domain.survey.ItineraryDensity;
 import com.peakoff.course.domain.survey.SurveyAnswers;
-import com.peakoff.course.domain.survey.TravelStyle;
 import com.peakoff.course.domain.survey.Transport;
 
 /**
@@ -26,10 +22,12 @@ import com.peakoff.course.domain.survey.Transport;
  * 보내고 그것이 85%인지 90%인지 모른다 — 분석 결과로 값이 바뀔 때 화면을 고치지 않기 위해서다.
  * 한적도 임계값을 서버에 둔 것과 같은 이유다.
  *
+ * <p>⚠️ {@code styles}(여행 스타일)를 <b>2026-08-27에 뺐다.</b> 요청 본문이 바뀌는
+ * 변경이라 화면과 함께 나가야 한다. 이유는 {@code SurveyAnswers}에 적어 두었다.
+ *
  * @param region      지역 슬러그 (예: "gyeongju")
  * @param startDate   여행 시작일 (yyyy-MM-dd)
  * @param nights      박 수. 당일치기는 0
- * @param styles      여행 스타일. <b>복수 선택</b>이라 배열이다
  * @param density     일정 밀도
  * @param sensitivity 혼잡 민감도
  * @param transport   이동수단
@@ -45,10 +43,6 @@ public record CourseRecommendRequest(
 		@Max(value = 6, message = "한 번에 계획할 수 있는 여행은 6박까지입니다.")
 		int nights,
 
-		@NotEmpty(message = "여행 스타일을 하나 이상 골라야 합니다.")
-		@Size(max = 4, message = "여행 스타일은 4개까지 고를 수 있습니다.")
-		List<TravelStyle> styles,
-
 		@NotNull(message = "일정 밀도를 골라야 합니다.")
 		ItineraryDensity density,
 
@@ -60,6 +54,6 @@ public record CourseRecommendRequest(
 
 	/** 바깥과의 계약(DTO)을 안에서 쓰는 값(도메인)으로 옮긴다. */
 	public SurveyAnswers toAnswers() {
-		return new SurveyAnswers(styles, density, sensitivity, transport);
+		return new SurveyAnswers(density, sensitivity, transport);
 	}
 }

@@ -900,7 +900,7 @@ export function HomePage() {
                 여행 코스 추천받기
               </span>
               <span className="text-muted max-w-62.5 text-sm leading-[1.6]">
-                몇 가지만 답하면 취향에 맞으면서 덜 붐비는 코스를 만들어 드려요.
+                몇 가지만 답하면 다니는 방식에 맞춰 덜 붐비는 코스를 만들어 드려요.
               </span>
               {/*
                 왼쪽 카드와 같은 노란 알약이다. 회색 테두리 알약은 "준비 중"의 표현이었다 —

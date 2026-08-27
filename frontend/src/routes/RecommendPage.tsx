@@ -13,7 +13,6 @@ import type {
   DraftSlot,
   ItineraryDensity,
   Transport,
-  TravelStyle,
 } from '../types/api'
 import { daysFromToday, formatCompactDate, formatDateRange, formatWeekday, today } from '../utils/date'
 
@@ -54,19 +53,6 @@ const DURATIONS = [
  * 서버가 범위를 바꿀 때 화면만 거짓말이 된다. 추천도 반영 비율을 화면에 적지 않는 것과 같은
  * 이유다. 실제로 몇 곳이 담겼는지는 결과 화면이 일자별로 보여준다.
  */
-const STYLE_OPTIONS: { value: TravelStyle; label: string; hint: string }[] = [
-  { value: 'HISTORY', label: '역사·유적', hint: '왕릉 · 사찰 · 유적지' },
-  { value: 'NATURE', label: '자연·풍경', hint: '호수 · 바다 · 숲길' },
-  /*
-    2026-08-26 추가. 예측이 있는 곳이 경주 7 · 제주시 12 · 서귀포 12로
-    세 지역 모두 넉넉하다 — 어느 지역을 골라도 후보가 남는 것이 조건이었다.
-
-    "체험"은 아직 없다. 제주에는 있지만 경주가 0곳이라, 경주를 고른 사람에게는
-    골라도 후보가 없는 선택지가 된다.
-  */
-  { value: 'CULTURE', label: '문화·명소', hint: '박물관 · 전시 · 테마파크' },
-]
-
 const DENSITY_OPTIONS: { value: ItineraryDensity; label: string }[] = [
   { value: 'RELAXED', label: '여유롭게' },
   { value: 'BALANCED', label: '적당히' },
@@ -99,7 +85,7 @@ const REGION_SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-
 const SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-[15px] font-medium text-muted peer-checked:border-fg peer-checked:bg-fg peer-checked:font-semibold peer-checked:text-white`
 
 /**
- * 설명이 함께 붙는 세로 선택 (스타일·민감도·이동수단).
+ * 설명이 함께 붙는 세로 선택 (민감도·이동수단).
  *
  * 한 줄짜리 선택과 달리 <b>브랜드색으로 꽉 채우지 않는다.</b> 밝은 틸 위에서는
  * 둘째 줄의 옅은 설명 글자가 3.5:1까지 떨어져 읽히지 않는다.
@@ -111,7 +97,6 @@ const CARD_TITLE = 'text-fg text-sm font-semibold'
 
 /** 설문 답. 서버에 그대로 실어 보내는 모양이다 */
 interface Answers {
-  styles: TravelStyle[]
   density: ItineraryDensity
   sensitivity: CrowdSensitivity
   transport: Transport
@@ -147,7 +132,6 @@ export function RecommendPage() {
   )
   const [nights, setNights] = useState(state.plan?.nights ?? 1)
   const [answers, setAnswers] = useState<Answers>({
-    styles: [],
     density: 'BALANCED',
     sensitivity: 'QUIET',
     transport: 'CAR',
@@ -164,16 +148,11 @@ export function RecommendPage() {
   const [region, setRegion] = useState(state.plan?.region ?? DEFAULT_REGION)
   const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
-  const canSubmit = answers.styles.length > 0 && !isPastDate
-
-  function toggleStyle(style: TravelStyle) {
-    setAnswers((previous) => ({
-      ...previous,
-      styles: previous.styles.includes(style)
-        ? previous.styles.filter((value) => value !== style)
-        : [...previous.styles, style],
-    }))
-  }
+  /*
+   * 세 문항 모두 기본값이 있어 아무것도 안 눌러도 코스를 받을 수 있다.
+   * 남은 잠금 조건은 지난 날짜뿐이다 — 예측이 없는 날은 계산할 것이 없다.
+   */
+  const canSubmit = !isPastDate
 
   async function requestDraft() {
     setView({ phase: 'loading' })
@@ -181,8 +160,9 @@ export function RecommendPage() {
       const draft = await recommendCourse({ region, startDate, nights, ...answers })
       setView({ phase: 'result', draft })
     } catch (error) {
-      /* 서버 메시지를 그대로 쓴다. "고른 스타일에 맞는 장소를 찾지 못했습니다" 같은 문구는
-         무엇을 바꾸면 되는지까지 알려주므로, 화면에서 일반 문구로 덮으면 손해다. */
+      /* 서버 메시지를 그대로 쓴다. "이 지역에서 예상 혼잡을 계산할 수 있는 장소를 찾지
+         못했습니다" 같은 문구는 무엇을 바꾸면 되는지까지 알려주므로,
+         화면에서 일반 문구로 덮으면 손해다. */
       const message =
         error instanceof ApiRequestError
           ? error.message
@@ -232,7 +212,7 @@ export function RecommendPage() {
           코스를 짜드릴게요
         </h1>
         <p className="m-0 text-[14.5px] leading-[1.65] text-pretty">
-          취향에 맞으면서 그날 덜 붐빌 {regionName} 코스를 만들어 드려요.
+          다니시는 방식에 맞춰 그날 덜 붐빌 {regionName} 코스를 만들어 드려요.
           <br />
           만든 뒤에 직접 고칠 수 있어요.
         </p>
@@ -240,8 +220,8 @@ export function RecommendPage() {
 
       <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
         {/*
-          지역이 맨 앞에 오는 이유: 뒤의 답들이 전부 <b>그 지역 안에서</b>의 취향이다.
-          "역사·유적을 좋아한다"를 고른 뒤에 지역을 바꾸면 앞의 답을 다시 읽어야 한다.
+          지역이 맨 앞에 오는 이유: 뒤의 답들이 전부 <b>그 지역 안에서</b> 어떻게 다닐지다.
+          "대중교통으로 다닌다"를 고른 뒤에 지역을 바꾸면 앞의 답을 다시 읽어야 한다.
           코스 짜기 화면도 지역을 첫 칸에 두고 있어 두 화면의 순서가 맞는다.
         */}
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
@@ -265,39 +245,17 @@ export function RecommendPage() {
           </div>
         </fieldset>
 
-        <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
-          <div className="flex items-baseline justify-between gap-2">
-            {/*
-              legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로
-              끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
-            */}
-            <div>
-              <legend className={`${CARD_TITLE} p-0`}>어떤 곳을 좋아하세요</legend>
-            </div>
-            <span className="text-hint text-xs">여러 개 고를 수 있어요</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {STYLE_OPTIONS.map((option) => (
-              <label key={option.value}>
-                <input
-                  type="checkbox"
-                  className="peer sr-only"
-                  checked={answers.styles.includes(option.value)}
-                  onChange={() => toggleStyle(option.value)}
-                />
-                <span className={STACKED}>
-                  <span className="text-fg text-[14.5px] font-semibold">{option.label}</span>
-                  <span className="text-hint text-[11.5px]">{option.hint}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-          {/* 고르기 전에는 버튼이 잠겨 있다. 왜 잠겼는지 말해주지 않으면 막힌 화면이 된다. */}
-          {answers.styles.length === 0 && (
-            <p className="text-hint m-0 text-[12px]">하나 이상 골라주세요.</p>
-          )}
-        </fieldset>
+        {/*
+          "어떤 곳을 좋아하세요"(여행 스타일)를 2026-08-27에 걷어냈다.
 
+          역사·자연·문화 셋 중 고르게 했는데, 하나만 고르면 후보가 통째로 쪼그라들었다 —
+          제주시에서 역사만 고르면 3곳, 서귀포는 2곳이다. 네댓 칸을 채워야 하는 코스가
+          거기서 이미 막혔다.
+
+          지금은 서버가 코스에 어울리지 않는 것만 빼고(음식점·숙박·축제·리조트) 나머지에서
+          가중 무작위로 뽑는다. 남은 세 문항은 전부 "어떻게 다닐지"를 묻는 것이라
+          화면의 성격도 한 갈래로 모였다.
+        */}
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3 border-0 p-4.5`}>
           {/*
             legend를 div로 감싼다. 감싸지 않으면 브라우저가 legend를 fieldset 테두리 위로
