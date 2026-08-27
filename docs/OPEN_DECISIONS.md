@@ -1011,5 +1011,14 @@ GET /places/{id}/alternatives → getById → findById
   테스트에서는 고정 난수를 주입한다 — 분산 로직을 검증하려면 그 경로를 쓴다
 - 서버를 죽일 때 **자바 프로세스를 PID로 죽인다.** Gradle 래퍼만 멈추면 자식이 8080과
   H2 파일 잠금을 계속 붙들어, 다음 기동이 `Dialect` 오류나 포트 충돌로 실패한다
+- ⚠️ **요청 DTO에 원시 타입(`int`·`boolean`)을 쓰면 그 필드가 필수가 된다** (2026-08-27).
+  Jackson 3(Spring Boot 4)은 `FAIL_ON_NULL_FOR_PRIMITIVES`가 켜진 것이 기본이라
+  값이 빠지면 `Cannot map null into type boolean`으로 **요청 전체가 400**이 된다.
+  Jackson 2에서 빠진 값이 조용히 `false`가 되던 것과 다르다.
+  - 실제로 `SaveCourseRequest.isPublic`을 `boolean`으로 넣었다가 **코스 저장 API가
+    통째로 막혔다.** 프론트는 늘 보내던 값이라 화면에서는 안 드러났고, 그 값을 안 보내는
+    `AuthApiTest`가 CI에서 잡았다 — 통합 테스트가 값을 한 셈이다
+  - 없어도 되는 값은 `Boolean`으로 받고 빈 경우를 코드가 정한다(`wantsPublic()`)
+  - 지금 남은 원시 타입 필드(`nights`·`day`·`order`·`termsAgreed`)는 **진짜 필수**라 둔다
 - `docs/*`는 `.gitignore`에 걸려 있지만 **이 문서만 `!docs/OPEN_DECISIONS.md`로 열어 뒀다.**
   분석 담당과 나눠 보는 문서라 커밋된다 — 새 문서를 여기 두면 무시되니 필요하면 예외를 더 적는다
