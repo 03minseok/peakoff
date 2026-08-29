@@ -853,7 +853,7 @@ export function HomePage() {
               비껴 주는 것</b>이라, 두 문 다 "당신 것은 그대로 둔다"로 시작한다.
             */}
             <span className="max-w-62.5 text-sm leading-[1.6] text-white/60">
-              가고 싶은 곳은 그대로, <br/>붐비는 순간만 PEAK OFF가 도와드려요.
+              가고 싶은 곳은 그대로, <br/>붐비는 순간만 PEAKOFF가 도와드려요.
             </span>
             {/* 이 링크가 유일한 문이다. button+navigate 대신 Link라 새 탭으로도 열린다 */}
             <Link
@@ -907,7 +907,7 @@ export function HomePage() {
                 오늘의 여행 발견하기
               </span>
               <span className="text-muted max-w-62.5 text-sm leading-[1.6]">
-                날짜와 취향만 알려주세요.<br/> 몰랐던 여행지를 PEAK OFF가 찾아드려요.
+                날짜와 취향만 알려주세요.<br/> 몰랐던 여행지를 PEAKOFF가 찾아드려요.
               </span>
               {/*
                 왼쪽 카드와 같은 노란 알약이다. 회색 테두리 알약은 "준비 중"의 표현이었다 —
