@@ -618,12 +618,10 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         effect가 값이 그대로인데도 매번 돌아 마커를 지웠다 다시 만든다.
       */}
       <section className={`${CARD_RAISED} flex flex-col gap-3 p-4.5`}>
-        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+        <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-fg m-0 text-[15px] font-semibold">코스 지도</h2>
-          {/* 지도 머리 줄에 "코스 끝으로"를 얹는다. 줄을 따로 두면 지도가 그만큼 밀린다 */}
-          <ListEdgeJump targetId="draft-bottom" direction="down" label="코스" />
           {draft.days > 1 && (
-            <span className="text-hint basis-full text-[12px]">마커 번호는 “일차-순서”예요</span>
+            <span className="text-hint text-[12px]">마커 번호는 “일차-순서”예요</span>
           )}
         </div>
 
@@ -663,6 +661,16 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
               {visitDate && (
                 <span className="text-hint text-[12.5px]">
                   {formatCompactDate(visitDate)} {formatWeekday(visitDate)} · {slots.length}곳
+                </span>
+              )}
+              {/*
+                "코스 끝으로"는 <b>1일차 줄에만</b> 얹는다. 일차마다 두면 스크롤할 때
+                같은 버튼이 반복해 나타나 목록의 리듬을 끊는다. 목록이 시작되는 그 줄이
+                한 번 눌러 끝으로 갈 자리다.
+              */}
+              {day === 1 && (
+                <span className="ml-auto">
+                  <ListEdgeJump targetId="draft-bottom" direction="down" label="코스" />
                 </span>
               )}
             </div>
@@ -742,40 +750,47 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
  */
 function DraftSlotCard({ slot }: { slot: DraftSlot }) {
   return (
-    <li className={`${CARD} flex flex-col gap-2.5 p-4`}>
-      <div className="flex items-start gap-3">
-        {/* 순서 번호가 눈금이다. 혼잡 신호는 옆의 배지가 맡으므로 색은 브랜드색 하나로
-            통일한다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
-        <span
-          className="bg-brand text-fg mt-0.5 grid h-6.5 w-6.5 flex-none place-items-center rounded-full font-mono text-[12px] font-semibold"
-          aria-hidden="true"
-        >
-          {slot.order}
+    /*
+      ⚠️ 세로로 조인 카드다. 예전에는 바깥이 flex-col(gap-2.5·p-4)이고 근거 문장이
+      들여쓴 문단으로 한 줄 더 내려와, 한 장이 화면의 상당 부분을 먹었다.
+      담긴 곳이 5~8곳이면 그것만으로 스크롤이 길어진다.
+
+      지금은 번호와 본문이 한 줄로 나란히 서고 안쪽만 촘촘하다(p-3.5·gap-1).
+    */
+    <li className={`${CARD} flex items-start gap-3 p-3.5`}>
+      {/* 순서 번호는 눈금이다. 혼잡 신호는 옆의 배지가 맡으므로 색은 브랜드색 하나로
+          통일한다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
+      <span
+        className="bg-brand text-fg mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full font-mono text-[11.5px] font-semibold"
+        aria-hidden="true"
+      >
+        {slot.order}
+      </span>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="text-fg text-[15px] font-semibold tracking-[-0.01em]">
+          {slot.place.name}
         </span>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="text-fg text-base font-semibold tracking-[-0.01em]">
-            {slot.place.name}
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-hint text-[12.5px]">{slot.place.categoryName}</span>
-            <CongestionBadge
-              level={slot.level}
-              label={slot.levelLabel}
-              quietness={slot.quietness}
-              size="sm"
-            />
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-hint text-[12.5px]">{slot.place.categoryName}</span>
+          <CongestionBadge
+            level={slot.level}
+            label={slot.levelLabel}
+            quietness={slot.quietness}
+            size="sm"
+          />
         </div>
-      </div>
 
-      {/*
-        근거 문장. 회색 상자와 "i" 표시를 걷어냈다 — 구성 내역이 사라져 상자 안에
-        한 줄만 남으면 그 상자가 <b>빈 액자</b>가 된다.
-      */}
-      <p className="text-hint m-0 pl-9.5 text-[12.5px] leading-[1.6] text-pretty">
-        {slot.reason}
-      </p>
+        {/*
+          근거 문장. 이제 <b>앞 장소에서의 거리</b>만 담는다 — 분류와 한적도는 바로 위
+          줄이 이미 말하고 있어서, 서버 문구에서 걷어냈다(CourseDraftService.reasonFor).
+
+          그 날 <b>첫 장소는 null</b>이다. 앞에 놓인 것이 없어 잴 거리가 없다.
+        */}
+        {slot.reason && (
+          <span className="text-hint text-[11.5px]">{slot.reason}</span>
+        )}
+      </div>
     </li>
   )
 }
