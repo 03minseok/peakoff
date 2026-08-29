@@ -312,7 +312,7 @@ export function AlternativeSheet({
               >
                 {nearbyMode
                   ? `${originName} 말고, 가까운 곳을 볼까요?`
-                  : `${originName} 말고, 새로운 곳을 만나볼까요?`}
+                  : `${originName} 말고, 다른 곳도 둘러볼까요?`}
               </h2>
             </div>
             <button
@@ -342,7 +342,12 @@ export function AlternativeSheet({
                 className={`h-2.5 w-2.5 flex-none rounded-full ${LEVEL_SOLID[originLevel]}`}
                 aria-hidden="true"
               />
-              {formatMonthDay(visitDate)} 그곳은
+              {/*
+                날짜 뒤에 "은"을 붙여 쓴다. formatMonthDay는 늘 "…일"로 끝나고
+                "일"에는 받침이 있어 조사가 갈릴 일이 없다 — 다른 날짜 포맷을 넣으려거든
+                이 조사를 함께 봐야 한다.
+              */}
+              {formatMonthDay(visitDate)}은
               <span className="text-fg font-semibold">{LEVEL_PHRASE[originLevel]}</span>
               <span className="text-hint">· 한적도 {originQuietness}</span>
             </p>
