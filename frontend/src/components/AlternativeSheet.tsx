@@ -32,6 +32,58 @@ import { CongestionBadge } from './CongestionBadge'
  */
 const ALTERNATIVE_COUNT = 3
 
+/**
+ * 추천도를 한 마디로 옮긴다.
+ *
+ * <h3>왜 필요한가</h3>
+ * 숫자만 두면 <b>100점 만점으로 읽힌다.</b> 그런데 추천도는 구조상 100이 나올 수 없다 —
+ * {@code 0.7 × 한적도 + 0.3 × 근접도}인데 한적도 100(집중률 0)과 거리 0km가 동시에
+ * 성립해야 한다. 실측 최고가 <b>80</b>이었다. 사용자는 53점을 보고 낙제라 읽지만
+ * 그 값은 실제로 중앙값이다.
+ *
+ * <h3>경계는 실측 분포에서 나왔다 (2026-08-29)</h3>
+ * 배포 서버에서 3개 지역 기준 장소 60곳의 대안 <b>150건</b>을 받아 쟀다.
+ *
+ * <pre>
+ * 범위 25~80 · 중앙 53 · 사분위 46 / 54 / 64
+ *
+ *   20~29 ▏ 4     50~59 ███████████████ 53
+ *   30~39 ████ 16   60~69 █████████ 33
+ *   40~49 ███████ 28  70~79 ████ 15    80~89 ▏1
+ * </pre>
+ *
+ * 64 / 46으로 자르면 <b>26% / 50% / 24%</b>로 갈린다. 한쪽에 몰리면 구간이 뜻을 잃으므로
+ * 다른 경계도 재봤다(60/45 → 33·47·21, 65/50 → 24·44·32). 사분위와 맞아떨어지는
+ * 이 값이 가장 고르다.
+ *
+ * <p>구간은 한적도 등급과도 맞물린다 — 높음은 한적도 중앙 72(한적·보통), 중간은 46(보통),
+ * 낮음은 24(붐빔)다. 추천도의 70%가 한적도라 당연한 결과이고, 덕분에 이 문구와
+ * 옆에 선 한적 배지가 서로 어긋나지 않는다.
+ *
+ * <h3>⚠️ "거리가 멀어서 점수가 낮다"고 말하지 않는다</h3>
+ * 처음 세운 가설이 실측에서 <b>틀렸다.</b> 하위 구간 36곳 중 거리 때문에 내려간 것은
+ * 4곳뿐이고 31곳은 한적도가 낮아서였다. 근접도 중앙값은 세 구간이 65 / 73 / 72로
+ * 거의 같다 — <b>거리는 구간을 가르지 않는다.</b> 15km 상한이 먼 후보를 이미 걸러낸다.
+ *
+ * <p>그래서 낮은 구간 문구는 거리가 아니라 <b>"그래도 원래보다 한적하다"</b>를 말한다.
+ * 위로가 아니라 사실이다 — 후보는 원래 장소보다 한적도가 5점 이상 높아야 목록에 오르고
+ * ({@code AlternativeStandard.MIN_QUIETNESS_GAIN}), 실측 150건이 예외 없이 그 조건을
+ * 통과했다(향상폭 중앙 22점). "왜 이걸 추천하지?"에 대한 정확한 답이 이것이다.
+ *
+ * <p>⚠️ <b>반영 비율이나 거리 상한이 바뀌면 이 경계를 다시 재야 한다.</b>
+ * 지금은 화면이 값을 들고 있어, 서버가 산식을 고쳐도 여기가 따라오지 않는다.
+ */
+const RECOMMENDATION_BANDS = [
+  { min: 64, label: '지금 가기 좋아요' },
+  { min: 46, label: '무난한 선택이에요' },
+  { min: 0, label: '원래 계획보단 한적해요' },
+]
+
+function bandLabelOf(recommendation: number): string {
+  const band = RECOMMENDATION_BANDS.find((candidate) => recommendation >= candidate.min)
+  return (band ?? RECOMMENDATION_BANDS[RECOMMENDATION_BANDS.length - 1]).label
+}
+
 interface Props {
   /** 교체 대상 장소 */
   originName: string
@@ -417,7 +469,7 @@ export function AlternativeSheet({
                   className="bg-surface shadow-rest flex flex-col gap-3 rounded-[18px] p-4"
                 >
                   {/*
-                    ■ 읽히는 순서 — 이름 → 어떤 곳인가 → 숫자
+                    ■ 읽히는 순서 — 이름 → 어떤 곳인가 → 얼마나 미는가 → 숫자
 
                     예전에는 26px짜리 추천도가 이름 옆에 서서 <b>카드에서 가장 먼저 읽혔다.</b>
                     그러면 목록 전체가 점수표가 되어, 사용자는 "어디로 갈까"가 아니라
@@ -452,58 +504,75 @@ export function AlternativeSheet({
                   </div>
 
                   {/*
-                    성격 문구. 서버가 준 근거 문장을 그대로 쓴다 —
-                    "OO 방문객이 함께 많이 찾는 곳", "OO와 비슷한 분류의 가까운 곳"처럼
-                    이미 <b>그곳이 어떤 곳인지</b>를 말하는 문장이다.
+                    ■ 추천도를 <b>말로 먼저</b> 옮긴다
 
-                    회색 상자와 "i" 표시를 걷어냈다. 부연 설명처럼 담아 두면 실제로
-                    부연으로 읽히는데, 이 문장이 카드에서 가장 중요한 말이다.
+                    숫자만 두면 100점 만점으로 읽혀 53점이 낙제처럼 보인다. 실제로는
+                    중앙값이고, 구조상 100은 나올 수 없다({@link RECOMMENDATION_BANDS}).
+                    그래서 카드에서 가장 크게 서는 것은 숫자가 아니라 이 한 마디다.
+
+                    ⚠️ <b>색을 입히지 않는다.</b> 이 문구는 한적도 등급과 거의 같은 방향으로
+                    움직이는데(추천도의 70%가 한적도다), 여기에도 색을 주면 바로 아래
+                    한적 배지와 같은 색 신호가 둘이 된다. 색은 배지가 맡고 이쪽은 잉크로 둔다.
                   */}
-                  <p className="text-fg m-0 text-[13.5px] leading-[1.6] text-pretty">
+                  <p className="text-fg m-0 text-[17px] leading-[1.35] font-bold tracking-[-0.015em]">
+                    {bandLabelOf(alternative.recommendation)}
+                  </p>
+
+                  {/*
+                    성격 문구. 서버가 준 근거 문장을 그대로 쓴다 —
+                    "OO 방문객이 함께 많이 찾는 곳", "OO 근처의 비슷한 분류"처럼
+                    이미 <b>그곳이 어떤 곳인지</b>를 말하는 문장이다.
+                  */}
+                  <p className="m-0 text-[13px] leading-[1.6] text-pretty">
                     {alternative.reason}
                   </p>
 
-                  {/* 숫자는 한 줄에 모은다. 왼쪽이 원본 지표(한적도), 오른쪽이 종합 판단(추천도)이다 */}
-                  <div className="border-line/70 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t pt-2.5">
-                    {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className="text-hint text-[12.5px]">
-                        {alternative.place.categoryName}
-                      </span>
-                      <CongestionBadge
-                        level={alternative.level}
-                        label={alternative.levelLabel}
-                        quietness={alternative.quietness}
-                        size="sm"
-                      />
-                    </div>
-                    <div className="flex flex-none items-baseline gap-1.5">
-                      <span className="text-hint text-[11px]">추천도</span>
-                      <span className="text-brand-deep font-mono text-[19px] leading-none font-semibold">
-                        {alternative.recommendation}
-                      </span>
-                    </div>
+                  {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="text-hint text-[12.5px]">
+                      {alternative.place.categoryName}
+                    </span>
+                    <CongestionBadge
+                      level={alternative.level}
+                      label={alternative.levelLabel}
+                      quietness={alternative.quietness}
+                      size="sm"
+                    />
                   </div>
 
                   {/*
-                    추천도 구성 내역. 데이터를 어떻게 썼는지 보여주는 자리다.
-                    반영 비율은 서버가 준 값을 그대로 쓴다 — 화면에 숫자를 적어두면
-                    가중치가 바뀔 때 한쪽만 고쳐진다.
+                    ■ 추천도 구성 내역 — 접어 두되 <b>없애지 않는다</b>
 
-                    ⚠️ <b>조건이 상자 바깥에 있다.</b> 근거 문장이 위로 올라가면서 이 상자에는
-                    내역만 남았다. 조건을 안에 두면 내역이 없을 때 <b>빈 회색 상자</b>가
-                    그려진다 — 예전에는 문장이 늘 있어서 드러나지 않던 자리다.
+                    "추천도 71 = 한적도 78(70%) + 근접도 66(30%)"은 데이터 활용을 화면에서
+                    증명하는 장치다(CLAUDE.md 점수 체계). 숫자를 지우면 심사위원의
+                    "추천도를 어떻게 산출하나요?"에 가리킬 화면이 없어진다.
 
-                    내역이 없어도 카드는 그려야 한다. 서버와 화면이 따로 배포되는 순간이
-                    있고(구버전 서버가 아직 떠 있는 등), 그때 필드 하나가 비었다고 화면이
-                    하얘지면 안 된다. 성격 문구와 추천도는 위에 그대로 남는다.
+                    그래서 <b>지우는 대신 접는다.</b> 사용자는 위의 한 마디로 읽고,
+                    근거가 궁금한 사람만 편다. 요약 줄에 추천도 숫자를 함께 두어
+                    <b>접힌 채로도 값은 보인다</b> — 여는 것은 내역이지 점수가 아니다.
+
+                    {@code details}를 쓴 이유: 카드가 목록 안에 여럿이라 상태를 두면
+                    카드마다 관리해야 하는데, 브라우저가 이미 하는 일이다. 키보드·보조기술
+                    지원도 공짜로 따라온다.
+
+                    ⚠️ 조건이 바깥에 있다. 내역이 없을 때 안에 두면 <b>빈 상자</b>가 남는다 —
+                    서버와 화면이 따로 배포되는 순간(구버전 서버가 떠 있는 등)에 필드가
+                    비어도 카드는 그려져야 하고, 그때는 위의 한 마디와 배지가 남는다.
                   */}
                   {alternative.factors?.length ? (
-                    <div className="bg-bg rounded-ui flex flex-col gap-2 px-3 py-3">
-                      <span className="text-hint text-[11.5px] font-semibold">
-                        이 추천도는 이렇게 나왔어요
-                      </span>
-                      <ul className="flex flex-col gap-2">
+                    <details className="group bg-bg rounded-ui px-3 py-2.5">
+                      <summary className="text-hint flex cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
+                        <span className="flex items-baseline gap-1.5">
+                          추천도
+                          <span className="text-brand-deep font-mono text-[15px] font-semibold">
+                            {alternative.recommendation}
+                          </span>
+                        </span>
+                        {/* 접힘/펼침을 글자로 말한다. 화살표만 두면 무엇이 열리는지 모른다 */}
+                        <span className="group-open:hidden">어떻게 나온 점수인가요?</span>
+                        <span className="hidden group-open:inline">접기</span>
+                      </summary>
+                      <ul className="border-line mt-2.5 flex flex-col gap-2 border-t pt-2.5">
                       {alternative.factors.map((factor) => (
                         <li
                           key={factor.label}
@@ -525,12 +594,12 @@ export function AlternativeSheet({
                         </li>
                       ))}
                       </ul>
-                    </div>
+                    </details>
                   ) : null}
 
                   {/*
                     "교체"는 서류의 말이다. 사용자가 하는 일은 <b>이곳으로 가기로 정하는 것</b>이고,
-                    문구도 그 사람의 말로 적는다. 위 버튼("새로운 곳 발견하기")과 한 짝이라
+                    문구도 그 사람의 말로 적는다. 위 버튼("다른 곳 발견하기")과 한 짝이라
                     발견하고 → 고르는 흐름이 문장으로도 이어진다.
                   */}
                   <button
