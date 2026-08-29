@@ -605,7 +605,26 @@ export function DiagnosisPage() {
               <b>그대로 둔 채</b> 한 가지만 옮기면 된다는 뜻이다. 홈의 두 진입 카드도
               같은 문형으로 말한다.
             */}
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+            {/*
+              ■ 기능 이름을 화면에 세운다 — 이 화면에 <b>둘이 나란히</b> 있어야 뜻이 산다
+
+              PEAK OFF에서 갈라진 두 회피 경로다. TIME OFF는 날짜를 옮기고,
+              PLACE OFF는 장소를 바꾼다. 접수 때 낸 서비스 개요가 약속한
+              "두 가지 회피 경로"가 이 화면 한 장으로 증명된다.
+
+              ⚠️ <b>하나만 두면 안 된다.</b> 한때 대안 시트에만 "PLACE OFF"가 있었는데,
+              한 번도 소개된 적 없는 말이 시트 안에서 혼자 튀어나와 그냥 떠 있었다.
+              이름은 짝이 있어야 서로를 설명한다 — 여기 둘이 함께 서면
+              "날짜로 피하는 길과 장소로 피하는 길이 있구나"가 저절로 읽힌다.
+
+              ⚠️ <b>홈에는 붙이지 않는다.</b> 처음 온 사람이 서는 자리라 내부 용어를 두면
+              진입 문턱만 올라간다. FULL PEAKOFF(설문)를 화면에 세우지 않은 이유도 같다 —
+              그쪽은 진입점 하나지 회피 경로의 짝이 아니다.
+            */}
+            <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
+              TIME OFF
+            </span>
+            <div className="-mt-2 flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-fg text-[15px] font-semibold">다른 날 둘러보기</h2>
 
               {/*
@@ -635,12 +654,10 @@ export function DiagnosisPage() {
             </div>
 
             {/*
-              부제. 좁은 화면에서도 남긴다 — 이 카드가 접혀 있을 때 제목 한 줄만으로는
-              "무엇을 그대로 두고 무엇을 옮기는지"가 전해지지 않는다.
+              부제("일정은 그대로, 더 여유로운 날을 찾아드려요")를 걷어냈다.
+              제목과 그 아래 날짜 목록이 이미 같은 말을 하고 있어서, 한 줄이 더 있으면
+              <b>읽을 것만 늘고 알게 되는 것은 없다.</b>
             */}
-            <p className="text-muted m-0 -mt-2 text-[12.5px] leading-[1.6] text-pretty">
-              일정은 그대로, 더 여유로운 날을 찾아드려요.
-            </p>
 
             {!dates && <p className="text-[13px]">날짜 정보를 불러오지 못했어요.</p>}
             {/*
@@ -661,8 +678,16 @@ export function DiagnosisPage() {
               들어 있는지" 알 수 없어, 펼쳐볼 이유가 생기지 않는다. 날짜 회피는 이 서비스의
               두 경로 중 하나라 접혀서 묻히면 안 된다.
             */}
+            {/*
+              회백 바탕을 깐다. 이 줄은 <b>목록을 대신해 서 있는 결론</b>인데, 흰 카드 위에
+              맨 글자로 두면 위쪽 안내문과 같은 무게로 읽혀 그냥 지나친다.
+              면을 깔면 "접힌 것이 여기 요약돼 있다"가 눈에 들어온다.
+
+              같은 카드 안의 다른 회백 면(주간 예보 패널·홈의 목록 패널)과 같은 토큰이다 —
+              한 박스 안에서 한 단계 들어간 면은 늘 같은 색이어야 층위가 읽힌다.
+            */}
             {toggleableDates && !datesOpen && bestDate && (
-              <p className="m-0 text-[13px] leading-[1.55] lg:hidden">
+              <p className="bg-bg rounded-ui m-0 px-3.5 py-2.5 text-[13px] leading-[1.55] lg:hidden">
                 {formatCompactDate(bestDate.date)} {formatWeekday(bestDate.date)}로 옮기면{' '}
                 <strong className="text-quiet-deep">한적 지수 +{bestDate.improvement}</strong>
               </p>
@@ -885,6 +910,22 @@ export function DiagnosisPage() {
                 )}
               </div>
             </section>
+
+          {/*
+            PLACE OFF 이름표. 위 날짜 카드의 TIME OFF와 <b>짝</b>이다 —
+            둘이 한 화면에 있어야 이름이 서로를 설명한다(그쪽 주석 참고).
+
+            부제를 날짜 쪽과 <b>같은 문형</b>으로 둔다. "OO는 그대로, 더 여유로운 XX를"이
+            홈 진입 카드에서 시작해 여기 두 경로까지 이어지는 한 줄기다.
+          */}
+          <div className="flex flex-col gap-0.75 px-0.5">
+            <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
+              PLACE OFF
+            </span>
+            <p className="text-muted m-0 text-[12.5px] leading-[1.6] text-pretty">
+              계획은 그대로, 더 여유로운 여행지를 찾아드려요.
+            </p>
+          </div>
 
           {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map((day) => {
             const daySlots = diagnosis.slots.filter((slot) => slot.day === day)
