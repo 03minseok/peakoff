@@ -497,8 +497,16 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
    *
    * <p>진단·결과 화면과 <b>같은 장치</b>다. 여러 날을 겹쳐 두면 선이 서로를 가로질러
    * "어느 날 어디를 도는지"가 오히려 안 보인다.
+   *
+   * <h3>기본값은 1일차다</h3>
+   * 전체로 열면 첫 화면이 <b>선 여럿이 뒤엉킨 그림</b>이라, 정작 알고 싶은
+   * "첫날 어디부터 도나"가 안 보인다. 아래 목록도 1일차부터 시작하므로
+   * 지도와 목록이 같은 날을 가리킨 채로 화면이 열린다.
+   *
+   * <p>진단 화면도 1일차로 연다({@code DiagnosisPage.mapDay}). 전체는 하루하루를
+   * 본 뒤 합쳐 보는 자리라 탭 끝에 두고, 열자마자 보여줄 것은 아니다.
    */
-  const [mapDay, setMapDay] = useState<number | 'all'>('all')
+  const [mapDay, setMapDay] = useState<number | 'all'>(1)
 
   /* 일차별 방문 순서. 배열이 여럿이면 CourseMap이 마커를 "2-1"처럼 매긴다 */
   const allRoutes = useMemo(
