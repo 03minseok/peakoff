@@ -17,6 +17,7 @@ import com.peakoff.external.kto.support.KtoApiException;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
 import com.peakoff.external.kto.support.RegionCache;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.PlaceDescription;
 import com.peakoff.place.domain.NearbyPlaces;
 import com.peakoff.place.domain.NearbyPlace;
 import com.peakoff.place.domain.PlaceProvider;
@@ -156,6 +157,28 @@ public class KtoPlaceProvider implements PlaceProvider {
 	 * <p>카탈로그는 6시간 캐시라 대개 메모리에 있다. 음식점 211곳·숙박 121곳이 전부 여기 있으므로,
 	 * 예측이 닿지 않는 장소일수록 오히려 후보가 넉넉하다 — 진단은 못 해도 바꿀 곳은 보여줄 수 있다.
 	 */
+	/**
+	 * 장소 하나의 읽을거리. <b>카탈로그를 거치지 않고</b> 곧장 상세 조회로 간다.
+	 *
+	 * <p>{@link #findById}는 카탈로그를 먼저 뒤지지만 여기서는 그럴 수 없다 —
+	 * 카탈로그(목록 API)에는 소개글이 없기 때문이다. 카탈로그에 있는 장소라도
+	 * 소개글을 얻으려면 상세를 불러야 한다.
+	 *
+	 * <p>조회가 막혔을 때 예외를 올리지 않는 것은 {@link #findById}와 같은 이유다.
+	 * 읽을거리는 <b>곁들이는 정보</b>라, 못 가져왔다고 화면이 오류를 띄울 일은 아니다.
+	 */
+	@Override
+	public Optional<PlaceDescription> describe(String placeId) {
+		try {
+			return placeClient.findDescription(placeId);
+		}
+		catch (KtoApiException e) {
+			log.warn("장소 소개를 불러오지 못했습니다. 없는 것으로 답합니다. placeId={}, 사유={}",
+					placeId, e.getMessage());
+			return Optional.empty();
+		}
+	}
+
 	@Override
 	public List<NearbyPlace> nearby(Place origin, int limit) {
 		/*

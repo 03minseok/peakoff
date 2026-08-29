@@ -440,6 +440,17 @@ export interface SavedCourseDetail extends Omit<SavedCourseSummary, 'placeCount'
   places: SavedPlace[]
 }
 
+/**
+ * 장소 하나의 읽을거리. <b>둘 다 없을 수 있다.</b>
+ *
+ * <p>overview에는 <b>{@code <br>} 같은 HTML 조각이 섞여 온다</b> — 공사가 그렇게 준다.
+ * innerHTML로 넣지 말 것. 우리가 만든 문자열이 아니다.
+ */
+export interface PlaceDescription {
+  address: string | null
+  overview: string | null
+}
+
 /** 남의 코스에 담긴 장소 한 곳. placeId는 관광지 식별자이지 코스 식별자가 아니다 */
 export interface PublicPlace {
   day: number

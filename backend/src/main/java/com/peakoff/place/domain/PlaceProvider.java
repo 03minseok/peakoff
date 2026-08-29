@@ -52,4 +52,19 @@ public interface PlaceProvider {
 	 * @return 없으면 빈 목록. 반경 밖에 있거나 같은 분류가 없으면 그렇다
 	 */
 	List<NearbyPlace> nearby(Place origin, int limit);
+
+	/**
+	 * 장소 하나의 <b>읽을거리</b>(주소·소개글).
+	 *
+	 * <p>{@link #findById}와 갈라 둔 이유는 <b>값이 오는 곳이 다르기 때문</b>이다.
+	 * 이름·좌표·분류·사진은 지역 카탈로그에 이미 있지만, 소개글은 상세 조회에만 있어
+	 * 장소마다 공사를 한 번씩 불러야 한다. 한 메서드로 합치면 목록을 그릴 때마다
+	 * 그 호출이 함께 나가게 된다.
+	 *
+	 * <p>⚠️ <b>화면이 펼칠 때만 부른다.</b> 목록에 붙이면 N곳 = N번이 되고,
+	 * 그것이 2026-08-26 한도 소진 사고의 모양이었다.
+	 *
+	 * @return 그런 장소가 없거나 조회가 막혔으면 빈 값
+	 */
+	Optional<PlaceDescription> describe(String placeId);
 }

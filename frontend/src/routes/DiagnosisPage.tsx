@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router'
 import { AlternativeSheet } from '../components/AlternativeSheet'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
+import { PlaceDescription } from '../components/PlaceDescription'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
@@ -1101,6 +1102,24 @@ export function DiagnosisPage() {
                             {slot.gapMessage}
                           </p>
                         )}
+
+                        {/*
+                          장소 소개. <b>펼칠 때만</b> 불러온다.
+
+                          소개글은 지역 카탈로그(목록 API)에 없고 상세 조회에만 있어
+                          장소마다 공사를 한 번씩 부른다. 카드를 그릴 때 미리 받으면
+                          담긴 곳 수만큼 호출이 나가는데, 그 모양이 2026-08-26 한도 소진
+                          사고였다({@code docs/OPEN_DECISIONS.md} 15번).
+
+                          ⚠️ <b>진단 여부와 무관하게 둔다.</b> 오히려 여기가 값이 크다 —
+                          예측이 닿지 않는 90%의 장소(음식점·숙박·상점)는 지금 이 카드에
+                          점수 대신 "자료 없어요"만 서 있었는데, 소개글은 그런 곳에도
+                          붙어 있다(실측: 올리브영 118자). 진단은 못 해도 읽을거리는 준다.
+                        */}
+                        <PlaceDescription
+                          placeId={slot.place.id}
+                          placeName={slot.place.name}
+                        />
                       </div>
 
                       {/*
