@@ -3,6 +3,22 @@ import { ApiRequestError, fetchAlternatives, fetchNearby } from '../services/api
 import { alternativesFor, forgetAlternatives } from '../services/alternativeCache'
 import type { Alternative, CongestionLevel, NearbyPlace } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
+import { LEVEL_SOLID } from './levelStyles'
+import { formatMonthDay } from '../utils/date'
+
+/**
+ * 원래 자리가 그날 어떤지 한 마디로. 배지의 등급 이름(한적·보통·붐빔)을 <b>문장에 넣을 수
+ * 있는 꼴</b>로 바꾼 것이다.
+ *
+ * <p>등급 자체를 새로 만들지 않는다 — 서버가 정한 세 단계를 그대로 쓰고 어미만 붙인다.
+ * 여기서 "조금 붐벼요"와 "많이 붐벼요"를 임의로 가르면 화면이 서버가 재지 않은 것을
+ * 말하게 된다.
+ */
+const LEVEL_PHRASE: Record<CongestionLevel, string> = {
+  QUIET: '한적할 것 같아요',
+  MODERATE: '조금 붐빌 것 같아요',
+  CROWDED: '많이 붐빌 것 같아요',
+}
 
 /**
  * 한 번에 보여줄 대안 수. <b>이 숫자가 추천 분산의 세기를 정한다.</b>
@@ -270,13 +286,33 @@ export function AlternativeSheet({
         <header className="border-line bg-surface flex flex-none flex-col gap-2 border-b px-4.5 pt-3.5 pb-3.5 lg:rounded-t-[24px] lg:px-6 lg:pt-5.5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-1">
-              {/* "교체할 자리"는 우리 말이다. 사용자에게는 그냥 지금 담아 둔 자리다 */}
-              <span className="text-hint text-[12.5px]">지금 이 자리</span>
+              {/*
+                ■ 킥커에 기능 이름을 세운다
+
+                <b>PLACE OFF</b>는 서비스 이름(PEAK OFF)에서 갈라져 나온 말이고,
+                날짜 쪽은 TIME OFF, 설문은 FULL PEAKOFF다. 화면마다 이름을 붙여 두면
+                사용자가 "이 서비스에는 이런 갈래가 있다"를 알게 되고, 발표에서도
+                화면을 가리켜 같은 이름으로 말할 수 있다.
+
+                ⚠️ 뒤엣말은 이 시트를 <b>연 버튼과 같은 말</b>이어야 한다("다른 곳 둘러보기").
+                버튼과 머리글이 다른 말을 하면 같은 기능이 둘로 보인다.
+              */}
+              <span className="text-brand-deep text-[12px] font-semibold">
+                PLACE OFF · 다른 곳 둘러보기
+              </span>
+              {/*
+                ⚠️ <b>"오늘은"이라고 쓰지 않는다.</b> 여기서 다루는 것은 오늘이 아니라
+                {@code visitDate}(그 자리를 방문하는 날)의 예측이다. 대개 미래 날짜다.
+                홈 카드에서 "오늘의 여행"을 걷어낸 것과 같은 이유 — 화면이 시점을 틀리게
+                말하면 그 아래 숫자들도 같이 의심받는다.
+              */}
               <h2
                 id="sheet-title"
-                className="text-fg m-0 text-[19px] font-bold tracking-[-0.015em]"
+                className="text-fg m-0 text-[19px] leading-[1.35] font-bold tracking-[-0.015em] text-pretty"
               >
-                {nearbyMode ? `${originName} 대신 갈 만한 곳` : `${originName} 대신 어디요?`}
+                {nearbyMode
+                  ? `${originName} 말고, 가까운 곳을 볼까요?`
+                  : `${originName} 말고, 다른 곳도 둘러볼까요?`}
               </h2>
             </div>
             <button
@@ -288,12 +324,33 @@ export function AlternativeSheet({
               ✕
             </button>
           </div>
-          {/* 지금 점수를 함께 띄운다. 후보 옆의 증감이 무엇을 기준으로 한 것인지 알려면 필요하다. */}
+          {/*
+            원래 자리가 그날 어떤지 <b>문장으로</b> 말한다. 후보 옆의 점수가 무엇을 기준으로
+            한 값인지 알려면 이 값이 필요한데, "지금 [붐빔 24]"처럼 배지만 두면
+            그 24가 무엇인지 사용자가 스스로 옮겨 읽어야 했다.
+
+            ⚠️ <b>"지금"이 아니다.</b> 집중률은 예측값이고 우리가 묻는 것은 방문 예정일이다.
+            날짜를 적어 두면 아래 후보들의 한적도가 <b>같은 날 기준</b>이라는 것도 함께 전해진다.
+
+            점은 색 자체가 신호인 자리라 {@code LEVEL_SOLID}를 쓴다. 색만 두면 색각 이상에서
+            갈리지 않으므로 <b>등급 이름과 한적도를 글자로 함께</b> 적는다 —
+            CLAUDE.md가 3단계를 색과 명도로 함께 가르는 것과 같은 이유다.
+          */}
           {originLevel !== null && originQuietness !== null && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-hint text-[12.5px]">지금</span>
-              <CongestionBadge level={originLevel} quietness={originQuietness} size="sm" />
-            </div>
+            <p className="text-muted m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px]">
+              <span
+                className={`h-2.5 w-2.5 flex-none rounded-full ${LEVEL_SOLID[originLevel]}`}
+                aria-hidden="true"
+              />
+              {/*
+                날짜 뒤에 "은"을 붙여 쓴다. formatMonthDay는 늘 "…일"로 끝나고
+                "일"에는 받침이 있어 조사가 갈릴 일이 없다 — 다른 날짜 포맷을 넣으려거든
+                이 조사를 함께 봐야 한다.
+              */}
+              {formatMonthDay(visitDate)}은
+              <span className="text-fg font-semibold">{LEVEL_PHRASE[originLevel]}</span>
+              <span className="text-hint">· 한적도 {originQuietness}</span>
+            </p>
           )}
           {/*
             무엇을 기준으로 줄 세웠는지 첫 줄에서 밝힌다.
@@ -306,21 +363,29 @@ export function AlternativeSheet({
             가중 무작위로 뽑은 순서를 그대로 내려보내므로, 82점 아래 79점이 설 수 있다.
             순서를 오해하게 두면 화면이 거짓말을 하는 셈이다.
 
-            대신 <b>목록이 매번 달라진다는 사실 자체를 말한다.</b> 같은 대안이 모든 사용자에게
-            반복 추천되면 그곳이 새로운 혼잡지가 되기 때문인데(2차 오버투어리즘),
-            그 장치가 여기서 눈에 보여야 "왜 순서가 이런가"에 답이 된다.
+            <h3>⚠️ 목록이 매번 달라진다는 안내가 여기서 빠졌다 (2026-08-29)</h3>
+            예전에는 둘째 줄이 <b>"다시 찾으면 다른 곳이 보일 수 있어요"</b>였다. 같은 대안이
+            모든 사용자에게 반복 추천되면 그곳이 새로운 혼잡지가 되므로(2차 오버투어리즘)
+            상위 Pool에서 가중 무작위로 뽑는데, 그 사실을 화면이 말해 주던 자리다.
 
-            ⚠️ <b>여기서는 우연을 재미로 쓰지 않는다.</b> "뽑혔어요"·"운에 맡겨보세요" 같은 말은
-            설문 결과 화면(RecommendPage)에나 어울린다. 이 화면은 바로 아래에 추천도와
-            항목별 반영 비율을 펴 놓는 자리라, 뽑기처럼 말하는 순간 <b>"그럼 저 점수는
-            뭐냐"</b>가 된다. 같은 분산 로직인데 말투가 갈리는 이유다.
-            달라지는 것은 운이 아니라 설계다 — 그래서 "달라질 수 있어요"까지만 말한다.
+            <p>한 줄로 줄이면서 뺐다. 지금 그 일을 대신하는 것은 목록 아래
+            <b>"다른 곳도 볼래요"</b> 버튼뿐이다 — 누르면 다른 조합이 온다는 것을
+            눌러 봐야 알게 된다. 순서가 점수순이 아닌 이유도 화면에 적혀 있지 않다.
+
+            <p>⚠️ <b>되살릴 자리는 헤더가 아니라 그 버튼 옆이다.</b> 헤더는 후보를 읽기 전에
+            보는 곳이라 "믿을 게 못 된다"는 인상을 먼저 주고, 버튼 옆이면 <b>다시 뽑을
+            마음이 든 사람에게</b> 그 말이 닿는다. {@code docs/OPEN_DECISIONS.md} 14번 참고.
+
+            <p>⚠️ 되살리더라도 <b>우연을 재미로 쓰지 않는다.</b> "뽑혔어요"·"운에 맡겨보세요"
+            같은 말은 설문 결과 화면(RecommendPage)에나 어울린다. 이 화면은 바로 아래에
+            추천도와 반영 비율을 펴 놓는 자리라, 뽑기처럼 말하는 순간 "그럼 저 점수는
+            뭐냐"가 된다. 달라지는 것은 운이 아니라 설계다.
           */}
           <p className="m-0 text-[13px] leading-[1.6] text-pretty whitespace-pre-line">
             {nearbyMode
               ? '예상 혼잡을 알 수 없는 곳이라 추천 순서를 매기지 못해요.\n같은 분류에서 가까운 순으로 보여드릴게요.'
               : originLevel === 'CROWDED'
-                ? '계획은 그대로, 더 여유로운 여행지를 찾아드려요.\n오늘 발견할 수 있는 장소는 달라질 수 있어요.'
+                ? '더 여유롭게 즐길 수 있는 장소들로 찾아봤어요.'
                 : '지금도 크게 붐비지는 않는 곳이에요.\n그래도 더 여유로운 곳이 있는지 찾아봤어요.'}
           </p>
         </header>
@@ -411,13 +476,13 @@ export function AlternativeSheet({
 
           {load.phase === 'loaded' && load.alternatives.length > 0 && (
             <ul className="flex flex-col gap-2.5">
-              {load.alternatives.map((alternative, index) => (
+              {load.alternatives.map((alternative) => (
                 <li
                   key={alternative.place.id}
                   className="bg-surface shadow-rest flex flex-col gap-3 rounded-[18px] p-4"
                 >
                   {/*
-                    ■ 읽히는 순서 — 이름 → 어떤 곳인가 → 숫자
+                    ■ 읽히는 순서 — 이름 → 어떤 곳인가 → 얼마나 미는가 → 숫자
 
                     예전에는 26px짜리 추천도가 이름 옆에 서서 <b>카드에서 가장 먼저 읽혔다.</b>
                     그러면 목록 전체가 점수표가 되어, 사용자는 "어디로 갈까"가 아니라
@@ -432,78 +497,116 @@ export function AlternativeSheet({
                     "왜 이 순서인가"에 답할 수 없다(CLAUDE.md 추천도 구성 내역).
                     크기만 내려 순서를 양보했을 뿐, 항목별 반영 비율은 그대로 편다.
                   */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-fg text-base font-semibold tracking-[-0.01em]">
-                      {alternative.place.name}
-                    </span>
-                    {/*
-                      서버가 추천도 순으로 내려주므로 맨 위가 최선의 후보다.
-                      다만 지금보다 더 붐비는 곳에 "추천"을 붙이면 안 된다 —
-                      한적도가 추천도의 대부분을 차지하지만 전부는 아니라서,
-                      훨씬 가까운 후보가 1등으로 올라오는 경우가 남는다.
-                    */}
-                    {index === 0 &&
-                      originQuietness !== null &&
-                      alternative.quietness > originQuietness && (
-                      <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
-                        추천
-                      </span>
-                    )}
-                  </div>
-
                   {/*
-                    성격 문구. 서버가 준 근거 문장을 그대로 쓴다 —
-                    "OO 방문객이 함께 많이 찾는 곳", "OO와 비슷한 분류의 가까운 곳"처럼
-                    이미 <b>그곳이 어떤 곳인지</b>를 말하는 문장이다.
+                    ⚠️ <b>"추천" 배지를 두지 않는다.</b> 예전에는 맨 위 카드에 붙였다.
+                    걷어낸 이유가 둘이다.
 
-                    회색 상자와 "i" 표시를 걷어냈다. 부연 설명처럼 담아 두면 실제로
-                    부연으로 읽히는데, 이 문장이 카드에서 가장 중요한 말이다.
+                    첫째, <b>이 목록 자체가 이미 추천이다.</b> 자격을 통과한 후보만 남기고
+                    점수로 뽑아 올린 셋인데, 그중 하나에 다시 "추천"을 붙이면 나머지 둘이
+                    추천이 아닌 것처럼 읽힌다.
+
+                    둘째, <b>그 배지는 틀린 곳을 가리키고 있었다.</b> 조건이 {@code index === 0}
+                    이었는데(나머지 두 조건은 후보 자격상 늘 참이라 거르는 일이 없었다),
+                    분산을 살리려고 뽑은 뒤 정렬을 걷어내면서 "맨 위 = 최고점"이라는 전제가
+                    무너졌다. 실측에서 <b>22곳 중 7곳(32%)</b>은 맨 위가 최고점이 아니었고,
+                    47점 카드에 배지가 붙고 그 아래 67점 카드에는 없는 일까지 있었다.
+
+                    어느 것을 얼마나 미는지는 카드마다 적힌 <b>추천도</b>가 말한다.
                   */}
-                  <p className="text-fg m-0 text-[13.5px] leading-[1.6] text-pretty">
-                    {alternative.reason}
-                  </p>
+                  {/*
+                    ■ 머리 — 왼쪽에 이름과 분류, <b>오른쪽에 추천도</b>
 
-                  {/* 숫자는 한 줄에 모은다. 왼쪽이 원본 지표(한적도), 오른쪽이 종합 판단(추천도)이다 */}
-                  <div className="border-line/70 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t pt-2.5">
-                    {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className="text-hint text-[12.5px]">
-                        {alternative.place.categoryName}
+                    추천도는 이 목록을 만든 값이라 <b>펴 보지 않아도 보여야 한다.</b>
+                    "추천도를 어떻게 산출하나요?"에 화면을 가리켜 답하려면 숫자가 먼저
+                    눈에 띄어야 하고, 그다음이 내역이다(CLAUDE.md 점수 체계).
+
+                    한때 이름 옆에 작게 붙여 봤지만 훑을 때 묻혔다. 카드에서 가장 큰 숫자
+                    자리로 되돌린다 — 목록을 줄 세운 값이 화면에서도 가장 큰 값이어야
+                    "이 순서가 왜 이런가"를 설명할 수 있다.
+
+                    <p>⚠️ 이 숫자는 <b>100점 만점이 아니다.</b> 0.7 × 한적도 + 0.3 × 근접도라
+                    한적도 100(집중률 0)과 거리 0km가 동시에 성립해야 100이 되는데, 실측
+                    150건에서 최고가 80이고 중앙값이 53이었다(docs/OPEN_DECISIONS.md 16번).
+                    그래서 50점대를 낙제로 읽는 사용자가 나온다.
+
+                    <p>한때 옆에 구간 문구("무난한 선택이에요")를 세워 그 오해를 막았으나
+                    걷어냈다. 지금 그 자리를 받치는 것은 아래 근거 문장과 한적 배지다 —
+                    "예상 혼잡 보통"이 숫자가 무엇을 뜻하는지 대신 말한다.
+                  */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <span className="text-fg text-base font-semibold tracking-[-0.01em]">
+                        {alternative.place.name}
                       </span>
-                      <CongestionBadge
-                        level={alternative.level}
-                        label={alternative.levelLabel}
-                        quietness={alternative.quietness}
-                        size="sm"
-                      />
+
+                      {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="text-hint text-[12.5px]">
+                          {alternative.place.categoryName}
+                        </span>
+                        <CongestionBadge
+                          level={alternative.level}
+                          label={alternative.levelLabel}
+                          quietness={alternative.quietness}
+                          size="sm"
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-none items-baseline gap-1.5">
+
+                    <div className="flex flex-none flex-col items-end gap-0.5">
                       <span className="text-hint text-[11px]">추천도</span>
-                      <span className="text-brand-deep font-mono text-[19px] leading-none font-semibold">
+                      <span className="text-brand-deep font-mono text-[26px] leading-none font-semibold">
                         {alternative.recommendation}
                       </span>
                     </div>
                   </div>
 
                   {/*
-                    추천도 구성 내역. 데이터를 어떻게 썼는지 보여주는 자리다.
-                    반영 비율은 서버가 준 값을 그대로 쓴다 — 화면에 숫자를 적어두면
-                    가중치가 바뀔 때 한쪽만 고쳐진다.
+                    성격 문구. 서버가 준 근거 문장을 그대로 쓴다 —
+                    "OO 방문객이 함께 많이 찾는 곳", "OO 근처의 비슷한 분류"처럼
+                    이미 <b>그곳이 어떤 곳인지</b>를 말하는 문장이다.
+                  */}
+                  <p className="m-0 text-[13px] leading-[1.6] text-pretty">
+                    {alternative.reason}
+                  </p>
 
-                    ⚠️ <b>조건이 상자 바깥에 있다.</b> 근거 문장이 위로 올라가면서 이 상자에는
-                    내역만 남았다. 조건을 안에 두면 내역이 없을 때 <b>빈 회색 상자</b>가
-                    그려진다 — 예전에는 문장이 늘 있어서 드러나지 않던 자리다.
+                  {/*
+                    ■ 추천도 구성 내역 — 접어 두되 <b>없애지 않는다</b>
 
-                    내역이 없어도 카드는 그려야 한다. 서버와 화면이 따로 배포되는 순간이
-                    있고(구버전 서버가 아직 떠 있는 등), 그때 필드 하나가 비었다고 화면이
-                    하얘지면 안 된다. 성격 문구와 추천도는 위에 그대로 남는다.
+                    "추천도 71 = 한적도 78(70%) + 근접도 66(30%)"은 데이터 활용을 화면에서
+                    증명하는 장치다(CLAUDE.md 점수 체계). 숫자를 지우면 심사위원의
+                    "추천도를 어떻게 산출하나요?"에 가리킬 화면이 없어진다.
+
+                    그래서 <b>지우는 대신 접는다.</b> 사용자는 위의 한 마디로 읽고,
+                    근거가 궁금한 사람만 편다. 점수 자체는 이름 옆에 늘 서 있으므로
+                    <b>여는 것은 내역이지 점수가 아니다.</b>
+
+                    {@code details}를 쓴 이유: 카드가 목록 안에 여럿이라 상태를 두면
+                    카드마다 관리해야 하는데, 브라우저가 이미 하는 일이다. 키보드·보조기술
+                    지원도 공짜로 따라온다.
+
+                    ⚠️ 조건이 바깥에 있다. 내역이 없을 때 안에 두면 <b>빈 상자</b>가 남는다 —
+                    서버와 화면이 따로 배포되는 순간(구버전 서버가 떠 있는 등)에 필드가
+                    비어도 카드는 그려져야 하고, 그때는 위의 한 마디와 배지가 남는다.
                   */}
                   {alternative.factors?.length ? (
-                    <div className="bg-bg rounded-ui flex flex-col gap-2 px-3 py-3">
-                      <span className="text-hint text-[11.5px] font-semibold">
-                        이 추천도는 이렇게 나왔어요
-                      </span>
-                      <ul className="flex flex-col gap-2">
+                    <details className="group bg-bg rounded-ui px-3 py-2.5">
+                      {/*
+                        요약 줄에서 숫자를 뺐다 — 위 이름 옆으로 올라갔다. 두 곳에 두면
+                        같은 값이 카드 안에 두 번 서서, 접기 전후로 무엇이 달라지는지가 흐려진다.
+                        여기 남는 것은 <b>여는 이유</b> 하나다.
+
+                        접힘/펼침을 글자로 말한다. 화살표만 두면 무엇이 열리는지 모른다.
+                      */}
+                      <summary className="text-hint flex cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
+                        <span className="group-open:hidden">이 추천도는 어떻게 나왔나요?</span>
+                        <span className="hidden group-open:inline">추천도 구성 내역</span>
+                        <span className="text-[11px] font-medium">
+                          <span className="group-open:hidden">펼치기</span>
+                          <span className="hidden group-open:inline">접기</span>
+                        </span>
+                      </summary>
+                      <ul className="border-line mt-2.5 flex flex-col gap-2 border-t pt-2.5">
                       {alternative.factors.map((factor) => (
                         <li
                           key={factor.label}
@@ -525,12 +628,12 @@ export function AlternativeSheet({
                         </li>
                       ))}
                       </ul>
-                    </div>
+                    </details>
                   ) : null}
 
                   {/*
                     "교체"는 서류의 말이다. 사용자가 하는 일은 <b>이곳으로 가기로 정하는 것</b>이고,
-                    문구도 그 사람의 말로 적는다. 위 버튼("새로운 곳 발견하기")과 한 짝이라
+                    문구도 그 사람의 말로 적는다. 위 버튼("다른 곳 발견하기")과 한 짝이라
                     발견하고 → 고르는 흐름이 문장으로도 이어진다.
                   */}
                   <button

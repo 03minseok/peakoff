@@ -783,7 +783,7 @@ export function HomePage() {
         좁은 화면에서 순서를 되돌리는 장치(order)도 필요 없어졌다.
 
           ┌───────────────┬───────────────┐
-          │ 코스 직접 짜기 │ 코스 추천받기  │
+          │ 코스 짜기      │ 코스 발견하기  │
           ├───────┬───────┴──┬────────────┤
           │ 오늘의 │ 이번 주   │ 다른 사람들 │
           │ 경주   │ 한적한 날 │ 의 여행     │
@@ -844,23 +844,54 @@ export function HomePage() {
             <span className="text-brand text-[11.5px] font-semibold tracking-[0.1em]">
               PLAN MY TRIP
             </span>
+            {/*
+              ■ 제목은 <b>서비스가 하는 일</b>이고, 사용자의 상황은 본문이 맡는다
+
+              제목을 상황으로 두려고 세 번 고쳤다 — "내가 고른 여행"(시제가 틀렸다),
+              "가고 싶은 곳이 있어요"(필요한 것을 적게 말했다), "이미 계획이 있어요"
+              (날짜만 정한 사람이 잘못 들어온다). 고칠 때마다 <b>새로운 예외가 나왔다.</b>
+
+              <p>원인이 문구가 아니라 <b>방식</b>에 있었다. 상황 제목은 "당신은 이런
+              상태다"라고 <b>단언</b>하는 말이라, 어떻게 짜도 그 단언에 안 맞는 사람이 남는다.
+              경우의 수를 다 막으려 하면 제목이 길어지고, 길어진 제목은 훑어지지 않는다.
+
+              <p>행동 이름은 그럴 수 없다. "코스 짜기"는 <b>버튼을 누르면 벌어지는 일</b>이라
+              누가 읽든 참이다. 대신 길 안내를 못 하므로, 그 일은 본문이 <b>조건</b>으로 맡는다 —
+              "가고 싶은 곳이 있다면"은 단언이 아니라서 틀릴 수가 없으면서
+              자기 쪽인지 알려준다.
+
+              <p>⚠️ <b>길 안내는 본문이 한다.</b> 제목이 행동 이름이라 "누구를 위한 문인가"를
+              말하지 않으므로, 그 일을 본문이 맡는다 — 왼쪽은 "가고 싶은 곳은 그대로"로
+              <b>장소를 이미 갖고 있는 사람</b>임을 비추고, 오른쪽은 "몰랐던 여행지를
+              찾아드려요"로 <b>모르는 사람</b>을 부른다.
+
+              <p>특히 오른쪽 그 문장이 <b>경주를 모르는 사용자의 문패</b>다 — 그것이 없으면
+              그 사람이 왼쪽으로 들어가 빈 검색창 앞에서 처음 막힌다.
+              CLAUDE.md 필수 기능 6번이 이 진입점을 둔 이유가 그 사람이다. 지우지 말 것.
+            */}
             <span className="text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-              내가 고른 여행
+              코스 짜기
             </span>
             {/*
-              두 카드가 <b>같은 문형</b>으로 말한다 — "OO는 그대로, XX만".
-              서비스가 하는 일이 여행을 대신 정하는 것이 아니라 <b>붐비는 부분만
-              비껴 주는 것</b>이라, 두 문 다 "당신 것은 그대로 둔다"로 시작한다.
+              "가고 싶은 곳은 그대로"가 두 몫을 한다 — <b>이 문이 누구 것인지</b>를 비추고
+              (장소를 이미 가진 사람), 동시에 <b>우리가 그것을 무르지 않는다</b>고 약속한다.
+
+              뒤엣말은 이 카드만의 것이 아니다. 진단 화면의 두 회피 경로가 같은 문형으로
+              받는다 — "일정은 그대로, 더 여유로운 날을" · "계획은 그대로, 더 여유로운
+              여행지를". <b>홈에서 한 약속이 그 화면들에서 그대로 지켜진다.</b>
+              서비스가 하는 일이 여행을 대신 정하는 것이 아니라 붐비는 부분만 비껴 주는
+              것이라, 두 진입 카드 다 "당신 것은 그대로 둔다"로 말한다.
             */}
             <span className="max-w-62.5 text-sm leading-[1.6] text-white/60">
-              가고 싶은 곳은 그대로, <br/>붐비는 순간만 PEAK OFF가 도와드려요.
+              가고 싶은 곳은 그대로, <br/>붐비는 순간만 PEAKOFF가 도와드려요.
             </span>
             {/* 이 링크가 유일한 문이다. button+navigate 대신 Link라 새 탭으로도 열린다 */}
             <Link
               to="/plan"
               className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
             >
-              내 여행 시작하기
+              {/* 제목이 이미 무엇을 하는지 말하므로 버튼은 짧게 둔다. 옆 카드와 같은 말이다 */}
+              시작하기
               {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
               <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
             </Link>
@@ -903,11 +934,29 @@ export function HomePage() {
               <span className="text-brand-deep text-[11.5px] font-semibold tracking-[0.1em]">
                 DISCOVER A TRIP
               </span>
+              {/*
+                왼쪽과 같은 규칙 — 제목은 <b>하는 일</b>이고 상황은 본문이 조건으로 맡는다.
+                "발견하기"인 이유는 이 문이 매번 다른 코스를 내놓기 때문이다(가중 무작위).
+                "추천받기"라고 하면 늘 같은 답이 오는 것처럼 들린다.
+
+                ⚠️ 한때 "오늘의 여행 발견하기"였다. <b>오늘이 아니다</b> — 설문은 날짜를
+                고르게 하고 예측 창이 앞으로 24~29일이라 대부분 미래 날짜다. 게다가 이 화면에는
+                진짜 "오늘"이 따로 있다(아래 "오늘의 경주"는 오늘의 혼잡을 말한다).
+                한 화면에서 같은 말이 두 뜻으로 쓰이면 어느 쪽도 믿기 어려워진다.
+              */}
               <span className="text-fg text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-                오늘의 여행 발견하기
+                코스 발견하기
               </span>
+              {/*
+                ⚠️ "몰랐던 여행지를 찾아드려요"가 <b>경주를 모르는 사용자를 위한 문패</b>다.
+                제목이 행동 이름이라 누구를 위한 문인지 말하지 않으므로, 그 일을 이 문장이
+                혼자 맡는다 — 지우면 그 사람이 왼쪽 문으로 들어가 빈 검색창 앞에서 처음 막힌다.
+
+                앞 문장 "날짜와 취향만"의 <b>"만"</b>도 같은 일을 한다. 가져올 것이 적다고
+                말해 두어야 "나는 아직 아무것도 못 정했는데"라는 사람이 이쪽을 고른다.
+              */}
               <span className="text-muted max-w-62.5 text-sm leading-[1.6]">
-                날짜와 취향만 알려주세요.<br/> 몰랐던 여행지를 PEAK OFF가 찾아드려요.
+                날짜와 취향만 알려주세요. <br/>몰랐던 여행지를 PEAKOFF가 찾아드려요.
               </span>
               {/*
                 왼쪽 카드와 같은 노란 알약이다. 회색 테두리 알약은 "준비 중"의 표현이었다 —
@@ -918,7 +967,7 @@ export function HomePage() {
                 to="/recommend"
                 className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
               >
-                오늘의 여행 발견하기
+                시작하기
                 <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
               </Link>
             </span>

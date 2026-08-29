@@ -128,10 +128,20 @@ export function PlanPage() {
         화면마다 헤더~첫 내용 거리가 다르면 이동할 때마다 시선이 다시 자리를 찾는다.
       */}
       <section className="flex flex-col gap-3.5 pb-7 lg:sticky lg:top-18 lg:col-span-5 lg:pb-0">
+        {/*
+          ⚠️ "피해서 가요"가 아니다.
+
+          그 말은 사용자가 고른 곳을 <b>가지 말라</b>고 미리 말하는 셈이다. 아직 아무것도
+          담지 않은 첫 화면에서, 하려던 여행을 무르라는 말부터 듣게 된다.
+
+          우리가 여기서 실제로 하는 일은 <b>알려주는 것</b>이다 — 피할지 말지는 진단을
+          보고 사용자가 정한다. 문구가 하는 일보다 앞서 나가면 서비스가 참견으로 읽힌다.
+          "다른 곳 발견하기"·"더 좋은 날 발견하기"와 같은 맥락이다.
+        */}
         <h1 className="text-fg text-[34px] leading-[1.25] font-bold tracking-[-0.025em] lg:text-[40px]">
-          붐비는 곳을
+          붐비는지
           <br />
-          피해서 가요
+          확인해드려요
         </h1>
         {/*
           min-w를 걸지 않는다. 폭을 강제하면 화면이 그보다 좁을 때 문단이 밖으로 삐져나가
@@ -152,7 +162,7 @@ export function PlanPage() {
           to="/recommend"
           className="text-brand-deep -mx-1 w-fit rounded-chip px-1 py-0.5 text-[13.5px] font-semibold no-underline hover:underline"
         >
-          여행지가 안 정해졌다면? 몇 가지 답하고 오늘의 여행 발견하기
+          어디 갈지 아직 모르겠다면? 몇 가지 답하고 코스 발견하기
         </Link>
 
         {/*
