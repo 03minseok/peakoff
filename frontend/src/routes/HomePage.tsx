@@ -844,8 +844,21 @@ export function HomePage() {
             <span className="text-brand text-[11.5px] font-semibold tracking-[0.1em]">
               PLAN MY TRIP
             </span>
+            {/*
+              ■ 두 카드의 제목은 <b>사용자의 상황</b>을 묻는다 — "당신은 어느 쪽인가"
+
+                가고 싶은 곳이 있어요  → 직접 담는다
+                어디 갈지 아직 몰라요  → 두 문항 답하면 코스가 나온다
+
+              ⚠️ "내가 고른 여행"이었다가 고쳤다. <b>시제가 틀렸다</b> — 누르기 전에 읽는
+              문구인데 이미 "고른"(과거)이라 말한다. 아직 아무것도 안 골랐다.
+              게다가 옆 카드는 행동인데 이쪽만 상태(명사구)라 짝도 맞지 않았다.
+
+              상황으로 나누면 시제가 틀릴 수 없고, 읽는 즉시 <b>어느 문으로 들어갈지</b>가
+              정해진다. 제목이 묻고 버튼이 행동을 맡는다.
+            */}
             <span className="text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-              내가 고른 여행
+              가고 싶은 곳이 있어요
             </span>
             {/*
               두 카드가 <b>같은 문형</b>으로 말한다 — "OO는 그대로, XX만".
@@ -860,7 +873,7 @@ export function HomePage() {
               to="/plan"
               className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
             >
-              내 여행 시작하기
+              내 여행 짜기
               {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
               <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
             </Link>
@@ -903,8 +916,19 @@ export function HomePage() {
               <span className="text-brand-deep text-[11.5px] font-semibold tracking-[0.1em]">
                 DISCOVER A TRIP
               </span>
+              {/*
+                ⚠️ "오늘의 여행 발견하기"였다가 고쳤다. <b>오늘이 아니다.</b>
+                설문은 날짜를 고르게 하고, 예측 창이 앞으로 24~29일이라 대부분 미래 날짜다.
+
+                게다가 <b>이 화면에는 진짜 "오늘"이 따로 있다</b> — 아래 "오늘의 경주"는
+                오늘의 혼잡을 말하는 정확한 문구다. 한 화면에서 같은 말이 두 뜻으로 쓰이면
+                어느 쪽도 믿기 어려워진다.
+
+                "오늘의"는 시안의 운세 프레임("오늘의 운세")에서 온 말인데,
+                운을 걷어내면서 그 말이 서 있을 이유도 함께 사라졌다.
+              */}
               <span className="text-fg text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-                오늘의 여행 발견하기
+                어디 갈지 아직 몰라요
               </span>
               <span className="text-muted max-w-62.5 text-sm leading-[1.6]">
                 날짜와 취향만 알려주세요.<br/> 몰랐던 여행지를 PEAKOFF가 찾아드려요.
@@ -918,7 +942,7 @@ export function HomePage() {
                 to="/recommend"
                 className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
               >
-                오늘의 여행 발견하기
+                코스 발견하기
                 <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
               </Link>
             </span>

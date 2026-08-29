@@ -42,6 +42,21 @@ export function formatCompactDate(isoDate: string): string {
   return `${month}.${day}`
 }
 
+/**
+ * "2026-09-16" → "9월 16일"
+ *
+ * <p>{@link formatCompactDate}("9.16")와 따로 두는 이유: 저쪽은 <b>칸에 들어가는 값</b>이라
+ * 짧아야 하고, 이쪽은 <b>문장에 섞이는 말</b>이라 읽히는 대로 적어야 한다.
+ * "9.16의 경주를 발견했어요"는 문장 가운데 표가 하나 끼어든 것처럼 읽힌다.
+ *
+ * <p>{@link formatKoreanDate}("9월 16일 (수)")와도 갈린다 — 요일 괄호는 날짜를 고르는
+ * 자리에서 필요한 정보지, 제목 한가운데 들어가면 문장이 끊긴다.
+ */
+export function formatMonthDay(isoDate: string): string {
+  const [, month, day] = isoDate.split('-').map(Number)
+  return `${month}월 ${day}일`
+}
+
 /** "2026-09-12" → "토요일" */
 export function formatWeekday(isoDate: string): string {
   const [year, month, day] = isoDate.split('-').map(Number)
