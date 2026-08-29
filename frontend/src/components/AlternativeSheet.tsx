@@ -5,6 +5,7 @@ import type { Alternative, CongestionLevel, NearbyPlace } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
 import { LEVEL_SOLID } from './levelStyles'
 import { formatMonthDay } from '../utils/date'
+import { useScrollLock } from '../hooks/useScrollLock'
 
 /**
  * 원래 자리가 그날 어떤지 한 마디로. 배지의 등급 이름(한적·보통·붐빔)을 <b>문장에 넣을 수
@@ -147,6 +148,9 @@ export function AlternativeSheet({
    */
   const [redrawCount, setRedrawCount] = useState(0)
 
+  // 시트가 화면을 다 덮지 않아 아래로 뒤 화면이 비친다 — 잠그지 않으면 그 부분이 따로 스크롤된다.
+  // ⚠️ body가 아니라 html에 건다 — 그래야 sticky가 얼지 않는다(useScrollLock 주석).
+  useScrollLock()
   useEffect(() => {
     const controller = new AbortController()
 
@@ -233,21 +237,9 @@ export function AlternativeSheet({
     }
     document.addEventListener('keydown', handleKey)
 
-    /*
-     * 시트가 떠 있는 동안 뒤 페이지가 움직이지 않게 잠근다.
-     *
-     * 이 시트는 화면을 다 덮지 않아서(max-h-84svh) 아래로 뒤 화면이 비친다.
-     * 잠그지 않으면 그 부분을 밀 때 배경이 시트 밑에서 따로 스크롤되어,
-     * 시트가 화면에서 떨어져 나온 것처럼 보인다.
-     *
-     * 다른 시트들(SaveCourseSheet·ConfirmSheet·CourseDetailOverlay)과 같은 처리다.
-     */
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
 
     return () => {
       document.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = previousOverflow
     }
   }, [onClose])
 

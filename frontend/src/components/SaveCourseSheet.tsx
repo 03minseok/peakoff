@@ -3,6 +3,7 @@ import { ArrowDownToLine } from './icons'
 import { Link, useLocation } from 'react-router'
 import { useAuth } from '../state/authContext'
 import { PRIMARY_BUTTON, TEXT_INPUT } from './styles'
+import { useScrollLock } from '../hooks/useScrollLock'
 
 /** 여행 이름 최대 길이. 서버 SavedCourse.NAME_MAX_LENGTH와 같은 값이어야 한다 */
 const NAME_MAX_LENGTH = 30
@@ -74,6 +75,8 @@ export function SaveCourseSheet({
   const [saving, setSaving] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
 
+  // 뒤 화면 잠금. ⚠️ body가 아니라 html에 건다 — 이유는 useScrollLock 주석에
+  useScrollLock()
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -82,13 +85,9 @@ export function SaveCourseSheet({
     }
     window.addEventListener('keydown', handleKey)
 
-    // 시트가 떠 있는 동안 뒤 화면이 같이 스크롤되면 어느 쪽을 조작하는지 헷갈린다.
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
 
     return () => {
       window.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = previousOverflow
     }
   }, [onClose])
 
