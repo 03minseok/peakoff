@@ -689,20 +689,24 @@ export function HomePage() {
    */
   const [headlineTab, setHeadlineTab] = useState<HeadlineTab>('crowded')
 
-  /** 사용자가 직접 고른 날짜. 아직 안 골랐으면 null이고, 그때는 가장 한적한 날을 쓴다 */
-  const [pickedDate, setPickedDate] = useState<string | null>(null)
-
   /**
-   * 지금 선택된 날짜. <b>가장 한적한 날이 기본값</b>이다.
+   * 지금 선택된 날짜. <b>사용자가 누르기 전에는 없다.</b>
    *
-   * <p>effect로 데이터가 도착할 때 값을 밀어넣지 않고 파생값으로 둔다. 그러면 상태가
-   * 하나뿐이라 "사용자가 골랐는가"만 기억하면 되고, 데이터가 늦게 와도 순서 문제가 없다.
-   * effect로 채우면 첫 렌더에 빈 상태가 한 번 그려졌다가 값이 들어오며 화면이 튄다.
+   * <h3>⚠️ 가장 한적한 날을 미리 골라두지 않는다</h3>
+   * 예전에는 {@code pickedDate ?? data?.bestDay.date}였다. 목록에 이미 한 줄이 켜져 있고
+   * 버튼에도 그 날짜가 적혀 있으니, 사용자는 <b>화면이 정한 값을 자기가 고른 것으로 착각한 채</b>
+   * 넘어갔다. 어느 날로 코스를 짜는지 모르는 채 다음 화면에 도착한다.
    *
-   * <p>널이 되는 때는 아직 불러오는 중일 때뿐이다. 그때만 버튼이 잠긴다 —
-   * 고를 날짜 자체가 없는데 눌리면 갈 곳 없는 화면으로 넘어간다.
+   * <p>가장 한적한 날은 <b>위 문구가 이미 말하고 있다</b>("9/3 목이 가장 한적해요").
+   * 알려주는 것과 대신 골라주는 것은 다르다 — 알려주고 고르는 일은 사용자에게 남긴다.
+   *
+   * <p>그래서 이제 상태 하나가 그대로 답이다. 파생값으로 감쌀 것이 없어졌다.
+   * (effect로 값을 밀어넣지 않는 이유는 그대로다 — 첫 렌더에 빈 상태가 그려졌다가
+   * 값이 들어오며 화면이 튄다.)
+   *
+   * <p>널일 때 두 버튼이 잠긴다. 갈 날짜가 없는데 눌리면 갈 곳 없는 화면으로 넘어간다.
    */
-  const activeDate = pickedDate ?? data?.bestDay.date ?? null
+  const [activeDate, setActiveDate] = useState<string | null>(null)
 
   return (
     // 아래 고정 막대를 걷어내면서 그것을 피하려던 여백(pb-26)도 함께 뺐다.
@@ -838,20 +842,25 @@ export function HomePage() {
               5.1:1로 넉넉하다 — 규칙의 이유가 사라지는 유일한 자리다.
             */}
             <span className="text-brand text-[11.5px] font-semibold tracking-[0.1em]">
-              START PLANNING
+              PLAN MY TRIP
             </span>
             <span className="text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-              여행 코스 짜기
+              내가 고른 여행
             </span>
+            {/*
+              두 카드가 <b>같은 문형</b>으로 말한다 — "OO는 그대로, XX만".
+              서비스가 하는 일이 여행을 대신 정하는 것이 아니라 <b>붐비는 부분만
+              비껴 주는 것</b>이라, 두 문 다 "당신 것은 그대로 둔다"로 시작한다.
+            */}
             <span className="max-w-62.5 text-sm leading-[1.6] text-white/60">
-              날짜를 정하면 각 장소가 그날 얼마나 붐빌지 미리 계산해 드려요.
+              가고 싶은 곳은 그대로, <br/>붐비는 순간만 PEAK OFF가 도와드려요.
             </span>
             {/* 이 링크가 유일한 문이다. button+navigate 대신 Link라 새 탭으로도 열린다 */}
             <Link
               to="/plan"
               className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
             >
-              시작하기
+              내 여행 시작하기
               {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
               <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
             </Link>
@@ -884,14 +893,21 @@ export function HomePage() {
           {/* 왼쪽 카드와 같은 규칙 — 카드는 누르는 것이 아니고, hover는 CTA를 가리킨다 */}
           <div className="group border-brand bg-surface shadow-rest relative w-full overflow-hidden rounded-[24px] border-[1.5px] px-6 pt-6.5 pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
             <span className="relative flex flex-col gap-3">
+              {/*
+                ⚠️ 킥커를 "TRUST YOUR LUCK" 같은 말로 두지 않는다.
+                매번 다른 코스가 나오는 것은 <b>운이 아니라 설계</b>다 — 자격을 갖춘 후보만
+                남긴 뒤 점수에 비례해 고른다. 운을 앞세우면 바로 다음 화면에서 펴 보이는
+                한적 지수와 추천 근거가 <b>구색으로 읽힌다.</b> 우리가 파는 것은 뽑기가
+                아니라 "몰랐던 곳을 데이터로 찾아준다"는 약속이다.
+              */}
               <span className="text-brand-deep text-[11.5px] font-semibold tracking-[0.1em]">
-                GET A COURSE
+                DISCOVER A TRIP
               </span>
               <span className="text-fg text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-                여행 코스 추천받기
+                오늘의 여행 발견하기
               </span>
               <span className="text-muted max-w-62.5 text-sm leading-[1.6]">
-                몇 가지만 답하면 다니는 방식에 맞춰 덜 붐비는 코스를 만들어 드려요.
+                날짜와 취향만 알려주세요.<br/> 몰랐던 여행지를 PEAK OFF가 찾아드려요.
               </span>
               {/*
                 왼쪽 카드와 같은 노란 알약이다. 회색 테두리 알약은 "준비 중"의 표현이었다 —
@@ -902,7 +918,7 @@ export function HomePage() {
                 to="/recommend"
                 className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
               >
-                시작하기
+                오늘의 여행 발견하기
                 <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
               </Link>
             </span>
@@ -1136,7 +1152,7 @@ export function HomePage() {
                       key={day.date}
                       day={day}
                       selected={day.date === activeDate}
-                      onSelect={() => setPickedDate(day.date)}
+                      onSelect={() => setActiveDate(day.date)}
                     />
                   ))
                 : Array.from({ length: 7 }, (_, index) => (
@@ -1159,7 +1175,7 @@ export function HomePage() {
                       key={day.date}
                       day={day}
                       selected={day.date === activeDate}
-                      onSelect={() => setPickedDate(day.date)}
+                      onSelect={() => setActiveDate(day.date)}
                     />
                   ))
                 : Array.from({ length: 7 }, (_, index) => (
@@ -1180,9 +1196,10 @@ export function HomePage() {
               "그래서 무엇을 할 것인가"다. 행동하는 자리가 14초마다 사라졌다 나타나면
               누르려던 손이 갈 곳을 잃는다 — 붙박이로 두는 편이 맞다.
 
-              ⚠️ 대신 <b>글자는 바뀔 수 있다.</b> 날짜를 직접 고르지 않았으면 기본값이
-              그 지역의 가장 한적한 날이라, 지역이 넘어가는 순간 날짜가 갈린다.
-              고른 날짜가 있으면(pickedDate) 그대로 남는다.
+              <b>고른 날짜는 지역이 넘어가도 그대로 남는다.</b> 고른 것은 날짜이지 지역이
+              아니고, 다음 화면으로 넘길 때도 날짜만 싣는다. 예전에는 고르지 않았을 때
+              그 지역의 가장 한적한 날이 기본값이라 <b>지역이 바뀔 때마다 버튼의 날짜가
+              혼자 갈렸다</b> — 이제 고르기 전에는 날짜가 없어서 그 일이 없다.
             */}
             {/*
               고르는 일과 넘어가는 일을 나눈다.

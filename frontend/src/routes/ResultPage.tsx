@@ -315,9 +315,16 @@ export function ResultPage() {
     ? afterDiagnosis.slots.filter((slot) => slot.level === 'CROWDED').length
     : 0
 
+  /*
+    무엇을 해서 나아졌는지 요약한다.
+
+    "교체"가 아니라 "발견"이다. 사용자가 한 일은 붐비는 곳을 무른 것이 아니라
+    <b>덜 붐비는 곳을 찾아낸 것</b>이고, 그 자리로 데려간 버튼 이름도 "더 좋은 곳
+    발견하기"였다. 결과 화면에서만 다른 말을 쓰면 방금 한 일이 다른 일처럼 읽힌다.
+  */
   const summary = [
     movedDate ? '날짜 이동' : null,
-    changes.length > 0 ? `장소 ${changes.length}곳 교체` : null,
+    changes.length > 0 ? `더 좋은 곳 ${changes.length}곳 발견` : null,
   ].filter(Boolean)
 
   return (
@@ -445,7 +452,7 @@ export function ResultPage() {
             <CourseColumn
               title="개선안"
               subtitle={
-                changes.length > 0 ? `장소 ${changes.length}곳 교체` : '더 한적한 코스'
+                changes.length > 0 ? `더 좋은 곳 ${changes.length}곳 발견` : '더 한적한 코스'
               }
               score={showAfter ? afterDiagnosis.totalQuietness : null}
               diagnosis={afterDiagnosis}
@@ -557,7 +564,17 @@ export function ResultPage() {
               */}
               {state.days.length > 1 && (
                 <div className="flex gap-1.5" role="group" aria-label="지도에 표시할 일차">
-                  {(['all', ...state.days.map((_, index) => index + 1)] as const).map(
+                  {/*
+                    <b>일차가 먼저, 전체가 마지막이다.</b>
+
+                    탭은 왼쪽부터 읽힌다. "전체"를 앞에 두면 하루씩 보려는 사람이 늘
+                    그것을 지나쳐 가야 하고, 무엇보다 <b>Day 1이 첫 칸이 아니어서</b>
+                    일정의 순서와 탭의 순서가 어긋난다 — 아래 타임라인은 1일차부터
+                    시작하는데 탭만 다른 것으로 열린다.
+
+                    전체는 하루하루를 다 본 뒤 <b>합쳐 보는</b> 자리라 끝이 제자리다.
+                  */}
+                  {([...state.days.map((_, index) => index + 1), 'all'] as const).map(
                     (tab) => {
                       const active = tab === mapDay
                       return (
