@@ -3,6 +3,22 @@ import { ApiRequestError, fetchAlternatives, fetchNearby } from '../services/api
 import { alternativesFor, forgetAlternatives } from '../services/alternativeCache'
 import type { Alternative, CongestionLevel, NearbyPlace } from '../types/api'
 import { CongestionBadge } from './CongestionBadge'
+import { LEVEL_SOLID } from './levelStyles'
+import { formatMonthDay } from '../utils/date'
+
+/**
+ * 원래 자리가 그날 어떤지 한 마디로. 배지의 등급 이름(한적·보통·붐빔)을 <b>문장에 넣을 수
+ * 있는 꼴</b>로 바꾼 것이다.
+ *
+ * <p>등급 자체를 새로 만들지 않는다 — 서버가 정한 세 단계를 그대로 쓰고 어미만 붙인다.
+ * 여기서 "조금 붐벼요"와 "많이 붐벼요"를 임의로 가르면 화면이 서버가 재지 않은 것을
+ * 말하게 된다.
+ */
+const LEVEL_PHRASE: Record<CongestionLevel, string> = {
+  QUIET: '한적할 것 같아요',
+  MODERATE: '조금 붐빌 것 같아요',
+  CROWDED: '많이 붐빌 것 같아요',
+}
 
 /**
  * 한 번에 보여줄 대안 수. <b>이 숫자가 추천 분산의 세기를 정한다.</b>
@@ -270,13 +286,33 @@ export function AlternativeSheet({
         <header className="border-line bg-surface flex flex-none flex-col gap-2 border-b px-4.5 pt-3.5 pb-3.5 lg:rounded-t-[24px] lg:px-6 lg:pt-5.5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-1">
-              {/* "교체할 자리"는 우리 말이다. 사용자에게는 그냥 지금 담아 둔 자리다 */}
-              <span className="text-hint text-[12.5px]">지금 이 자리</span>
+              {/*
+                ■ 킥커에 기능 이름을 세운다
+
+                <b>PLACE OFF</b>는 서비스 이름(PEAK OFF)에서 갈라져 나온 말이고,
+                날짜 쪽은 TIME OFF, 설문은 FULL PEAKOFF다. 화면마다 이름을 붙여 두면
+                사용자가 "이 서비스에는 이런 갈래가 있다"를 알게 되고, 발표에서도
+                화면을 가리켜 같은 이름으로 말할 수 있다.
+
+                ⚠️ 뒤엣말은 이 시트를 <b>연 버튼과 같은 말</b>이어야 한다("다른 곳 둘러보기").
+                버튼과 머리글이 다른 말을 하면 같은 기능이 둘로 보인다.
+              */}
+              <span className="text-brand-deep text-[12px] font-semibold">
+                PLACE OFF · 다른 곳 둘러보기
+              </span>
+              {/*
+                ⚠️ <b>"오늘은"이라고 쓰지 않는다.</b> 여기서 다루는 것은 오늘이 아니라
+                {@code visitDate}(그 자리를 방문하는 날)의 예측이다. 대개 미래 날짜다.
+                홈 카드에서 "오늘의 여행"을 걷어낸 것과 같은 이유 — 화면이 시점을 틀리게
+                말하면 그 아래 숫자들도 같이 의심받는다.
+              */}
               <h2
                 id="sheet-title"
-                className="text-fg m-0 text-[19px] font-bold tracking-[-0.015em]"
+                className="text-fg m-0 text-[19px] leading-[1.35] font-bold tracking-[-0.015em] text-pretty"
               >
-                {nearbyMode ? `${originName} 대신 갈 만한 곳` : `${originName} 대신 어디요?`}
+                {nearbyMode
+                  ? `${originName} 말고, 가까운 곳을 볼까요?`
+                  : `${originName} 말고, 새로운 곳을 만나볼까요?`}
               </h2>
             </div>
             <button
@@ -288,12 +324,28 @@ export function AlternativeSheet({
               ✕
             </button>
           </div>
-          {/* 지금 점수를 함께 띄운다. 후보 옆의 증감이 무엇을 기준으로 한 것인지 알려면 필요하다. */}
+          {/*
+            원래 자리가 그날 어떤지 <b>문장으로</b> 말한다. 후보 옆의 점수가 무엇을 기준으로
+            한 값인지 알려면 이 값이 필요한데, "지금 [붐빔 24]"처럼 배지만 두면
+            그 24가 무엇인지 사용자가 스스로 옮겨 읽어야 했다.
+
+            ⚠️ <b>"지금"이 아니다.</b> 집중률은 예측값이고 우리가 묻는 것은 방문 예정일이다.
+            날짜를 적어 두면 아래 후보들의 한적도가 <b>같은 날 기준</b>이라는 것도 함께 전해진다.
+
+            점은 색 자체가 신호인 자리라 {@code LEVEL_SOLID}를 쓴다. 색만 두면 색각 이상에서
+            갈리지 않으므로 <b>등급 이름과 한적도를 글자로 함께</b> 적는다 —
+            CLAUDE.md가 3단계를 색과 명도로 함께 가르는 것과 같은 이유다.
+          */}
           {originLevel !== null && originQuietness !== null && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-hint text-[12.5px]">지금</span>
-              <CongestionBadge level={originLevel} quietness={originQuietness} size="sm" />
-            </div>
+            <p className="text-muted m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px]">
+              <span
+                className={`h-2.5 w-2.5 flex-none rounded-full ${LEVEL_SOLID[originLevel]}`}
+                aria-hidden="true"
+              />
+              {formatMonthDay(visitDate)} 그곳은
+              <span className="text-fg font-semibold">{LEVEL_PHRASE[originLevel]}</span>
+              <span className="text-hint">· 한적도 {originQuietness}</span>
+            </p>
           )}
           {/*
             무엇을 기준으로 줄 세웠는지 첫 줄에서 밝힌다.
@@ -315,12 +367,17 @@ export function AlternativeSheet({
             항목별 반영 비율을 펴 놓는 자리라, 뽑기처럼 말하는 순간 <b>"그럼 저 점수는
             뭐냐"</b>가 된다. 같은 분산 로직인데 말투가 갈리는 이유다.
             달라지는 것은 운이 아니라 설계다 — 그래서 "달라질 수 있어요"까지만 말한다.
+
+            ⚠️ "오늘 발견할 수 있는 장소는"이었다가 <b>"다시 찾으면"</b>으로 고쳤다.
+            여기서 달라지는 계기는 날이 바뀌는 것이 아니라 <b>다시 뽑는 것</b>이다 —
+            목록은 세션에 붙들려 있어 시트를 닫았다 열어도 그대로이고,
+            "다른 곳도 볼래요"를 누르거나 여행 조건이 바뀔 때만 새로 뽑힌다.
           */}
           <p className="m-0 text-[13px] leading-[1.6] text-pretty whitespace-pre-line">
             {nearbyMode
               ? '예상 혼잡을 알 수 없는 곳이라 추천 순서를 매기지 못해요.\n같은 분류에서 가까운 순으로 보여드릴게요.'
               : originLevel === 'CROWDED'
-                ? '계획은 그대로, 더 여유로운 여행지를 찾아드려요.\n오늘 발견할 수 있는 장소는 달라질 수 있어요.'
+                ? '계획은 그대로, 더 여유로운 여행지를 찾아드려요.\n다시 찾으면 다른 곳이 보일 수 있어요.'
                 : '지금도 크게 붐비지는 않는 곳이에요.\n그래도 더 여유로운 곳이 있는지 찾아봤어요.'}
           </p>
         </header>
