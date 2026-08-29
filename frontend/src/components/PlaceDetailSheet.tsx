@@ -127,7 +127,20 @@ export function PlaceDetailSheet({
           <Close />
         </button>
 
-        <div className="overscroll-contain flex-1 overflow-y-auto">
+        {/*
+          ⚠️ 스크롤 막대를 감춘다({@code no-scrollbar}).
+
+          이 창은 사진이 맨 위를 가로지르고 둥근 모서리로 잘려 있는데, 그 위에 세로 막대가
+          서면 <b>사진 오른쪽이 한 줄 깎인 것처럼</b> 보인다. 윈도우처럼 막대가 자리를
+          차지하는 환경에서 특히 그렇다.
+
+          <b>스크롤은 그대로 된다</b> — 막대만 안 보인다. 여기서는 감춰도 되는 이유가
+          있다: 창 안에 든 것이 사진과 글 한 덩이라 "아래에 더 있다"가 글 흐름으로
+          이미 보이고, 손가락·휠·키보드 어느 쪽으로도 내려간다.
+
+          ⚠️ 목록에는 쓰지 말 것. 거기서는 막대가 "얼마나 남았는가"를 말해 준다.
+        */}
+        <div className="no-scrollbar overscroll-contain flex-1 overflow-y-auto">
           {/* 사진. 이 창의 주인공이라 폭을 꽉 채운다 */}
           {imageUrl ? (
             <img

@@ -1102,7 +1102,23 @@ export function DiagnosisPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-hint m-0 text-[12.5px]">{slot.place.categoryName}</p>
+                        {/*
+                          분류와 "상세보기"가 <b>한 줄</b>에 선다. 버튼을 아래 줄로 내리면
+                          카드가 그만큼 길어지는데, 담긴 곳이 5~8곳이면 그것만으로 스크롤이
+                          늘어난다. 분류는 짧은 낱말이라 옆자리가 남는다.
+                        */}
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <p className="text-hint m-0 text-[12.5px]">{slot.place.categoryName}</p>
+                          <span className="text-line text-[11px]" aria-hidden="true">·</span>
+                          <button
+                            type="button"
+                            className="press text-brand-deep hover:text-brand -mx-1 cursor-pointer rounded-chip bg-transparent px-1 py-0.5 text-[12px] font-semibold"
+                            onClick={() => setDetail(slot)}
+                            aria-label={`${slot.place.name} 상세보기`}
+                          >
+                            상세보기
+                          </button>
+                        </div>
 
                         {/*
                           진단하지 못한 이유. <b>서버가 문구를 줄 때만</b> 그린다.
@@ -1125,27 +1141,6 @@ export function DiagnosisPage() {
                           </p>
                         )}
 
-                        {/*
-                          장소 상세. <b>창으로 띄운다.</b>
-
-                          처음에는 카드 아래로 밀어 내렸는데, 소개글이 500자쯤 되다 보니
-                          펼치는 순간 <b>그 아래 일정이 통째로 화면 밖으로 밀려났다.</b>
-                          읽고 나서 보던 자리로 돌아오려면 스크롤을 되짚어야 했다.
-                          창으로 띄우면 뒤 화면이 그대로 남아 닫으면 보던 자리다.
-
-                          ⚠️ <b>진단 여부와 무관하게 둔다.</b> 오히려 여기가 값이 크다 —
-                          예측이 닿지 않는 90%의 장소(음식점·숙박·상점)는 이 카드에
-                          점수 대신 "자료 없어요"만 서 있었는데, 소개글은 그런 곳에도
-                          붙어 있다(실측: 올리브영 118자). 진단은 못 해도 읽을거리는 준다.
-                        */}
-                        <button
-                          type="button"
-                          className="press text-brand-deep hover:text-brand -mx-1 mt-1.5 w-fit cursor-pointer rounded-chip bg-transparent px-1 py-0.5 text-[12.5px] font-semibold"
-                          onClick={() => setDetail(slot)}
-                          aria-label={`${slot.place.name} 상세보기`}
-                        >
-                          상세보기
-                        </button>
                       </div>
 
                       {/*
