@@ -215,20 +215,7 @@ export function RecommendPage() {
     <div className="mx-auto w-full max-w-form pb-10 lg:grid lg:max-w-app lg:grid-cols-12 lg:items-start lg:gap-10">
       {/* 폼을 채우는 동안 왼쪽 설명이 따라와 무엇을 하는 화면인지가 계속 남는다 */}
       <section className="flex flex-col gap-3.5 pb-7 lg:sticky lg:top-18 lg:col-span-5 lg:pb-0">
-        {/*
-          ■ 이 화면에만 기능 이름을 세운다
-
-          FULL PEAKOFF는 <b>브랜드명(PEAK OFF)과 이어져 있어</b> 헤더 로고가 뜻을 받쳐 준다 —
-          "PEAK OFF를 통째로"로 읽히므로 처음 보는 사람도 기댈 데가 있다.
-          진단 화면의 TIME OFF·PLACE OFF와 셋이 한 가족이 된다.
-
-          ⚠️ <b>홈에는 붙이지 않는다.</b> 처음 온 사람이 서는 자리라 내부 용어를 두면
-          진입 문턱만 올라간다.
-        */}
-        <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
-          FULL PEAKOFF
-        </span>
-        <h1 className="text-fg m-0 -mt-2 text-[34px] leading-[1.25] font-bold tracking-[-0.025em] lg:text-[40px]">
+        <h1 className="text-fg m-0 text-[34px] leading-[1.25] font-bold tracking-[-0.025em] lg:text-[40px]">
           어디로 갈지,
           <br />
           같이 발견해볼까요
@@ -255,8 +242,6 @@ export function RecommendPage() {
           먼저 덜어야 답을 고르기 시작한다.
         */}
         <p className="m-0 text-[15.5px] leading-[1.65] text-pretty">
-          몇 가지만 알려주세요.
-          <br />
           당신의 취향과 그날의 혼잡도를 살펴
           <br />
           몰랐던 여행 코스를 찾아드릴게요.
@@ -278,14 +263,34 @@ export function RecommendPage() {
         </Link>
 
         {/*
-          ⚠️ 세 단계 목록("답하면 돼요 → 찾아드려요 → 고칠 수 있어요")을 걷어냈다.
-          위 두 문단이 <b>같은 말을 이미 하고 있어서</b>다 — 한 화면에서 같은 순서를
-          두 번 적으면 읽을 것만 늘고 알게 되는 것은 없다.
+          넓은 화면에서만 편다. 좁은 화면에서는 이 세 줄을 읽느라 정작 입력칸이
+          화면 밖으로 밀려난다 — 여기서 할 일은 읽는 것이 아니라 고르는 것이다.
+          {@code /plan}과 같은 규칙이다.
 
-          ⚠️ {@code /plan}에는 그 목록이 남아 있다. 그쪽 본문은 한 줄이라
-          단계를 대신 말해 줄 것이 없기 때문이다. 두 화면의 골격(좌우 두 칸)은 같지만
-          <b>왼쪽을 무엇으로 채우는가는 본문의 길이가 정한다.</b>
+          ⚠️ <b>위 본문과 다른 것을 말한다.</b> 본문은 우리가 무엇을 보고 무엇을 주는가이고,
+          이 목록은 <b>다음에 벌어지는 순서</b>다. 한때 "답하면 돼요 → 찾아드려요 →
+          고칠 수 있어요"였는데 그건 본문을 두 번 적은 것이었다.
+
+          내용은 실제 결과 화면이 하는 일 그대로다 — 코스가 나오고, 장소마다 한적도가
+          붙고, 마음에 안 들면 다시 뽑는다("다른 코스도 발견하기").
         */}
+        <ol className="mt-3 hidden list-none flex-col gap-4 p-0 lg:flex">
+          {[
+            '두 문항에 답하면 코스가 나와요',
+            '장소마다 얼마나 붐빌지 함께 보여드려요',
+            '마음에 들 때까지 다시 찾아봐요',
+          ].map((step, index) => (
+            <li key={step} className="flex items-center gap-3">
+              <span
+                className="bg-brand-tint text-brand-deep grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold"
+                aria-hidden="true"
+              >
+                {index + 1}
+              </span>
+              <span className="text-muted text-[14px] leading-[1.5]">{step}</span>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>
