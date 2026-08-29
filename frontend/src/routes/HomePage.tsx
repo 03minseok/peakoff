@@ -689,20 +689,24 @@ export function HomePage() {
    */
   const [headlineTab, setHeadlineTab] = useState<HeadlineTab>('crowded')
 
-  /** 사용자가 직접 고른 날짜. 아직 안 골랐으면 null이고, 그때는 가장 한적한 날을 쓴다 */
-  const [pickedDate, setPickedDate] = useState<string | null>(null)
-
   /**
-   * 지금 선택된 날짜. <b>가장 한적한 날이 기본값</b>이다.
+   * 지금 선택된 날짜. <b>사용자가 누르기 전에는 없다.</b>
    *
-   * <p>effect로 데이터가 도착할 때 값을 밀어넣지 않고 파생값으로 둔다. 그러면 상태가
-   * 하나뿐이라 "사용자가 골랐는가"만 기억하면 되고, 데이터가 늦게 와도 순서 문제가 없다.
-   * effect로 채우면 첫 렌더에 빈 상태가 한 번 그려졌다가 값이 들어오며 화면이 튄다.
+   * <h3>⚠️ 가장 한적한 날을 미리 골라두지 않는다</h3>
+   * 예전에는 {@code pickedDate ?? data?.bestDay.date}였다. 목록에 이미 한 줄이 켜져 있고
+   * 버튼에도 그 날짜가 적혀 있으니, 사용자는 <b>화면이 정한 값을 자기가 고른 것으로 착각한 채</b>
+   * 넘어갔다. 어느 날로 코스를 짜는지 모르는 채 다음 화면에 도착한다.
    *
-   * <p>널이 되는 때는 아직 불러오는 중일 때뿐이다. 그때만 버튼이 잠긴다 —
-   * 고를 날짜 자체가 없는데 눌리면 갈 곳 없는 화면으로 넘어간다.
+   * <p>가장 한적한 날은 <b>위 문구가 이미 말하고 있다</b>("9/3 목이 가장 한적해요").
+   * 알려주는 것과 대신 골라주는 것은 다르다 — 알려주고 고르는 일은 사용자에게 남긴다.
+   *
+   * <p>그래서 이제 상태 하나가 그대로 답이다. 파생값으로 감쌀 것이 없어졌다.
+   * (effect로 값을 밀어넣지 않는 이유는 그대로다 — 첫 렌더에 빈 상태가 그려졌다가
+   * 값이 들어오며 화면이 튄다.)
+   *
+   * <p>널일 때 두 버튼이 잠긴다. 갈 날짜가 없는데 눌리면 갈 곳 없는 화면으로 넘어간다.
    */
-  const activeDate = pickedDate ?? data?.bestDay.date ?? null
+  const [activeDate, setActiveDate] = useState<string | null>(null)
 
   return (
     // 아래 고정 막대를 걷어내면서 그것을 피하려던 여백(pb-26)도 함께 뺐다.
@@ -1136,7 +1140,7 @@ export function HomePage() {
                       key={day.date}
                       day={day}
                       selected={day.date === activeDate}
-                      onSelect={() => setPickedDate(day.date)}
+                      onSelect={() => setActiveDate(day.date)}
                     />
                   ))
                 : Array.from({ length: 7 }, (_, index) => (
@@ -1159,7 +1163,7 @@ export function HomePage() {
                       key={day.date}
                       day={day}
                       selected={day.date === activeDate}
-                      onSelect={() => setPickedDate(day.date)}
+                      onSelect={() => setActiveDate(day.date)}
                     />
                   ))
                 : Array.from({ length: 7 }, (_, index) => (
@@ -1180,9 +1184,10 @@ export function HomePage() {
               "그래서 무엇을 할 것인가"다. 행동하는 자리가 14초마다 사라졌다 나타나면
               누르려던 손이 갈 곳을 잃는다 — 붙박이로 두는 편이 맞다.
 
-              ⚠️ 대신 <b>글자는 바뀔 수 있다.</b> 날짜를 직접 고르지 않았으면 기본값이
-              그 지역의 가장 한적한 날이라, 지역이 넘어가는 순간 날짜가 갈린다.
-              고른 날짜가 있으면(pickedDate) 그대로 남는다.
+              <b>고른 날짜는 지역이 넘어가도 그대로 남는다.</b> 고른 것은 날짜이지 지역이
+              아니고, 다음 화면으로 넘길 때도 날짜만 싣는다. 예전에는 고르지 않았을 때
+              그 지역의 가장 한적한 날이 기본값이라 <b>지역이 바뀔 때마다 버튼의 날짜가
+              혼자 갈렸다</b> — 이제 고르기 전에는 날짜가 없어서 그 일이 없다.
             */}
             {/*
               고르는 일과 넘어가는 일을 나눈다.
