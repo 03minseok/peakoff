@@ -502,44 +502,57 @@ export function AlternativeSheet({
                     ({@link RECOMMENDATION_BANDS})
                   */}
                   {/*
-                    이름과 추천도가 <b>한 줄</b>에 선다.
+                    ■ 머리 — 왼쪽에 이름과 한 마디, <b>오른쪽에 추천도</b>
 
-                    숫자를 접힌 상자 안에만 두었더니 카드를 훑는 동안 점수가 보이지 않았다.
-                    추천도는 이 목록을 만든 값이라 <b>펴 보지 않아도 있어야 한다</b> —
-                    "추천도를 어떻게 산출하나요?"에 화면을 가리켜 답하려면 먼저 눈에 띄어야
-                    하고, 그다음이 근거다(CLAUDE.md 점수 체계).
+                    추천도는 이 목록을 만든 값이라 <b>펴 보지 않아도 보여야 한다.</b>
+                    "추천도를 어떻게 산출하나요?"에 화면을 가리켜 답하려면 숫자가 먼저
+                    눈에 띄어야 하고, 그다음이 내역이다(CLAUDE.md 점수 체계).
 
-                    ⚠️ 대신 <b>크게 두지 않는다.</b> 예전에는 26px로 오른쪽에 서서 카드에서
-                    가장 먼저 읽혔고, 그래서 목록이 점수표가 됐다. 100이 나올 수 없는 값이라
-                    크게 둘수록 낮아 보인다({@link RECOMMENDATION_BANDS}).
-                    지금은 이름과 같은 줄에서 이름보다 작게 — 있으되 앞서지 않는다.
+                    한때 이름 옆에 작게 붙여 봤지만 훑을 때 묻혔다. 카드에서 가장 큰 숫자
+                    자리로 되돌린다 — 목록을 줄 세운 값이 화면에서도 가장 큰 값이어야
+                    "이 순서가 왜 이런가"를 설명할 수 있다.
+
+                    <p>대신 <b>말이 숫자를 받쳐 준다.</b> 숫자만 두면 100점 만점으로 읽혀
+                    50점이 낙제처럼 보이는데(구조상 100은 나올 수 없다), 바로 왼쪽의
+                    "지금 가기 좋아요"가 그 오해를 막는다. 숫자는 크게 두되 혼자 두지 않는 것이
+                    이 카드의 규칙이다({@link RECOMMENDATION_BANDS}).
                   */}
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <span className="text-fg text-base font-semibold tracking-[-0.01em]">
-                      {alternative.place.name}
-                    </span>
-                    <span className="text-hint flex items-baseline gap-1 text-[11px]">
-                      추천도
-                      <span className="text-brand-deep font-mono text-[14px] font-semibold">
+                  <div className="flex items-start gap-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <span className="text-fg text-base font-semibold tracking-[-0.01em]">
+                        {alternative.place.name}
+                      </span>
+
+                      {/*
+                        ⚠️ 이 한 마디에는 <b>색을 입히지 않는다.</b> 추천도의 70%가 한적도라
+                        이 문구는 아래 한적 배지와 거의 같은 방향으로 움직이는데, 여기에도
+                        색을 주면 같은 색 신호가 둘이 된다. 색은 배지가 맡고 이쪽은 잉크다.
+                      */}
+                      <p className="text-fg m-0 text-[16px] leading-[1.35] font-bold tracking-[-0.015em]">
+                        {bandLabelOf(alternative.recommendation)}
+                      </p>
+
+                      {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="text-hint text-[12.5px]">
+                          {alternative.place.categoryName}
+                        </span>
+                        <CongestionBadge
+                          level={alternative.level}
+                          label={alternative.levelLabel}
+                          quietness={alternative.quietness}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-none flex-col items-end gap-0.5">
+                      <span className="text-hint text-[11px]">추천도</span>
+                      <span className="text-brand-deep font-mono text-[26px] leading-none font-semibold">
                         {alternative.recommendation}
                       </span>
-                    </span>
+                    </div>
                   </div>
-
-                  {/*
-                    ■ 추천도를 <b>말로 먼저</b> 옮긴다
-
-                    숫자만 두면 100점 만점으로 읽혀 53점이 낙제처럼 보인다. 실제로는
-                    중앙값이고, 구조상 100은 나올 수 없다({@link RECOMMENDATION_BANDS}).
-                    그래서 카드에서 가장 크게 서는 것은 숫자가 아니라 이 한 마디다.
-
-                    ⚠️ <b>색을 입히지 않는다.</b> 이 문구는 한적도 등급과 거의 같은 방향으로
-                    움직이는데(추천도의 70%가 한적도다), 여기에도 색을 주면 바로 아래
-                    한적 배지와 같은 색 신호가 둘이 된다. 색은 배지가 맡고 이쪽은 잉크로 둔다.
-                  */}
-                  <p className="text-fg m-0 text-[17px] leading-[1.35] font-bold tracking-[-0.015em]">
-                    {bandLabelOf(alternative.recommendation)}
-                  </p>
 
                   {/*
                     성격 문구. 서버가 준 근거 문장을 그대로 쓴다 —
@@ -549,19 +562,6 @@ export function AlternativeSheet({
                   <p className="m-0 text-[13px] leading-[1.6] text-pretty">
                     {alternative.reason}
                   </p>
-
-                  {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="text-hint text-[12.5px]">
-                      {alternative.place.categoryName}
-                    </span>
-                    <CongestionBadge
-                      level={alternative.level}
-                      label={alternative.levelLabel}
-                      quietness={alternative.quietness}
-                      size="sm"
-                    />
-                  </div>
 
                   {/*
                     ■ 추천도 구성 내역 — 접어 두되 <b>없애지 않는다</b>
