@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
+import { CourseMap } from '../components/CourseMap'
+import { LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
@@ -484,6 +486,34 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
   // 일차별로 끊어 그린다. 서버가 일차·순서대로 내려주므로 다시 정렬하지 않는다.
   const dayNumbers = Array.from({ length: draft.days }, (_, index) => index + 1)
 
+  /*
+    지도에 넘길 것들. 같은 곳이 여러 날에 담길 수 있어 <b>id로 한 번 걸러</b> 넘긴다 —
+    마커가 겹쳐 쌓이면 지도에서 한 곳이 여러 번 찍힌 것처럼 보인다.
+  */
+  const mapPlaces = useMemo(() => {
+    const seen = new Set<string>()
+    return draft.slots
+      .map((slot) => slot.place)
+      .filter((place) => (seen.has(place.id) ? false : (seen.add(place.id), true)))
+  }, [draft.slots])
+
+  /* 일차별 방문 순서. 배열이 여럿이면 CourseMap이 마커를 "2-1"처럼 매긴다 */
+  const mapRoutes = useMemo(
+    () =>
+      Array.from({ length: draft.days }, (_, index) =>
+        draft.slots
+          .filter((slot) => slot.day === index + 1)
+          .sort((a, b) => a.order - b.order)
+          .map((slot) => slot.place.id),
+      ),
+    [draft.slots, draft.days],
+  )
+
+  const mapLevels = useMemo(
+    () => Object.fromEntries(draft.slots.map((slot) => [slot.place.id, slot.level])),
+    [draft.slots],
+  )
+
   return (
     <div className="mx-auto flex w-full max-w-read flex-col gap-3.5 pb-10">
       {/*
@@ -572,6 +602,50 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         </div>
       </section>
 
+      {/*
+        ■ 코스를 지도로 편다
+
+        목록만으로는 <b>얼마나 흩어져 있는지</b>가 안 보인다. 설문으로 받은 코스는
+        사용자가 고른 곳이 아니라서 "이게 다닐 만한 동선인가"가 첫 질문인데,
+        그 답은 줄글이 아니라 지도가 한다.
+
+        진단·결과 화면과 <b>같은 컴포넌트</b>를 쓴다. 마커 번호 매기기(여러 날이면
+        "2-1"), 등급 색, 지도 키가 없을 때의 대체 화면이 이미 그 안에 있다 —
+        화면마다 따로 그리면 같은 코스가 화면마다 달리 보인다.
+
+        ⚠️ {@code useMemo}가 필수다. 매 렌더 새 배열을 만들면 CourseMap의 다시 그리기
+        effect가 값이 그대로인데도 매번 돌아 마커를 지웠다 다시 만든다.
+      */}
+      <section className={`${CARD_RAISED} flex flex-col gap-3 p-4.5`}>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-fg m-0 text-[15px] font-semibold">코스 지도</h2>
+          {draft.days > 1 && (
+            <span className="text-hint text-[12px]">마커 번호는 “일차-순서”예요</span>
+          )}
+        </div>
+
+        <CourseMap places={mapPlaces} routes={mapRoutes} levels={mapLevels} />
+
+        {/* 색이 무엇을 뜻하는지 적어둔다. 색만 두면 무엇의 색인지 알 수 없다 */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {(
+            [
+              { level: 'QUIET', label: '한적' },
+              { level: 'MODERATE', label: '보통' },
+              { level: 'CROWDED', label: '붐빔' },
+            ] as const
+          ).map((item) => (
+            <span key={item.level} className="flex items-center gap-1.5">
+              <span
+                className={`h-2.5 w-2.5 flex-none rounded-full ${LEVEL_SOLID[item.level]}`}
+                aria-hidden="true"
+              />
+              <span className="text-hint text-[12px]">{item.label}</span>
+            </span>
+          ))}
+        </div>
+      </section>
+
       {dayNumbers.map((day) => {
         const slots = draft.slots.filter((slot) => slot.day === day)
         const visitDate = slots[0]?.visitDate
@@ -637,14 +711,30 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
   )
 }
 
-/** 초안 슬롯 한 장. 진단 카드와 같은 리듬으로 두되 추천 근거가 더 붙는다 */
+/**
+ * 초안 슬롯 한 장.
+ *
+ * <h3>⚠️ 추천도를 두지 않는다 (2026-08-29)</h3>
+ * 예전에는 오른쪽에 추천도(22px)와 그 아래 항목별 구성 내역을 펴 두었다. 걷어낸 이유는
+ * <b>추천도가 이 화면의 값이 아니기 때문</b>이다.
+ *
+ * <p>CLAUDE.md의 정의대로 추천도는 <b>"그곳을 대안으로 얼마나 미는가"</b>이고,
+ * 원래 장소가 있어야 성립하는 <b>관계값</b>이다. 여기 담긴 곳들은 대체된 것이 아니라
+ * 설문 답으로 처음부터 고른 것이라, 무엇에 대한 대안인지가 없다.
+ *
+ * <p>추천도 구성 내역(데이터 활용을 증명하는 장치)은 <b>대안 시트가 그대로 들고 있다</b>.
+ * 그쪽은 원래 장소가 있어 관계값이 성립하는 유일한 자리다.
+ *
+ * <p>남긴 것: 순서 번호 · 이름 · 분류 · <b>한적도 배지</b>. 한적도는 관계값이 아니라
+ * 원본 지표라 장소와 날짜만 있으면 성립하므로 어디서든 말할 수 있다.
+ * 근거 문장도 남긴다 — 그 곳이 왜 이 코스에 들어왔는지는 여전히 말해야 한다.
+ */
 function DraftSlotCard({ slot }: { slot: DraftSlot }) {
   return (
-    <li className={`${CARD} flex flex-col gap-3 p-4`}>
+    <li className={`${CARD} flex flex-col gap-2.5 p-4`}>
       <div className="flex items-start gap-3">
-        {/* 순서 번호가 곧 등급 색이다. 목록을 훑으면 붐비는 자리가 먼저 보인다.
-            색은 브랜드색 하나로 통일한다. 번호는 순서를 가리키는 눈금이지 혼잡 신호가 아니다 —
-            혼잡은 옆의 배지가 맡는다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
+        {/* 순서 번호가 눈금이다. 혼잡 신호는 옆의 배지가 맡으므로 색은 브랜드색 하나로
+            통일한다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
         <span
           className="bg-brand text-fg mt-0.5 grid h-6.5 w-6.5 flex-none place-items-center rounded-full font-mono text-[12px] font-semibold"
           aria-hidden="true"
@@ -666,54 +756,15 @@ function DraftSlotCard({ slot }: { slot: DraftSlot }) {
             />
           </div>
         </div>
-
-        {/* 이 자리에 이곳을 얼마나 미는가. 한적도가 이미 반영된 값이다 */}
-        <div className="flex flex-none flex-col items-end gap-0.5">
-          <span className="text-hint text-[11px]">추천도</span>
-          <span className="text-brand-deep font-mono text-[22px] leading-none font-semibold">
-            {slot.recommendation}
-          </span>
-        </div>
       </div>
 
       {/*
-        추천 근거. 문장 하나로는 "왜 82점인지"를 설명하지 못해서 항목별 내역을 함께 편다.
-        반영 비율은 서버가 준 값을 그대로 쓴다 — 화면에 숫자를 적어두면 가중치가 바뀔 때
-        한쪽만 고쳐진다. 대안 추천 시트와 같은 모양으로 둬서 두 화면이 같은 말을 하게 한다.
+        근거 문장. 회색 상자와 "i" 표시를 걷어냈다 — 구성 내역이 사라져 상자 안에
+        한 줄만 남으면 그 상자가 <b>빈 액자</b>가 된다.
       */}
-      <div className="bg-bg rounded-ui flex flex-col gap-2.5 px-3 py-3">
-        <div className="flex items-start gap-2.5">
-          <span
-            className="bg-quiet-soft/50 text-brand-deep mt-px grid h-4 w-4 flex-none place-items-center rounded-full text-[10px] font-bold"
-            aria-hidden="true"
-          >
-            i
-          </span>
-          <p className="m-0 text-[12.5px] leading-[1.6] text-pretty">{slot.reason}</p>
-        </div>
-
-        {/*
-          내역이 없어도 카드는 그려야 한다. 서버와 화면이 따로 배포되는 순간이 있고,
-          그때 필드 하나가 비었다고 화면이 하얘지면 안 된다.
-
-          항목 수는 고정이 아니다 — 그 날 첫 장소는 비교 대상이 없어 한적도 하나뿐이고,
-          연관 관광지 데이터가 붙으면 하나 는다. 이름을 박지 않고 배열을 그대로 편다.
-        */}
-        {slot.factors?.length ? (
-          <ul className="border-line m-0 flex list-none flex-col gap-2 border-t p-0 pt-2.5">
-            {slot.factors.map((factor) => (
-              <li key={factor.label} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="text-fg text-[12.5px] font-semibold">{factor.label}</span>
-                <span className="text-fg font-mono text-[12.5px] font-semibold">
-                  {factor.score}
-                </span>
-                <span className="text-hint text-[11px]">반영 {factor.weightPercent}%</span>
-                <span className="text-hint basis-full text-[11.5px]">{factor.detail}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+      <p className="text-hint m-0 pl-9.5 text-[12.5px] leading-[1.6] text-pretty">
+        {slot.reason}
+      </p>
     </li>
   )
 }
