@@ -16,6 +16,7 @@ import {
   daysFromToday,
   formatCompactDate,
   formatDateRange,
+  formatMonthDay,
   formatWeekday,
   today,
 } from '../utils/date'
@@ -428,7 +429,7 @@ export function RecommendPage() {
             </span>
           </div>
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit || view.phase === 'loading'}>
-            {view.phase === 'loading' ? '코스를 짜는 중…' : '오늘의 여행 발견하기'}
+            {view.phase === 'loading' ? '코스를 짜는 중…' : '코스 발견하기'}
           </button>
           {/*
             "직접 짤래요"는 <b>왼쪽 설명으로 옮겼다.</b> /plan이 반대편 링크를 그 자리에
@@ -464,38 +465,32 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
   return (
     <div className="mx-auto flex w-full max-w-read flex-col gap-3.5 pb-10">
       {/*
-        ■ 이 화면에서만 <b>우연을 드러낸다</b>
+        같은 답을 보내도 매번 다른 코스가 온다. 그 <b>새로 만나는 느낌</b>은 살리되,
+        말은 "발견"으로 한다.
 
-        FULL PEAKOFF는 상위 후보군에서 가중 무작위로 뽑으므로 같은 답을 보내도 매번 다른
-        코스가 온다. 숨기면 사용자가 "왜 아까랑 다르지?" 하고 혼란스러워하므로 드러내는
-        편이 정직하고, 기능 성격상으로도 "정해둔 게 없으니 맡기겠다"는 사용자의 자리다.
+        ⚠️ <b>"뽑혔어요"·"운에 맡기기" 같은 말을 쓰지 않는다.</b> 매번 달라지는 것은
+        운이 아니라 설계다 — 지역·분류·혼잡자료·좌표를 통과한 후보만 남긴 뒤 점수에
+        비례해 고른다(2차 오버투어리즘을 막는 장치다). 운을 앞세우면 바로 아래 펴 놓는
+        한적 지수와 추천 근거가 <b>구색으로 읽힌다.</b> 우리가 파는 것은 뽑기가 아니라
+        "몰랐던 곳을 데이터로 찾아준다"는 약속이고, 그 약속이 곧 심사에서
+        데이터 활용을 증명하는 자리이기도 하다.
 
-        <h3>⚠️ 선이 있다 — "운으로 뽑았다"가 아니라 "운이 섞였다"</h3>
-        <pre>
-        허용   "오늘의 경주가 뽑혔어요"  "매번 다른 코스가 나와요"
-        금지   "완전히 랜덤으로 골랐어요"  "운에 맡기세요"
-        </pre>
-        앞은 <b>결과가 다양하다</b>는 말이고 뒤는 <b>기준이 없다</b>는 말이다. 우리는 취향
-        (밀도·민감도)과 한적도로 후보를 거른 뒤 그 안에서 뽑으므로, 우연을 말하되 기준이
-        있다는 것이 함께 읽혀야 한다.
+        ⚠️ <b>"오늘의 OO"라고 하지 않는다.</b> 오늘이 아니다 — 설문은 날짜를 고르게 하고,
+        예측 창이 앞으로 24~29일이라 대부분 미래 날짜다. 게다가 홈에는 <b>진짜 "오늘의 경주"</b>가
+        따로 있다(오늘의 혼잡). 한 서비스에서 같은 말이 두 뜻으로 쓰이면 어느 쪽도 믿기 어렵다.
 
-        <p>아래 두 줄이 그 본보기다 — 첫 줄이 우연("뽑혔어요"), 둘째 줄이 근거
-        ("취향은 챙기고, 붐빔은 살짝 비켜간"). <b>한 문장씩 떼어 놓지 말 것.</b>
-        첫 줄만 남으면 뽑기가 되고, 둘째 줄만 남으면 매번 달라지는 이유가 사라진다.
+        대신 <b>실제 여행 날짜를 넣는다.</b> 한적도는 날짜별로 갈리는 값이라, 어느 날의
+        경주인지 밝히는 편이 서비스 성격에도 맞는다.
 
-        <p>⚠️ <b>PLACE OFF(대안 시트)에는 이 말투를 쓰지 않는다.</b> 그쪽은 사용자가 이미
-        고른 곳을 대신할 것을 찾는 자리라 "이걸 왜 추천했나"에 답이 있어야 하고,
-        바로 아래 추천도와 반영 비율을 펴 놓는다. 거기서 운을 강조하면 그 숫자가 구색이 된다.
-
-        <p>지역 이름은 셋 다 모음으로 끝나(경주·제주시·서귀포시) "가"가 붙는다.
+        지역 이름은 셋 다 모음으로 끝나(경주·제주시·서귀포시) "를"이 붙는다.
         ⚠️ 자음으로 끝나는 지역을 추가하면 이 조사를 함께 손봐야 한다.
       */}
       <header className="flex flex-col gap-2">
         <span className="bg-brand-tint text-brand-deep w-fit rounded-full px-2.5 py-1 text-[12px] font-semibold">
-          오늘의 코스
+          발견한 코스
         </span>
         <h1 className="text-fg m-0 text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-          오늘의 {regionName}가 뽑혔어요!
+          {formatMonthDay(draft.startDate)}의 {regionName}를 발견했어요
         </h1>
         <p className="text-muted m-0 text-[14px] leading-[1.6] text-pretty">
           취향은 챙기고, 붐빔은 살짝 비켜간 코스예요.

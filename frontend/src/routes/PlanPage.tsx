@@ -162,7 +162,7 @@ export function PlanPage() {
           to="/recommend"
           className="text-brand-deep -mx-1 w-fit rounded-chip px-1 py-0.5 text-[13.5px] font-semibold no-underline hover:underline"
         >
-          어디 갈지 아직 모르겠다면? 몇 가지 답하고 오늘의 여행 발견하기
+          어디 갈지 아직 모르겠다면? 몇 가지 답하고 코스 발견하기
         </Link>
 
         {/*
