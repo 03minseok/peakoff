@@ -248,7 +248,7 @@ export function RecommendPage() {
           ("붐비는 곳은 얼마나 피하고 싶나요?")이 그 자리를 맡는다.
         */}
         <p className="m-0 text-[15.5px] leading-[1.65] text-pretty">
-          몇 가지 설문으로 몰랐던 여행 코스를 찾아드릴게요.
+          몇 가지 설문으로 새로운 여행 코스를 찾아드릴게요.
           <br />
           마음에 들지 않는 곳은 언제든 바꿀 수 있어요.
         </p>
@@ -501,9 +501,9 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         기준이 있다는 것이 함께 읽혀야 한다.
 
         <p><b>제목이 앞 화면의 약속을 그대로 이행한다.</b> 설문 화면이 "몇 가지 설문으로
-        <b>몰랐던</b> 여행 코스를 찾아드릴게요"라고 했고, 여기서 "<b>몰랐던</b> 경주를
-        발견했어요"라고 받는다. 같은 낱말이 두 화면을 잇는다 — "새로운"으로 바꾸면
-        그 고리가 끊기고, "새로운 경주"는 도시가 새롭다는 말로 먼저 읽힌다.
+        <b>새로운</b> 여행 코스를 찾아드릴게요"라고 했고, 여기서 "<b>새로운</b> 경주를
+        발견했어요"라고 받는다. <b>같은 낱말이 두 화면을 잇는 것이 요점이다</b> —
+        한쪽만 다른 말로 바꾸면 약속과 이행이 서로를 가리키지 않는다.
 
         <p>둘째 줄이 <b>근거</b>다("취향은 챙기고, 붐빔은 살짝 비켜간"). 제목이 무엇을
         받았는지 말하고 부제가 어떻게 골랐는지 말한다. <b>둘째 줄을 지우지 말 것</b> —
@@ -542,7 +542,7 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
           FULL PEAKOFF
         </span>
         <h1 className="text-fg m-0 text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-          몰랐던 {regionName}를 발견했어요
+          새로운 {regionName}를 발견했어요
         </h1>
         <p className="text-muted m-0 text-[14px] leading-[1.6] text-pretty">
           취향은 챙기고, 붐빔은 살짝 비켜간 코스예요.
