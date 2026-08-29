@@ -501,9 +501,30 @@ export function AlternativeSheet({
                     어느 것을 얼마나 미는지는 이제 카드마다 붙는 <b>구간 문구</b>가 말한다.
                     ({@link RECOMMENDATION_BANDS})
                   */}
-                  <span className="text-fg text-base font-semibold tracking-[-0.01em]">
-                    {alternative.place.name}
-                  </span>
+                  {/*
+                    이름과 추천도가 <b>한 줄</b>에 선다.
+
+                    숫자를 접힌 상자 안에만 두었더니 카드를 훑는 동안 점수가 보이지 않았다.
+                    추천도는 이 목록을 만든 값이라 <b>펴 보지 않아도 있어야 한다</b> —
+                    "추천도를 어떻게 산출하나요?"에 화면을 가리켜 답하려면 먼저 눈에 띄어야
+                    하고, 그다음이 근거다(CLAUDE.md 점수 체계).
+
+                    ⚠️ 대신 <b>크게 두지 않는다.</b> 예전에는 26px로 오른쪽에 서서 카드에서
+                    가장 먼저 읽혔고, 그래서 목록이 점수표가 됐다. 100이 나올 수 없는 값이라
+                    크게 둘수록 낮아 보인다({@link RECOMMENDATION_BANDS}).
+                    지금은 이름과 같은 줄에서 이름보다 작게 — 있으되 앞서지 않는다.
+                  */}
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="text-fg text-base font-semibold tracking-[-0.01em]">
+                      {alternative.place.name}
+                    </span>
+                    <span className="text-hint flex items-baseline gap-1 text-[11px]">
+                      추천도
+                      <span className="text-brand-deep font-mono text-[14px] font-semibold">
+                        {alternative.recommendation}
+                      </span>
+                    </span>
+                  </div>
 
                   {/*
                     ■ 추천도를 <b>말로 먼저</b> 옮긴다
@@ -550,8 +571,8 @@ export function AlternativeSheet({
                     "추천도를 어떻게 산출하나요?"에 가리킬 화면이 없어진다.
 
                     그래서 <b>지우는 대신 접는다.</b> 사용자는 위의 한 마디로 읽고,
-                    근거가 궁금한 사람만 편다. 요약 줄에 추천도 숫자를 함께 두어
-                    <b>접힌 채로도 값은 보인다</b> — 여는 것은 내역이지 점수가 아니다.
+                    근거가 궁금한 사람만 편다. 점수 자체는 이름 옆에 늘 서 있으므로
+                    <b>여는 것은 내역이지 점수가 아니다.</b>
 
                     {@code details}를 쓴 이유: 카드가 목록 안에 여럿이라 상태를 두면
                     카드마다 관리해야 하는데, 브라우저가 이미 하는 일이다. 키보드·보조기술
@@ -563,16 +584,20 @@ export function AlternativeSheet({
                   */}
                   {alternative.factors?.length ? (
                     <details className="group bg-bg rounded-ui px-3 py-2.5">
+                      {/*
+                        요약 줄에서 숫자를 뺐다 — 위 이름 옆으로 올라갔다. 두 곳에 두면
+                        같은 값이 카드 안에 두 번 서서, 접기 전후로 무엇이 달라지는지가 흐려진다.
+                        여기 남는 것은 <b>여는 이유</b> 하나다.
+
+                        접힘/펼침을 글자로 말한다. 화살표만 두면 무엇이 열리는지 모른다.
+                      */}
                       <summary className="text-hint flex cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
-                        <span className="flex items-baseline gap-1.5">
-                          추천도
-                          <span className="text-brand-deep font-mono text-[15px] font-semibold">
-                            {alternative.recommendation}
-                          </span>
+                        <span className="group-open:hidden">이 추천도는 어떻게 나왔나요?</span>
+                        <span className="hidden group-open:inline">추천도 구성 내역</span>
+                        <span className="text-[11px] font-medium">
+                          <span className="group-open:hidden">펼치기</span>
+                          <span className="hidden group-open:inline">접기</span>
                         </span>
-                        {/* 접힘/펼침을 글자로 말한다. 화살표만 두면 무엇이 열리는지 모른다 */}
-                        <span className="group-open:hidden">어떻게 나온 점수인가요?</span>
-                        <span className="hidden group-open:inline">접기</span>
                       </summary>
                       <ul className="border-line mt-2.5 flex flex-col gap-2 border-t pt-2.5">
                       {alternative.factors.map((factor) => (
