@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
-import { ChevronRight } from '../components/icons'
+import { CourseMap } from '../components/CourseMap'
+import { LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
@@ -17,7 +18,6 @@ import {
   daysFromToday,
   formatCompactDate,
   formatDateRange,
-  formatMonthDay,
   formatWeekday,
   today,
 } from '../utils/date'
@@ -202,23 +202,103 @@ export function RecommendPage() {
   }
 
   return (
-    // 위 여백을 더 얹지 않는다 — Layout이 이미 준다. /plan과 같은 이유다
-    <div className="mx-auto flex w-full max-w-form flex-col gap-3.5 pb-10">
-      <header className="flex flex-col gap-2 pb-1">
-        <h1 className="text-fg m-0 text-[27px] leading-[1.3] font-bold tracking-[-0.025em]">
+    /*
+      ■ 넓은 화면에서 /plan과 <b>같은 골격</b>이다 — 왼쪽 설명, 오른쪽 입력
+
+      두 진입점은 홈에서 나란히 선 문이라, 들어간 뒤 화면 구조가 다르면 같은 서비스의
+      두 갈래로 읽히지 않는다. 격자(12칸)·비율(5:7)·간격(gap-10)·왼쪽 sticky까지
+      /plan과 맞췄다.
+
+      폼을 넓히지 않는 이유도 그쪽과 같다. 입력칸은 넓힌다고 고르기 쉬워지지 않고,
+      오히려 라벨과 값 사이를 눈이 멀리 오간다. 남는 왼쪽을 설명으로 채운다.
+
+      좁은 화면에서는 지금까지처럼 설명이 폼 위에 오는 한 줄이다.
+    */
+    <div className="mx-auto w-full max-w-form pb-10 lg:grid lg:max-w-app lg:grid-cols-12 lg:items-start lg:gap-10">
+      {/* 폼을 채우는 동안 왼쪽 설명이 따라와 무엇을 하는 화면인지가 계속 남는다 */}
+      <section className="flex flex-col gap-3.5 pb-7 lg:sticky lg:top-18 lg:col-span-5 lg:pb-0">
+        <h1 className="text-fg m-0 text-[34px] leading-[1.25] font-bold tracking-[-0.025em] lg:text-[40px]">
           어디로 갈지,
           <br />
           같이 발견해볼까요
         </h1>
-        {/* 홈 카드·날짜 대안과 같은 문형 — "OO는 그대로, 더 여유로운 XX를" */}
-        <p className="m-0 text-[14.5px] leading-[1.65] text-pretty">
-          취향은 그대로, 그날 덜 붐빌 {regionName}를 찾아드려요.
-          <br />
-          찾은 뒤에 직접 고칠 수 있어요.
-        </p>
-      </header>
+        {/*
+          ⚠️ 글자 크기를 {@code /plan}과 <b>같은 값으로</b> 둔다(제목 34→40, 본문 15.5).
+          예전에는 27→34 / 14.5였다. 폼이 가운데 한 줄이던 시절에는 그게 맞았지만,
+          좌우 두 칸으로 바꾸면서 두 화면의 제목이 <b>같은 자리에 서게 됐다</b> —
+          홈에서 나란히 선 두 문을 지나 들어왔는데 한쪽 제목만 6px 작으면
+          한쪽이 곁다리로 읽힌다.
 
-      <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
+          <h3>⚠️ "오늘의 혼잡도"가 아니라 "그날의 혼잡도"다</h3>
+          이 화면은 여행 날짜를 따로 고르게 하고, 코스를 만들 때 보는 것은 <b>그 날짜의
+          예측 혼잡도</b>다. 오늘 것이 아니다.
+
+          <p>결과 화면의 "오늘의 경주가 뽑혔어요"는 <b>뽑은 시점</b>을 뜻하므로 그대로 두지만,
+          이 문장은 <b>어느 날 데이터를 썼는가</b>에 대한 주장이라 성격이 다르다.
+          9월 16일 여행을 만들어 놓고 "오늘의 혼잡도"를 읽으면 화면이 거짓을 말하는 셈이고,
+          예측 기반이라는 서비스의 핵심이 그 한 단어에서 무너진다.
+
+          <p>본문은 <b>한 문단 두 줄</b>이다. 문단을 나누면 그 사이 간격만큼 왼쪽이
+          길어져 오른쪽 폼과 무게가 어긋난다.
+
+          <p>뒷줄("언제든 바꿀 수 있어요")을 붙여 두는 이유는 이 문이 "정해둔 게 없으니
+          맡기겠다"는 사람의 자리라서다 — <b>맡기는 데 따르는 불안을 먼저 덜어야</b>
+          답을 고르기 시작한다.
+
+          <p>혼잡 이야기가 이 두 줄에서 빠졌지만 화면에서 사라지지는 않는다 —
+          아래 순서도 ②("장소마다 얼마나 붐빌지 함께 보여드려요")와 오른쪽 문항
+          ("붐비는 곳은 얼마나 피하고 싶나요?")이 그 자리를 맡는다.
+        */}
+        <p className="m-0 text-[15.5px] leading-[1.65] text-pretty">
+          몇 가지 설문으로 새로운 여행 코스를 찾아드릴게요.
+          <br />
+          마음에 들지 않는 곳은 언제든 바꿀 수 있어요.
+        </p>
+
+        {/*
+          반대편 문으로 가는 길. /plan이 이쪽으로 보내는 링크를 갖고 있으므로
+          <b>이쪽도 같은 자리에 마주 두어야</b> 두 문이 서로를 가리킨다.
+          예전에는 폼 맨 아래에 있어서, 답을 다 채운 뒤에야 "직접 짤 수도 있구나"를 알았다.
+        */}
+        <Link
+          to="/plan"
+          className="text-brand-deep -mx-1 w-fit rounded-chip px-1 py-0.5 text-[13.5px] font-semibold no-underline hover:underline"
+        >
+          가고 싶은 곳이 있다면? 직접 코스 짜기
+        </Link>
+
+        {/*
+          넓은 화면에서만 편다. 좁은 화면에서는 이 세 줄을 읽느라 정작 입력칸이
+          화면 밖으로 밀려난다 — 여기서 할 일은 읽는 것이 아니라 고르는 것이다.
+          {@code /plan}과 같은 규칙이다.
+
+          ⚠️ <b>위 본문과 다른 것을 말한다.</b> 본문은 우리가 무엇을 보고 무엇을 주는가이고,
+          이 목록은 <b>다음에 벌어지는 순서</b>다. 한때 "답하면 돼요 → 찾아드려요 →
+          고칠 수 있어요"였는데 그건 본문을 두 번 적은 것이었다.
+
+          내용은 실제 결과 화면이 하는 일 그대로다 — 코스가 나오고, 장소마다 한적도가
+          붙고, 마음에 안 들면 다시 뽑는다("다른 코스도 발견하기").
+        */}
+        <ol className="mt-3 hidden list-none flex-col gap-4 p-0 lg:flex">
+          {[
+            '두 문항에 답하면 코스가 나와요',
+            '장소마다 얼마나 붐빌지 함께 보여드려요',
+            '마음에 들 때까지 다시 찾아봐요',
+          ].map((step, index) => (
+            <li key={step} className="flex items-center gap-3">
+              <span
+                className="bg-brand-tint text-brand-deep grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold"
+                aria-hidden="true"
+              >
+                {index + 1}
+              </span>
+              <span className="text-muted text-[14px] leading-[1.5]">{step}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>
         {/*
           지역이 맨 앞에 오는 이유: 뒤의 답들이 전부 <b>그 지역 안에서</b> 어떻게 다닐지다.
           "한적한 곳 위주로"를 고른 뒤에 지역을 바꾸면 앞의 답을 다시 읽어야 한다.
@@ -373,14 +453,15 @@ export function RecommendPage() {
             </span>
           </div>
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit || view.phase === 'loading'}>
-            {view.phase === 'loading' ? '코스를 짜는 중…' : '코스 발견하기'}
+            {view.phase === 'loading' ? '코스를 짜는 중…' : '오늘의 여행 발견하기'}
           </button>
-          <Link
-            to="/plan"
-            className="text-hint hover:text-muted mt-3 flex items-center justify-center gap-1 text-center text-[13.5px] font-medium no-underline"
-          >
-            직접 짤래요 <ChevronRight size={14} />
-          </Link>
+          {/*
+            "직접 짤래요"는 <b>왼쪽 설명으로 옮겼다.</b> /plan이 반대편 링크를 그 자리에
+            두고 있어 두 화면이 마주 보게 된다. 여기 두면 답을 다 채운 뒤에야
+            다른 길이 있다는 것을 알게 된다.
+
+            좁은 화면에서는 왼쪽 설명이 폼 위에 오므로 그때도 먼저 보인다.
+          */}
         </div>
       </form>
     </div>
@@ -405,35 +486,93 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
   // 일차별로 끊어 그린다. 서버가 일차·순서대로 내려주므로 다시 정렬하지 않는다.
   const dayNumbers = Array.from({ length: draft.days }, (_, index) => index + 1)
 
+  /*
+    지도에 넘길 것들. 같은 곳이 여러 날에 담길 수 있어 <b>id로 한 번 걸러</b> 넘긴다 —
+    마커가 겹쳐 쌓이면 지도에서 한 곳이 여러 번 찍힌 것처럼 보인다.
+  */
+  const mapPlaces = useMemo(() => {
+    const seen = new Set<string>()
+    return draft.slots
+      .map((slot) => slot.place)
+      .filter((place) => (seen.has(place.id) ? false : (seen.add(place.id), true)))
+  }, [draft.slots])
+
+  /* 일차별 방문 순서. 배열이 여럿이면 CourseMap이 마커를 "2-1"처럼 매긴다 */
+  const mapRoutes = useMemo(
+    () =>
+      Array.from({ length: draft.days }, (_, index) =>
+        draft.slots
+          .filter((slot) => slot.day === index + 1)
+          .sort((a, b) => a.order - b.order)
+          .map((slot) => slot.place.id),
+      ),
+    [draft.slots, draft.days],
+  )
+
+  const mapLevels = useMemo(
+    () => Object.fromEntries(draft.slots.map((slot) => [slot.place.id, slot.level])),
+    [draft.slots],
+  )
+
   return (
     <div className="mx-auto flex w-full max-w-read flex-col gap-3.5 pb-10">
       {/*
-        같은 답을 보내도 매번 다른 코스가 온다. 그 <b>새로 만나는 느낌</b>은 살리되,
-        말은 "발견"으로 한다.
+        같은 답을 보내도 매번 다른 코스가 온다. 그 우연을 <b>여기서만 드러낸다.</b>
+        숨기면 "왜 아까랑 다르지?" 하고 혼란스러워하므로 드러내는 편이 정직하고,
+        기능 성격상으로도 "정해둔 게 없으니 맡기겠다"는 사용자의 자리다.
 
-        ⚠️ <b>"뽑혔어요"·"운에 맡기기" 같은 말을 쓰지 않는다.</b> 매번 달라지는 것은
-        운이 아니라 설계다 — 지역·분류·혼잡자료·좌표를 통과한 후보만 남긴 뒤 점수에
-        비례해 고른다(2차 오버투어리즘을 막는 장치다). 운을 앞세우면 바로 아래 펴 놓는
-        한적 지수와 추천 근거가 <b>구색으로 읽힌다.</b> 우리가 파는 것은 뽑기가 아니라
-        "몰랐던 곳을 데이터로 찾아준다"는 약속이고, 그 약속이 곧 심사에서
-        데이터 활용을 증명하는 자리이기도 하다.
+        <h3>⚠️ 선이 있다 — "운으로 뽑았다"가 아니라 "운이 섞였다"</h3>
+        <pre>
+        허용   "오늘의 경주가 뽑혔어요"  "매번 다른 코스가 나와요"
+        금지   "완전히 랜덤으로 골랐어요"  "운에 맡기세요"
+        </pre>
+        앞은 <b>결과가 다양하다</b>는 말이고 뒤는 <b>기준이 없다</b>는 말이다. 우리는 취향
+        (밀도·민감도)과 한적도로 후보를 거른 뒤 그 안에서 뽑으므로, 우연을 말하되
+        기준이 있다는 것이 함께 읽혀야 한다.
 
-        ⚠️ <b>"오늘의 OO"라고 하지 않는다.</b> 오늘이 아니다 — 설문은 날짜를 고르게 하고,
-        예측 창이 앞으로 24~29일이라 대부분 미래 날짜다. 게다가 홈에는 <b>진짜 "오늘의 경주"</b>가
-        따로 있다(오늘의 혼잡). 한 서비스에서 같은 말이 두 뜻으로 쓰이면 어느 쪽도 믿기 어렵다.
+        <p><b>제목이 앞 화면의 약속을 그대로 이행한다.</b> 설문 화면이 "몇 가지 설문으로
+        <b>새로운</b> 여행 코스를 찾아드릴게요"라고 했고, 여기서 "<b>새로운</b> 경주를
+        발견했어요"라고 받는다. <b>같은 낱말이 두 화면을 잇는 것이 요점이다</b> —
+        한쪽만 다른 말로 바꾸면 약속과 이행이 서로를 가리키지 않는다.
 
-        대신 <b>실제 여행 날짜를 넣는다.</b> 한적도는 날짜별로 갈리는 값이라, 어느 날의
-        경주인지 밝히는 편이 서비스 성격에도 맞는다.
+        <p>둘째 줄이 <b>근거</b>다("취향은 챙기고, 붐빔은 살짝 비켜간"). 제목이 무엇을
+        받았는지 말하고 부제가 어떻게 골랐는지 말한다. <b>둘째 줄을 지우지 말 것</b> —
+        지우면 "발견"이 어디서 왔는지가 사라진다.
 
-        지역 이름은 셋 다 모음으로 끝나(경주·제주시·서귀포시) "를"이 붙는다.
+        <p>매번 다르다는 것은 제목이 지지 않아도 된다. 아래 "다른 코스도 발견하기"
+        버튼이 <b>이게 전부가 아니다</b>를 이미 말한다.
+
+        <p>⚠️ 한때 "오늘의 경주가 뽑혔어요!"였다. <b>오늘이 아니다</b> — 여행 날짜는
+        사용자가 따로 고르고 대개 미래 날짜다. 홈에는 진짜 "오늘의 경주"(오늘의 혼잡)가
+        따로 있어, 한 서비스에서 같은 말이 두 뜻으로 쓰이게 된다.
+
+        <p>⚠️ <b>대안 시트(장소 교체)에는 이 말투를 쓰지 않는다.</b> 그쪽은 사용자가 이미
+        고른 곳을 대신할 것을 찾는 자리라 "이걸 왜 추천했나"에 답이 있어야 하고, 바로 아래
+        추천도와 반영 비율을 편다. 거기서 운을 강조하면 그 숫자가 구색이 된다.
+
+        <p>지역 이름은 셋 다 모음으로 끝나(경주·제주시·서귀포시) "를"이 붙는다.
         ⚠️ 자음으로 끝나는 지역을 추가하면 이 조사를 함께 손봐야 한다.
       */}
       <header className="flex flex-col gap-2">
-        <span className="bg-brand-tint text-brand-deep w-fit rounded-full px-2.5 py-1 text-[12px] font-semibold">
-          발견한 코스
+        {/*
+          ■ 기능 이름을 세운다 — 진단 화면의 TIME OFF·PLACE OFF와 같은 모양
+
+          FULL PEAKOFF는 <b>브랜드명(PEAK OFF)과 이어져 있어</b> 헤더 로고가 뜻을 받쳐 준다.
+          "PEAK OFF를 통째로"로 읽히므로 처음 보는 사람도 기댈 데가 있고,
+          세 이름이 한 가족으로 선다 — 날짜는 TIME OFF, 장소는 PLACE OFF, 코스 전체는 여기.
+
+          ⚠️ "오늘의 코스"였다가 고쳤다. <b>오늘이 아니다</b> — 여행 날짜는 사용자가 따로
+          고르고, 예측 창이 앞으로 24~29일이라 대개 미래 날짜다. 알약(pill) 모양도
+          걷어냈다. 진단 화면의 두 이름과 같은 자리에 서는 말이라 모양도 같아야 한다.
+
+          ⚠️ <b>홈에는 붙이지 않는다.</b> 처음 온 사람이 서는 자리라 내부 용어를 두면
+          진입 문턱만 올라간다.
+        */}
+        <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
+          FULL PEAKOFF
         </span>
         <h1 className="text-fg m-0 text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-          {formatMonthDay(draft.startDate)}의 {regionName}를 발견했어요
+          새로운 {regionName}를 발견했어요
         </h1>
         <p className="text-muted m-0 text-[14px] leading-[1.6] text-pretty">
           취향은 챙기고, 붐빔은 살짝 비켜간 코스예요.
@@ -460,6 +599,50 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
             {formatDateRange(draft.startDate, draft.nights)}
           </span>
           <span className="text-hint text-[12px]">{draft.slots.length}곳</span>
+        </div>
+      </section>
+
+      {/*
+        ■ 코스를 지도로 편다
+
+        목록만으로는 <b>얼마나 흩어져 있는지</b>가 안 보인다. 설문으로 받은 코스는
+        사용자가 고른 곳이 아니라서 "이게 다닐 만한 동선인가"가 첫 질문인데,
+        그 답은 줄글이 아니라 지도가 한다.
+
+        진단·결과 화면과 <b>같은 컴포넌트</b>를 쓴다. 마커 번호 매기기(여러 날이면
+        "2-1"), 등급 색, 지도 키가 없을 때의 대체 화면이 이미 그 안에 있다 —
+        화면마다 따로 그리면 같은 코스가 화면마다 달리 보인다.
+
+        ⚠️ {@code useMemo}가 필수다. 매 렌더 새 배열을 만들면 CourseMap의 다시 그리기
+        effect가 값이 그대로인데도 매번 돌아 마커를 지웠다 다시 만든다.
+      */}
+      <section className={`${CARD_RAISED} flex flex-col gap-3 p-4.5`}>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-fg m-0 text-[15px] font-semibold">코스 지도</h2>
+          {draft.days > 1 && (
+            <span className="text-hint text-[12px]">마커 번호는 “일차-순서”예요</span>
+          )}
+        </div>
+
+        <CourseMap places={mapPlaces} routes={mapRoutes} levels={mapLevels} />
+
+        {/* 색이 무엇을 뜻하는지 적어둔다. 색만 두면 무엇의 색인지 알 수 없다 */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {(
+            [
+              { level: 'QUIET', label: '한적' },
+              { level: 'MODERATE', label: '보통' },
+              { level: 'CROWDED', label: '붐빔' },
+            ] as const
+          ).map((item) => (
+            <span key={item.level} className="flex items-center gap-1.5">
+              <span
+                className={`h-2.5 w-2.5 flex-none rounded-full ${LEVEL_SOLID[item.level]}`}
+                aria-hidden="true"
+              />
+              <span className="text-hint text-[12px]">{item.label}</span>
+            </span>
+          ))}
         </div>
       </section>
 
@@ -528,14 +711,30 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
   )
 }
 
-/** 초안 슬롯 한 장. 진단 카드와 같은 리듬으로 두되 추천 근거가 더 붙는다 */
+/**
+ * 초안 슬롯 한 장.
+ *
+ * <h3>⚠️ 추천도를 두지 않는다 (2026-08-29)</h3>
+ * 예전에는 오른쪽에 추천도(22px)와 그 아래 항목별 구성 내역을 펴 두었다. 걷어낸 이유는
+ * <b>추천도가 이 화면의 값이 아니기 때문</b>이다.
+ *
+ * <p>CLAUDE.md의 정의대로 추천도는 <b>"그곳을 대안으로 얼마나 미는가"</b>이고,
+ * 원래 장소가 있어야 성립하는 <b>관계값</b>이다. 여기 담긴 곳들은 대체된 것이 아니라
+ * 설문 답으로 처음부터 고른 것이라, 무엇에 대한 대안인지가 없다.
+ *
+ * <p>추천도 구성 내역(데이터 활용을 증명하는 장치)은 <b>대안 시트가 그대로 들고 있다</b>.
+ * 그쪽은 원래 장소가 있어 관계값이 성립하는 유일한 자리다.
+ *
+ * <p>남긴 것: 순서 번호 · 이름 · 분류 · <b>한적도 배지</b>. 한적도는 관계값이 아니라
+ * 원본 지표라 장소와 날짜만 있으면 성립하므로 어디서든 말할 수 있다.
+ * 근거 문장도 남긴다 — 그 곳이 왜 이 코스에 들어왔는지는 여전히 말해야 한다.
+ */
 function DraftSlotCard({ slot }: { slot: DraftSlot }) {
   return (
-    <li className={`${CARD} flex flex-col gap-3 p-4`}>
+    <li className={`${CARD} flex flex-col gap-2.5 p-4`}>
       <div className="flex items-start gap-3">
-        {/* 순서 번호가 곧 등급 색이다. 목록을 훑으면 붐비는 자리가 먼저 보인다.
-            색은 브랜드색 하나로 통일한다. 번호는 순서를 가리키는 눈금이지 혼잡 신호가 아니다 —
-            혼잡은 옆의 배지가 맡는다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
+        {/* 순서 번호가 눈금이다. 혼잡 신호는 옆의 배지가 맡으므로 색은 브랜드색 하나로
+            통일한다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
         <span
           className="bg-brand text-fg mt-0.5 grid h-6.5 w-6.5 flex-none place-items-center rounded-full font-mono text-[12px] font-semibold"
           aria-hidden="true"
@@ -557,54 +756,15 @@ function DraftSlotCard({ slot }: { slot: DraftSlot }) {
             />
           </div>
         </div>
-
-        {/* 이 자리에 이곳을 얼마나 미는가. 한적도가 이미 반영된 값이다 */}
-        <div className="flex flex-none flex-col items-end gap-0.5">
-          <span className="text-hint text-[11px]">추천도</span>
-          <span className="text-brand-deep font-mono text-[22px] leading-none font-semibold">
-            {slot.recommendation}
-          </span>
-        </div>
       </div>
 
       {/*
-        추천 근거. 문장 하나로는 "왜 82점인지"를 설명하지 못해서 항목별 내역을 함께 편다.
-        반영 비율은 서버가 준 값을 그대로 쓴다 — 화면에 숫자를 적어두면 가중치가 바뀔 때
-        한쪽만 고쳐진다. 대안 추천 시트와 같은 모양으로 둬서 두 화면이 같은 말을 하게 한다.
+        근거 문장. 회색 상자와 "i" 표시를 걷어냈다 — 구성 내역이 사라져 상자 안에
+        한 줄만 남으면 그 상자가 <b>빈 액자</b>가 된다.
       */}
-      <div className="bg-bg rounded-ui flex flex-col gap-2.5 px-3 py-3">
-        <div className="flex items-start gap-2.5">
-          <span
-            className="bg-quiet-soft/50 text-brand-deep mt-px grid h-4 w-4 flex-none place-items-center rounded-full text-[10px] font-bold"
-            aria-hidden="true"
-          >
-            i
-          </span>
-          <p className="m-0 text-[12.5px] leading-[1.6] text-pretty">{slot.reason}</p>
-        </div>
-
-        {/*
-          내역이 없어도 카드는 그려야 한다. 서버와 화면이 따로 배포되는 순간이 있고,
-          그때 필드 하나가 비었다고 화면이 하얘지면 안 된다.
-
-          항목 수는 고정이 아니다 — 그 날 첫 장소는 비교 대상이 없어 한적도 하나뿐이고,
-          연관 관광지 데이터가 붙으면 하나 는다. 이름을 박지 않고 배열을 그대로 편다.
-        */}
-        {slot.factors?.length ? (
-          <ul className="border-line m-0 flex list-none flex-col gap-2 border-t p-0 pt-2.5">
-            {slot.factors.map((factor) => (
-              <li key={factor.label} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="text-fg text-[12.5px] font-semibold">{factor.label}</span>
-                <span className="text-fg font-mono text-[12.5px] font-semibold">
-                  {factor.score}
-                </span>
-                <span className="text-hint text-[11px]">반영 {factor.weightPercent}%</span>
-                <span className="text-hint basis-full text-[11.5px]">{factor.detail}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+      <p className="text-hint m-0 pl-9.5 text-[12.5px] leading-[1.6] text-pretty">
+        {slot.reason}
+      </p>
     </li>
   )
 }
