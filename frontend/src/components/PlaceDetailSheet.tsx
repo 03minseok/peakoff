@@ -3,6 +3,7 @@ import { Close } from './icons'
 import { CongestionBadge } from './CongestionBadge'
 import { fetchPlaceDescription } from '../services/api'
 import type { CongestionLevel } from '../types/api'
+import { useScrollLock } from '../hooks/useScrollLock'
 
 /**
  * 장소 하나를 자세히 보는 창.
@@ -70,6 +71,9 @@ export function PlaceDetailSheet({
 }: Props) {
   const [state, setState] = useState<State>({ phase: 'loading' })
 
+  // 닫았을 때 보던 자리로 돌아와야 한다.
+  // ⚠️ body가 아니라 html에 건다 — 그래야 sticky가 얼지 않는다(useScrollLock 주석).
+  useScrollLock()
   useEffect(() => {
     const controller = new AbortController()
     fetchPlaceDescription(placeId, controller.signal)
@@ -90,12 +94,8 @@ export function PlaceDetailSheet({
       }
     }
     document.addEventListener('keydown', handleKey)
-    // 창이 떠 있는 동안 뒤 화면이 함께 움직이면 닫았을 때 보던 자리를 잃는다.
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = previousOverflow
     }
   }, [onClose])
 

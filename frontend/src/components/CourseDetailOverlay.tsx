@@ -4,6 +4,7 @@ import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import { fetchSavedCourse } from '../services/api'
 import type { SavedCourseDetail } from '../types/api'
 import { formatDateRange, formatNights, isPastDate } from '../utils/date'
+import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
   /** 펼쳐 볼 코스. 1개면 상세, 2개면 나란히 비교 */
@@ -37,6 +38,8 @@ type Phase =
 export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props) {
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
 
+  // 뒤 화면 잠금. ⚠️ body가 아니라 html에 건다 — 이유는 useScrollLock 주석에
+  useScrollLock()
   useEffect(() => {
     const controller = new AbortController()
 
@@ -61,11 +64,8 @@ export function CourseDetailOverlay({ courseIds, onClose, onOpenInFlow }: Props)
       }
     }
     window.addEventListener('keydown', handleKey)
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     return () => {
       window.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = previousOverflow
     }
   }, [onClose])
 
