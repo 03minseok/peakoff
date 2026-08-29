@@ -491,15 +491,17 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
     지도에 넘길 것들. 같은 곳이 여러 날에 담길 수 있어 <b>id로 한 번 걸러</b> 넘긴다 —
     마커가 겹쳐 쌓이면 지도에서 한 곳이 여러 번 찍힌 것처럼 보인다.
   */
-  const mapPlaces = useMemo(() => {
-    const seen = new Set<string>()
-    return draft.slots
-      .map((slot) => slot.place)
-      .filter((place) => (seen.has(place.id) ? false : (seen.add(place.id), true)))
-  }, [draft.slots])
+
+  /**
+   * 지도에 어느 일차를 그릴지. 'all'이면 전체를 한 번에.
+   *
+   * <p>진단·결과 화면과 <b>같은 장치</b>다. 여러 날을 겹쳐 두면 선이 서로를 가로질러
+   * "어느 날 어디를 도는지"가 오히려 안 보인다.
+   */
+  const [mapDay, setMapDay] = useState<number | 'all'>('all')
 
   /* 일차별 방문 순서. 배열이 여럿이면 CourseMap이 마커를 "2-1"처럼 매긴다 */
-  const mapRoutes = useMemo(
+  const allRoutes = useMemo(
     () =>
       Array.from({ length: draft.days }, (_, index) =>
         draft.slots
@@ -509,6 +511,32 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
       ),
     [draft.slots, draft.days],
   )
+
+  /*
+    고른 일차만 넘긴다. 배열이 하나면 CourseMap이 마커를 "1, 2, 3"으로 매기고,
+    여럿이면 "2-1"처럼 일차를 붙인다 — 여기서 걸러 넘기는 것만으로 번호 표기가
+    그 날 기준으로 바뀐다.
+  */
+  const mapRoutes = useMemo(
+    () => (mapDay === 'all' ? allRoutes : [allRoutes[mapDay - 1] ?? []]),
+    [allRoutes, mapDay],
+  )
+
+  /*
+    지도에 올릴 장소. <b>보이는 경로에 든 것만</b> 넘긴다 — 다른 날 장소까지 두면
+    회색 점이 흩뿌려져 "이 날 어디를 도는지"가 오히려 안 보인다.
+
+    같은 곳이 여러 날에 담길 수 있어 id로 한 번 거른다. 마커가 겹쳐 쌓이면
+    지도에서 한 곳이 여러 번 찍힌 것처럼 보인다.
+  */
+  const mapPlaces = useMemo(() => {
+    const ids = new Set(mapRoutes.flat())
+    const seen = new Set<string>()
+    return draft.slots
+      .map((slot) => slot.place)
+      .filter((place) => ids.has(place.id))
+      .filter((place) => (seen.has(place.id) ? false : (seen.add(place.id), true)))
+  }, [draft.slots, mapRoutes])
 
   const mapLevels = useMemo(
     () => Object.fromEntries(draft.slots.map((slot) => [slot.place.id, slot.level])),
@@ -618,10 +646,40 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         effect가 값이 그대로인데도 매번 돌아 마커를 지웠다 다시 만든다.
       */}
       <section className={`${CARD_RAISED} flex flex-col gap-3 p-4.5`}>
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
           <h2 className="text-fg m-0 text-[15px] font-semibold">코스 지도</h2>
+
+          {/*
+            하루짜리 일정에는 고를 것이 없다. 탭이 하나뿐이면 누를 수 있다는 신호만 주고
+            아무것도 바뀌지 않아 오히려 헷갈린다.
+
+            <b>일차가 먼저, 전체가 마지막이다.</b> 탭은 왼쪽부터 읽히는데 "전체"를 앞에 두면
+            Day 1이 첫 칸이 아니어서 아래 목록의 순서와 어긋난다. 결과 화면과 같은 규칙이다.
+          */}
           {draft.days > 1 && (
-            <span className="text-hint text-[12px]">마커 번호는 “일차-순서”예요</span>
+            <div className="flex gap-1.5" role="group" aria-label="지도에 표시할 일차">
+              {([...allRoutes.map((_, index) => index + 1), 'all'] as const).map((tab) => {
+                const active = tab === mapDay
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                      active ? 'bg-fg text-white' : 'bg-bg text-hint hover:text-fg'
+                    }`}
+                    aria-pressed={active}
+                    onClick={() => setMapDay(tab)}
+                  >
+                    {tab === 'all' ? '전체' : `Day ${tab}`}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* 마커 번호 규칙은 여러 날을 겹쳐 볼 때만 뜻이 있다 */}
+          {draft.days > 1 && mapDay === 'all' && (
+            <span className="text-hint basis-full text-[12px]">마커 번호는 “일차-순서”예요</span>
           )}
         </div>
 
