@@ -552,7 +552,19 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
   )
 
   return (
-    <div className="mx-auto flex w-full max-w-read flex-col gap-3.5 pb-10">
+    /*
+      ■ 넓은 화면에서 <b>지도는 왼쪽, 코스는 오른쪽</b>
+
+      세로로만 쌓으면 지도를 보다가 목록으로 내려간 뒤에는 지도가 화면 밖이라,
+      "이 순서로 도는 게 맞나"를 확인하려면 다시 올라가야 했다. 코스 짜기 화면이
+      지도를 왼쪽에 붙들어 두는 것과 같은 이유다.
+
+      설문 화면과도 같은 격자다(12칸·5:7·gap-10·왼쪽 sticky). 한 화면의 두 모습이라
+      골격이 같아야 답을 고르다 결과로 넘어갈 때 눈이 자리를 다시 찾지 않는다.
+
+      좁은 화면에서는 지금까지처럼 세로로 이어진다 — 둘을 나란히 놓을 폭이 없다.
+    */
+    <div className="mx-auto flex w-full max-w-read flex-col gap-3.5 pb-10 lg:max-w-app">
       {/*
         같은 답을 보내도 매번 다른 코스가 온다. 그 우연을 <b>여기서만 드러낸다.</b>
         숨기면 "왜 아까랑 다르지?" 하고 혼란스러워하므로 드러내는 편이 정직하고,
@@ -615,6 +627,10 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
           취향은 챙기고, 붐빔은 살짝 비켜간 코스예요.
         </p>
       </header>
+
+      <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-12 lg:items-start lg:gap-10">
+        {/* 왼쪽 — 총점과 지도. 목록을 훑는 동안 따라와 "어디를 도는지"가 계속 남는다 */}
+        <div className="flex flex-col gap-3.5 lg:sticky lg:top-18 lg:col-span-5">
 
       {/* 코스 총점. 슬롯 한적도의 평균이고 추천도가 섞이지 않는다 */}
       <section className={`${CARD_RAISED} flex items-center justify-between gap-3 p-4.5`}>
@@ -712,6 +728,10 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
           ))}
         </div>
       </section>
+        </div>
+
+        {/* 오른쪽 — 일자별 코스와 다음 행동 */}
+        <div className="flex flex-col gap-3.5 lg:col-span-7">
 
       {/* 긴 목록의 양 끝을 잇는다. 진단 화면과 같은 장치 — 이유는 ListEdgeJump 주석에 */}
       <div id="draft-top" className="scroll-mt-20" />
@@ -791,6 +811,8 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         >
           답변 다시 고르기
         </button>
+      </div>
+        </div>
       </div>
     </div>
   )
