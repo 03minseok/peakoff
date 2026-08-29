@@ -605,7 +605,26 @@ export function DiagnosisPage() {
               <b>그대로 둔 채</b> 한 가지만 옮기면 된다는 뜻이다. 홈의 두 진입 카드도
               같은 문형으로 말한다.
             */}
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+            {/*
+              ■ 기능 이름을 화면에 세운다 — 이 화면에 <b>둘이 나란히</b> 있어야 뜻이 산다
+
+              PEAK OFF에서 갈라진 두 회피 경로다. TIME OFF는 날짜를 옮기고,
+              PLACE OFF는 장소를 바꾼다. 접수 때 낸 서비스 개요가 약속한
+              "두 가지 회피 경로"가 이 화면 한 장으로 증명된다.
+
+              ⚠️ <b>하나만 두면 안 된다.</b> 한때 대안 시트에만 "PLACE OFF"가 있었는데,
+              한 번도 소개된 적 없는 말이 시트 안에서 혼자 튀어나와 그냥 떠 있었다.
+              이름은 짝이 있어야 서로를 설명한다 — 여기 둘이 함께 서면
+              "날짜로 피하는 길과 장소로 피하는 길이 있구나"가 저절로 읽힌다.
+
+              ⚠️ <b>홈에는 붙이지 않는다.</b> 처음 온 사람이 서는 자리라 내부 용어를 두면
+              진입 문턱만 올라간다. FULL PEAKOFF(설문)를 화면에 세우지 않은 이유도 같다 —
+              그쪽은 진입점 하나지 회피 경로의 짝이 아니다.
+            */}
+            <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
+              TIME OFF
+            </span>
+            <div className="-mt-2 flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-fg text-[15px] font-semibold">다른 날 둘러보기</h2>
 
               {/*
@@ -885,6 +904,22 @@ export function DiagnosisPage() {
                 )}
               </div>
             </section>
+
+          {/*
+            PLACE OFF 이름표. 위 날짜 카드의 TIME OFF와 <b>짝</b>이다 —
+            둘이 한 화면에 있어야 이름이 서로를 설명한다(그쪽 주석 참고).
+
+            부제를 날짜 쪽과 <b>같은 문형</b>으로 둔다. "OO는 그대로, 더 여유로운 XX를"이
+            홈 진입 카드에서 시작해 여기 두 경로까지 이어지는 한 줄기다.
+          */}
+          <div className="flex flex-col gap-0.75 px-0.5">
+            <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
+              PLACE OFF
+            </span>
+            <p className="text-muted m-0 text-[12.5px] leading-[1.6] text-pretty">
+              계획은 그대로, 더 여유로운 여행지를 찾아드려요.
+            </p>
+          </div>
 
           {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map((day) => {
             const daySlots = diagnosis.slots.filter((slot) => slot.day === day)
