@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
+import { ListEdgeJump } from '../components/ListEdgeJump'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
@@ -646,6 +647,10 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         </div>
       </section>
 
+      {/* 긴 목록의 양 끝을 잇는다. 진단 화면과 같은 장치 — 이유는 ListEdgeJump 주석에 */}
+      <div id="draft-top" className="scroll-mt-20" />
+      <ListEdgeJump targetId="draft-bottom" direction="down" label="코스" />
+
       {dayNumbers.map((day) => {
         const slots = draft.slots.filter((slot) => slot.day === day)
         const visitDate = slots[0]?.visitDate
@@ -686,6 +691,9 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
           </section>
         )
       })}
+
+      <ListEdgeJump targetId="draft-top" direction="up" label="코스" />
+      <div id="draft-bottom" className="scroll-mt-20" />
 
       <div className="mt-2 flex flex-col gap-2.5 pb-4">
         <button type="button" className={PRIMARY_BUTTON} onClick={onStart}>
