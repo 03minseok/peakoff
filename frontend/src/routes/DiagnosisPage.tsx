@@ -606,25 +606,18 @@ export function DiagnosisPage() {
               같은 문형으로 말한다.
             */}
             {/*
-              ■ 기능 이름을 화면에 세운다 — 이 화면에 <b>둘이 나란히</b> 있어야 뜻이 산다
+              ⚠️ <b>화면에 "TIME OFF"·"PLACE OFF"를 쓰지 않는다.</b> 한때 이 자리와 아래
+              코스 목록에 이름표로 세워 봤다가 걷어냈다(2026-08-29).
 
-              PEAK OFF에서 갈라진 두 회피 경로다. TIME OFF는 날짜를 옮기고,
-              PLACE OFF는 장소를 바꾼다. 접수 때 낸 서비스 개요가 약속한
-              "두 가지 회피 경로"가 이 화면 한 장으로 증명된다.
+              사용자가 알아야 하는 것은 <b>무엇을 할 수 있는가</b>이지 우리가 그 기능을
+              뭐라 부르는가가 아니다. UI 글자는 한국어 동사로 간다 — "다른 날 둘러보기"가
+              이름이 하려던 말을 이미 다 한다.
 
-              ⚠️ <b>하나만 두면 안 된다.</b> 한때 대안 시트에만 "PLACE OFF"가 있었는데,
-              한 번도 소개된 적 없는 말이 시트 안에서 혼자 튀어나와 그냥 떠 있었다.
-              이름은 짝이 있어야 서로를 설명한다 — 여기 둘이 함께 서면
-              "날짜로 피하는 길과 장소로 피하는 길이 있구나"가 저절로 읽힌다.
-
-              ⚠️ <b>홈에는 붙이지 않는다.</b> 처음 온 사람이 서는 자리라 내부 용어를 두면
-              진입 문턱만 올라간다. FULL PEAKOFF(설문)를 화면에 세우지 않은 이유도 같다 —
-              그쪽은 진입점 하나지 회피 경로의 짝이 아니다.
+              내부 이름은 코드·문서·발표에서 쓴다. 거기서는 두 경로를 짧게 가리킬 이름이
+              필요하지만, 화면에서는 배워야 할 말이 하나 느는 것일 뿐이다.
+              (예외: FULL PEAKOFF는 브랜드명과 이어져 있어 한국어 설명과 짝으로 쓸 수 있다)
             */}
-            <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
-              TIME OFF
-            </span>
-            <div className="-mt-2 flex flex-wrap items-baseline justify-between gap-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-fg text-[15px] font-semibold">다른 날 둘러보기</h2>
 
               {/*
@@ -904,22 +897,6 @@ export function DiagnosisPage() {
                 )}
               </div>
             </section>
-
-          {/*
-            PLACE OFF 이름표. 위 날짜 카드의 TIME OFF와 <b>짝</b>이다 —
-            둘이 한 화면에 있어야 이름이 서로를 설명한다(그쪽 주석 참고).
-
-            부제를 날짜 쪽과 <b>같은 문형</b>으로 둔다. "OO는 그대로, 더 여유로운 XX를"이
-            홈 진입 카드에서 시작해 여기 두 경로까지 이어지는 한 줄기다.
-          */}
-          <div className="flex flex-col gap-0.75 px-0.5">
-            <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
-              PLACE OFF
-            </span>
-            <p className="text-muted m-0 text-[12.5px] leading-[1.6] text-pretty">
-              계획은 그대로, 더 여유로운 여행지를 찾아드려요.
-            </p>
-          </div>
 
           {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map((day) => {
             const daySlots = diagnosis.slots.filter((slot) => slot.day === day)
