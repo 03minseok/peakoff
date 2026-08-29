@@ -6,6 +6,7 @@ import { AccountSheets } from '../components/AccountSheets'
 import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
+import { ListEdgeJump } from '../components/ListEdgeJump'
 import { SavedCourseCard } from '../components/SavedCourseCard'
 import { CARD } from '../components/styles'
 import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
@@ -427,6 +428,10 @@ export function MyPage() {
 
       {list.status === 'loaded' && !empty && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {/* 저장 코스는 회원당 50개까지라 목록이 길어질 수 있다 */}
+          <div id="saved-top" className="scroll-mt-20" />
+          <ListEdgeJump targetId="saved-bottom" direction="down" label="목록" />
+
           {courses.map((course) => (
             <SavedCourseCard
               key={course.id}
@@ -438,6 +443,9 @@ export function MyPage() {
               onDelete={() => setPendingDelete(course)}
             />
           ))}
+
+          <ListEdgeJump targetId="saved-top" direction="up" label="목록" />
+          <div id="saved-bottom" className="scroll-mt-20" />
         </div>
       )}
 

@@ -3,7 +3,8 @@ import { Navigate, useNavigate } from 'react-router'
 import { AlternativeSheet } from '../components/AlternativeSheet'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
-import { PlaceDescription } from '../components/PlaceDescription'
+import { ListEdgeJump } from '../components/ListEdgeJump'
+import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
@@ -11,7 +12,7 @@ import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchDateAlternatives } from '../services/api'
 import { planKeyOf } from '../services/alternativeCache'
 import { useTrip } from '../state/tripContext'
-import type { CongestionLevel, DateAlternatives } from '../types/api'
+import type { CongestionLevel, DateAlternatives, DiagnosedSlot } from '../types/api'
 import { formatCompactDate, formatKoreanDate, formatWeekday, today } from '../utils/date'
 
 /**
@@ -64,6 +65,14 @@ export function DiagnosisPage() {
 
   const [dates, setDates] = useState<DateAlternatives | null>(null)
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
+
+  /**
+   * 상세를 띄운 장소. null이면 창이 닫힌 상태다.
+   *
+   * <p>슬롯을 통째로 들고 있는 이유: 창이 이름·분류·사진·한적도를 함께 그린다.
+   * id만 들고 있으면 그것들을 다시 찾아야 하는데, 목록이 이미 갖고 있는 값이다.
+   */
+  const [detail, setDetail] = useState<DiagnosedSlot | null>(null)
 
   /**
    * 좁은 화면에서 날짜 목록을 펼쳤는가. 넓은 화면에서는 이 값을 보지 않는다.
@@ -928,6 +937,17 @@ export function DiagnosisPage() {
             </p>
           </div>
 
+          {/*
+            긴 목록의 양 끝을 잇는 두 자리. 코스가 3박 4일이면 카드가 열몇 장이라
+            아래를 보다가 위 요약으로 돌아가려면 그만큼을 손으로 되짚어야 했다.
+
+            ⚠️ 화면 구석에 <b>떠 있는 버튼을 쓰지 않는다.</b> position: fixed로 바닥에 붙인
+            것이 크롬 안드로이드 도구막대 뒤로 숨는 문제를 겪고 하단 이동 막대를 걷어냈다
+            (CLAUDE.md 모바일 규칙). 같은 함정을 다시 팔 이유가 없다.
+          */}
+          <div id="course-top" className="scroll-mt-20" />
+          <ListEdgeJump targetId="course-bottom" direction="down" label="코스" />
+
           {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map((day) => {
             const daySlots = diagnosis.slots.filter((slot) => slot.day === day)
             if (daySlots.length === 0) {
@@ -1104,22 +1124,26 @@ export function DiagnosisPage() {
                         )}
 
                         {/*
-                          장소 소개. <b>펼칠 때만</b> 불러온다.
+                          장소 상세. <b>창으로 띄운다.</b>
 
-                          소개글은 지역 카탈로그(목록 API)에 없고 상세 조회에만 있어
-                          장소마다 공사를 한 번씩 부른다. 카드를 그릴 때 미리 받으면
-                          담긴 곳 수만큼 호출이 나가는데, 그 모양이 2026-08-26 한도 소진
-                          사고였다({@code docs/OPEN_DECISIONS.md} 15번).
+                          처음에는 카드 아래로 밀어 내렸는데, 소개글이 500자쯤 되다 보니
+                          펼치는 순간 <b>그 아래 일정이 통째로 화면 밖으로 밀려났다.</b>
+                          읽고 나서 보던 자리로 돌아오려면 스크롤을 되짚어야 했다.
+                          창으로 띄우면 뒤 화면이 그대로 남아 닫으면 보던 자리다.
 
                           ⚠️ <b>진단 여부와 무관하게 둔다.</b> 오히려 여기가 값이 크다 —
-                          예측이 닿지 않는 90%의 장소(음식점·숙박·상점)는 지금 이 카드에
+                          예측이 닿지 않는 90%의 장소(음식점·숙박·상점)는 이 카드에
                           점수 대신 "자료 없어요"만 서 있었는데, 소개글은 그런 곳에도
                           붙어 있다(실측: 올리브영 118자). 진단은 못 해도 읽을거리는 준다.
                         */}
-                        <PlaceDescription
-                          placeId={slot.place.id}
-                          placeName={slot.place.name}
-                        />
+                        <button
+                          type="button"
+                          className="press text-brand-deep hover:text-brand -mx-1 mt-1.5 w-fit cursor-pointer rounded-chip bg-transparent px-1 py-0.5 text-[12.5px] font-semibold"
+                          onClick={() => setDetail(slot)}
+                          aria-label={`${slot.place.name} 상세보기`}
+                        >
+                          상세보기
+                        </button>
                       </div>
 
                       {/*
@@ -1246,6 +1270,9 @@ export function DiagnosisPage() {
               </section>
             )
           })}
+
+          <ListEdgeJump targetId="course-top" direction="up" label="코스" />
+          <div id="course-bottom" className="scroll-mt-20" />
           </div>
 
           {/*
@@ -1267,6 +1294,20 @@ export function DiagnosisPage() {
       )}
 
       {!diagnosis && current.phase === 'loading' && <p className="text-[13px]">진단하는 중…</p>}
+
+      {/* 장소 상세 창. 대안 시트와 같은 층(z-50)이라 둘이 동시에 뜨지 않게 각자 열고 닫는다 */}
+      {detail && (
+        <PlaceDetailSheet
+          placeId={detail.place.id}
+          placeName={detail.place.name}
+          categoryName={detail.place.categoryName}
+          imageUrl={detail.place.imageUrl}
+          quietness={detail.quietness}
+          level={detail.level}
+          levelLabel={detail.levelLabel}
+          onClose={() => setDetail(null)}
+        />
+      )}
 
       {sheet && (
         <AlternativeSheet
