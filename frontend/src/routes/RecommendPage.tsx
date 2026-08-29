@@ -559,12 +559,16 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
       "이 순서로 도는 게 맞나"를 확인하려면 다시 올라가야 했다. 코스 짜기 화면이
       지도를 왼쪽에 붙들어 두는 것과 같은 이유다.
 
-      설문 화면과도 같은 격자다(12칸·5:7·gap-10·왼쪽 sticky). 한 화면의 두 모습이라
-      골격이 같아야 답을 고르다 결과로 넘어갈 때 눈이 자리를 다시 찾지 않는다.
+      <b>칸 비율도 코스 짜기와 맞춘다</b> — 지도가 남는 폭을 갖고 오른쪽이 400px 고정이다.
+      설문 화면(5:7)과 다른 이유는 여기서 큰 쪽이 지도라서다. 저쪽은 입력 폼이 주인공이라
+      폼을 넓히지 않는 것이 요점이었지만, 결과 화면에서 넓어야 하는 것은 동선을 보는 지도다.
+
+      ⚠️ 5:12로 두었더니 지도가 470px 남짓이라 경주 시내가 한 화면에 안 들어왔다.
+      코스 짜기와 같은 비율이면 750px쯤으로 늘어난다.
 
       좁은 화면에서는 지금까지처럼 세로로 이어진다 — 둘을 나란히 놓을 폭이 없다.
     */
-    <div className="mx-auto flex w-full max-w-read flex-col gap-3.5 pb-10 lg:max-w-app">
+    <div className="mx-auto flex w-full flex-col gap-3.5 pb-10">
       {/*
         같은 답을 보내도 매번 다른 코스가 온다. 그 우연을 <b>여기서만 드러낸다.</b>
         숨기면 "왜 아까랑 다르지?" 하고 혼란스러워하므로 드러내는 편이 정직하고,
@@ -628,9 +632,9 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         </p>
       </header>
 
-      <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-12 lg:items-start lg:gap-10">
+      <div className="flex flex-col gap-3.5 lg:flex-row lg:items-start lg:gap-6">
         {/* 왼쪽 — 총점과 지도. 목록을 훑는 동안 따라와 "어디를 도는지"가 계속 남는다 */}
-        <div className="flex flex-col gap-3.5 lg:sticky lg:top-18 lg:col-span-5">
+        <div className="flex flex-col gap-3.5 lg:sticky lg:top-18 lg:min-w-0 lg:flex-1">
 
       {/* 코스 총점. 슬롯 한적도의 평균이고 추천도가 섞이지 않는다 */}
       <section className={`${CARD_RAISED} flex items-center justify-between gap-3 p-4.5`}>
@@ -730,8 +734,8 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
       </section>
         </div>
 
-        {/* 오른쪽 — 일자별 코스와 다음 행동 */}
-        <div className="flex flex-col gap-3.5 lg:col-span-7">
+        {/* 오른쪽 — 일자별 코스와 다음 행동. 코스 짜기의 편집 패널과 같은 400px */}
+        <div className="flex flex-col gap-3.5 lg:w-[400px] lg:flex-none">
 
       {/* 긴 목록의 양 끝을 잇는다. 진단 화면과 같은 장치 — 이유는 ListEdgeJump 주석에 */}
       <div id="draft-top" className="scroll-mt-20" />
