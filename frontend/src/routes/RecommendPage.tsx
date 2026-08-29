@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
-import { ChevronRight } from '../components/icons'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
@@ -202,23 +201,72 @@ export function RecommendPage() {
   }
 
   return (
-    // 위 여백을 더 얹지 않는다 — Layout이 이미 준다. /plan과 같은 이유다
-    <div className="mx-auto flex w-full max-w-form flex-col gap-3.5 pb-10">
-      <header className="flex flex-col gap-2 pb-1">
-        <h1 className="text-fg m-0 text-[27px] leading-[1.3] font-bold tracking-[-0.025em]">
+    /*
+      ■ 넓은 화면에서 /plan과 <b>같은 골격</b>이다 — 왼쪽 설명, 오른쪽 입력
+
+      두 진입점은 홈에서 나란히 선 문이라, 들어간 뒤 화면 구조가 다르면 같은 서비스의
+      두 갈래로 읽히지 않는다. 격자(12칸)·비율(5:7)·간격(gap-10)·왼쪽 sticky까지
+      /plan과 맞췄다.
+
+      폼을 넓히지 않는 이유도 그쪽과 같다. 입력칸은 넓힌다고 고르기 쉬워지지 않고,
+      오히려 라벨과 값 사이를 눈이 멀리 오간다. 남는 왼쪽을 설명으로 채운다.
+
+      좁은 화면에서는 지금까지처럼 설명이 폼 위에 오는 한 줄이다.
+    */
+    <div className="mx-auto w-full max-w-form pb-10 lg:grid lg:max-w-app lg:grid-cols-12 lg:items-start lg:gap-10">
+      {/* 폼을 채우는 동안 왼쪽 설명이 따라와 무엇을 하는 화면인지가 계속 남는다 */}
+      <section className="flex flex-col gap-3.5 pb-7 lg:sticky lg:top-18 lg:col-span-5 lg:pb-0">
+        <h1 className="text-fg m-0 text-[27px] leading-[1.3] font-bold tracking-[-0.025em] lg:text-[34px]">
           어디로 갈지,
           <br />
           같이 발견해볼까요
         </h1>
         {/* 홈 카드·날짜 대안과 같은 문형 — "OO는 그대로, 더 여유로운 XX를" */}
-        <p className="m-0 text-[14.5px] leading-[1.65] text-pretty">
+        <p className="m-0 text-[14.5px] leading-[1.65] text-pretty lg:text-[15.5px]">
           취향은 그대로, 그날 덜 붐빌 {regionName}를 찾아드려요.
           <br />
           찾은 뒤에 직접 고칠 수 있어요.
         </p>
-      </header>
 
-      <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
+        {/*
+          반대편 문으로 가는 길. /plan이 이쪽으로 보내는 링크를 갖고 있으므로
+          <b>이쪽도 같은 자리에 마주 두어야</b> 두 문이 서로를 가리킨다.
+          예전에는 폼 맨 아래에 있어서, 답을 다 채운 뒤에야 "직접 짤 수도 있구나"를 알았다.
+        */}
+        <Link
+          to="/plan"
+          className="text-brand-deep -mx-1 w-fit rounded-chip px-1 py-0.5 text-[13.5px] font-semibold no-underline hover:underline"
+        >
+          가고 싶은 곳이 있다면? 직접 코스 짜기
+        </Link>
+
+        {/*
+          넓은 화면에서만 편다. 좁은 화면에서는 이 세 줄을 읽느라 정작 입력칸이
+          화면 밖으로 밀려난다 — 여기서 할 일은 읽는 것이 아니라 고르는 것이다.
+
+          내용은 실제 다음 화면들이 하는 일 그대로다. /plan의 세 줄과 짝을 이룬다 —
+          그쪽은 "담고 → 계산하고 → 바꾼다", 이쪽은 "답하고 → 받고 → 고친다".
+        */}
+        <ol className="mt-3 hidden list-none flex-col gap-4 p-0 lg:flex">
+          {[
+            '두 가지만 답하면 돼요',
+            '그날 덜 붐빌 코스를 찾아드려요',
+            '받은 코스는 직접 고칠 수 있어요',
+          ].map((step, index) => (
+            <li key={step} className="flex items-center gap-3">
+              <span
+                className="bg-brand-tint text-brand-deep grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold"
+                aria-hidden="true"
+              >
+                {index + 1}
+              </span>
+              <span className="text-muted text-[14px] leading-[1.5]">{step}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>
         {/*
           지역이 맨 앞에 오는 이유: 뒤의 답들이 전부 <b>그 지역 안에서</b> 어떻게 다닐지다.
           "한적한 곳 위주로"를 고른 뒤에 지역을 바꾸면 앞의 답을 다시 읽어야 한다.
@@ -375,12 +423,13 @@ export function RecommendPage() {
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit || view.phase === 'loading'}>
             {view.phase === 'loading' ? '코스를 짜는 중…' : '코스 발견하기'}
           </button>
-          <Link
-            to="/plan"
-            className="text-hint hover:text-muted mt-3 flex items-center justify-center gap-1 text-center text-[13.5px] font-medium no-underline"
-          >
-            직접 짤래요 <ChevronRight size={14} />
-          </Link>
+          {/*
+            "직접 짤래요"는 <b>왼쪽 설명으로 옮겼다.</b> /plan이 반대편 링크를 그 자리에
+            두고 있어 두 화면이 마주 보게 된다. 여기 두면 답을 다 채운 뒤에야
+            다른 길이 있다는 것을 알게 된다.
+
+            좁은 화면에서는 왼쪽 설명이 폼 위에 오므로 그때도 먼저 보인다.
+          */}
         </div>
       </form>
     </div>
