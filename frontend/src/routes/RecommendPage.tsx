@@ -240,12 +240,20 @@ export function RecommendPage() {
           홈에서 나란히 선 두 문을 지나 들어왔는데 한쪽 제목만 6px 작으면
           한쪽이 곁다리로 읽힌다.
 
-          홈 카드·날짜 대안과 같은 문형이기도 하다 — "OO는 그대로, 더 여유로운 XX를".
+          <p>본문이 두 문단이다. 앞은 <b>무엇을 받아 무엇을 주는가</b>이고,
+          뒤는 <b>되돌릴 수 있다</b>는 약속이다. 뒤엣말을 붙여 두는 이유는 이 문이
+          "정해둔 게 없으니 맡기겠다"는 사람의 자리라서다 — 맡기는 데 따르는 불안을
+          먼저 덜어야 답을 고르기 시작한다.
         */}
         <p className="m-0 text-[15.5px] leading-[1.65] text-pretty">
-          취향은 그대로, 그날 덜 붐빌 {regionName}를 찾아드려요.
+          몇 가지만 알려주세요.
           <br />
-          찾은 뒤에 직접 고칠 수 있어요.
+          당신의 취향과 오늘의 혼잡도를 살펴
+          <br />
+          몰랐던 여행 코스를 찾아드릴게요.
+        </p>
+        <p className="text-muted m-0 text-[14px] leading-[1.65] text-pretty">
+          마음에 들지 않는 곳은 언제든 바꿀 수 있어요.
         </p>
 
         {/*
@@ -261,29 +269,14 @@ export function RecommendPage() {
         </Link>
 
         {/*
-          넓은 화면에서만 편다. 좁은 화면에서는 이 세 줄을 읽느라 정작 입력칸이
-          화면 밖으로 밀려난다 — 여기서 할 일은 읽는 것이 아니라 고르는 것이다.
+          ⚠️ 세 단계 목록("답하면 돼요 → 찾아드려요 → 고칠 수 있어요")을 걷어냈다.
+          위 두 문단이 <b>같은 말을 이미 하고 있어서</b>다 — 한 화면에서 같은 순서를
+          두 번 적으면 읽을 것만 늘고 알게 되는 것은 없다.
 
-          내용은 실제 다음 화면들이 하는 일 그대로다. /plan의 세 줄과 짝을 이룬다 —
-          그쪽은 "담고 → 계산하고 → 바꾼다", 이쪽은 "답하고 → 받고 → 고친다".
+          ⚠️ {@code /plan}에는 그 목록이 남아 있다. 그쪽 본문은 한 줄이라
+          단계를 대신 말해 줄 것이 없기 때문이다. 두 화면의 골격(좌우 두 칸)은 같지만
+          <b>왼쪽을 무엇으로 채우는가는 본문의 길이가 정한다.</b>
         */}
-        <ol className="mt-3 hidden list-none flex-col gap-4 p-0 lg:flex">
-          {[
-            '두 가지만 답하면 돼요',
-            '그날 덜 붐빌 코스를 찾아드려요',
-            '받은 코스는 직접 고칠 수 있어요',
-          ].map((step, index) => (
-            <li key={step} className="flex items-center gap-3">
-              <span
-                className="bg-brand-tint text-brand-deep grid h-7 w-7 flex-none place-items-center rounded-full font-mono text-[13px] font-semibold"
-                aria-hidden="true"
-              >
-                {index + 1}
-              </span>
-              <span className="text-muted text-[14px] leading-[1.5]">{step}</span>
-            </li>
-          ))}
-        </ol>
       </section>
 
       <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>
