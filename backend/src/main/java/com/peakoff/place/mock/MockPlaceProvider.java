@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import com.peakoff.global.config.DataSourceProfiles;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.PlaceDescription;
 import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.place.domain.NearbyPlaces;
 import com.peakoff.place.domain.NearbyPlace;
@@ -73,6 +74,21 @@ public class MockPlaceProvider implements PlaceProvider {
 	/** 띄어쓰기와 대소문자를 무시하고 견준다. 사람은 "동궁과월지"라고 친다. */
 	private static String squeeze(String text) {
 		return text == null ? "" : text.replaceAll("\s+", "").toLowerCase();
+	}
+
+	/**
+	 * 목업 소개글. <b>실제 문장을 지어내지 않는다.</b>
+	 *
+	 * <p>목업으로 도는 동안 화면이 "설명 보기"를 열어볼 수 있어야 하므로 값은 주되,
+	 * 그것이 진짜 소개글처럼 읽히면 안 된다 — 개발 중에 본 문장을 실제 데이터라고
+	 * 착각하면 배포 뒤에야 비어 있는 것을 알게 된다.
+	 */
+	@Override
+	public Optional<PlaceDescription> describe(String placeId) {
+		return findById(placeId).map(place -> new PlaceDescription(
+				"경상북도 경주시 (목업 주소)",
+				"%s의 소개글이 들어가는 자리입니다. 목업 모드라 실제 공사 데이터가 아닙니다."
+						.formatted(place.name())));
 	}
 
 	@Override

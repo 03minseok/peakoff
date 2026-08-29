@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.peakoff.global.response.ApiResponse;
 import com.peakoff.place.dto.NearbyPlaceResponse;
+import com.peakoff.place.dto.PlaceDescriptionResponse;
 import com.peakoff.place.dto.PlaceResponse;
 import com.peakoff.place.service.PlaceService;
 import com.peakoff.recommendation.dto.AlternativesResponse;
@@ -154,5 +155,25 @@ public class PlaceController {
 			int limit) {
 
 		return ApiResponse.ok(placeService.findNearby(placeId, limit));
+	}
+
+	@Operation(
+			summary = "장소 소개",
+			description = """
+					장소 하나의 주소와 소개글. 화면이 "설명 보기"를 펼칠 때만 부른다.
+
+					⚠️ 목록에 붙이지 말 것. 소개글은 지역 카탈로그(목록 API)에 없고 상세 조회에만
+					있어서 장소마다 공사를 한 번씩 부른다 — N곳이면 N번이 되고, 그것이
+					2026-08-26 한도 소진 사고의 모양이었다. 서버는 6시간 캐시로 받쳐 두지만
+					캐시가 빈 첫 조회는 그대로 나간다.
+
+					주소도 소개글도 없을 수 있다. 그때는 404가 아니라 둘 다 null로 답한다 —
+					곁들이는 정보라 없다고 오류를 띄울 일은 아니다.""")
+	@GetMapping("/{placeId}/description")
+	public ApiResponse<PlaceDescriptionResponse> description(
+			@Parameter(description = "장소 ID", example = "126166")
+			@PathVariable @NotBlank(message = "장소를 지정해야 합니다.") String placeId) {
+
+		return ApiResponse.ok(placeService.describe(placeId));
 	}
 }
