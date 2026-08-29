@@ -463,7 +463,7 @@ export function AlternativeSheet({
 
           {load.phase === 'loaded' && load.alternatives.length > 0 && (
             <ul className="flex flex-col gap-2.5">
-              {load.alternatives.map((alternative, index) => (
+              {load.alternatives.map((alternative) => (
                 <li
                   key={alternative.place.id}
                   className="bg-surface shadow-rest flex flex-col gap-3 rounded-[18px] p-4"
@@ -484,24 +484,26 @@ export function AlternativeSheet({
                     "왜 이 순서인가"에 답할 수 없다(CLAUDE.md 추천도 구성 내역).
                     크기만 내려 순서를 양보했을 뿐, 항목별 반영 비율은 그대로 편다.
                   */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-fg text-base font-semibold tracking-[-0.01em]">
-                      {alternative.place.name}
-                    </span>
-                    {/*
-                      서버가 추천도 순으로 내려주므로 맨 위가 최선의 후보다.
-                      다만 지금보다 더 붐비는 곳에 "추천"을 붙이면 안 된다 —
-                      한적도가 추천도의 대부분을 차지하지만 전부는 아니라서,
-                      훨씬 가까운 후보가 1등으로 올라오는 경우가 남는다.
-                    */}
-                    {index === 0 &&
-                      originQuietness !== null &&
-                      alternative.quietness > originQuietness && (
-                      <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
-                        추천
-                      </span>
-                    )}
-                  </div>
+                  {/*
+                    ⚠️ <b>"추천" 배지를 두지 않는다.</b> 예전에는 맨 위 카드에 붙였다.
+                    걷어낸 이유가 둘이다.
+
+                    첫째, <b>이 목록 자체가 이미 추천이다.</b> 자격을 통과한 후보만 남기고
+                    점수로 뽑아 올린 셋인데, 그중 하나에 다시 "추천"을 붙이면 나머지 둘이
+                    추천이 아닌 것처럼 읽힌다.
+
+                    둘째, <b>그 배지는 틀린 곳을 가리키고 있었다.</b> 조건이 {@code index === 0}
+                    이었는데(나머지 두 조건은 후보 자격상 늘 참이라 거르는 일이 없었다),
+                    분산을 살리려고 뽑은 뒤 정렬을 걷어내면서 "맨 위 = 최고점"이라는 전제가
+                    무너졌다. 실측에서 <b>22곳 중 7곳(32%)</b>은 맨 위가 최고점이 아니었고,
+                    47점 카드에 배지가 붙고 그 아래 67점 카드에는 없는 일까지 있었다.
+
+                    어느 것을 얼마나 미는지는 이제 카드마다 붙는 <b>구간 문구</b>가 말한다.
+                    ({@link RECOMMENDATION_BANDS})
+                  */}
+                  <span className="text-fg text-base font-semibold tracking-[-0.01em]">
+                    {alternative.place.name}
+                  </span>
 
                   {/*
                     ■ 추천도를 <b>말로 먼저</b> 옮긴다
