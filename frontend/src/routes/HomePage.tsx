@@ -842,20 +842,25 @@ export function HomePage() {
               5.1:1로 넉넉하다 — 규칙의 이유가 사라지는 유일한 자리다.
             */}
             <span className="text-brand text-[11.5px] font-semibold tracking-[0.1em]">
-              START PLANNING
+              PLAN MY TRIP
             </span>
             <span className="text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-              여행 코스 짜기
+              내가 고른 여행
             </span>
+            {/*
+              두 카드가 <b>같은 문형</b>으로 말한다 — "OO는 그대로, XX만".
+              서비스가 하는 일이 여행을 대신 정하는 것이 아니라 <b>붐비는 부분만
+              비껴 주는 것</b>이라, 두 문 다 "당신 것은 그대로 둔다"로 시작한다.
+            */}
             <span className="max-w-62.5 text-sm leading-[1.6] text-white/60">
-              날짜를 정하면 각 장소가 그날 얼마나 붐빌지 미리 계산해 드려요.
+              가고 싶은 곳은 그대로, 붐비는 순간만 PEAK OFF가 도와드려요.
             </span>
             {/* 이 링크가 유일한 문이다. button+navigate 대신 Link라 새 탭으로도 열린다 */}
             <Link
               to="/plan"
               className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
             >
-              시작하기
+              내 여행 시작하기
               {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
               <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
             </Link>
@@ -888,14 +893,21 @@ export function HomePage() {
           {/* 왼쪽 카드와 같은 규칙 — 카드는 누르는 것이 아니고, hover는 CTA를 가리킨다 */}
           <div className="group border-brand bg-surface shadow-rest relative w-full overflow-hidden rounded-[24px] border-[1.5px] px-6 pt-6.5 pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
             <span className="relative flex flex-col gap-3">
+              {/*
+                ⚠️ 킥커를 "TRUST YOUR LUCK" 같은 말로 두지 않는다.
+                매번 다른 코스가 나오는 것은 <b>운이 아니라 설계</b>다 — 자격을 갖춘 후보만
+                남긴 뒤 점수에 비례해 고른다. 운을 앞세우면 바로 다음 화면에서 펴 보이는
+                한적 지수와 추천 근거가 <b>구색으로 읽힌다.</b> 우리가 파는 것은 뽑기가
+                아니라 "몰랐던 곳을 데이터로 찾아준다"는 약속이다.
+              */}
               <span className="text-brand-deep text-[11.5px] font-semibold tracking-[0.1em]">
-                GET A COURSE
+                DISCOVER A TRIP
               </span>
               <span className="text-fg text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
                 오늘의 여행 발견하기
               </span>
               <span className="text-muted max-w-62.5 text-sm leading-[1.6]">
-                몇 가지만 답하면 취향에 맞으면서 덜 붐비는 코스를 뽑아 드려요.
+                날짜와 취향만 알려주세요. 몰랐던 여행지를 PEAK OFF가 찾아드려요.
               </span>
               {/*
                 왼쪽 카드와 같은 노란 알약이다. 회색 테두리 알약은 "준비 중"의 표현이었다 —
@@ -906,7 +918,7 @@ export function HomePage() {
                 to="/recommend"
                 className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
               >
-                시작하기
+                오늘의 여행 발견하기
                 <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
               </Link>
             </span>
