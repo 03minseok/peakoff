@@ -516,8 +516,22 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         ⚠️ 자음으로 끝나는 지역을 추가하면 이 조사를 함께 손봐야 한다.
       */}
       <header className="flex flex-col gap-2">
-        <span className="bg-brand-tint text-brand-deep w-fit rounded-full px-2.5 py-1 text-[12px] font-semibold">
-          오늘의 코스
+        {/*
+          ■ 기능 이름을 세운다 — 진단 화면의 TIME OFF·PLACE OFF와 같은 모양
+
+          FULL PEAKOFF는 <b>브랜드명(PEAK OFF)과 이어져 있어</b> 헤더 로고가 뜻을 받쳐 준다.
+          "PEAK OFF를 통째로"로 읽히므로 처음 보는 사람도 기댈 데가 있고,
+          세 이름이 한 가족으로 선다 — 날짜는 TIME OFF, 장소는 PLACE OFF, 코스 전체는 여기.
+
+          ⚠️ "오늘의 코스"였다가 고쳤다. <b>오늘이 아니다</b> — 여행 날짜는 사용자가 따로
+          고르고, 예측 창이 앞으로 24~29일이라 대개 미래 날짜다. 알약(pill) 모양도
+          걷어냈다. 진단 화면의 두 이름과 같은 자리에 서는 말이라 모양도 같아야 한다.
+
+          ⚠️ <b>홈에는 붙이지 않는다.</b> 처음 온 사람이 서는 자리라 내부 용어를 두면
+          진입 문턱만 올라간다.
+        */}
+        <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
+          FULL PEAKOFF
         </span>
         <h1 className="text-fg m-0 text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
           오늘의 {regionName}가 뽑혔어요!
