@@ -199,14 +199,15 @@ export function RecommendPage() {
     <div className="mx-auto flex w-full max-w-form flex-col gap-3.5 pb-10">
       <header className="flex flex-col gap-2 pb-1">
         <h1 className="text-fg m-0 text-[27px] leading-[1.3] font-bold tracking-[-0.025em]">
-          몇 가지만 알려주시면
+          오늘의 여행,
           <br />
-          코스를 짜드릴게요
+          같이 발견해볼까요
         </h1>
+        {/* 홈 카드·날짜 대안과 같은 문형 — "OO는 그대로, 더 여유로운 XX를" */}
         <p className="m-0 text-[14.5px] leading-[1.65] text-pretty">
-          다니시는 방식에 맞춰 그날 덜 붐빌 {regionName} 코스를 만들어 드려요.
+          취향은 그대로, 그날 덜 붐빌 {regionName}를 찾아드려요.
           <br />
-          만든 뒤에 직접 고칠 수 있어요.
+          찾은 뒤에 직접 고칠 수 있어요.
         </p>
       </header>
 
@@ -254,7 +255,7 @@ export function RecommendPage() {
             끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
           */}
           <div>
-            <legend className={`${CARD_TITLE} p-0`}>하루를 얼마나 채울까요</legend>
+            <legend className={`${CARD_TITLE} p-0`}>오늘은 어떤 템포로 떠나볼까요?</legend>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {DENSITY_OPTIONS.map((option) => (
@@ -278,7 +279,7 @@ export function RecommendPage() {
             끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
           */}
           <div>
-            <legend className={`${CARD_TITLE} p-0`}>사람 많은 곳은 어떠세요</legend>
+            <legend className={`${CARD_TITLE} p-0`}>붐비는 곳은 얼마나 피하고 싶나요?</legend>
           </div>
           <div className="flex flex-col gap-2">
             {SENSITIVITY_OPTIONS.map((option) => (
@@ -365,7 +366,7 @@ export function RecommendPage() {
             </span>
           </div>
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit || view.phase === 'loading'}>
-            {view.phase === 'loading' ? '코스를 짜는 중…' : '코스 추천받기'}
+            {view.phase === 'loading' ? '코스를 짜는 중…' : '오늘의 여행 발견하기'}
           </button>
           <Link
             to="/plan"
@@ -399,13 +400,30 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
 
   return (
     <div className="mx-auto flex w-full max-w-read flex-col gap-3.5 pb-10">
+      {/*
+        같은 답을 보내도 매번 다른 코스가 온다. 그 <b>새로 만나는 느낌</b>은 살리되,
+        말은 "발견"으로 한다.
+
+        ⚠️ <b>"뽑혔어요"·"운에 맡기기" 같은 말을 쓰지 않는다.</b> 매번 달라지는 것은
+        운이 아니라 설계다 — 지역·분류·혼잡자료·좌표를 통과한 후보만 남긴 뒤 점수에
+        비례해 고른다(2차 오버투어리즘을 막는 장치다). 운을 앞세우면 바로 아래 펴 놓는
+        한적 지수와 추천 근거가 <b>구색으로 읽힌다.</b> 우리가 파는 것은 뽑기가 아니라
+        "몰랐던 곳을 데이터로 찾아준다"는 약속이고, 그 약속이 곧 심사에서
+        데이터 활용을 증명하는 자리이기도 하다.
+
+        지역 이름은 셋 다 모음으로 끝나(경주·제주시·서귀포시) "를"이 붙는다.
+        ⚠️ 자음으로 끝나는 지역을 추가하면 이 조사를 함께 손봐야 한다.
+      */}
       <header className="flex flex-col gap-2">
         <span className="bg-brand-tint text-brand-deep w-fit rounded-full px-2.5 py-1 text-[12px] font-semibold">
-          추천 코스
+          오늘의 코스
         </span>
         <h1 className="text-fg m-0 text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-          이런 {regionName} 어떠세요
+          오늘의 {regionName}를 발견했어요
         </h1>
+        <p className="text-muted m-0 text-[14px] leading-[1.6] text-pretty">
+          취향은 챙기고, 붐빔은 살짝 비켜간 코스예요.
+        </p>
       </header>
 
       {/* 코스 총점. 슬롯 한적도의 평균이고 추천도가 섞이지 않는다 */}
@@ -482,7 +500,7 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
           그 성질을 숨기지 않고 버튼으로 내놓는다.
         */}
         <button type="button" className={SECONDARY_BUTTON} onClick={onReroll}>
-          다른 코스로 다시 뽑기
+          다른 코스도 발견하기
         </button>
         <button
           type="button"
