@@ -17,6 +17,7 @@ import com.peakoff.external.kto.support.TtlCache;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceCategories;
 import com.peakoff.place.domain.PlaceCategory;
+import com.peakoff.place.domain.PlaceDescription;
 import com.peakoff.place.domain.Region;
 
 /**
@@ -68,10 +69,24 @@ public class KtoPlaceClient {
 	 */
 	private final TtlCache<Optional<Place>> detailCache;
 
+	/**
+	 * 소개글 캐시.
+	 *
+	 * <p>{@link #detailCache}와 <b>같은 응답에서 나오지만 따로 담는다.</b> 담는 값이 달라서다 —
+	 * 저쪽은 {@link Place}(좌표·분류)이고 이쪽은 주소와 500자 남짓의 글이다.
+	 * 한 캐시에 두 모양을 섞으면 어느 쪽이 비었는지에 따라 분기가 늘고, 상한(개수)이
+	 * 뜻하는 메모리 크기도 달라진다.
+	 *
+	 * <p>상한을 상세 캐시와 같이 두는 이유: 열쇠가 같은 성질(아무 문자열이나 올 수 있는
+	 * 장소 ID)이라 무한히 자랄 위험도 같다.
+	 */
+	private final TtlCache<Optional<PlaceDescription>> descriptionCache;
+
 	public KtoPlaceClient(KtoApiCaller caller, Clock clock) {
 		this.caller = caller;
 		this.cache = new RegionCache<>(clock);
 		this.detailCache = new TtlCache<>(clock, RegionCache.DEFAULT_TTL, DETAIL_CACHE_MAX);
+		this.descriptionCache = new TtlCache<>(clock, RegionCache.DEFAULT_TTL, DETAIL_CACHE_MAX);
 	}
 
 	/** 그 지역의 관광지 목록 전체. 캐시가 살아 있으면 호출하지 않는다. */
@@ -90,13 +105,42 @@ public class KtoPlaceClient {
 		return detailCache.get(contentId, this::fetchDetail);
 	}
 
-	private Optional<Place> fetchDetail(String contentId) {
+	/**
+	 * 장소 하나의 읽을거리. <b>상세 조회의 같은 응답</b>에서 주소와 소개글만 꺼낸다.
+	 *
+	 * <p>⚠️ 추가 파라미터를 보내지 않는다. 지금 요청({@code contentId}만)에 이미 28개 필드가
+	 * 오고 그 안에 {@code overview}가 들어 있다(실측 2026-08-29, 3개 지역 18곳 전부 값이 있었고
+	 * 길이는 118~1,399자). 옛 문서의 {@code overviewYN=Y}를 붙이면 오히려 응답이 깨진다.
+	 */
+	public Optional<PlaceDescription> findDescription(String contentId) {
+		return descriptionCache.get(contentId, this::fetchDescription);
+	}
+
+	private Optional<PlaceDescription> fetchDescription(String contentId) {
+		JsonNode item = detailItem(contentId);
+		if (item == null) {
+			return Optional.empty();
+		}
+		PlaceDescription description = new PlaceDescription(
+				item.path("addr1").asText(""),
+				item.path("overview").asText(""));
+		// 둘 다 비었으면 없는 것으로 답한다. 화면이 빈 상자를 그리지 않게.
+		return description.isEmpty() ? Optional.empty() : Optional.of(description);
+	}
+
+	/** 상세 응답에서 항목 하나를 꺼낸다. 없거나 모양이 다르면 {@code null} */
+	private JsonNode detailItem(String contentId) {
 		JsonNode items = caller.items(DETAIL_PATH, Map.of("contentId", contentId));
 		JsonNode item = items.isArray() ? (items.isEmpty() ? null : items.get(0)) : items;
 		if (item == null || item.isMissingNode() || !item.hasNonNull("contentid")) {
-			return Optional.empty();
+			return null;
 		}
-		return Optional.ofNullable(toPlace(item));
+		return item;
+	}
+
+	private Optional<Place> fetchDetail(String contentId) {
+		JsonNode item = detailItem(contentId);
+		return item == null ? Optional.empty() : Optional.ofNullable(toPlace(item));
 	}
 
 	private RegionCatalog fetchCatalog(Region region) {

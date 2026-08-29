@@ -35,7 +35,14 @@ const SIZE_CLASS: Record<ThumbnailSize, string> = {
    * 모서리를 죽이는(rounded-none) 이유: 배너일 때는 카드가 overflow-hidden으로
    * 위 모서리를 대신 잘라 준다. 여기서도 둥글리면 두 겹이 되어 테두리가 지저분해진다.
    */
-  banner: 'h-40 w-full rounded-none text-[30px] sm:h-16 sm:w-16 sm:rounded-ui sm:text-[19px]',
+  /*
+   * 좁은 화면 h-52, 넓은 화면 96px 정사각.
+   *
+   * ⚠️ 예전에는 h-40 / 64px이었다. 키운 이유는 <b>사진이 그 장소를 고르는 근거</b>이기
+   * 때문이다 — 이름과 분류만으로는 "가볼 만한가"가 안 읽히는데, 우리가 가진 것 중
+   * 그 답에 가장 가까운 것이 사진이다. 64px은 무엇이 찍혔는지 알아볼 수 없는 크기였다.
+   */
+  banner: 'h-52 w-full rounded-none text-[34px] sm:h-24 sm:w-24 sm:rounded-ui sm:text-[22px]',
 }
 
 interface Props {

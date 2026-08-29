@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
+import { ListEdgeJump } from '../components/ListEdgeJump'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
@@ -490,15 +491,25 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
     지도에 넘길 것들. 같은 곳이 여러 날에 담길 수 있어 <b>id로 한 번 걸러</b> 넘긴다 —
     마커가 겹쳐 쌓이면 지도에서 한 곳이 여러 번 찍힌 것처럼 보인다.
   */
-  const mapPlaces = useMemo(() => {
-    const seen = new Set<string>()
-    return draft.slots
-      .map((slot) => slot.place)
-      .filter((place) => (seen.has(place.id) ? false : (seen.add(place.id), true)))
-  }, [draft.slots])
+
+  /**
+   * 지도에 어느 일차를 그릴지. 'all'이면 전체를 한 번에.
+   *
+   * <p>진단·결과 화면과 <b>같은 장치</b>다. 여러 날을 겹쳐 두면 선이 서로를 가로질러
+   * "어느 날 어디를 도는지"가 오히려 안 보인다.
+   *
+   * <h3>기본값은 1일차다</h3>
+   * 전체로 열면 첫 화면이 <b>선 여럿이 뒤엉킨 그림</b>이라, 정작 알고 싶은
+   * "첫날 어디부터 도나"가 안 보인다. 아래 목록도 1일차부터 시작하므로
+   * 지도와 목록이 같은 날을 가리킨 채로 화면이 열린다.
+   *
+   * <p>진단 화면도 1일차로 연다({@code DiagnosisPage.mapDay}). 전체는 하루하루를
+   * 본 뒤 합쳐 보는 자리라 탭 끝에 두고, 열자마자 보여줄 것은 아니다.
+   */
+  const [mapDay, setMapDay] = useState<number | 'all'>(1)
 
   /* 일차별 방문 순서. 배열이 여럿이면 CourseMap이 마커를 "2-1"처럼 매긴다 */
-  const mapRoutes = useMemo(
+  const allRoutes = useMemo(
     () =>
       Array.from({ length: draft.days }, (_, index) =>
         draft.slots
@@ -508,6 +519,32 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
       ),
     [draft.slots, draft.days],
   )
+
+  /*
+    고른 일차만 넘긴다. 배열이 하나면 CourseMap이 마커를 "1, 2, 3"으로 매기고,
+    여럿이면 "2-1"처럼 일차를 붙인다 — 여기서 걸러 넘기는 것만으로 번호 표기가
+    그 날 기준으로 바뀐다.
+  */
+  const mapRoutes = useMemo(
+    () => (mapDay === 'all' ? allRoutes : [allRoutes[mapDay - 1] ?? []]),
+    [allRoutes, mapDay],
+  )
+
+  /*
+    지도에 올릴 장소. <b>보이는 경로에 든 것만</b> 넘긴다 — 다른 날 장소까지 두면
+    회색 점이 흩뿌려져 "이 날 어디를 도는지"가 오히려 안 보인다.
+
+    같은 곳이 여러 날에 담길 수 있어 id로 한 번 거른다. 마커가 겹쳐 쌓이면
+    지도에서 한 곳이 여러 번 찍힌 것처럼 보인다.
+  */
+  const mapPlaces = useMemo(() => {
+    const ids = new Set(mapRoutes.flat())
+    const seen = new Set<string>()
+    return draft.slots
+      .map((slot) => slot.place)
+      .filter((place) => ids.has(place.id))
+      .filter((place) => (seen.has(place.id) ? false : (seen.add(place.id), true)))
+  }, [draft.slots, mapRoutes])
 
   const mapLevels = useMemo(
     () => Object.fromEntries(draft.slots.map((slot) => [slot.place.id, slot.level])),
@@ -617,10 +654,40 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         effect가 값이 그대로인데도 매번 돌아 마커를 지웠다 다시 만든다.
       */}
       <section className={`${CARD_RAISED} flex flex-col gap-3 p-4.5`}>
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
           <h2 className="text-fg m-0 text-[15px] font-semibold">코스 지도</h2>
+
+          {/*
+            하루짜리 일정에는 고를 것이 없다. 탭이 하나뿐이면 누를 수 있다는 신호만 주고
+            아무것도 바뀌지 않아 오히려 헷갈린다.
+
+            <b>일차가 먼저, 전체가 마지막이다.</b> 탭은 왼쪽부터 읽히는데 "전체"를 앞에 두면
+            Day 1이 첫 칸이 아니어서 아래 목록의 순서와 어긋난다. 결과 화면과 같은 규칙이다.
+          */}
           {draft.days > 1 && (
-            <span className="text-hint text-[12px]">마커 번호는 “일차-순서”예요</span>
+            <div className="flex gap-1.5" role="group" aria-label="지도에 표시할 일차">
+              {([...allRoutes.map((_, index) => index + 1), 'all'] as const).map((tab) => {
+                const active = tab === mapDay
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                      active ? 'bg-fg text-white' : 'bg-bg text-hint hover:text-fg'
+                    }`}
+                    aria-pressed={active}
+                    onClick={() => setMapDay(tab)}
+                  >
+                    {tab === 'all' ? '전체' : `Day ${tab}`}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* 마커 번호 규칙은 여러 날을 겹쳐 볼 때만 뜻이 있다 */}
+          {draft.days > 1 && mapDay === 'all' && (
+            <span className="text-hint basis-full text-[12px]">마커 번호는 “일차-순서”예요</span>
           )}
         </div>
 
@@ -646,6 +713,9 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         </div>
       </section>
 
+      {/* 긴 목록의 양 끝을 잇는다. 진단 화면과 같은 장치 — 이유는 ListEdgeJump 주석에 */}
+      <div id="draft-top" className="scroll-mt-20" />
+
       {dayNumbers.map((day) => {
         const slots = draft.slots.filter((slot) => slot.day === day)
         const visitDate = slots[0]?.visitDate
@@ -657,6 +727,16 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
               {visitDate && (
                 <span className="text-hint text-[12.5px]">
                   {formatCompactDate(visitDate)} {formatWeekday(visitDate)} · {slots.length}곳
+                </span>
+              )}
+              {/*
+                "코스 끝으로"는 <b>1일차 줄에만</b> 얹는다. 일차마다 두면 스크롤할 때
+                같은 버튼이 반복해 나타나 목록의 리듬을 끊는다. 목록이 시작되는 그 줄이
+                한 번 눌러 끝으로 갈 자리다.
+              */}
+              {day === 1 && (
+                <span className="ml-auto">
+                  <ListEdgeJump targetId="draft-bottom" direction="down" label="코스" />
                 </span>
               )}
             </div>
@@ -686,6 +766,11 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
           </section>
         )
       })}
+
+      <div className="flex justify-end px-1">
+        <ListEdgeJump targetId="draft-top" direction="up" label="코스" />
+      </div>
+      <div id="draft-bottom" className="scroll-mt-20" />
 
       <div className="mt-2 flex flex-col gap-2.5 pb-4">
         <button type="button" className={PRIMARY_BUTTON} onClick={onStart}>
@@ -731,40 +816,54 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
  */
 function DraftSlotCard({ slot }: { slot: DraftSlot }) {
   return (
-    <li className={`${CARD} flex flex-col gap-2.5 p-4`}>
-      <div className="flex items-start gap-3">
-        {/* 순서 번호가 눈금이다. 혼잡 신호는 옆의 배지가 맡으므로 색은 브랜드색 하나로
-            통일한다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
-        <span
-          className="bg-brand text-fg mt-0.5 grid h-6.5 w-6.5 flex-none place-items-center rounded-full font-mono text-[12px] font-semibold"
-          aria-hidden="true"
-        >
-          {slot.order}
+    /*
+      ⚠️ 세로로 조인 카드다. 예전에는 바깥이 flex-col(gap-2.5·p-4)이고 근거 문장이
+      들여쓴 문단으로 한 줄 더 내려와, 한 장이 화면의 상당 부분을 먹었다.
+      담긴 곳이 5~8곳이면 그것만으로 스크롤이 길어진다.
+
+      지금은 번호와 본문이 한 줄로 나란히 서고 안쪽만 촘촘하다(p-3.5·gap-1).
+    */
+    <li className={`${CARD} flex items-start gap-3 p-3.5`}>
+      {/* 순서 번호는 눈금이다. 혼잡 신호는 옆의 배지가 맡으므로 색은 브랜드색 하나로
+          통일한다. 밝은 틸 위에는 흰 글자가 안 보여 잉크를 얹는다 */}
+      <span
+        className="bg-brand text-fg mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full font-mono text-[11.5px] font-semibold"
+        aria-hidden="true"
+      >
+        {slot.order}
+      </span>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="text-fg text-[15px] font-semibold tracking-[-0.01em]">
+          {slot.place.name}
         </span>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="text-fg text-base font-semibold tracking-[-0.01em]">
-            {slot.place.name}
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-hint text-[12.5px]">{slot.place.categoryName}</span>
-            <CongestionBadge
-              level={slot.level}
-              label={slot.levelLabel}
-              quietness={slot.quietness}
-              size="sm"
-            />
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-hint text-[12.5px]">{slot.place.categoryName}</span>
+          <CongestionBadge
+            level={slot.level}
+            label={slot.levelLabel}
+            quietness={slot.quietness}
+            size="sm"
+          />
         </div>
-      </div>
 
-      {/*
-        근거 문장. 회색 상자와 "i" 표시를 걷어냈다 — 구성 내역이 사라져 상자 안에
-        한 줄만 남으면 그 상자가 <b>빈 액자</b>가 된다.
-      */}
-      <p className="text-hint m-0 pl-9.5 text-[12.5px] leading-[1.6] text-pretty">
-        {slot.reason}
-      </p>
+        {/*
+          ⚠️ <b>근거 문장을 그리지 않는다.</b> 서버는 여전히 보내지만(slot.reason) 화면은 쓰지 않는다.
+
+          한 카드에 말이 너무 많았다. 분류·한적도 배지·근거가 세 줄로 쌓였는데, 근거가
+          말하던 것("역사·유적 · 예상 혼잡 낮음")은 <b>바로 윗줄이 이미 하는 말</b>이었고,
+          거리만 남겨도 5~8장이 이어지면 읽히지 않는 잔글씨가 됐다.
+
+          <p>그렇다고 근거가 사라진 것은 아니다 — 장소마다 <b>한적도 배지</b>가 있고,
+          위에 <b>코스 총점</b>과 "취향은 챙기고, 붐빔은 살짝 비켜간 코스예요"가 있다.
+          항목별 반영 비율을 펴 보이는 자리는 <b>대안 시트</b>다(CLAUDE.md 점수 체계) —
+          거기는 원래 장소가 있어 추천도라는 관계값이 성립하는 유일한 곳이다.
+
+          <p>서버 필드를 지우지는 않았다. {@code DraftedSlot}이 "모든 슬롯에 근거가 있다"를
+          보장하고 그 불변식을 시험이 지키고 있어, 화면 사정으로 도메인을 흔들 이유가 없다.
+          기능설명서나 나중에 다른 자리에서 쓸 수도 있다.
+        */}
+      </div>
     </li>
   )
 }
