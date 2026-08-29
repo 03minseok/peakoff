@@ -3,6 +3,7 @@ import { Close } from './icons'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import type { PublicCourse, PublicPlace } from '../types/api'
 import { formatDateRange, formatNights, isPastDate } from '../utils/date'
+import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
   course: PublicCourse
@@ -28,6 +29,8 @@ interface Props {
  * 모두 자기 껍데기를 갖고 있다.
  */
 export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
+  // 뒤 화면 잠금. ⚠️ body가 아니라 html에 건다 — 이유는 useScrollLock 주석에
+  useScrollLock()
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -35,12 +38,8 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
       }
     }
     window.addEventListener('keydown', handleKey)
-    // 시트가 떠 있는 동안 뒤 페이지가 함께 스크롤되면 어디를 읽고 있었는지 잃는다.
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     return () => {
       window.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = previousOverflow
     }
   }, [onClose])
 
