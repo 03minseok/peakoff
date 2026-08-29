@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { FormEvent, ReactNode } from 'react'
+import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
   title: string
@@ -44,6 +45,8 @@ export function FormSheet({
   onSubmit,
   onCancel,
 }: Props) {
+  // 뒤 화면 잠금. ⚠️ body가 아니라 html에 건다 — 이유는 useScrollLock 주석에
+  useScrollLock()
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       // 처리 중에는 닫지 않는다. 요청은 이미 나갔는데 화면만 사라지면 결과를 알 수 없다.
@@ -53,12 +56,9 @@ export function FormSheet({
     }
     window.addEventListener('keydown', handleKey)
 
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
 
     return () => {
       window.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = previousOverflow
     }
   }, [onCancel, busy])
 

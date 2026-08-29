@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { LEGAL_DOCUMENTS } from '../content/legal'
 import type { LegalDocId } from '../content/legal'
+import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
   docId: LegalDocId
@@ -26,6 +27,9 @@ interface Props {
 export function LegalSheet({ docId, onClose }: Props) {
   const doc = LEGAL_DOCUMENTS[docId]
 
+  // 시트 끝까지 내린 뒤 계속 밀면 뒤의 가입 폼이 움직인다.
+  // ⚠️ body가 아니라 html에 건다 — 그래야 sticky가 얼지 않는다(useScrollLock 주석).
+  useScrollLock()
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -34,16 +38,9 @@ export function LegalSheet({ docId, onClose }: Props) {
     }
     window.addEventListener('keydown', handleKey)
 
-    /*
-     * 뒤 화면이 함께 스크롤되는 것을 막는다. 이걸 빼면 시트 안에서 끝까지 내린 뒤
-     * 계속 밀 때 뒤의 가입 폼이 움직여, 닫았을 때 엉뚱한 위치에 가 있다.
-     */
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
 
     return () => {
       window.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = previousOverflow
     }
   }, [onClose])
 
