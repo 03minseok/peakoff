@@ -928,13 +928,17 @@ export function DiagnosisPage() {
             부제를 날짜 쪽과 <b>같은 문형</b>으로 둔다. "OO는 그대로, 더 여유로운 XX를"이
             홈 진입 카드에서 시작해 여기 두 경로까지 이어지는 한 줄기다.
           */}
-          <div className="flex flex-col gap-0.75 px-0.5">
-            <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
-              PLACE OFF
-            </span>
-            <p className="text-muted m-0 text-[12.5px] leading-[1.6] text-pretty">
-              계획은 그대로, 더 여유로운 여행지를 찾아드려요.
-            </p>
+          {/* 이름표 줄에 "코스 끝으로"를 얹는다. 줄을 따로 두면 카드가 그만큼 아래로 밀린다 */}
+          <div className="flex items-end justify-between gap-3 px-0.5">
+            <div className="flex min-w-0 flex-col gap-0.75">
+              <span className="text-brand-deep text-[12px] font-semibold tracking-[0.04em]">
+                PLACE OFF
+              </span>
+              <p className="text-muted m-0 text-[12.5px] leading-[1.6] text-pretty">
+                계획은 그대로, 더 여유로운 여행지를 찾아드려요.
+              </p>
+            </div>
+            <ListEdgeJump targetId="course-bottom" direction="down" label="코스" />
           </div>
 
           {/*
@@ -946,8 +950,6 @@ export function DiagnosisPage() {
             (CLAUDE.md 모바일 규칙). 같은 함정을 다시 팔 이유가 없다.
           */}
           <div id="course-top" className="scroll-mt-20" />
-          <ListEdgeJump targetId="course-bottom" direction="down" label="코스" />
-
           {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map((day) => {
             const daySlots = diagnosis.slots.filter((slot) => slot.day === day)
             if (daySlots.length === 0) {
@@ -1271,7 +1273,9 @@ export function DiagnosisPage() {
             )
           })}
 
-          <ListEdgeJump targetId="course-top" direction="up" label="코스" />
+          <div className="flex justify-end px-0.5">
+            <ListEdgeJump targetId="course-top" direction="up" label="코스" />
+          </div>
           <div id="course-bottom" className="scroll-mt-20" />
           </div>
 

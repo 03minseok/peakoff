@@ -618,10 +618,12 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         effect가 값이 그대로인데도 매번 돌아 마커를 지웠다 다시 만든다.
       */}
       <section className={`${CARD_RAISED} flex flex-col gap-3 p-4.5`}>
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
           <h2 className="text-fg m-0 text-[15px] font-semibold">코스 지도</h2>
+          {/* 지도 머리 줄에 "코스 끝으로"를 얹는다. 줄을 따로 두면 지도가 그만큼 밀린다 */}
+          <ListEdgeJump targetId="draft-bottom" direction="down" label="코스" />
           {draft.days > 1 && (
-            <span className="text-hint text-[12px]">마커 번호는 “일차-순서”예요</span>
+            <span className="text-hint basis-full text-[12px]">마커 번호는 “일차-순서”예요</span>
           )}
         </div>
 
@@ -649,7 +651,6 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
 
       {/* 긴 목록의 양 끝을 잇는다. 진단 화면과 같은 장치 — 이유는 ListEdgeJump 주석에 */}
       <div id="draft-top" className="scroll-mt-20" />
-      <ListEdgeJump targetId="draft-bottom" direction="down" label="코스" />
 
       {dayNumbers.map((day) => {
         const slots = draft.slots.filter((slot) => slot.day === day)
@@ -692,7 +693,9 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         )
       })}
 
-      <ListEdgeJump targetId="draft-top" direction="up" label="코스" />
+      <div className="flex justify-end px-1">
+        <ListEdgeJump targetId="draft-top" direction="up" label="코스" />
+      </div>
       <div id="draft-bottom" className="scroll-mt-20" />
 
       <div className="mt-2 flex flex-col gap-2.5 pb-4">
