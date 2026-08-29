@@ -576,8 +576,23 @@ export function DiagnosisPage() {
           <section
             className={`${CARD_RAISED} flex flex-col gap-3.5 p-4.5 lg:min-h-0 lg:overflow-y-auto`}
           >
+            {/*
+              ■ 두 회피 경로가 같은 문형으로 선다 (TIME OFF · PLACE OFF)
+
+                날  더 좋은 날 발견하기 — 일정은 그대로, 더 여유로운 날을 찾아드려요
+                곳  더 좋은 곳 발견하기 — 계획은 그대로, 더 여유로운 여행지를 찾아드려요
+
+              "더 한적한 날짜"는 <b>지표 이름</b>이지 사용자가 할 일이 아니었다. 이름을
+              행동으로 바꾸면 두 경로가 한 짝으로 읽히고, 서비스가 파는 것이
+              "혼잡도를 알려주는 일"이 아니라 <b>더 나은 선택지를 찾아 주는 일</b>임이
+              화면에서 드러난다.
+
+              부제의 "OO는 그대로"가 핵심이다. 사용자가 짠 계획을 무르라는 말이 아니라
+              <b>그대로 둔 채</b> 한 가지만 옮기면 된다는 뜻이다. 홈의 두 진입 카드도
+              같은 문형으로 말한다.
+            */}
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-fg text-[15px] font-semibold">더 한적한 날짜</h2>
+              <h2 className="text-fg text-[15px] font-semibold">더 좋은 날 발견하기</h2>
 
               {/*
                 좁은 화면에서만 접었다 펼친다.
@@ -604,6 +619,14 @@ export function DiagnosisPage() {
                 같은 코스를 앞뒤 3일로 계산했어요
               </span>
             </div>
+
+            {/*
+              부제. 좁은 화면에서도 남긴다 — 이 카드가 접혀 있을 때 제목 한 줄만으로는
+              "무엇을 그대로 두고 무엇을 옮기는지"가 전해지지 않는다.
+            */}
+            <p className="text-muted m-0 -mt-2 text-[12.5px] leading-[1.6] text-pretty">
+              일정은 그대로, 더 여유로운 날을 찾아드려요.
+            </p>
 
             {!dates && <p className="text-[13px]">날짜 정보를 불러오지 못했어요.</p>}
             {/*
@@ -1059,7 +1082,7 @@ export function DiagnosisPage() {
                             <b>바꿀 방법 자체가 없었다.</b> 우리가 점수를 못 매기는 것이지
                             사용자가 다른 밥집을 고르고 싶지 않은 것이 아니다.
 
-                            문구가 "새로운 곳 발견하기"가 아니라 "가까운 곳"인 이유: 열리는 것이
+                            문구가 "더 좋은 곳 발견하기"가 아니라 "가까운 곳"인 이유: 열리는 것이
                             추천 목록이 아니다. 같은 분류에서 가까운 순으로 늘어놓을 뿐이고,
                             어디가 더 나은지는 말하지 않는다. 버튼 이름이 그 차이를 미리 알린다.
 
@@ -1127,9 +1150,9 @@ export function DiagnosisPage() {
                               시스템이 무르라고 하는 셈이다. 우리가 하는 일은 <b>더 나은
                               선택지를 찾아 주는 것</b>이고, 고르는 판단은 여전히 사용자 몫이다.
                             */
-                            aria-label={`${slot.place.name} 대신 갈 만한 새로운 곳 발견하기`}
+                            aria-label={`${slot.place.name} 대신 갈 만한 더 좋은 곳 발견하기`}
                           >
-                            새로운 곳 발견하기
+                            더 좋은 곳 발견하기
                           </button>
                         )}
                         </div>
