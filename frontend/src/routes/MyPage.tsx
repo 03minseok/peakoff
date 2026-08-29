@@ -483,7 +483,7 @@ export function MyPage() {
               to="/recommend"
               className="border-brand bg-surface hover:bg-bg text-fg rounded-ui grid h-13.5 place-items-center border-[1.5px] px-6 text-base font-semibold no-underline transition-colors"
             >
-              오늘의 여행 발견하기
+              코스 발견하기
             </Link>
           </div>
         </div>

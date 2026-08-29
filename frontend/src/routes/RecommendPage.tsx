@@ -13,7 +13,14 @@ import type {
   DraftSlot,
   ItineraryDensity,
 } from '../types/api'
-import { daysFromToday, formatCompactDate, formatDateRange, formatWeekday, today } from '../utils/date'
+import {
+  daysFromToday,
+  formatCompactDate,
+  formatDateRange,
+  formatMonthDay,
+  formatWeekday,
+  today,
+} from '../utils/date'
 
 /**
  * 설문으로 코스를 추천받는 화면.
@@ -199,7 +206,7 @@ export function RecommendPage() {
     <div className="mx-auto flex w-full max-w-form flex-col gap-3.5 pb-10">
       <header className="flex flex-col gap-2 pb-1">
         <h1 className="text-fg m-0 text-[27px] leading-[1.3] font-bold tracking-[-0.025em]">
-          오늘의 여행,
+          어디로 갈지,
           <br />
           같이 발견해볼까요
         </h1>
@@ -366,7 +373,7 @@ export function RecommendPage() {
             </span>
           </div>
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit || view.phase === 'loading'}>
-            {view.phase === 'loading' ? '코스를 짜는 중…' : '오늘의 여행 발견하기'}
+            {view.phase === 'loading' ? '코스를 짜는 중…' : '코스 발견하기'}
           </button>
           <Link
             to="/plan"
@@ -411,15 +418,22 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         "몰랐던 곳을 데이터로 찾아준다"는 약속이고, 그 약속이 곧 심사에서
         데이터 활용을 증명하는 자리이기도 하다.
 
+        ⚠️ <b>"오늘의 OO"라고 하지 않는다.</b> 오늘이 아니다 — 설문은 날짜를 고르게 하고,
+        예측 창이 앞으로 24~29일이라 대부분 미래 날짜다. 게다가 홈에는 <b>진짜 "오늘의 경주"</b>가
+        따로 있다(오늘의 혼잡). 한 서비스에서 같은 말이 두 뜻으로 쓰이면 어느 쪽도 믿기 어렵다.
+
+        대신 <b>실제 여행 날짜를 넣는다.</b> 한적도는 날짜별로 갈리는 값이라, 어느 날의
+        경주인지 밝히는 편이 서비스 성격에도 맞는다.
+
         지역 이름은 셋 다 모음으로 끝나(경주·제주시·서귀포시) "를"이 붙는다.
         ⚠️ 자음으로 끝나는 지역을 추가하면 이 조사를 함께 손봐야 한다.
       */}
       <header className="flex flex-col gap-2">
         <span className="bg-brand-tint text-brand-deep w-fit rounded-full px-2.5 py-1 text-[12px] font-semibold">
-          오늘의 코스
+          발견한 코스
         </span>
         <h1 className="text-fg m-0 text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-          오늘의 {regionName}를 발견했어요
+          {formatMonthDay(draft.startDate)}의 {regionName}를 발견했어요
         </h1>
         <p className="text-muted m-0 text-[14px] leading-[1.6] text-pretty">
           취향은 챙기고, 붐빔은 살짝 비켜간 코스예요.
