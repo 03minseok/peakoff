@@ -10,6 +10,7 @@ import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceProvider;
 import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.place.dto.NearbyPlaceResponse;
+import com.peakoff.place.dto.PlaceDescriptionResponse;
 import com.peakoff.place.dto.PlaceResponse;
 
 @Service
@@ -48,6 +49,21 @@ public class PlaceService {
 		return placeProvider.nearby(origin, limit).stream()
 				.map(NearbyPlaceResponse::from)
 				.toList();
+	}
+
+	/**
+	 * 장소 하나의 읽을거리(주소·소개글).
+	 *
+	 * <p>⚠️ <b>장소가 있는지부터 확인하지 않는다.</b> {@code getById}를 앞에 두면 카탈로그를
+	 * 훑는 조회가 한 번 더 붙는데, 소개글 조회는 어차피 없는 ID면 빈 값으로 돌아온다.
+	 * 여기서 얻을 것이 없는 확인이다.
+	 *
+	 * <p>못 구해도 빈 값으로 답한다 — 곁들이는 정보라 없다고 화면이 오류를 띄울 일은 아니다.
+	 */
+	public PlaceDescriptionResponse describe(String placeId) {
+		return placeProvider.describe(placeId)
+				.map(PlaceDescriptionResponse::from)
+				.orElseGet(PlaceDescriptionResponse::empty);
 	}
 
 	/** 다른 서비스도 쓰는 조회. 없으면 404가 되도록 예외를 던진다. */

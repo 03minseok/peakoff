@@ -6,6 +6,7 @@ import { AccountSheets } from '../components/AccountSheets'
 import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
+import { ListEdgeJump } from '../components/ListEdgeJump'
 import { SavedCourseCard } from '../components/SavedCourseCard'
 import { CARD } from '../components/styles'
 import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
@@ -426,6 +427,17 @@ export function MyPage() {
       )}
 
       {list.status === 'loaded' && !empty && (
+        <>
+        {/*
+          ⚠️ 이동 버튼을 격자 <b>바깥</b>에 둔다. 안에 넣었더니 카드 한 칸을 차지해
+          넓은 화면에서 3열 중 하나가 버튼으로 채워졌다. 저장 코스는 회원당 50개까지라
+          목록이 길어질 수 있어 버튼 자체는 필요하다.
+        */}
+        <div className="flex justify-end px-0.5">
+          <div id="saved-top" className="scroll-mt-20" />
+          <ListEdgeJump targetId="saved-bottom" direction="down" label="목록" />
+        </div>
+
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
             <SavedCourseCard
@@ -439,6 +451,12 @@ export function MyPage() {
             />
           ))}
         </div>
+
+        <div className="flex justify-end px-0.5">
+          <ListEdgeJump targetId="saved-top" direction="up" label="목록" />
+          <div id="saved-bottom" className="scroll-mt-20" />
+        </div>
+        </>
       )}
 
       {empty && (

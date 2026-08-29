@@ -1,4 +1,5 @@
 import type {
+  PlaceDescription,
   ForecastWindow,
   Alternatives,
   ApiErrorCode,
@@ -317,6 +318,23 @@ export function fetchAlternatives(
  *
  * 캐시하지 않는다. 무작위가 섞이지 않아 같은 요청이면 늘 같은 답이 온다.
  */
+/**
+ * GET /api/places/{id}/description — 장소 하나의 주소와 소개글.
+ *
+ * ⚠️ <b>목록에서 부르지 말 것.</b> 소개글은 지역 카탈로그에 없고 상세 조회에만 있어
+ * 장소마다 공사를 한 번씩 부른다 — N곳이면 N번이고, 그 모양이 2026-08-26 한도 소진
+ * 사고였다. 사용자가 "설명 보기"를 누른 것만 부른다.
+ *
+ * 서버가 6시간 캐시로 받쳐 두지만 캐시가 빈 첫 조회는 그대로 나간다.
+ * 주소도 소개글도 없을 수 있다 — 404가 아니라 둘 다 null로 온다.
+ */
+export function fetchPlaceDescription(
+  placeId: string,
+  signal?: AbortSignal,
+): Promise<PlaceDescription> {
+  return apiRequest<PlaceDescription>(`/places/${placeId}/description`, { signal })
+}
+
 export function fetchNearby(
   placeId: string,
   limit = 5,

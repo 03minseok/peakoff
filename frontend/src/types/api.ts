@@ -300,6 +300,12 @@ export interface DraftSlot extends DiagnosedSlot {
   /** 이 자리에 이곳을 얼마나 미는가 (0~100). 한적도가 이미 반영돼 있다 */
   recommendation: number
   factors: ScoreFactor[]
+  /**
+   * 앞 장소에서의 거리. 예: "대릉원에서 1.2km"
+   *
+   * 그 날 <b>첫 장소</b>는 잴 거리가 없어 "하루를 시작하는 곳"이 온다.
+   * 분류와 한적도는 여기 담기지 않는다 — 카드가 이미 글자와 배지로 보여준다.
+   */
   reason: string
 }
 
@@ -438,6 +444,17 @@ export interface SavedPlace {
 /** 서버 SavedCourseDetail. 요약에 장소들이 붙은 모양 */
 export interface SavedCourseDetail extends Omit<SavedCourseSummary, 'placeCount'> {
   places: SavedPlace[]
+}
+
+/**
+ * 장소 하나의 읽을거리. <b>둘 다 없을 수 있다.</b>
+ *
+ * <p>overview에는 <b>{@code <br>} 같은 HTML 조각이 섞여 온다</b> — 공사가 그렇게 준다.
+ * innerHTML로 넣지 말 것. 우리가 만든 문자열이 아니다.
+ */
+export interface PlaceDescription {
+  address: string | null
+  overview: string | null
 }
 
 /** 남의 코스에 담긴 장소 한 곳. placeId는 관광지 식별자이지 코스 식별자가 아니다 */
