@@ -319,12 +319,16 @@ export function ResultPage() {
     무엇을 해서 나아졌는지 요약한다.
 
     "교체"가 아니라 "발견"이다. 사용자가 한 일은 붐비는 곳을 무른 것이 아니라
-    <b>덜 붐비는 곳을 찾아낸 것</b>이고, 그 자리로 데려간 버튼 이름도 "더 좋은 곳
-    발견하기"였다. 결과 화면에서만 다른 말을 쓰면 방금 한 일이 다른 일처럼 읽힌다.
+    <b>다른 곳을 찾아낸 것</b>이고, 그 자리로 데려간 버튼 이름도 "다른 곳 발견하기"였다.
+    결과 화면에서만 다른 말을 쓰면 방금 한 일이 다른 일처럼 읽힌다.
+
+    ⚠️ 여기서도 "더 좋은 곳"이라고 하지 않는다. {@link diffCourses}가 세는 것은
+    <b>자리가 바뀐 칸 전부</b>이지 나아진 칸이 아니다 — 사용자가 더 붐비는 곳으로
+    옮겼어도 이 수에 들어간다. 얼마나 나아졌는지는 바로 아래 두 총점이 말한다.
   */
   const summary = [
     movedDate ? '날짜 이동' : null,
-    changes.length > 0 ? `더 좋은 곳 ${changes.length}곳 발견` : null,
+    changes.length > 0 ? `다른 곳 ${changes.length}곳 발견` : null,
   ].filter(Boolean)
 
   return (
@@ -452,7 +456,7 @@ export function ResultPage() {
             <CourseColumn
               title="개선안"
               subtitle={
-                changes.length > 0 ? `더 좋은 곳 ${changes.length}곳 발견` : '더 한적한 코스'
+                changes.length > 0 ? `다른 곳 ${changes.length}곳 발견` : '더 한적한 코스'
               }
               score={showAfter ? afterDiagnosis.totalQuietness : null}
               diagnosis={afterDiagnosis}
