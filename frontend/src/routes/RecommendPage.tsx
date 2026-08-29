@@ -216,13 +216,21 @@ export function RecommendPage() {
     <div className="mx-auto w-full max-w-form pb-10 lg:grid lg:max-w-app lg:grid-cols-12 lg:items-start lg:gap-10">
       {/* 폼을 채우는 동안 왼쪽 설명이 따라와 무엇을 하는 화면인지가 계속 남는다 */}
       <section className="flex flex-col gap-3.5 pb-7 lg:sticky lg:top-18 lg:col-span-5 lg:pb-0">
-        <h1 className="text-fg m-0 text-[27px] leading-[1.3] font-bold tracking-[-0.025em] lg:text-[34px]">
+        <h1 className="text-fg m-0 text-[34px] leading-[1.25] font-bold tracking-[-0.025em] lg:text-[40px]">
           어디로 갈지,
           <br />
           같이 발견해볼까요
         </h1>
-        {/* 홈 카드·날짜 대안과 같은 문형 — "OO는 그대로, 더 여유로운 XX를" */}
-        <p className="m-0 text-[14.5px] leading-[1.65] text-pretty lg:text-[15.5px]">
+        {/*
+          ⚠️ 글자 크기를 {@code /plan}과 <b>같은 값으로</b> 둔다(제목 34→40, 본문 15.5).
+          예전에는 27→34 / 14.5였다. 폼이 가운데 한 줄이던 시절에는 그게 맞았지만,
+          좌우 두 칸으로 바꾸면서 두 화면의 제목이 <b>같은 자리에 서게 됐다</b> —
+          홈에서 나란히 선 두 문을 지나 들어왔는데 한쪽 제목만 6px 작으면
+          한쪽이 곁다리로 읽힌다.
+
+          홈 카드·날짜 대안과 같은 문형이기도 하다 — "OO는 그대로, 더 여유로운 XX를".
+        */}
+        <p className="m-0 text-[15.5px] leading-[1.65] text-pretty">
           취향은 그대로, 그날 덜 붐빌 {regionName}를 찾아드려요.
           <br />
           찾은 뒤에 직접 고칠 수 있어요.
