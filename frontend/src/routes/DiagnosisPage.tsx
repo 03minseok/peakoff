@@ -678,8 +678,16 @@ export function DiagnosisPage() {
               들어 있는지" 알 수 없어, 펼쳐볼 이유가 생기지 않는다. 날짜 회피는 이 서비스의
               두 경로 중 하나라 접혀서 묻히면 안 된다.
             */}
+            {/*
+              회백 바탕을 깐다. 이 줄은 <b>목록을 대신해 서 있는 결론</b>인데, 흰 카드 위에
+              맨 글자로 두면 위쪽 안내문과 같은 무게로 읽혀 그냥 지나친다.
+              면을 깔면 "접힌 것이 여기 요약돼 있다"가 눈에 들어온다.
+
+              같은 카드 안의 다른 회백 면(주간 예보 패널·홈의 목록 패널)과 같은 토큰이다 —
+              한 박스 안에서 한 단계 들어간 면은 늘 같은 색이어야 층위가 읽힌다.
+            */}
             {toggleableDates && !datesOpen && bestDate && (
-              <p className="m-0 text-[13px] leading-[1.55] lg:hidden">
+              <p className="bg-bg rounded-ui m-0 px-3.5 py-2.5 text-[13px] leading-[1.55] lg:hidden">
                 {formatCompactDate(bestDate.date)} {formatWeekday(bestDate.date)}로 옮기면{' '}
                 <strong className="text-quiet-deep">한적 지수 +{bestDate.improvement}</strong>
               </p>
