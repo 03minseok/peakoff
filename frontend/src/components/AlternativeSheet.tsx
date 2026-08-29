@@ -270,7 +270,8 @@ export function AlternativeSheet({
         <header className="border-line bg-surface flex flex-none flex-col gap-2 border-b px-4.5 pt-3.5 pb-3.5 lg:rounded-t-[24px] lg:px-6 lg:pt-5.5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-hint text-[12.5px]">교체할 자리</span>
+              {/* "교체할 자리"는 우리 말이다. 사용자에게는 그냥 지금 담아 둔 자리다 */}
+              <span className="text-hint text-[12.5px]">지금 이 자리</span>
               <h2
                 id="sheet-title"
                 className="text-fg m-0 text-[19px] font-bold tracking-[-0.015em]"
@@ -305,16 +306,22 @@ export function AlternativeSheet({
             가중 무작위로 뽑은 순서를 그대로 내려보내므로, 82점 아래 79점이 설 수 있다.
             순서를 오해하게 두면 화면이 거짓말을 하는 셈이다.
 
-            대신 <b>매번 새로 뽑는다는 사실 자체를 말한다.</b> 같은 대안이 모든 사용자에게
+            대신 <b>목록이 매번 달라진다는 사실 자체를 말한다.</b> 같은 대안이 모든 사용자에게
             반복 추천되면 그곳이 새로운 혼잡지가 되기 때문인데(2차 오버투어리즘),
             그 장치가 여기서 눈에 보여야 "왜 순서가 이런가"에 답이 된다.
+
+            ⚠️ <b>여기서는 우연을 재미로 쓰지 않는다.</b> "뽑혔어요"·"운에 맡겨보세요" 같은 말은
+            설문 결과 화면(RecommendPage)에나 어울린다. 이 화면은 바로 아래에 추천도와
+            항목별 반영 비율을 펴 놓는 자리라, 뽑기처럼 말하는 순간 <b>"그럼 저 점수는
+            뭐냐"</b>가 된다. 같은 분산 로직인데 말투가 갈리는 이유다.
+            달라지는 것은 운이 아니라 설계다 — 그래서 "달라질 수 있어요"까지만 말한다.
           */}
           <p className="m-0 text-[13px] leading-[1.6] text-pretty whitespace-pre-line">
             {nearbyMode
               ? '예상 혼잡을 알 수 없는 곳이라 추천 순서를 매기지 못해요.\n같은 분류에서 가까운 순으로 보여드릴게요.'
               : originLevel === 'CROWDED'
-                ? '추천도 상위 후보에서 매번 새로 뽑아요.\n추천도에는 한적도가 가장 크게 반영됩니다.'
-                : '지금도 크게 붐비지는 않는 곳이에요.\n추천도 상위 후보에서 매번 새로 뽑았어요.'}
+                ? '오늘 발견할 수 있는 장소는 달라질 수 있어요.\n한적한 정도를 가장 크게 보고 골라요.'
+                : '지금도 크게 붐비지는 않는 곳이에요.\n오늘 발견할 수 있는 장소는 달라질 수 있어요.'}
           </p>
         </header>
 
@@ -384,7 +391,7 @@ export function AlternativeSheet({
                     className="press rounded-ui border-line bg-surface text-fg hover:border-brand hover:text-brand-deep h-11 w-full cursor-pointer border text-sm font-semibold"
                     onClick={() => onSelect(item.place.id)}
                   >
-                    이곳으로 바꾸기
+                    이곳으로 갈래요
                   </button>
                 </li>
               ))}
@@ -409,77 +416,94 @@ export function AlternativeSheet({
                   key={alternative.place.id}
                   className="bg-surface shadow-rest flex flex-col gap-3 rounded-[18px] p-4"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-fg text-base font-semibold tracking-[-0.01em]">
-                          {alternative.place.name}
-                        </span>
-                        {/*
-                          서버가 추천도 순으로 내려주므로 맨 위가 최선의 후보다.
-                          다만 지금보다 더 붐비는 곳에 "추천"을 붙이면 안 된다 —
-                          한적도가 추천도의 대부분을 차지하지만 전부는 아니라서,
-                          훨씬 가까운 후보가 1등으로 올라오는 경우가 남는다.
-                        */}
-                        {index === 0 &&
-                          originQuietness !== null &&
-                          alternative.quietness > originQuietness && (
-                          <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
-                            추천
-                          </span>
-                        )}
-                      </div>
-                      {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-hint text-[12.5px]">
-                          {alternative.place.categoryName}
-                        </span>
-                        <CongestionBadge
-                          level={alternative.level}
-                          label={alternative.levelLabel}
-                          quietness={alternative.quietness}
-                          size="sm"
-                        />
-                      </div>
-                    </div>
+                  {/*
+                    ■ 읽히는 순서 — 이름 → 어떤 곳인가 → 숫자
 
-                    {/* 목록을 줄 세운 값이 곧 이 숫자다. 그래서 카드에서 가장 크게 둔다. */}
-                    <div className="flex flex-none flex-col items-end gap-0.5">
+                    예전에는 26px짜리 추천도가 이름 옆에 서서 <b>카드에서 가장 먼저 읽혔다.</b>
+                    그러면 목록 전체가 점수표가 되어, 사용자는 "어디로 갈까"가 아니라
+                    "몇 점이 제일 높나"를 고르게 된다. 정작 그곳이 어떤 곳인지는
+                    맨 아래 회색 상자 안에 접혀 있었다.
+
+                    사람이 장소를 고를 때 먼저 궁금한 것은 <b>그곳이 어떤 곳인가</b>다.
+                    그래서 근거 문장을 이름 바로 아래로 끌어올려 성격 문구로 세우고,
+                    숫자는 그 아래 한 줄에 모았다.
+
+                    ⚠️ <b>추천도를 지우지는 않는다.</b> 목록을 줄 세운 값이 화면에 없으면
+                    "왜 이 순서인가"에 답할 수 없다(CLAUDE.md 추천도 구성 내역).
+                    크기만 내려 순서를 양보했을 뿐, 항목별 반영 비율은 그대로 편다.
+                  */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-fg text-base font-semibold tracking-[-0.01em]">
+                      {alternative.place.name}
+                    </span>
+                    {/*
+                      서버가 추천도 순으로 내려주므로 맨 위가 최선의 후보다.
+                      다만 지금보다 더 붐비는 곳에 "추천"을 붙이면 안 된다 —
+                      한적도가 추천도의 대부분을 차지하지만 전부는 아니라서,
+                      훨씬 가까운 후보가 1등으로 올라오는 경우가 남는다.
+                    */}
+                    {index === 0 &&
+                      originQuietness !== null &&
+                      alternative.quietness > originQuietness && (
+                      <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                        추천
+                      </span>
+                    )}
+                  </div>
+
+                  {/*
+                    성격 문구. 서버가 준 근거 문장을 그대로 쓴다 —
+                    "OO 방문객이 함께 많이 찾는 곳", "OO와 비슷한 분류의 가까운 곳"처럼
+                    이미 <b>그곳이 어떤 곳인지</b>를 말하는 문장이다.
+
+                    회색 상자와 "i" 표시를 걷어냈다. 부연 설명처럼 담아 두면 실제로
+                    부연으로 읽히는데, 이 문장이 카드에서 가장 중요한 말이다.
+                  */}
+                  <p className="text-fg m-0 text-[13.5px] leading-[1.6] text-pretty">
+                    {alternative.reason}
+                  </p>
+
+                  {/* 숫자는 한 줄에 모은다. 왼쪽이 원본 지표(한적도), 오른쪽이 종합 판단(추천도)이다 */}
+                  <div className="border-line/70 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t pt-2.5">
+                    {/* 한적도는 코스 편집 화면과 같은 배지로 담담하게 둔다. 판단의 원본 수치다. */}
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="text-hint text-[12.5px]">
+                        {alternative.place.categoryName}
+                      </span>
+                      <CongestionBadge
+                        level={alternative.level}
+                        label={alternative.levelLabel}
+                        quietness={alternative.quietness}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="flex flex-none items-baseline gap-1.5">
                       <span className="text-hint text-[11px]">추천도</span>
-                      <span className="text-brand-deep font-mono text-[26px] leading-none font-semibold">
+                      <span className="text-brand-deep font-mono text-[19px] leading-none font-semibold">
                         {alternative.recommendation}
                       </span>
                     </div>
                   </div>
 
                   {/*
-                    추천 근거. 데이터를 어떻게 썼는지 보여주는 자리다.
-                    문장 하나로는 "왜 82점인지"를 설명하지 못해서, 항목별 내역을 함께 편다.
+                    추천도 구성 내역. 데이터를 어떻게 썼는지 보여주는 자리다.
                     반영 비율은 서버가 준 값을 그대로 쓴다 — 화면에 숫자를 적어두면
                     가중치가 바뀔 때 한쪽만 고쳐진다.
+
+                    ⚠️ <b>조건이 상자 바깥에 있다.</b> 근거 문장이 위로 올라가면서 이 상자에는
+                    내역만 남았다. 조건을 안에 두면 내역이 없을 때 <b>빈 회색 상자</b>가
+                    그려진다 — 예전에는 문장이 늘 있어서 드러나지 않던 자리다.
+
+                    내역이 없어도 카드는 그려야 한다. 서버와 화면이 따로 배포되는 순간이
+                    있고(구버전 서버가 아직 떠 있는 등), 그때 필드 하나가 비었다고 화면이
+                    하얘지면 안 된다. 성격 문구와 추천도는 위에 그대로 남는다.
                   */}
-                  <div className="bg-bg rounded-ui flex flex-col gap-2.5 px-3 py-3">
-                    <div className="flex items-start gap-2.5">
-                      <span
-                        className="bg-quiet-soft/50 text-quiet-deep mt-px grid h-4 w-4 flex-none place-items-center rounded-full text-[10px] font-bold"
-                        aria-hidden="true"
-                      >
-                        i
+                  {alternative.factors?.length ? (
+                    <div className="bg-bg rounded-ui flex flex-col gap-2 px-3 py-3">
+                      <span className="text-hint text-[11.5px] font-semibold">
+                        이 추천도는 이렇게 나왔어요
                       </span>
-                      <p className="m-0 text-[12.5px] leading-[1.6] text-pretty">
-                        {alternative.reason}
-                      </p>
-                    </div>
-
-                    {/*
-                      내역이 없어도 카드는 그려야 한다.
-
-                      서버와 화면이 따로 배포되는 순간이 있고(구버전 서버가 아직 떠 있는 등),
-                      그때 필드 하나가 비었다고 화면 전체가 하얘지면 안 된다.
-                      근거 문장은 그대로 남으므로 추천 이유는 여전히 보인다.
-                    */}
-                    {alternative.factors?.length ? (
-                    <ul className="border-line flex flex-col gap-2 border-t pt-2.5">
+                      <ul className="flex flex-col gap-2">
                       {alternative.factors.map((factor) => (
                         <li
                           key={factor.label}
@@ -500,16 +524,21 @@ export function AlternativeSheet({
                           </span>
                         </li>
                       ))}
-                    </ul>
-                    ) : null}
-                  </div>
+                      </ul>
+                    </div>
+                  ) : null}
 
+                  {/*
+                    "교체"는 서류의 말이다. 사용자가 하는 일은 <b>이곳으로 가기로 정하는 것</b>이고,
+                    문구도 그 사람의 말로 적는다. 위 버튼("새로운 곳 발견하기")과 한 짝이라
+                    발견하고 → 고르는 흐름이 문장으로도 이어진다.
+                  */}
                   <button
                     type="button"
                     className="press bg-brand hover:bg-brand-hover rounded-ui h-11 cursor-pointer text-[14.5px] font-semibold text-fg"
                     onClick={() => onSelect(alternative.place.id)}
                   >
-                    이 장소로 교체
+                    이곳으로 갈래요
                   </button>
                 </li>
               ))}
