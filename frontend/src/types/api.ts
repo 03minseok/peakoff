@@ -300,6 +300,12 @@ export interface DraftSlot extends DiagnosedSlot {
   /** 이 자리에 이곳을 얼마나 미는가 (0~100). 한적도가 이미 반영돼 있다 */
   recommendation: number
   factors: ScoreFactor[]
+  /**
+   * 앞 장소에서의 거리. 예: "대릉원에서 1.2km"
+   *
+   * 그 날 <b>첫 장소</b>는 잴 거리가 없어 "하루를 시작하는 곳"이 온다.
+   * 분류와 한적도는 여기 담기지 않는다 — 카드가 이미 글자와 배지로 보여준다.
+   */
   reason: string
 }
 
