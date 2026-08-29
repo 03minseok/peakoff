@@ -254,7 +254,7 @@ export function RecommendPage() {
             끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
           */}
           <div>
-            <legend className={`${CARD_TITLE} p-0`}>하루를 얼마나 채울까요</legend>
+            <legend className={`${CARD_TITLE} p-0`}>오늘은 어떤 템포로 떠나볼까요?</legend>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {DENSITY_OPTIONS.map((option) => (
@@ -278,7 +278,7 @@ export function RecommendPage() {
             끌어올려 배치해서, border-0인 카드에서는 제목만 박스 밖으로 삐져나온다.
           */}
           <div>
-            <legend className={`${CARD_TITLE} p-0`}>사람 많은 곳은 어떠세요</legend>
+            <legend className={`${CARD_TITLE} p-0`}>붐비는 곳은 얼마나 피하고 싶나요?</legend>
           </div>
           <div className="flex flex-col gap-2">
             {SENSITIVITY_OPTIONS.map((option) => (
@@ -365,7 +365,7 @@ export function RecommendPage() {
             </span>
           </div>
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit || view.phase === 'loading'}>
-            {view.phase === 'loading' ? '코스를 짜는 중…' : '코스 추천받기'}
+            {view.phase === 'loading' ? '코스를 짜는 중…' : '오늘의 여행 발견하기'}
           </button>
           <Link
             to="/plan"
@@ -399,13 +399,27 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
 
   return (
     <div className="mx-auto flex w-full max-w-read flex-col gap-3.5 pb-10">
+      {/*
+        여기는 <b>우연을 재미로 드러내도 되는 자리</b>다. 같은 답을 보내도 매번 다른 코스가
+        오는 것이 실제 동작이라, 감추면 오히려 "왜 아까와 다르지?"가 된다.
+
+        ⚠️ 장소 교체 시트(AlternativeSheet)는 반대다. 그쪽에서 "뽑혔어요"라고 말하면
+        추천 근거를 함께 펴 놓고도 뽑기처럼 읽혀, "그럼 저 점수는 뭐냐"가 된다.
+        같은 분산 로직인데 <b>말투가 갈리는 이유</b>가 이것이다.
+
+        지역 이름은 셋 다 모음으로 끝나(경주·제주시·서귀포시) "가"가 붙는다.
+        ⚠️ 자음으로 끝나는 지역을 추가하면 이 조사를 함께 손봐야 한다.
+      */}
       <header className="flex flex-col gap-2">
         <span className="bg-brand-tint text-brand-deep w-fit rounded-full px-2.5 py-1 text-[12px] font-semibold">
-          추천 코스
+          오늘의 코스
         </span>
         <h1 className="text-fg m-0 text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-          이런 {regionName} 어떠세요
+          오늘의 {regionName}가 뽑혔어요!
         </h1>
+        <p className="text-muted m-0 text-[14px] leading-[1.6] text-pretty">
+          취향은 챙기고, 붐빔은 살짝 비켜간 코스예요.
+        </p>
       </header>
 
       {/* 코스 총점. 슬롯 한적도의 평균이고 추천도가 섞이지 않는다 */}

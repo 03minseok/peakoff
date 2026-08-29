@@ -315,9 +315,16 @@ export function ResultPage() {
     ? afterDiagnosis.slots.filter((slot) => slot.level === 'CROWDED').length
     : 0
 
+  /*
+    무엇을 해서 나아졌는지 요약한다.
+
+    "교체"가 아니라 "발견"이다. 사용자가 한 일은 붐비는 곳을 무른 것이 아니라
+    <b>덜 붐비는 곳을 찾아낸 것</b>이고, 그 자리로 데려간 버튼 이름도 "새로운 곳
+    발견하기"였다. 결과 화면에서만 다른 말을 쓰면 방금 한 일이 다른 일처럼 읽힌다.
+  */
   const summary = [
     movedDate ? '날짜 이동' : null,
-    changes.length > 0 ? `장소 ${changes.length}곳 교체` : null,
+    changes.length > 0 ? `새로운 곳 ${changes.length}곳 발견` : null,
   ].filter(Boolean)
 
   return (
@@ -445,7 +452,7 @@ export function ResultPage() {
             <CourseColumn
               title="개선안"
               subtitle={
-                changes.length > 0 ? `장소 ${changes.length}곳 교체` : '더 한적한 코스'
+                changes.length > 0 ? `새로운 곳 ${changes.length}곳 발견` : '더 한적한 코스'
               }
               score={showAfter ? afterDiagnosis.totalQuietness : null}
               diagnosis={afterDiagnosis}
