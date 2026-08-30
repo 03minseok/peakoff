@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright — 브라우저가 만든 결과물. 저장소에 담지 않는다
+/test-results/
+/playwright-report/
+/blob-report/
