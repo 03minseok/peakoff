@@ -1375,7 +1375,23 @@ export function HomePage() {
             나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 둘이다.
           */}
           <section
-            className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:p-5.5`}
+            /*
+              ⚠️ lg:self-start — <b>내용만큼만 키운다</b> (2026-08-30).
+
+              격자 칸은 기본이 stretch라 이 박스가 옆 칸(오늘의 OO + 이번 주) 높이에
+              맞춰 늘어났다. 옆은 목록 여섯 줄에 예보 일곱 줄에 버튼 둘이라 700px가
+              넘는데 이쪽은 카드 넷이 최대다. <b>저장된 코스가 하나도 없을 때는</b>
+              머리글과 작은 안내 상자 하나뿐이라, 세 칸 중 하나가 통째로 흰 여백이 됐다.
+
+              늘리지 않으면 남는 자리는 흰 카드 면이 아니라 <b>페이지 바탕(회백)</b>이다.
+              같은 빈 공간이라도 바탕색이면 "여기서 끝났다"로 읽히고, 흰 면이면
+              "무언가 안 뜬다"로 읽힌다. 채울 것이 없을 때 할 수 있는 정직한 일은
+              큰 빈 상자를 세우는 것이 아니라 상자를 그만큼만 세우는 것이다.
+
+              칸을 채우려고 OTHER_COURSE_COUNT를 늘리는 것은 답이 아니다 —
+              그 수는 실제 저장된 코스가 정하지 우리가 정하지 않는다.
+            */
+            className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:self-start lg:p-5.5`}
           >
             <div className="flex flex-col gap-0.75 px-1">
               <h2 className={SECTION_TITLE}>다른 사람들의 여행</h2>
