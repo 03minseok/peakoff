@@ -41,6 +41,17 @@ export interface TripContextValue {
    *               담아 오는 길이 그렇다. 빠뜨렸을 때 새로 만들어지는 쪽으로 넘어진다
    */
   restore: (plan: TripPlan, days: string[][], source?: TripSource | null) => void
+  /**
+   * 방금 저장한 코스를 <b>고쳐 쓸 대상으로 찍는다.</b>
+   *
+   * ⚠️ 이것이 없으면 저장 버튼을 두 번 누른 사용자에게 <b>같은 코스가 두 개 생긴다.</b>
+   * 결과 화면은 source가 있으면 PUT, 없으면 POST로 가르는데, 새로 저장한 뒤에도
+   * source가 계속 null이라 두 번째 누름이 또 새 코스를 만들었다.
+   *
+   * {@link restore}로 대신할 수 없다. 그쪽은 원안(baseline)을 지우는데, 이 화면은
+   * 원안과 개선안을 맞대는 자리라 그 순간 비교가 통째로 무너진다.
+   */
+  markSaved: (source: TripSource) => void
   reset: () => void
 }
 
