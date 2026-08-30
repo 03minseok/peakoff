@@ -23,6 +23,7 @@ type TripAction =
   | { type: 'REPLACE_PLACE'; day: number; index: number; placeId: string }
   | { type: 'MARK_BASELINE' }
   | { type: 'RESTORE'; plan: TripPlan; days: string[][]; source?: TripSource | null }
+  | { type: 'MARK_SAVED'; source: TripSource }
   | { type: 'RESET' }
 
 /** day는 1부터 시작한다. 배열 인덱스로 바꿔 쓴다. */
@@ -165,6 +166,15 @@ function reducer(state: TripState, action: TripAction): TripState {
        */
       return { plan: action.plan, days: action.days, baseline: null, source: action.source ?? null }
 
+    case 'MARK_SAVED':
+      /*
+       * 방금 저장한 코스를 고쳐 쓸 대상으로 찍는다.
+       *
+       * <b>source만 바꾼다.</b> RESTORE와 달리 plan·days·baseline을 건드리지 않는다 —
+       * 저장은 화면을 떠나지 않는 행동이라, 보고 있던 비교가 그대로 남아 있어야 한다.
+       */
+      return { ...state, source: action.source }
+
     case 'RESET':
       return EMPTY_TRIP_STATE
   }
@@ -190,6 +200,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'REPLACE_PLACE', day, index, placeId }),
       markBaseline: () => dispatch({ type: 'MARK_BASELINE' }),
       restore: (plan, days, source) => dispatch({ type: 'RESTORE', plan, days, source }),
+      markSaved: (source) => dispatch({ type: 'MARK_SAVED', source }),
       reset: () => dispatch({ type: 'RESET' }),
     }),
     [state],
