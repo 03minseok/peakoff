@@ -1,6 +1,7 @@
 package com.peakoff.external.kto.client;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -79,14 +80,31 @@ public class KtoPlaceClient {
 	 *
 	 * <p>상한을 상세 캐시와 같이 두는 이유: 열쇠가 같은 성질(아무 문자열이나 올 수 있는
 	 * 장소 ID)이라 무한히 자랄 위험도 같다.
+	 *
+	 * <h3>⚠️ TTL만 다르다 — 24시간</h3>
+	 * 다른 캐시는 6시간이다({@link RegionCache#DEFAULT_TTL}). 공사 자료가 하루 1회
+	 * 갱신되므로 그보다 짧게 잡아 <b>갱신을 늦게 반영하는 창</b>을 줄이려는 값이다.
+	 *
+	 * <p>소개글은 그 성질이 아니다. 집중률처럼 매일 바뀌는 예측값이 아니라 <b>몇 달에 한 번
+	 * 손보는 글</b>이라, 하루를 붙들어 둬도 틀린 값을 보여줄 위험이 거의 없다.
+	 *
+	 * <p>대신 얻는 것이 분명하다. 소개글은 <b>장소마다 공사를 한 번씩</b> 부르는 유일한
+	 * 자리라, 이 캐시가 살아 있는 동안이 곧 아끼는 호출이다.
+	 *
+	 * <p>⚠️ <b>다른 캐시까지 24시간으로 늘리지 말 것.</b> 두 가지를 잃는다 —
+	 * 집중률이 반나절 묵은 값이 되고, 심사가 확인하는 <b>인증키 호출 이력</b>이 반으로 준다
+	 * (CLAUDE.md 절대 규칙 1: 개발 기간 내내 실제 호출이 발생해야 한다).
+	 * 지역 단위 호출은 원래 하루 50회 남짓이라 아껴 봐야 얻는 것이 없다.
 	 */
+	private static final Duration DESCRIPTION_TTL = Duration.ofHours(24);
+
 	private final TtlCache<Optional<PlaceDescription>> descriptionCache;
 
 	public KtoPlaceClient(KtoApiCaller caller, Clock clock) {
 		this.caller = caller;
 		this.cache = new RegionCache<>(clock);
 		this.detailCache = new TtlCache<>(clock, RegionCache.DEFAULT_TTL, DETAIL_CACHE_MAX);
-		this.descriptionCache = new TtlCache<>(clock, RegionCache.DEFAULT_TTL, DETAIL_CACHE_MAX);
+		this.descriptionCache = new TtlCache<>(clock, DESCRIPTION_TTL, DETAIL_CACHE_MAX);
 	}
 
 	/** 그 지역의 관광지 목록 전체. 캐시가 살아 있으면 호출하지 않는다. */
