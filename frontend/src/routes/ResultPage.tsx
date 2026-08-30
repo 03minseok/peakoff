@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
-import { ArrowRight } from '../components/icons'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
+import { BrandMark } from '../components/BrandMark'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { SaveCourseSheet } from '../components/SaveCourseSheet'
 import { useAuth } from '../state/authContext'
-import { LEVEL_SOLID } from '../components/levelStyles'
+import { LEVEL_DEEP, LEVEL_SOLID } from '../components/levelStyles'
 import {
   CARD_RAISED,
   NOTICE,
@@ -19,6 +19,7 @@ import { recallPlaces } from '../services/placeCache'
 import { useTrip } from '../state/tripContext'
 import type { CongestionLevel, CourseDiagnosis, DiagnosedSlot, Place } from '../types/api'
 import { formatCompactDate, formatKoreanDate } from '../utils/date'
+import { withJosa } from '../utils/josa'
 
 /**
  * 한적도가 실제로 매겨진 슬롯.
@@ -67,6 +68,24 @@ function diffCourses(before: CourseDiagnosis, after: CourseDiagnosis): Change[] 
 }
 
 /**
+ * 총점을 견주지 못한 쪽이 <b>왜</b> 비었는지 한 줄로 말한다.
+ *
+ * 두 사정을 구분한다. 점수가 <b>아예 없는 것</b>(밥집만 담은 코스)과 점수는 있으나
+ * <b>근거가 얇은 것</b>(관광지 셋 중 하나만 진단된 코스)은 다른 일이다.
+ * 하나로 뭉뚱그리면 "왜 점수가 안 나오나요"에 답할 수 없다.
+ *
+ * 문장형은 진단 화면에서 그대로 가져왔다 — 두 화면이 같은 사정을 다른 말로 설명하면
+ * 사용자는 다른 일이 벌어졌다고 읽는다.
+ */
+function gapReason(label: string, diagnosis: CourseDiagnosis): string {
+  // 라벨 뒤 조사도 받침에 맡긴다 — "원안은"과 "이 코스는"이 같은 자리에 들어온다
+  const subject = withJosa(label, '은/는')
+  return diagnosis.totalQuietness === null
+    ? `${subject} 예상 혼잡을 매길 수 있는 장소가 없어요.`
+    : `${subject} 관광지 ${diagnosis.forecastTargetCount}곳 중 ${diagnosis.diagnosedCount}곳만 예측 자료가 있어요.`
+}
+
+/**
  * 코스 한 벌을 일자별로 늘어놓는 열. 원안과 개선안이 같은 모양이어야
  * 두 열을 눈으로 맞대어 볼 수 있다.
  */
@@ -74,26 +93,47 @@ function CourseColumn({
   title,
   subtitle,
   score,
+  scoreLevel,
   diagnosis,
-  changedPlaceIds,
+  changes,
   highlighted,
 }: {
   title: string
   subtitle: string
   /** 총점. 진단된 칸이 하나도 없으면 null이다 */
   score: number | null
+  /**
+   * 총점의 등급. <b>숫자를 물들이는 색은 여기서만 나온다.</b>
+   *
+   * ⚠️ 예전에는 highlighted로 색을 골랐다 — 추천하는 쪽이면 초록, 아니면 핑크.
+   * 그러면 원안이 78(한적)인 사용자가 <b>붐빔 색으로 칠해진 78</b>을 바로 아래
+   * "한적" 배지와 나란히 보게 된다. 색과 글자가 서로를 부정한다.
+   */
+  scoreLevel: CongestionLevel | null
   diagnosis: CourseDiagnosis
-  /** 교체된 장소 ID. 개선안 열에서만 표시한다 */
-  changedPlaceIds?: string[]
+  /**
+   * 교체 내역. <b>개선안 열에서만 넘긴다.</b>
+   *
+   * 예전에는 장소 id 목록만 받아 "바뀐 줄인가"만 가렸다. 이제 <b>무엇을 대신해</b>
+   * 들어왔는지와 그때의 추천 근거까지 그 줄 아래에 펴야 해서, 자리(일차·순서)로 찾을 수
+   * 있는 내역 자체를 받는다 — 별도의 "변경 내역" 카드가 하던 일을 이 열이 이어받았다.
+   */
+  changes?: Change[]
   /** 추천하는 쪽. 테두리와 배경으로 한 겹 띄운다 */
   highlighted?: boolean
 }) {
   return (
     <div
+      /*
+        ⚠️ <b>opacity로 강약을 내지 않는다.</b> 예전에는 추천하지 않는 열에 opacity-85를
+        걸었는데, 그것은 카드 하나를 통째로 흐리는 둔기다 — 부제(5.02→3.74)와 혼잡 배지처럼
+        index.css에서 <b>개별로 조율해 둔 대비까지 함께 끌어내린다.</b>
+
+        추천하는 쪽은 이미 테두리·짙은 그림자·물든 머리를 셋이나 더 갖고 있어,
+        투명도를 빼도 어느 쪽이 결론인지는 그대로 읽힌다.
+      */
       className={`overflow-hidden rounded-card bg-surface ${
-        highlighted
-          ? 'border-quiet-soft shadow-raised border-[1.5px]'
-          : 'shadow-rest opacity-85'
+        highlighted ? 'border-quiet-soft shadow-raised border-[1.5px]' : 'shadow-rest'
       }`}
     >
       <div
@@ -102,19 +142,29 @@ function CourseColumn({
         }`}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-fg flex items-center gap-2 text-[15px] font-bold">
-            {title}
+          {/*
+            <b>span이 아니라 h2다.</b> 이 카드 둘이 화면의 본체인데 제목 개요
+            (h1 최종 비교 → h2 …)에서 통째로 빠져 있었다. 보조기기로 훑는 사람에게는
+            비교할 두 코스가 목차에 없는 것과 같다.
+          */}
+          {/*
+            배지를 제목 <b>밖에</b> 둔다. 안에 두었더니 이 카드의 접근 이름이
+            "개선안추천"으로 붙어 읽혔다 — 눈으로는 gap이 갈라 주지만
+            {@code textContent}에는 사이가 없다.
+          */}
+          <div className="flex items-center gap-2">
+            <h2 className="text-fg m-0 text-[15px] font-bold">{title}</h2>
             {highlighted && (
               <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
                 추천
               </span>
             )}
-          </span>
+          </div>
           <span className="text-hint text-[12.5px]">{subtitle}</span>
         </div>
         <span
           className={`flex-none font-mono text-[26px] leading-none font-semibold ${
-            score === null ? 'text-hint' : highlighted ? 'text-quiet-deep' : 'text-crowded-deep'
+            score === null || scoreLevel === null ? 'text-hint' : LEVEL_DEEP[scoreLevel]
           }`}
         >
           {/* 점수를 못 매긴 코스는 가운뎃점. 0을 쓰면 "최악"으로 읽힌다 */}
@@ -134,7 +184,11 @@ function CourseColumn({
                 Day {day} · {formatCompactDate(daySlots[0].visitDate)}
               </span>
               {daySlots.map((slot) => {
-                const changed = changedPlaceIds?.includes(slot.place.id) ?? false
+                // 자리(일차·순서)로 찾는다. 같은 장소가 두 번 담긴 코스에서도 어긋나지 않는다
+                const change =
+                  changes?.find((item) => item.day === slot.day && item.order === slot.order) ??
+                  null
+                const changed = change !== null
                 return (
                   <div
                     key={`${slot.day}-${slot.order}`}
@@ -186,7 +240,7 @@ function CourseColumn({
 }
 
 export function ResultPage() {
-  const { state } = useTrip()
+  const { state, markSaved } = useTrip()
   const plan = state.plan
 
   // 원안은 그때의 날짜로 진단해야 한다. 지금 날짜로 계산하면 날짜를 옮겨 얻은 개선이
@@ -205,8 +259,46 @@ export function ResultPage() {
   const [showSavePrompt, setShowSavePrompt] = useState(
     () => (location.state as { resumeSave?: boolean } | null)?.resumeSave === true,
   )
-  /** 지도에 어느 일차를 그릴지. 'all'이면 전체 일정을 한 번에 */
-  const [mapDay, setMapDay] = useState<number | 'all'>('all')
+  /**
+   * 이번 화면에서 저장을 마쳤다면 그때의 이름.
+   *
+   * <b>{@link state.source}만으로는 가릴 수 없다.</b> 마이페이지의 "수정하기"로 들어오면
+   * 저장하기 전부터 source가 차 있어, 아직 아무것도 안 한 사람에게 "저장했어요"라고
+   * 말하게 된다. 방금 이 화면에서 벌어진 일만 따로 센다.
+   */
+  const [savedName, setSavedName] = useState<string | null>(null)
+
+  /**
+   * 지도에 어느 일차를 그릴지. 'all'이면 전체 일정을 한 번에.
+   *
+   * <b>Day 1로 연다.</b> 전체로 열면 일차가 뒤엉킨 선이 먼저 보여서, 처음 눈이 닿는
+   * 순간에 "어디를 도는지"가 가장 안 읽히는 그림이 나온다. 탭 순서도 Day 1이 첫 칸이라
+   * 열린 화면과 탭이 같은 자리를 가리킨다.
+   */
+  const [mapDay, setMapDay] = useState<number | 'all'>(1)
+
+  /**
+   * 좁은 화면에서 원안·개선안 중 <b>어느 쪽을 보고 있는지</b>. 0이 원안이다.
+   *
+   * 넓은 화면에서는 둘 다 나란히 서므로 이 값이 아무 일도 하지 않는다.
+   */
+  const [comparePage, setComparePage] = useState(0)
+
+  /**
+   * 끌고 있는 동안의 손가락 이동량(px). 놓으면 0으로 돌아간다.
+   *
+   * <b>0이 아닌 동안은 전환 애니메이션을 끈다.</b> 손가락을 따라오는 면에 transition을
+   * 걸어두면 손끝보다 한 박자 늦게 따라와, 종이를 미는 느낌이 아니라 고장 난 느낌이 된다.
+   */
+  const [dragOffset, setDragOffset] = useState(0)
+  /**
+   * 이번 제스처의 시작점과 <b>어느 축으로 정해졌는지</b>.
+   *
+   * ⚠️ 처음 몇 px은 축을 정하지 않고 지켜본다. 누르자마자 가로로 잡아버리면
+   * <b>세로로 넘기려던 스크롤</b>을 이 상자가 삼킨다 — 화면 대부분을 차지하는 카드라
+   * 그 순간 페이지가 스크롤되지 않는 것처럼 느껴진다.
+   */
+  const dragRef = useRef<{ x: number; y: number; axis: 'none' | 'x' | 'y' } | null>(null)
 
   /*
     지도에 그릴 경로. 일차를 고르면 그 하루만 넘긴다.
@@ -254,6 +346,8 @@ export function ResultPage() {
     return <Navigate to="/course" replace />
   }
 
+  const hasError = original.phase === 'error' || improved.phase === 'error'
+
   const beforeDiagnosis = currentDiagnosis(original)
   const afterDiagnosis = currentDiagnosis(improved)
   const ready = beforeDiagnosis !== null && afterDiagnosis !== null
@@ -282,7 +376,16 @@ export function ResultPage() {
     이 화면은 발표에서 가리킬 자리라, 설명할 수 없는 숫자를 세워 둘 수 없다.
   */
   const comparable = showBefore && showAfter && beforeTotal !== null && afterTotal !== null
-  const gain = comparable ? afterTotal - beforeTotal : 0
+  /*
+    ⚠️ <b>견주지 않기로 했으면 0도 쓰지 않는다.</b>
+
+    예전에는 여기가 0이었다. 그러면 바로 위에서 "근거가 얇아 견줄 수 없다"고 판단해 놓고,
+    아래 헤드라인이 22px 굵은 글씨로 <b>"총점은 같아요"</b>라고 말하고 타일에 <b>0</b>이 찍혔다 —
+    거부한 등식을 화면이 그대로 주장한 셈이다. 경주 코스의 41.7%가 이 대역이라 드문 길도 아니다.
+
+    없는 값은 null로 두고, 문장과 타일이 각자 비켜간다.
+  */
+  const gain = comparable ? afterTotal - beforeTotal : null
 
   // 날짜 이동과 장소 교체는 서로 다른 회피 경로다. 무엇을 해서 나아졌는지
   // 구분해 보여줘야 "왜 좋아졌는지"가 화면에 남는다.
@@ -319,7 +422,7 @@ export function ResultPage() {
     무엇을 해서 나아졌는지 요약한다.
 
     "교체"가 아니라 "발견"이다. 사용자가 한 일은 붐비는 곳을 무른 것이 아니라
-    <b>다른 곳을 찾아낸 것</b>이고, 그 자리로 데려간 버튼 이름도 "다른 곳 발견하기"였다.
+    <b>다른 곳을 찾아낸 것</b>이고, 그 자리로 데려간 버튼 이름도 "새로운 곳 발견하기"다.
     결과 화면에서만 다른 말을 쓰면 방금 한 일이 다른 일처럼 읽힌다.
 
     ⚠️ 여기서도 "더 좋은 곳"이라고 하지 않는다. {@link diffCourses}가 세는 것은
@@ -331,24 +434,226 @@ export function ResultPage() {
     changes.length > 0 ? `다른 곳 ${changes.length}곳 발견` : null,
   ].filter(Boolean)
 
+  /*
+    총점을 견주지 못한 <b>이유</b>. 어느 쪽이 왜 비었는지를 그대로 편다.
+
+    이 문단이 히어로의 가운뎃점(·)까지 함께 설명한다 — 44px 숫자 자리에 홀로 선 점은
+    "자료 없음"이 아니라 <b>그리다 만 화면</b>으로 읽힌다. 진단 화면은 자기 점을
+    설명 문단과 짝지어 두는데(DiagnosisPage의 !showTotal 갈래) 이 화면만 맨점을 찍고 있었다.
+  */
+  const comparisonGap =
+    !comparable && beforeDiagnosis !== null && afterDiagnosis !== null
+      ? /*
+          ⚠️ <b>바꾼 것이 없으면 두 코스는 같은 코스다.</b> 그때 원안과 개선안을
+          따로 설명하면 <b>같은 문장이 두 번</b> 나가고, 읽는 사람은 서로 다른 두 사정이
+          있다고 읽는다. 한 번만 말하고 이름도 나누지 않는다.
+        */
+        summary.length === 0
+        ? gapReason('이 코스', afterDiagnosis)
+        : [
+            showBefore ? null : gapReason('원안', beforeDiagnosis),
+            showAfter ? null : gapReason('개선안', afterDiagnosis),
+          ]
+            .filter(Boolean)
+            .join('\n')
+      : null
+
+  /*
+    바꾼 것이 없는 사용자에게 주는 다음 걸음.
+
+    ⚠️ <b>붐비는 곳이 있을 때만 대안을 권한다.</b> 한 곳도 붐비지 않는 코스에
+    "붐비는 장소의 대안을 확인해 보세요"라고 하면 <b>없는 문제를 고치러</b> 보내는 셈이고,
+    예측 자료가 아예 없어 0인 코스에는 있지도 않은 대안을 찾아오라는 말이 된다.
+  */
+  const noChangeHint =
+    crowdedAfter > 0 ? '진단 화면에서 붐비는 곳의 대안을 볼 수 있어요.' : null
+
+  /*
+    <b>축하해도 되는 순간인가.</b>
+
+    두 조건을 다 넘어야 한다 — 견줄 수 있어야 하고(gain !== null), 실제로 올라야 한다.
+    내려갔거나 못 견준 코스에도 PEAK OFF 칩과 "분산에 기여했어요"를 붙이면,
+    이 화면의 모든 문장이 <b>결과와 무관하게 늘 하는 말</b>로 읽힌다.
+  */
+  const celebrating = gain !== null && gain > 0
+
+  /*
+    새로 찾아낸 곳의 이름. 제목이 "몇 곳"을 말하고 이 줄이 "어디"를 말한다.
+
+    개수를 세어 자르지 않고 <b>줄 수로 자른다</b>(line-clamp-2). 이름 길이가
+    "첨성대"부터 "경주 양동마을 [유네스코 세계유산]"까지 제각각이라 개수로 자르면
+    어떤 코스는 한 줄이 남고 어떤 코스는 넉 줄이 된다. 몇 곳인지는 제목이 이미 말하므로
+    여기서 잘려도 잃는 정보가 없다.
+  */
+  const discovered = changes.map((change) => change.after.place.name)
+
+  /*
+    히어로의 두 문장. 갈래가 넷이라 JSX 안에 삼항으로 겹쳐 두면 어느 조건이
+    어느 문장으로 가는지 읽히지 않는다 — 방금 고친 버그가 그 겹침 속에 숨어 있었다.
+
+    ⚠️ <b>못 견줬다는 사실이 가장 먼저다.</b> 바꾼 것이 있든 없든, 이 화면이
+    가장 먼저 알려야 할 것은 "두 숫자를 맞대지 않았다"는 것이다.
+  */
+  /*
+    ⚠️ <b>나아진 경우에만 사용자가 한 일을 제목으로 삼는다.</b>
+
+    예전 제목은 "다른 곳 2곳 발견으로 한적 지수가 8 올랐어요"였다. 개선폭(+8)은 이제
+    <b>바로 아래 타일이 "69 (+8)"로 말하므로</b> 제목에서 뺐다 — 같은 수를 두 번 적으면
+    제목이 요약이 아니라 반복이 된다.
+
+    날짜만 옮긴 경우를 따로 가른다. 장소를 하나도 안 바꿨는데 "새로운 여행지를 0곳
+    발견했어요"라고 할 수는 없다 — 그 사람이 한 일은 <b>날짜를 옮긴 것</b>이다.
+
+    총점이 내려갔거나 견주지 못한 갈래는 그대로 둔다. 그쪽에서 축하 문장을 쓰면
+    제목이 결과와 무관하게 늘 하는 말이 된다.
+  */
+  const heroHeadline =
+    summary.length === 0
+      ? '원안 그대로입니다'
+      : gain === null
+        ? `${summary.join(' · ')} · 총점은 견주지 않았어요`
+        : gain > 0
+          ? changes.length > 0
+            ? `새로운 여행지를 ${changes.length}곳 발견했어요!`
+            : '더 한적한 날짜를 찾았어요!'
+          : `${summary.join(' · ')} · 총점은 ${gain === 0 ? '같아요' : `${Math.abs(gain)} 내려갔어요`}`
+
+  /*
+    히어로 본문. <b>화면이 이미 말한 것은 다시 말하지 않는다.</b>
+
+    예전에는 "붐빌 것으로 보이는 곳이 3곳에서 0곳으로 줄었어요"와 "두 총점 모두 예상
+    혼잡을 매긴 칸들의 평균이에요"가 여기 있었다. 둘 다 걷어냈다 —
+    앞엣것은 바로 아래 <b>"붐비는 곳 3 → 0" 타일이 같은 말</b>을 하고,
+    뒤엣것은 개선폭을 여러 줄 늘어놓던 "변경 내역"이 사라지면서
+    <b>더할 숫자가 화면에 없어져</b> 미리 답할 산수 자체가 없어졌다.
+
+    남는 것은 <b>화면의 다른 것으로는 알 수 없는 말</b>뿐이다 —
+    왜 못 견줬는지, 다음에 무엇을 할 수 있는지, 그리고 이 서비스가 무엇을 했는지.
+  */
+  const heroBody =
+    comparisonGap !== null
+      ? [
+          comparisonGap,
+          '그래서 두 총점은 견주지 않았어요.',
+          // 바꾼 것도 없고 견주지도 못했으면 여기서 할 일이 없다. 나갈 길을 함께 준다.
+          summary.length === 0 ? noChangeHint : null,
+        ]
+          .filter(Boolean)
+          .join('\n')
+      : summary.length === 0
+        ? ['바꾼 곳이 없어요.', noChangeHint].filter(Boolean).join('\n')
+        : /*
+            이 서비스가 존재하는 이유를 한 번 말한다.
+
+            ⚠️ <b>실제로 다른 곳을 고른 사람에게만 말한다.</b> 아무것도 안 바꾼 코스에
+            "분산에 기여했어요"라고 하면 하지 않은 일을 했다고 말하는 것이다.
+            이 서비스가 심사받는 지점(오버투어리즘 완화)이라 더더욱 정직해야 한다.
+          */
+          celebrating && changes.length > 0
+          ? '붐비는 곳 대신 새로운 곳을 골라, 관광 수요 분산에 한 걸음 보탰어요.'
+          : ''
+
+  /*
+    ⚠️ <b>지수 변화 타일은 견줬을 때만 선다.</b> 못 견줬는데 0을 찍으면
+    "변화 없음"이라는 없는 사실을 숫자로 주장하게 된다.
+
+    칸이 셋에서 둘로 줄어도 남은 둘은 그대로 참이다 — 교체 수와 붐비는 곳 수는
+    총점이 아니라 <b>칸별 등급</b>에서 오므로 총점을 못 매긴 코스에서도 셀 수 있다.
+  */
+  /*
+    ⚠️ <b>지수 변화에 한적 색을 쓰는 것은 올랐을 때뿐이다.</b> 예전에는 부호와 상관없이
+    늘 quiet-soft였다 — 총점이 내려간 코스에서 "-6"이 <b>한적 색</b>으로 칠해졌다.
+    히어로의 두 숫자와 같은 병이다.
+
+    내려간 값은 붐빔 색으로 칠하지 않고 흰색으로 둔다. crowded-soft는 이 타일 배경
+    (bg-white/7)에서 3.86:1이라 17px 글자를 받지 못한다 — 배경과 글자색은 짝으로만 쓰고,
+    짝이 기준을 못 넘으면 색을 쓰지 않는다. 방향은 부호와 헤드라인이 이미 말한다.
+  */
+  /*
+    첫 칸이 <b>이 코스의 한적 지수와 그 변화</b>를 한꺼번에 말한다 — "69 (+8)".
+
+    예전에는 개선폭만("+8") 적고, 69라는 값은 히어로 한가운데 76px 숫자로 따로 세워
+    두었다. 그런데 두 수는 <b>한 문장</b>이다 — "얼마나 한적한 코스가 되었나"에 답하려면
+    도착점과 이동폭이 같이 있어야 하고, 떨어뜨려 놓으면 화면이 총점을 세 번 말하게 된다.
+
+    ⚠️ <b>값에 색을 칠하지 않는다.</b> 69는 등급(보통)의 값이고 (+8)은 방향의 값이라
+    한 칸에서 색이 갈려야 하는데, 17px 안에서 두 색을 쓰면 어느 쪽이 어느 뜻인지
+    읽히지 않는다. 등급은 위의 배지가, 방향은 부호가 이미 말한다.
+
+    <p>보여줄 수 없는 총점이면 칸 자체가 없다. {@code '·'}를 찍어두면 "아직 안 온 값"으로
+    읽히고, 0을 찍으면 없는 사실을 주장하게 된다.
+  */
+  const heroStats: { label: string; value: string; delta?: string; deltaTone?: string }[] = [
+    ...(showAfter && afterTotal !== null
+      ? [
+          {
+            label: '한적 지수',
+            value: `${afterTotal}`,
+            /*
+              <b>도착점과 이동폭을 크기로 가른다.</b> 한 문자열로 붙여 "62 (+60)"이라고
+              쓰니 좁은 칸에서 두 줄로 접혔다. 큰 글씨는 <b>지금 이 코스가 얼마나
+              한적한가</b>, 작은 글씨는 <b>얼마나 옮겨왔나</b>다 — 크기가 이미 둘을
+              구분하므로 색은 방향에만 쓴다.
+            */
+            // 변화가 0이면 적지 않는다. "(0)"은 뜻을 더하지 않고 자리만 차지한다
+            delta:
+              gain === null || gain === 0 ? undefined : `(${gain > 0 ? '+' : ''}${gain})`,
+            deltaTone: gain !== null && gain > 0 ? 'text-quiet-soft' : 'text-white/70',
+          },
+        ]
+      : []),
+    { label: '교체한 장소', value: `${changes.length}곳` },
+    { label: '붐비는 곳', value: `${crowdedBefore} → ${crowdedAfter}` },
+  ]
+
   return (
     <div className="flex flex-col gap-4.5">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-fg text-xl font-bold tracking-tight">최종 비교</h1>
-        <Link to="/diagnosis" className="text-muted text-[13px] font-medium">
-          진단 결과로
-        </Link>
-      </header>
+      {/*
+        <b>머리글을 걷어냈다.</b> "최종 비교"라는 제목과 "진단 결과로" 링크가 있었다.
 
-      {(original.phase === 'error' || improved.phase === 'error') && (
-        <p className={`${NOTICE} text-crowded-deep text-sm`}>
+        <ul>
+          <li>제목은 <b>아래 히어로가 이미 더 잘 말한다.</b> 작은 회색 글씨로 화면 이름을
+              한 번 대고, 바로 밑에서 큰 글씨로 결과를 말하면 같은 말을 두 번 하는 셈이다.
+              이제 히어로의 문장이 h1을 맡는다 — 제목이 사라진 게 아니라 <b>커졌다</b>
+          <li>"진단 결과로"는 <b>아래 "돌아가기" 버튼과 같은 곳으로 간다.</b> 같은 일을 하는
+              조작이 화면 두 곳에 있으면 어느 쪽이 진짜인지 흔들린다 —
+              진단 화면이 같은 이유로 이미 걷어낸 중복이다
+        </ul>
+      */}
+      {/*
+        ⚠️ <b>살아 있는 영역은 화면에 계속 있어야 한다.</b>
+
+        나타났다 사라지는 문구에 role만 붙이면 그 문구가 <b>사라질 때</b>는 아무 말도 못 한다 —
+        "계산하는 중"은 알려지고 <b>결과가 도착했다는 사실은 알려지지 않는다.</b>
+        이 화면은 로딩 문구 한 줄에서 히어로·두 열·지도로 통째로 바뀌는데,
+        그 전환이 보조기기에 한 번도 전해지지 않고 있었다.
+
+        오류는 여기서 말하지 않는다. 아래에서 role="alert"로 따로 끊고 들어간다 —
+        같은 사실을 두 영역이 말하면 두 번 읽힌다.
+      */}
+      <p className="sr-only" role="status">
+        {hasError ? '' : ready ? '비교 결과가 준비됐어요.' : '결과를 계산하는 중입니다.'}
+      </p>
+
+      {/*
+        ⚠️ <b>오류와 로딩은 함께 뜰 수 없다.</b> 오류가 나면 진단이 없어 ready도 false라,
+        "결과를 불러오지 못했습니다"와 "결과를 계산하는 중…"이 <b>나란히 찍혔다</b> —
+        실패했다는 말과 아직 하는 중이라는 말이 같은 화면에 서 있었다.
+
+        오류만 role="alert"다. 하던 일을 끊고 알려야 하는 유일한 소식이라서다 —
+        기다림과 도착은 위의 status 영역이 끼어들지 않고 전한다.
+      */}
+      {hasError ? (
+        <p className={`${NOTICE} text-crowded-deep text-sm`} role="alert">
           결과를 불러오지 못했습니다.
           <br />
           잠시 후 다시 시도해 주세요.
         </p>
+      ) : (
+        !ready && (
+          <p className="text-[13px]">결과를 계산하는 중…</p>
+        )
       )}
-
-      {!ready && <p className="text-[13px]">결과를 계산하는 중…</p>}
 
       {ready && (
         <>
@@ -357,208 +662,306 @@ export function ResultPage() {
             주변 정보를 걷어냈다. 개선안 숫자를 더 크게 두는 것은 강조가 아니라
             "이쪽이 결론"이라는 방향 표시다.
           */}
-          <section className="bg-fg rounded-card relative flex flex-col gap-5 overflow-hidden px-5 py-7 text-white lg:flex-row lg:items-center lg:gap-11 lg:px-10 lg:py-9">
+          {/*
+            이 화면의 결론이 서는 자리. <b>도착의 순간</b>이다.
+
+            예전에는 숫자 둘을 왼쪽에, 글을 오른쪽에 놓은 대시보드형이었다. 지금은
+            가운데로 모아 <b>한 장의 소식</b>으로 읽히게 했다 — 사용자가 한 일은 지표를
+            조회한 것이 아니라 붐빔을 비껴가 다른 곳을 찾아낸 것이고, 화면도 그 말을 한다.
+
+            ⚠️ <b>축하는 실제로 나아졌을 때만 한다.</b> PEAK OFF 칩과 마무리 문장은
+            {@code gain > 0}에서만 선다. 총점이 내려갔거나 견주지 못한 코스에까지
+            같은 얼굴을 하면, 이 화면의 모든 문장이 장식으로 읽힌다.
+          */}
+          <section className="bg-fg rounded-card relative overflow-hidden px-5 py-6 text-white lg:px-10 lg:py-8">
             {/*
               글로우가 틸 하나뿐인 것은 장식이 아니라 결론이다 — 이 카드가 말하는 것이
               "한적한 쪽으로 옮겨왔다"이고, 틸이 그 방향(브랜드이자 한적)의 색이다.
               홈 갈림길 카드에는 핑크(붐빔)가 함께 있지만, 여기는 이미 도착한 자리라 핑크가 없다.
             */}
             <div
-              className="absolute -top-20 -right-22 h-85 w-85 rounded-full bg-[rgb(63_193_201/0.13)]"
+              className="absolute -top-20 -right-20 h-72 w-72 rounded-full bg-[rgb(63_193_201/0.13)]"
               aria-hidden="true"
             />
 
-            <div className="relative flex items-center justify-center gap-6 lg:gap-7">
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-[12.5px] font-medium text-white/50">원안</span>
-                <span className="text-crowded-soft font-mono text-[44px] leading-[0.9] font-semibold tracking-[-0.03em] lg:text-[68px]">
-                  {showBefore ? beforeDiagnosis.totalQuietness : '·'}
+            <div className="relative mx-auto flex max-w-[520px] flex-col items-center gap-3.5 text-center">
+              {/*
+                <b>브랜드 마크가 직접 축하한다.</b> 이모지를 쓰지 않은 이유:
+                이 서비스에는 이미 "봉우리에서 한 칸 비껴간 조각"이라는 그림이 있고,
+                그것이 바로 <b>지금 사용자가 한 일</b>이다. 다른 서비스도 쓸 수 있는 기호와
+                달리, 이 마크는 이 순간을 위해 그려진 것이다.
+              */}
+              {celebrating && (
+                <span className="rounded-chip flex items-center gap-2 bg-white/10 py-1.5 pr-3.5 pl-2.5 text-[13px] font-bold tracking-[0.02em]">
+                  <BrandMark tone="dark" size={16} />
+                  PEAK OFF 성공!
                 </span>
-                {showBefore && beforeDiagnosis.totalLevel !== null && beforeDiagnosis.totalLevelLabel !== null && (
-                  <CongestionBadge
-                    level={beforeDiagnosis.totalLevel}
-                    label={beforeDiagnosis.totalLevelLabel}
-                    size="sm"
-                  />
+              )}
+
+              <div className="flex flex-col gap-2.5">
+                {/*
+                  화면의 h1이다. 위에 있던 "최종 비교"를 대신한다 —
+                  화면 이름을 대는 것보다 결과를 말하는 편이 제목으로 낫다.
+                */}
+                {/*
+                  break-keep: 한국어는 기본값에서 <b>단어 한가운데도 끊긴다.</b>
+                  "보탰어요"가 "보 / 탰어요"로 갈리는 식이라, 큰 글씨일수록 눈에 띈다.
+                  ⚠️ 이 저장소는 아직 전역으로 걸지 않았다 — 여기서만 켠다.
+                */}
+                <h1 className="m-0 text-[22px] leading-[1.3] font-bold tracking-[-0.025em] break-keep text-pretty lg:text-[27px]">
+                  {heroHeadline}
+                </h1>
+
+                {celebrating && discovered.length > 0 && (
+                  <p className="text-quiet-soft m-0 line-clamp-2 text-[14px] leading-[1.5] font-semibold break-keep lg:text-[15px]">
+                    ✨ {discovered.join(', ')}
+                  </p>
                 )}
               </div>
+              {heroBody !== '' && (
+                <p className="m-0 max-w-[440px] text-[14px] leading-[1.7] whitespace-pre-line break-keep text-white/70 text-pretty lg:text-[14.5px]">
+                  {heroBody}
+                </p>
+              )}
 
-              <ArrowRight size={26} className="mt-3.5 text-white/30" />
-
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-[12.5px] font-medium text-white/60">개선안</span>
-                <span className="text-quiet-soft font-mono text-[54px] leading-[0.9] font-semibold tracking-[-0.03em] lg:text-[88px]">
-                  {showAfter ? afterDiagnosis.totalQuietness : '·'}
-                </span>
-                {showAfter && afterDiagnosis.totalLevel !== null && afterDiagnosis.totalLevelLabel !== null && (
-                  <CongestionBadge
-                    level={afterDiagnosis.totalLevel}
-                    label={afterDiagnosis.totalLevelLabel}
-                    size="sm"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="relative flex flex-1 flex-col gap-3.5">
-              <h2 className="m-0 text-[22px] leading-[1.3] font-bold tracking-[-0.025em] text-pretty lg:text-[28px]">
-                {summary.length === 0
-                  ? '원안 그대로입니다'
-                  : gain > 0
-                    ? `${summary.join(' · ')}로 한적 지수가 ${gain} 올랐어요`
-                    : `${summary.join(' · ')} · 총점은 ${gain === 0 ? '같아요' : `${Math.abs(gain)} 내려갔어요`}`}
-              </h2>
-              <p className="m-0 max-w-[440px] text-[14px] leading-[1.7] whitespace-pre-line text-white/60 text-pretty lg:text-[14.5px]">
-                {summary.length === 0
-                  ? '바꾼 곳이 없어요.\n진단 화면에서 붐비는 장소의 대안을 확인해 보세요.'
-                  : `원안대로면 ${crowdedBefore}곳에서 인파와 대기를 만날 가능성이 높았어요.
-개선안은 동선과 테마를 유지하면서 붐비는 곳을 ${crowdedAfter}곳으로 줄였습니다.`}
-              </p>
-              <div className="flex gap-2.5 pt-1">
-                {[
-                  { label: '지수 변화', value: gain > 0 ? `+${gain}` : `${gain}`, accent: true },
-                  { label: '교체한 장소', value: `${changes.length}곳`, accent: false },
-                  {
-                    label: '붐비는 곳',
-                    value: `${crowdedBefore} → ${crowdedAfter}`,
-                    accent: false,
-                  },
-                ].map((stat) => (
+              <div className="flex w-full gap-2.5">
+                {heroStats.map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-ui flex min-w-0 flex-1 flex-col gap-0.5 bg-white/7 px-3.5 py-3 lg:flex-none lg:min-w-26"
+                    className="rounded-ui flex min-w-0 flex-1 flex-col items-center gap-0.5 bg-white/7 px-2.5 py-3"
                   >
-                    <span className="text-[11.5px] text-white/50">{stat.label}</span>
-                    <span
-                      className={`font-mono text-[17px] font-semibold lg:text-[19px] ${
-                        stat.accent ? 'text-quiet-soft' : 'text-white'
-                      }`}
-                    >
-                      {stat.value}
+                    <span className="text-[11.5px] text-white/70">{stat.label}</span>
+                    <span className="flex items-baseline gap-1 whitespace-nowrap">
+                      <span className="font-mono text-[17px] font-semibold lg:text-[19px]">
+                        {stat.value}
+                      </span>
+                      {stat.delta !== undefined && (
+                        <span className={`font-mono text-[12px] font-semibold ${stat.deltaTone}`}>
+                          {stat.delta}
+                        </span>
+                      )}
                     </span>
                   </div>
                 ))}
               </div>
+
+              {/*
+                <b>출처를 밝힌다.</b> 진단 화면은 숫자 옆에 이 줄을 달고 있는데
+                (DiagnosisPage의 "OO 기준 · 공공데이터 기반 예측") 정작 발표에서 가리킬
+                이 화면에만 없었다 — 심사위원의 "어떤 데이터입니까"에 답할 글자가
+                화면에 한 자도 없던 셈이다.
+
+                <p>공사 이름을 쓰지 않는다(절대 규칙 4). 그리고 "실시간"이 아니라
+                <b>"예측"</b>이다 — 이 데이터는 통계·예측값이다.
+
+                <p>날짜를 옮겼으면 두 날짜를 함께 적는다. 한쪽만 적으면 원안 점수가
+                <b>다른 날의 기준</b>으로 계산된 값이라는 사실이 사라진다.
+              */}
+              <p className="m-0 text-[11.5px] leading-[1.5] text-white/70">
+                {movedDate
+                  ? `원안 ${formatKoreanDate(movedDate.from)} · 개선안 ${formatKoreanDate(movedDate.to)} 기준`
+                  : `${formatKoreanDate(plan.startDate)} 기준`}
+                {' · 공공데이터 기반 예측'}
+              </p>
             </div>
           </section>
 
           {/*
-            두 코스를 나란히 놓는다. 폭이 좁으면 위아래로 쌓이는데, 그때도
-            원안이 먼저 오도록 순서를 유지해야 "무엇이 어떻게 바뀌었는지"가 읽힌다.
+            두 코스를 맞대는 자리.
+
+            <b>넓은 화면은 나란히, 좁은 화면은 번갈아.</b> 위아래로 쌓으면 두 코스가
+            한 화면에 함께 서지 못해, 맞대어 보라고 만든 화면에서 <b>스크롤로 기억해
+            비교</b>하게 된다. 스위치로 갈아끼우면 두 열이 <b>같은 자리</b>에 뜨므로
+            바뀐 줄이 눈에 그대로 남는다.
+
+            <p>⚠️ <b>가로로 미는 "상자"로 만들지 않는다.</b> 한때 스냅 캐러셀이었다 —
+            {@code overflow-x-auto} + {@code overscroll-x-contain}으로. 규칙이 허용하는
+            예외 처리라고 보았지만, <b>실물 아이폰에서 페이지가 통째로 옆으로 밀렸다.</b>
+            끝까지 민 제스처가 페이지로 이어지는 그 문제이고, {@code overscroll-behavior-x}는
+            iOS 사파리에서 그것을 막아주지 못했다. body의 {@code overflow-x: clip}도
+            소용없었다 — 넘쳐서가 아니라 <b>밀어서</b> 생기는 일이라 그렇다.
+
+            <p>그래서 조작을 둘로 갈랐다. <b>스위치</b>가 어디를 보고 있는지 말하고 눌러서도
+            넘기게 하며, <b>끌기</b>는 아래 띠가 직접 받는다 — 스크롤 상자를 만드는 대신
+            손가락 이동량을 {@code translate}로 옮긴다. 브라우저가 맡는 가로 스크롤이
+            아예 없으므로 페이지로 넘어갈 제스처도 없다.
+
+            <p>스위치를 남겨 둔 이유: 끌기는 <b>화면에 보이지 않는 조작</b>이다.
+            홈의 "붐빌 것 / 한적할 것"과 같은 모양이라, 이 서비스에서
+            "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
+
+            <p>원안이 먼저다. 스위치 순서도, 넓은 화면의 왼쪽 자리도 —
+            "무엇이 어떻게 바뀌었는지"는 앞뒤가 있어야 읽힌다.
           */}
-          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-            <CourseColumn
-              title="원안"
-              subtitle="내가 처음 짠 코스"
-              score={showBefore ? beforeDiagnosis.totalQuietness : null}
-              diagnosis={beforeDiagnosis}
-            />
-            <CourseColumn
-              title="개선안"
-              subtitle={
-                changes.length > 0 ? `다른 곳 ${changes.length}곳 발견` : '더 한적한 코스'
-              }
-              score={showAfter ? afterDiagnosis.totalQuietness : null}
-              diagnosis={afterDiagnosis}
-              changedPlaceIds={changes.map((change) => change.after.place.id)}
-              highlighted
-            />
+          <div className="flex flex-col gap-3">
+            {/*
+              스위치. 고른 쪽이 흰 면으로 떠오른다. 홈과 같은 모양이라
+              이 서비스에서 "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
+
+              고른 쪽에 등급색을 칠하지 않는다. 아래 줄마다 이미 배지가 서 있는데
+              스위치까지 같은 색을 쓰면 "지금 고른 것"과 "얼마나 붐비는지"가 겹친다.
+            */}
+            <div className="bg-fill flex gap-1 rounded-[12px] p-1 lg:hidden">
+              {['원안', '개선안'].map((label, index) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setComparePage(index)}
+                  aria-pressed={comparePage === index}
+                  className={`flex-1 cursor-pointer rounded-[9px] py-1.75 text-[12.5px] font-semibold transition-colors ${
+                    comparePage === index ? 'bg-surface text-fg shadow-rest' : 'text-hint bg-transparent'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/*
+              두 열을 <b>가로로 이어 붙인 띠</b>를 놓고, 창만큼만 보여준다.
+              좁은 화면에서는 고른 쪽이 그 창에 들어와 서고, 넓은 화면에서는 띠를 풀어
+              둘을 나란히 세운다.
+
+              <p>⚠️ <b>스크롤 상자가 아니라 {@code transform}이다.</b> 이 구분이 이 코드의
+              전부다. {@code overflow-x-auto}로 만들면 브라우저가 가로 스크롤을 맡고,
+              끝까지 민 제스처가 페이지로 이어져 <b>아이폰에서 화면이 통째로 밀렸다</b> —
+              {@code overscroll-behavior-x}로도 막히지 않던 그 문제다. 여기서는 스크롤이
+              아예 없다. 손가락 이동량을 우리가 받아 {@code translate}로 옮길 뿐이라
+              페이지에 넘겨줄 스크롤 자체가 생기지 않는다.
+
+              <p>{@code touch-pan-y}가 짝이다. 세로는 브라우저에게 그대로 맡기고
+              <b>가로 제스처만</b> 우리가 가져온다 — 브라우저가 가로로 밀 일이 없어진다.
+
+              <p>감추는 쪽을 {@code hidden}으로 지우지 않는 이유: 창 밖에 서 있어야
+              끌어당길 때 <b>따라 들어온다.</b> 넘길 것이 옆에 있다는 사실 자체가
+              이 조작의 유일한 안내다.
+            */}
+            <div className="overflow-hidden lg:overflow-visible">
+              <div
+                className={`flex touch-pan-y items-start gap-0 select-none translate-x-[var(--pane-x)] lg:select-auto lg:grid lg:translate-x-0 lg:grid-cols-2 lg:gap-4 ${
+                  // 손가락을 따라오는 동안에는 전환을 끈다. 켜두면 손끝보다 늦게 따라온다
+                  dragOffset === 0 ? 'transition-transform duration-300 ease-out' : ''
+                } motion-reduce:transition-none`}
+                /*
+                  ⚠️ 옮기는 값을 <b>인라인 style의 transform으로 직접 주지 않는다.</b>
+                  인라인이 클래스를 이기므로 넓은 화면의 {@code lg:translate-x-0}이
+                  무력해져, 두 열이 나란히 서야 할 자리에서 한 열이 밖으로 밀려난다.
+                  변수만 인라인으로 넘기고 <b>쓸지 말지는 클래스가 정한다.</b>
+
+                  <p>모바일에서 열 사이 간격이 0인 것도 같은 이유다 — 간격이 있으면
+                  100%만 옮겨서는 다음 열이 그 폭만큼 어긋나 선다.
+                */
+                style={
+                  { '--pane-x': `calc(${-comparePage * 100}% + ${dragOffset}px)` } as CSSProperties
+                }
+                onPointerDown={(event) => {
+                  // 마우스 오른쪽 버튼·보조 포인터는 제스처가 아니다
+                  if (!event.isPrimary) {
+                    return
+                  }
+                  dragRef.current = { x: event.clientX, y: event.clientY, axis: 'none' }
+                }}
+                onPointerMove={(event) => {
+                  const drag = dragRef.current
+                  if (drag === null) {
+                    return
+                  }
+                  const dx = event.clientX - drag.x
+                  const dy = event.clientY - drag.y
+                  if (drag.axis === 'none') {
+                    // 8px을 넘어선 쪽으로 축을 정한다. 그 전에는 아무 일도 하지 않는다
+                    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+                      return
+                    }
+                    drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+                    if (drag.axis === 'y') {
+                      // 세로로 정해졌으면 이 제스처는 끝까지 브라우저 것이다
+                      dragRef.current = null
+                      return
+                    }
+                    // 손가락이 카드 밖으로 나가도 계속 받는다
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                  }
+                  /*
+                    끝 장에서 더 끌면 <b>1/4만 따라온다.</b> 아예 안 움직이면 고장으로,
+                    그대로 따라오면 뒤에 한 장 더 있는 것으로 읽힌다. 저항이 "여기가 끝"을 말한다.
+                  */
+                  const atEdge = (comparePage === 0 && dx > 0) || (comparePage === 1 && dx < 0)
+                  setDragOffset(atEdge ? dx / 4 : dx)
+                }}
+                onPointerUp={(event) => {
+                  const drag = dragRef.current
+                  dragRef.current = null
+                  if (drag === null || drag.axis !== 'x') {
+                    return
+                  }
+                  /*
+                    창 너비의 1/5을 넘겨야 장이 넘어간다. 절반을 요구하면 한 손으로는
+                    닿지 않고, 더 짧게 잡으면 세로로 훑다 스친 손가락에도 넘어간다.
+                  */
+                  const width = event.currentTarget.clientWidth
+                  const moved = event.clientX - drag.x
+                  if (Math.abs(moved) > width / 5) {
+                    setComparePage(moved < 0 ? 1 : 0)
+                  }
+                  setDragOffset(0)
+                }}
+                onPointerCancel={() => {
+                  dragRef.current = null
+                  setDragOffset(0)
+                }}
+              >
+                <div className="w-full shrink-0">
+                  <CourseColumn
+                    title="원안"
+                    subtitle="내가 처음 짠 코스"
+                    score={showBefore ? beforeDiagnosis.totalQuietness : null}
+                    scoreLevel={beforeDiagnosis.totalLevel}
+                    diagnosis={beforeDiagnosis}
+                  />
+                </div>
+                <div className="w-full shrink-0">
+                  <CourseColumn
+                    title="개선안"
+                    subtitle={
+                      /*
+                        ⚠️ 아무것도 안 바꾸면 이 열은 <b>원안과 글자 하나 다르지 않다.</b>
+                        그런데 부제가 "더 한적한 코스"라고 말하고 있었다 — 같은 코스를 두 번
+                        그려 놓고 한쪽만 더 한적하다고 부른 셈이다. 잰 것만 말한다.
+                      */
+                      changes.length > 0
+                        ? `다른 곳 ${changes.length}곳 발견`
+                        : movedDate
+                          ? '날짜를 옮긴 코스'
+                          : '원안과 같아요'
+                    }
+                    score={showAfter ? afterDiagnosis.totalQuietness : null}
+                    scoreLevel={afterDiagnosis.totalLevel}
+                    diagnosis={afterDiagnosis}
+                    changes={changes}
+                    /*
+                      바꾼 것이 하나도 없으면 두 열이 같은 코스다. 그때 한쪽에만 "추천" 배지를
+                      달면 <b>같은 것 둘 중 하나를 고르라</b>는 말이 된다. 권할 것이 있을 때만 선다.
+                    */
+                    highlighted={summary.length > 0}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/*
-            "무엇을 바꿨나(변경 내역)"와 "그래서 어디를 도나(최종 동선)"를 나란히 놓는다.
-            세로로 쌓으면 지도를 보는 동안 바꾼 목록이 화면 밖으로 나가, 둘을 번갈아
-            확인하려면 계속 스크롤해야 한다. 발표에서 함께 가리키게 되는 두 장이다.
+            지도가 이 자리를 <b>혼자 다 쓴다.</b>
 
-            변경 내역은 아무것도 안 바꾸면 통째로 사라진다. 그때 지도가 5칸 자리에
-            그대로 서 있으면 오른쪽 절반이 빈다 — 지도 폭을 그 유무에 맞춰 정한다.
+            예전에는 왼쪽에 "변경 내역", 오른쪽에 지도를 5:7로 나눠 놓았다. 그런데
+            변경 내역이 말하던 것(무엇을 무엇으로 바꿨나 · 왜 그곳인가)은 <b>바로 위 두 열이
+            이미 나란히 보여주고</b>, 근거는 개선안 열의 바뀐 줄 아래로 옮겼다.
+            같은 말을 세 번 하던 것을 두 번으로 줄이고, 남는 폭을 지도에 주었다.
+
+            <p>날짜 이동도 히어로 아래 출처 줄이 "원안 9월 5일 · 개선안 9월 8일 기준"으로
+            이미 말한다 — 따로 카드를 세울 이유가 없다.
           */}
-          <div className="flex flex-col gap-4.5 lg:grid lg:grid-cols-12 lg:items-start lg:gap-4">
-          {(movedDate || changes.length > 0) && (
-            <section className={`${CARD_RAISED} flex min-w-0 flex-col gap-3.5 p-4.5 lg:col-span-5`}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-fg text-[15px] font-semibold">변경 내역</h2>
-                <span className="text-hint text-[12.5px]">
-                  더 한적한 쪽으로 바꾼 것들이에요
-                </span>
-              </div>
-
-              <ul className="flex flex-col gap-2.5">
-                {movedDate && (
-                  <li className="border-line rounded-[18px] border bg-bg px-4 py-3.5">
-                    <p className="text-brand-deep m-0 mb-2 text-xs font-semibold">여행 날짜</p>
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <span className="text-muted text-[15px] line-through">
-                        {formatKoreanDate(movedDate.from)}
-                      </span>
-                      <ArrowRight size={15} className="text-line" />
-                      <span className="text-fg text-[15px] font-semibold">
-                        {formatKoreanDate(movedDate.to)}
-                      </span>
-                    </div>
-                  </li>
-                )}
-
-                {changes.map((change) => (
-                  <li
-                    key={`${change.day}-${change.order}`}
-                    className="border-line rounded-[18px] border bg-bg px-4 py-3.5"
-                  >
-                    {/*
-                      자리 표시와 상승폭을 윗줄로 올리고, 장소 이름은 아랫줄에서
-                      감싸이게 둔다. 한 줄에 다 넣으면 이름이 긴 관광지 두 개가
-                      만났을 때 좁은 화면에서 가로로 넘친다.
-                    */}
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-hint font-mono text-[11.5px] font-semibold">
-                        Day {change.day} · {change.order}번째
-                      </span>
-                      <span className="bg-brand-tint text-brand-deep flex-none rounded-full px-2.5 py-1 text-[12.5px] font-semibold">
-                        +{change.after.quietness - change.before.quietness}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span
-                          className={`h-2.25 w-2.25 flex-none rounded-full ${LEVEL_SOLID[change.before.level]}`}
-                          aria-hidden="true"
-                        />
-                        {/* 바뀌기 전 장소는 취소선으로 흐리게 — 무엇이 빠졌는지 한눈에 보이게 */}
-                        <span className="text-muted text-[15px] line-through">
-                          {change.before.place.name}
-                        </span>
-                        <span className="text-crowded-deep flex-none font-mono text-xs">
-                          {change.before.quietness}
-                        </span>
-                      </span>
-
-                      <ArrowRight size={15} className="text-line flex-none" />
-
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span
-                          className={`h-2.25 w-2.25 flex-none rounded-full ${LEVEL_SOLID[change.after.level]}`}
-                          aria-hidden="true"
-                        />
-                        <span className="text-fg text-[15px] font-semibold">
-                          {change.after.place.name}
-                        </span>
-                        <span className="text-brand-deep flex-none font-mono text-xs font-semibold">
-                          {change.after.quietness}
-                        </span>
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <section
-            className={`${CARD_RAISED} min-w-0 ${
-              movedDate || changes.length > 0 ? 'lg:col-span-7' : 'lg:col-span-12'
-            }`}
-          >
+          <section className={`${CARD_RAISED} min-w-0`}>
             <div className="flex flex-wrap items-center justify-between gap-2 px-4.5 pt-4 pb-3">
               <h2 className="text-fg text-[15px] font-semibold">최종 동선</h2>
 
@@ -585,8 +988,15 @@ export function ResultPage() {
                         <button
                           key={tab}
                           type="button"
+                          /*
+                            초점 링이 전역으로 brand-deep인데, <b>고른 탭은 배경이 잉크</b>라
+                            그 위에서 1.51:1이 된다 — 키보드로 훑을 때 <b>지금 어디에 있는지가
+                            하필 현재 탭에서만</b> 사라졌다. 어두운 면에서는 흰 링으로 바꾼다.
+                          */
                           className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
-                            active ? 'bg-fg text-white' : 'bg-bg text-hint hover:text-fg'
+                            active
+                              ? 'bg-fg text-white focus-visible:outline-white'
+                              : 'bg-bg text-hint hover:text-fg'
                           }`}
                           aria-pressed={active}
                           onClick={() => setMapDay(tab)}
@@ -622,7 +1032,6 @@ export function ResultPage() {
               </p>
             )}
           </section>
-          </div>
 
           {/*
             버튼 문구는 그 버튼이 실제로 하는 일만 말한다.
@@ -694,9 +1103,31 @@ export function ResultPage() {
                     : navigate('/login', { state: { from: location.pathname } })
                 }
               >
-                저장하기
+                {/*
+                  저장을 마치면 버튼이 <b>다음에 할 일</b>로 이름을 바꾼다.
+
+                  같은 자리에 "저장하기"가 그대로 서 있으면, 방금 저장한 사람에게
+                  아직 저장하지 않았다고 말하는 셈이다 — 실제로 그래서 한 번 더 눌렸고
+                  코스가 둘이 됐다. 이제 두 번째 누름은 <b>덮어쓰기</b>이고, 문구가 그것을 말한다.
+                */}
+                {savedName === null ? '저장하기' : '저장한 코스 고치기'}
               </button>
             </div>
+
+            {/*
+              저장이 끝났다는 사실이 <b>화면에 남는다.</b>
+
+              시트의 "계정에 저장했어요"는 닫으면 사라지고, 그 뒤에는 아무것도 바뀌지 않은
+              같은 화면만 남았다 — 방금 한 일의 흔적이 어디에도 없었다.
+              이름을 함께 적어, 마이페이지에서 무엇을 찾으면 되는지까지 말한다.
+            */}
+            {savedName !== null && (
+              <p className="text-quiet-deep m-0 text-center text-[12.5px] leading-[1.6] font-medium">
+                '{savedName}' 이름으로 저장했어요.
+                <br />
+                마이페이지에서 다시 열어 볼 수 있어요.
+              </p>
+            )}
 
             {/*
               <b>점수가 없어도 저장을 막지 않는다.</b> 예전에는 버튼을 잠갔는데, 그러면
@@ -778,11 +1209,22 @@ export function ResultPage() {
                   ⚠️ 조건 화면을 다시 지나면 source가 지워진다. 장소를 전부 버린 코스로
                   옛 것을 덮어쓰면 되돌릴 수 없기 때문이다.
                 */
-                if (state.source) {
-                  await updateCourse(state.source.courseId, body)
-                } else {
-                  await saveCourse(body)
-                }
+                const saved = state.source
+                  ? await updateCourse(state.source.courseId, body)
+                  : await saveCourse(body)
+
+                /*
+                  ⚠️ <b>저장하고 나면 그 코스를 고쳐 쓸 대상으로 찍는다.</b>
+
+                  이 줄이 없던 동안에는 새로 저장한 뒤에도 source가 계속 null이라,
+                  시트를 닫고 저장 버튼을 <b>한 번 더 누르면 같은 코스가 하나 더 생겼다.</b>
+                  화면에는 아무것도 바뀌지 않아 "안 눌렸나" 싶어 다시 누르기 쉬운 자리다.
+
+                  서버가 돌려준 값을 그대로 쓴다. 방금 보낸 이름·공개 여부를 우리가 다시
+                  조립하면 서버가 다듬은 것(앞뒤 공백 등)과 어긋난다.
+                */
+                markSaved({ courseId: saved.id, name: saved.name, isPublic: saved.isPublic })
+                setSavedName(saved.name)
               }}
             />
           )}

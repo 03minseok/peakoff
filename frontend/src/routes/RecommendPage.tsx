@@ -297,6 +297,67 @@ export function RecommendPage() {
             </li>
           ))}
         </ol>
+
+        {/*
+          지금까지 고른 답. <b>넓은 화면에서만</b> 편다.
+
+          <h3>왜 여기에 두는가</h3>
+          이 골격은 {@code /plan}에 맞춰 짰는데, 그쪽 폼은 카드 셋이라 좌우가 비슷한
+          높이에서 끝난다. 이 화면의 폼은 카드 넷에 제출까지라 <b>60%쯤 더 길어서</b>,
+          왼쪽은 순서도에서 끝나고 오른쪽만 계속 내려갔다 — 붙박이로 세워 둔 왼쪽 칸
+          아래로 400px 넘게 빈 채 따라다녔다.
+
+          ⚠️ 빈 자리를 <b>여백 조정으로</b> 메우려던 시도는 되돌렸다(2026-08-30).
+          칸을 화면 높이만큼 늘리고 위아래로 벌렸더니, 붙박이 칸이 자기 격자 행 끝에서
+          위로 밀려 <b>스크롤할 때 제목이 헤더 밑으로 잘렸다.</b> 붙박이는 자기 행을
+          벗어나 머무를 수 없다. 늘리는 대신 <b>담을 것을 둔다.</b>
+
+          <h3>같은 말을 두 번 하는 것이 아니다</h3>
+          이 칸이 값을 갖는 순간은 <b>스크롤한 뒤</b>다. 날짜 칸까지 내려가면 지역·템포·
+          민감도 카드는 이미 화면 밖이라, 제출 직전에 <b>네 답을 한자리에서 보는 곳이
+          여기뿐</b>이다. 폼 바닥의 요약 줄은 지역과 날짜만 말한다.
+
+          <h3>고르는 자리가 아니다</h3>
+          누를 수 없는 표시로 둔다. 여기서도 고치게 하면 같은 답을 두 곳에서 고르게 되고,
+          어느 쪽이 진짜인지 화면이 스스로 헷갈린다. 고치는 자리는 오른쪽 폼 하나다.
+        */}
+        {/*
+          ⚠️ 흰 면이다. 홈의 카드 안쪽 칸은 회백(bg-bg)으로 눌러 담지만 <b>거기는 흰 카드
+          안</b>이라 한 칸 내려가는 것이 경계가 된다. 이 화면의 바탕이 이미 회백이라
+          같은 색을 쓰면 <b>칸이 통째로 사라져</b> 네 줄이 허공에 뜬 글자로 보였다.
+          오른쪽 문항 카드와 같은 흰 면을 쓰면 "같은 화면의 같은 종류"로 묶인다.
+        */}
+        <div className={`${CARD} hidden flex-col gap-2.5 px-4 py-3.5 lg:flex`}>
+          <span className="text-fg text-[13px] font-bold tracking-[-0.01em]">
+            이렇게 찾아볼게요
+          </span>
+          <dl className="m-0 flex flex-col gap-2">
+            {[
+              { term: '지역', value: regionName },
+              {
+                term: '일정',
+                value: DENSITY_OPTIONS.find((o) => o.value === answers.density)?.label ?? '',
+              },
+              {
+                term: '혼잡',
+                value:
+                  SENSITIVITY_OPTIONS.find((o) => o.value === answers.sensitivity)?.label ?? '',
+              },
+              { term: '날짜', value: formatDateRange(startDate, nights) },
+            ].map((row) => (
+              <div key={row.term} className="flex items-baseline justify-between gap-3">
+                <dt className="text-hint m-0 flex-none text-[12.5px]">{row.term}</dt>
+                {/*
+                  값이 길면(“유명한 곳도 좋아요”) 줄바꿈 대신 오른쪽 끝에서 자른다.
+                  두 줄이 되면 네 줄짜리 표의 높이가 답에 따라 들쭉날쭉해진다.
+                */}
+                <dd className="text-fg m-0 min-w-0 truncate text-[13px] font-semibold">
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </section>
 
       <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>

@@ -587,24 +587,30 @@ export function DiagnosisPage() {
             className={`${CARD_RAISED} flex flex-col gap-3.5 p-4.5 lg:min-h-0 lg:overflow-y-auto`}
           >
             {/*
-              ■ 두 회피 경로가 같은 문형으로 선다 (TIME OFF · PLACE OFF)
+              ■ 두 회피 경로가 같은 모양으로 선다 (TIME OFF · PLACE OFF)
 
-                날  다른 날 둘러보기 — 일정은 그대로, 더 여유로운 날을 찾아드려요
-                곳  다른 곳 둘러보기 — 계획은 그대로, 더 여유로운 여행지를 찾아드려요
+                날  더 여유로운 날 발견하기
+                곳  새로운 곳 발견하기
 
-              ⚠️ "발견하기"였다가 "둘러보기"로 내렸다. 눌러도 발견되지 않고 <b>후보가 뜰
-              뿐</b>이라, 발견은 사용자가 하나를 고른 뒤에 일어난다. 결과 화면이 그때 가서
-              "다른 곳 N곳 발견"이라고 말한다 — 둘러보고 나서 발견하는 순서다.
+              둘 다 <b>"발견하기"</b>로 끝난다 (2026-08-30). "둘러보기"였다가 되돌린 것이고,
+              같은 자리에 나란히 서는 두 경로라 <b>모양이 갈리면 형제로 안 읽힌다.</b>
 
-              <p>부수 효과가 하나 더 있다. "둘러보기"는 부담이 없어 <b>더 눌러보게 된다.</b>
-              누를수록 다시 뽑히고, 그것이 곧 추천 분산(2차 오버투어리즘 방지)이다.
+              ⚠️ <b>갈리는 것은 동사가 아니라 꾸밈말이다.</b> 날짜는 "더 여유로운"이고
+              장소는 "새로운"이다. 이 비대칭에는 근거가 있다.
 
-              ⚠️ 장소 쪽만 "더 좋은"이 아니라 <b>"다른"</b>이다. 날짜는 앞뒤 7일을 전부
-              계산해 내려주므로 더 나은 날이 있으면 실제로 있다고 말할 수 있지만,
-              장소 대안은 <b>지금보다 한적하지 않은 후보도 섞여 나온다</b> — 추천도에는
-              동선 근접도도 들어가서 가까운 곳이 위로 올라오기도 한다. 그래서 목록에서도
-              한적도가 실제로 오른 1등에만 "추천" 표시를 붙인다. 버튼이 "더 좋은 곳"이라고
-              먼저 말해 버리면 열었을 때 그 약속이 지켜지지 않는 자리가 생긴다.
+              <p>날짜 쪽은 앞뒤 7일을 전부 계산해 내려주므로 <b>더 여유로운 날이 있으면
+              실제로 있다</b>고 말할 수 있다. "더 좋은"이 아니라 "더 여유로운"인 것은
+              한 걸음 더 정확해서다 — 우리가 실제로 재는 것은 <b>그 날의 한적도 하나</b>이고,
+              날씨도 축제도 보지 않는다. "좋은 날"은 재지 않은 것까지 약속하는 말이다.
+
+              <p>반면 장소 대안에는 지금보다 한적하지 않은 후보도 섞여 나온다(추천도에
+              동선 근접도가 들어가서 가까운 곳이 위로 올라오기도 한다). 그래서 장소 쪽은
+              <b>"더 여유로운"조차 쓸 수 없다</b> — 열었을 때 약속이 지켜지지 않는 자리가
+              생긴다. "새로운"은 그 자리에서도 참이다: 지금 담긴 곳이 아니라는 뜻일 뿐,
+              더 낫다는 약속이 아니다.
+
+              <p>얼마나 나은지는 <b>약속이 아니라 그 화면에서</b> 말한다. 대안 카드마다
+              구간 문구와 개선폭("지금보다 +27")이 붙어 있다.
 
               "더 한적한 날짜"는 <b>지표 이름</b>이지 사용자가 할 일이 아니었다. 이름을
               행동으로 바꾸면 두 경로가 한 짝으로 읽히고, 서비스가 파는 것이
@@ -618,7 +624,7 @@ export function DiagnosisPage() {
             {/*
               ■ 기능 이름을 화면에 세운다 — 이 화면에 <b>둘이 나란히</b> 있어야 뜻이 산다
 
-              PEAK OFF에서 갈라진 두 회피 경로다. TIME OFF는 날짜를 옮기고,
+              PEAKOFF에서 갈라진 두 회피 경로다. TIME OFF는 날짜를 옮기고,
               PLACE OFF는 장소를 바꾼다. 접수 때 낸 서비스 개요가 약속한
               "두 가지 회피 경로"가 이 화면 한 장으로 증명된다.
 
@@ -635,7 +641,7 @@ export function DiagnosisPage() {
               TIME OFF
             </span>
             <div className="-mt-2 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-fg text-[15px] font-semibold">다른 날 둘러보기</h2>
+              <h2 className="text-fg text-[15px] font-semibold">더 여유로운 날 발견하기</h2>
 
               {/*
                 좁은 화면에서만 접었다 펼친다.
@@ -658,7 +664,19 @@ export function DiagnosisPage() {
                 </button>
               ) : null}
 
-              <span className="text-hint hidden text-[12.5px] lg:inline">
+              {/*
+                ⚠️ {@code ml-auto}는 <b>줄이 넘칠 때를 위한 것</b>이다 (2026-08-30).
+
+                제목이 "더 좋은 날"에서 "더 여유로운 날"로 길어지며 30px을 더 먹었다.
+                1024px 근처에서는 이 카드 안쪽이 352px뿐이라 제목(166px)과 이 안내(200px)가
+                한 줄에 못 들어가고 <b>이 줄만 아래로 접힌다.</b>
+
+                그때 {@code justify-between}은 혼자 남은 항목을 <b>왼쪽</b>으로 보낸다 —
+                제목 바로 밑에 붙어 부제처럼 읽힌다. 이건 부제가 아니라 계산 범위를 밝히는
+                주석이라, 접히더라도 오른쪽 끝에 남아야 제목과 층이 갈린다.
+                한 줄에 들어갈 때는 아무 일도 하지 않는다.
+              */}
+              <span className="text-hint ml-auto hidden text-[12.5px] lg:inline">
                 같은 코스를 앞뒤 3일로 계산했어요
               </span>
             </div>
@@ -1146,8 +1164,28 @@ export function DiagnosisPage() {
                       {/*
                         행동 자리. 좁은 화면에서는 카드 아래를 가로지르는 버튼이고,
                         넓은 화면에서는 오른쪽 끝의 작은 버튼이다.
+
+                        ■ 폭은 <b>가장 긴 버튼 글자가 정한다</b> (w-28 → w-38, 2026-08-30)
+
+                        여기 서는 버튼은 셋 중 하나다 — "새로운 곳 발견하기" · "가까운 곳" ·
+                        "되돌리기". 셋 다 {@code whitespace-nowrap}이라 <b>줄바꿈으로 도망가지
+                        않는다.</b> 좁으면 접히는 대신 글자가 버튼 밖으로 삐져나온다.
+
+                        가장 긴 "새로운 곳 발견하기"는 13px에서 한글 여덟 자 + 공백 둘이라
+                        <b>110px쯤</b> 되는데, 예전 폭 w-28(112px)에서 좌우 여백(px-3, 24px)을
+                        빼면 글자가 쓸 수 있는 자리가 88px뿐이었다. 20px 넘게 넘쳤다.
+
+                        w-38(152px)이면 글자 자리가 128px이라 17px이 남는다. 여유를 둔 이유는
+                        <b>Pretendard가 못 뜨는 환경</b> 때문이다 — 대체 글꼴(Apple SD Gothic
+                        Neo·system-ui)은 자폭이 조금씩 넓어 딱 맞춰 두면 그런 기기에서만 다시 넘친다.
+
+                        ⚠️ <b>폭을 고정하는 것 자체는 유지한다.</b> 버튼마다 글자 길이가 달라
+                        auto로 두면 카드마다 버튼 시작점이 어긋나, 목록을 훑을 때 눈이 매번
+                        다른 자리를 찾는다. 고치는 것은 "고정이냐"가 아니라 "얼마로 고정하냐"다.
+
+                        ⚠️ 버튼 글자를 늘릴 일이 생기면 <b>이 폭을 함께 본다.</b>
                       */}
-                      <div className="px-4 pt-3 pb-4 sm:order-3 sm:flex sm:w-28 sm:flex-none sm:flex-col sm:items-end sm:gap-2 sm:p-0">
+                      <div className="px-4 pt-3 pb-4 sm:order-3 sm:flex sm:w-38 sm:flex-none sm:flex-col sm:items-end sm:gap-2 sm:p-0">
                         {/*
                           넓은 화면에서는 배지가 사진에서 내려와 버튼 위에 선다.
                           폭을 고정(w-32)하는 이유는 배지 글자 길이가 등급마다 달라서다 —
@@ -1177,16 +1215,23 @@ export function DiagnosisPage() {
                             <b>바꿀 방법 자체가 없었다.</b> 우리가 점수를 못 매기는 것이지
                             사용자가 다른 밥집을 고르고 싶지 않은 것이 아니다.
 
-                            문구가 "다른 곳 둘러보기"가 아니라 "가까운 곳"인 이유: 열리는 것이
+                            문구가 "새로운 곳 발견하기"가 아니라 "가까운 곳"인 이유: 열리는 것이
                             추천 목록이 아니다. 같은 분류에서 가까운 순으로 늘어놓을 뿐이고,
                             어디가 더 나은지는 말하지 않는다. 버튼 이름이 그 차이를 미리 알린다.
 
                             사유는 이 자리가 아니라 <b>이름 아래</b>에 적는다. 여기는 폭이 좁아
-                            (sm:w-28) 문장이 서너 줄로 접힌다.
+                            (sm:w-38) 문장이 서너 줄로 접힌다.
                           */
                           <button
                             type="button"
-                            className="press rounded-ui border-line bg-surface text-muted hover:border-brand hover:text-brand-deep h-11 w-full cursor-pointer border text-sm font-semibold whitespace-nowrap sm:h-9 sm:w-full sm:px-3 sm:text-[13px]"
+                            /*
+                              ⚠️ hover에서 <b>틸이 되지 않는다.</b> 옆의 "새로운 곳 발견하기"가
+                              브랜드 테두리로 서 있어서, 이쪽이 hover에서 틸이 되면
+                              <b>손을 올린 순간 그 버튼의 평상시 모습</b>이 되어 둘이 섞인다.
+                              조용한 버튼의 hover는 색이 아니라 <b>바탕</b>이 맡는다 —
+                              같은 카드의 "되돌리기"와 SECONDARY_BUTTON이 쓰는 방식 그대로다.
+                            */
+                            className="press rounded-ui border-line bg-surface text-muted hover:bg-bg hover:text-fg h-11 w-full cursor-pointer border text-sm font-semibold whitespace-nowrap sm:h-9 sm:w-full sm:px-3 sm:text-[13px]"
                             onClick={() =>
                               setSheet({
                                 day: slot.day,
@@ -1217,16 +1262,32 @@ export function DiagnosisPage() {
                           </button>
                         ) : (
                           /*
-                            붐비는 곳만 채운 버튼으로 강하게 두고, 나머지는 테두리만 있는
-                            조용한 버튼으로 둔다. 모든 카드에 빨간 버튼이 서 있으면
-                            경고색이 의미를 잃는다.
+                            <b>상태는 붉게, 행동은 틸로.</b> 이 버튼은 브랜드색이다.
+
+                            <p>이 버튼이 하는 일은 경고가 아니라 <b>다음 걸음의 안내</b>다.
+                            "붐빈다"는 사실은 바로 위 배지와 순서 번호 원이 이미 붉게 말하고
+                            있어서, 버튼까지 붉으면 같은 말을 세 번 하게 된다 —
+                            {@code levelStyles}가 카드 왼쪽 색 띠를 걷어낼 때 센 그 세 번이다.
+                            띠를 그 이유로 없앴으면서 버튼은 남겨 두고 있었다.
+
+                            <p>⚠️ 채운 빨강 → 붉은 테두리 → <b>틸 테두리</b>로 두 번 옮겼다.
+                            채운 경고색은 <b>사용자가 직접 짠 코스</b>에 대고 "잘못됐으니 무르라"고
+                            재촉하는 것으로 읽혔다. 빨간 버튼은 "고쳐라"이고 틸 버튼은 "가보자"다.
+
+                            <p>⚠️ brand가 아니라 <b>brand-deep</b>이다. 밝은 틸(--c-brand)은
+                            흰 카드 위에서 2.17:1이라 테두리로 서지 못한다 — brand는 배경 전용이고
+                            글자·테두리·초점링은 brand-deep이라고 팔레트가 이미 정해 두었다.
+
+                            <p>⚠️ <b>채우지 않는다.</b> 이 화면에는 채운 브랜드 버튼이 이미 하나
+                            있다(sticky의 "최종 코스 확인하기"). 카드마다 채우면 화면에 하나뿐이어야
+                            할 주요 행동과 경쟁한다.
                           */
                           <button
                             type="button"
                             className={`press rounded-ui h-11 w-full cursor-pointer text-sm font-semibold whitespace-nowrap sm:h-9 sm:w-full sm:px-3 sm:text-[13px] ${
                               slot.level === 'CROWDED'
-                                ? 'bg-crowded-strong hover:bg-crowded-deep text-white shadow-[0_4px_12px_rgb(179_23_90/0.24)]'
-                                : 'border-line bg-surface text-muted hover:border-brand hover:text-brand-deep border'
+                                ? 'border-brand-deep bg-surface text-brand-deep hover:bg-brand-tint border'
+                                : 'border-line bg-surface text-muted hover:bg-bg hover:text-fg border'
                             }`}
                             onClick={() =>
                               setSheet({
@@ -1240,22 +1301,27 @@ export function DiagnosisPage() {
                               })
                             }
                             /*
-                              ■ "장소 바꾸기" → "다른 곳 발견하기" → <b>"다른 곳 둘러보기"</b>
+                              ■ "장소 바꾸기" → "다른 곳 둘러보기" → <b>"새로운 곳 발견하기"</b>
 
                               "바꾸기"를 뺀 이유: 바꾸라는 말은 지금 고른 곳이 틀렸다는
                               지적으로 읽힌다 — 사용자가 직접 짠 코스에 대고 시스템이
                               무르라고 하는 셈이다.
 
-                              "발견하기"도 내렸다. <b>눌러도 발견되지 않는다</b> — 후보 셋이
-                              뜰 뿐이고, 발견은 그중 하나를 고른 뒤에 일어난다. 결과 화면이
-                              그때 가서 "다른 곳 N곳 발견"이라고 말한다.
+                              <p>"둘러보기"로 한 번 내렸다가 <b>"발견하기"로 되돌렸다</b>
+                              (2026-08-30). 내렸던 근거는 "눌러도 발견되지 않는다 — 후보 셋이
+                              뜰 뿐"이었는데, 그 셋은 <b>매번 다른 셋</b>이다(가중 무작위).
+                              시트 안에서도 "오늘 발견할 수 있는 장소는 달라질 수 있어요"라고
+                              말하고, 결과 화면은 "다른 곳 N곳 발견"으로 받는다 —
+                              들어가는 문·안에서 하는 말·나오는 문이 <b>한 낱말로 이어진다.</b>
 
-                              우리가 하는 일은 <b>선택지를 펴 보이는 것</b>이고,
-                              고르는 판단은 여전히 사용자 몫이다.
+                              <p>"다른"이 아니라 <b>"새로운"</b>인 이유: 짝인 날짜 쪽이
+                              "더 여유로운 날"이라 여기도 꾸밈말이 필요한데, 장소에는
+                              한적해진다는 약속을 걸 수 없다(위 회피 경로 주석 참고).
+                              "새로운"은 <b>약속하지 않으면서 짝의 모양을 맞춘다.</b>
                             */
-                            aria-label={`${slot.place.name} 대신 갈 만한 다른 곳 둘러보기`}
+                            aria-label={`${slot.place.name} 대신 갈 만한 새로운 곳 발견하기`}
                           >
-                            다른 곳 둘러보기
+                            새로운 곳 발견하기
                           </button>
                         )}
                         </div>
@@ -1315,7 +1381,22 @@ export function DiagnosisPage() {
           originQuietness={sheet.quietness}
           originLevel={sheet.level}
           visitDate={sheet.visitDate}
-          excludePlaceIds={state.days[sheet.day - 1] ?? []}
+          /*
+            ■ 여행 <b>전체</b>에 담긴 곳을 뺀다 — 그 날치가 아니다 (2026-08-30 고침)
+
+            {@code state.days[sheet.day - 1]}이었다. 그래서 <b>Day 1에 담은 곳이
+            Day 2 추천에 떴고</b>, 고르면 같은 장소가 한 여행에 두 번 들어갔다.
+
+            <p>편집 화면은 같은 곳을 여러 번 담는 것을 <b>막지 않는다</b>(CoursePage의
+            {@code chosenCounts} — 세어서 알려줄 뿐이다). 사용자가 직접 짠 코스를
+            시스템이 무르지 않는다는 원칙이다. <b>그러나 추천은 다르다.</b>
+            사용자가 알고 두 번 담는 것과, 시스템이 이미 담긴 곳을 "다른 곳"이라며
+            내미는 것은 같은 일이 아니다.
+
+            <p>{@code flat()}이 원래 자리도 함께 뺀다 — 교체하려는 그 장소가
+            대안 목록에 다시 오르지 않아야 하므로 그편이 맞다.
+          */
+          excludePlaceIds={state.days.flat()}
           planKey={planKeyOf(plan.region, plan.startDate, plan.nights)}
           onClose={() => setSheet(null)}
           onSelect={handleSelectAlternative}
