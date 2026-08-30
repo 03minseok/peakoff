@@ -981,6 +981,30 @@ export function HomePage() {
         <div className={`${CELL} lg:col-span-6`}>
           {/* 왼쪽 카드와 같은 규칙 — 카드는 누르는 것이 아니고, hover는 CTA를 가리킨다 */}
           <div className="group border-brand bg-surface shadow-rest relative w-full overflow-hidden rounded-[24px] border-[1.5px] px-6 pt-6.5 pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
+            {/*
+              글로우 하나. 왼쪽 카드와 <b>같은 장치를 흰 면의 세기로</b> 옮긴 것이다.
+
+              두 문이 짝인데 왼쪽만 오른쪽 절반이 장식으로 차 있고 이쪽은 비어 있어,
+              같은 급의 카드 둘이 아니라 <b>주와 곁다리</b>로 읽혔다. 글자 크기·버튼·
+              여백은 이미 같으니 남은 차이는 면이 비어 있다는 것뿐이었다.
+
+              ⚠️ <b>하나뿐이고, 틸이다.</b> 왼쪽은 틸(한적)과 핑크(붐빔)를 마주 놓아
+              "붐빔에서 한적으로"를 말하지만, 이 문은 붐빔을 진단하는 자리가 아니라
+              한적한 곳을 찾아 주는 자리다 — 핑크를 얹으면 하지 않는 말을 하게 된다.
+
+              ⚠️ <b>면을 통째로 칠하지 않았다.</b> 브랜드 틸을 깔면 로고와 버튼에만 남겨야
+              할 강조색이 화면 절반을 차지하고, 옅은 틸(brand-tint #e1f5f9)은 이 자리에
+              깔린 바탕 wash(#e9f6f7)와 거의 같은 색이라 카드 경계가 녹는다.
+              번지는 원 하나면 면은 흰 채로 두면서 빈 자리만 채운다.
+
+              알파가 왼쪽(0.14)보다 낮다. 흰 면 위에서는 같은 값도 훨씬 진하게 보인다.
+            */}
+            <span
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]"
+              aria-hidden="true"
+            >
+              <span className="absolute -top-16 -right-14 h-52 w-52 rounded-full bg-[rgb(63_193_201/0.08)]" />
+            </span>
             <span className="relative flex flex-col gap-3">
               {/*
                 ⚠️ 킥커를 "TRUST YOUR LUCK" 같은 말로 두지 않는다.
@@ -1344,6 +1368,23 @@ export function HomePage() {
               여기만 그림자를 두면 같은 버튼이 화면 안에서 두 무게를 갖는다.
             */}
             <div className="flex flex-col gap-2 px-1">
+              {/*
+                ⚠️ 왜 안 눌리는지 <b>여기서 말한다</b> (2026-08-30).
+
+                바로 위 주석이 "비활성일 때 '코스 짜기'라고만 적혀 있으면 왜 안 눌리는지
+                알 수 없다"고 적어 두었는데, 정작 코드가 그렇게 하고 있었다. 날짜를 고르기
+                전에는 회색 버튼 둘에 "코스 짜기"·"추천받기"만 적혀 있어, 바로 위 카드의
+                같은 이름 진입점 둘과 <b>같은 문이 회색으로 죽어 있는 것</b>처럼 보였다.
+
+                버튼 <b>글자</b>를 늘리지 않고 줄을 하나 얹는다. 문구를 버튼마다 넣으면
+                같은 말이 두 번 서고, 날짜를 고른 뒤에는 두 버튼이 각자 날짜를 이미
+                말하고 있어 이 줄이 할 일이 없어진다 — 그래서 고르기 전에만 뜬다.
+              */}
+              {activeDate === null && (
+                <p className="text-hint m-0 pb-0.5 text-[12.5px] leading-[1.5]">
+                  위에서 날짜를 고르면 그 날짜로 시작할 수 있어요.
+                </p>
+              )}
               <button
                 type="button"
                 disabled={activeDate === null}
