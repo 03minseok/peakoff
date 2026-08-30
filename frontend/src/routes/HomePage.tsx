@@ -109,8 +109,11 @@ function HeadlineRow({ spot, last }: { spot: HeadlineSpot; last: boolean }) {
  * 등급이다. "이 세 곳이 오늘 가장 붐빈다"는 묶음의 뜻은 제목이 있어야 전해진다.
  *
  * <p>제목 색을 등급색으로 칠하지 않는다. 이 카드에서 색은 3단계 신호이고, 제목은
- * 신호가 아니라 이름표다. 색을 쓰면 "붐빌 것으로 예상"이라는 글자 자체가 배지처럼 읽히고,
+ * 신호가 아니라 이름표다. 색을 쓰면 "가장 붐비는 곳"이라는 글자 자체가 배지처럼 읽히고,
  * 줄마다 이미 배지가 하나씩 서 있어 배지 위에 배지가 얹힌다.
+ *
+ * <p>같은 이유로 제목은 <b>순위</b>만 말한다. 등급은 배지의 몫이다 — 목록이 양 끝을
+ * 잘라 온 것이라 등급이 제목과 어긋날 수 있다({@link HEADLINE_TABS} 참고).
  *
  * <p>대신 <b>굵기와 진하기로 세운다.</b> 처음에는 11.5px 흐린 회색이었는데, 안에 담긴
  * 장소 이름(15px 진한 글자)보다 약해서 묶음의 제목으로 읽히지 않았다. 제목이 자기 내용보다
@@ -133,7 +136,7 @@ function HeadlineGroup({
   className?: string
   /**
    * 소제목을 눈에서만 감춘다. 좁은 화면에서는 바로 위 스위치가 같은 말을 하고 있어,
-   * 그대로 두면 "붐빌 것으로 예상"이 두 줄 연속으로 선다.
+   * 그대로 두면 "가장 붐비는 곳"이 두 줄 연속으로 선다.
    *
    * <b>지우지 않고 감추는</b> 이유: 화면 낭독기에게는 이 묶음이 무엇인지 여전히 필요하다.
    */
@@ -366,10 +369,29 @@ const COPIED_COURSE_DAYS_AHEAD = 7
  *
  * <p>라벨을 여기 한 번만 적는다 — 스위치 글자와 넓은 화면의 소제목이 같은 말이어야
  * "지금 보고 있는 것"이 화면을 옮겨도 이어진다.
+ *
+ * <h3>⚠️ 제목은 <b>순위</b>를 말하지 <b>등급</b>을 말하지 않는다 (2026-08-30)</h3>
+ * 한때 "붐빌 것으로 예상" / "한적할 것으로 예상"이었다. 그런데 이 두 목록은
+ * 등급으로 고른 것이 아니라 <b>한적도로 줄 세운 양 끝 세 개</b>다. 그래서
+ * 지역이 통째로 붐비는 날에는 "한적할 것으로 예상" 아래에 <b>붐빔 배지가 셋</b> 섰다 —
+ * 제목과 배지가 같은 화면에서 서로를 부정했다. 반대쪽도 같은 병이 있다.
+ * 한산한 날에는 "붐빌 것으로 예상" 아래에 한적 배지가 선다.
+ *
+ * <p>고르는 방식을 바꾸지 않았다. <b>등급이 맞는 것만 남기면</b> 붐비는 날에 한적 쪽이
+ * 통째로 비는데, 피할 곳 옆에 갈 곳이 같은 무게로 서 있어야 이 서비스가 하려는 말이
+ * 완성된다(스위치를 둔 이유와 같다). 대신 <b>제목이 하는 말을 목록이 실제로 하는 일에
+ * 맞췄다.</b> 순위는 언제나 참이고, 등급은 줄마다 배지가 이미 말하고 있다.
+ *
+ * <p>"예상"을 뗀 것은 카드 머리글이 이미 "오늘 예상되는 혼잡이에요. 예측값이라 실제와
+ * 다를 수 있어요"라고 밝히고 있어서다. 같은 카드 안에서 두 번 말할 필요가 없다.
+ *
+ * <p>⚠️ 아래 "지금 한적한 곳"을 걷어낸 이유(같은 파일)와 헷갈리지 말 것. 그 목록은
+ * <b>앞의 세 곳을 빼고</b> 그 다음을 보여주면서 "가장 덜 붐빌 곳"이라 했으니 거짓이었다.
+ * 여기서 같은 말이 참인 것은 이 목록이 정말 그 양 끝이기 때문이다.
  */
 const HEADLINE_TABS = [
-  { key: 'crowded', label: '붐빌 것으로 예상' },
-  { key: 'quiet', label: '한적할 것으로 예상' },
+  { key: 'crowded', label: '가장 붐비는 곳' },
+  { key: 'quiet', label: '가장 한적한 곳' },
 ] as const
 
 type HeadlineTab = (typeof HEADLINE_TABS)[number]['key']
@@ -738,7 +760,7 @@ export function HomePage() {
               어떤 화면에서는 안 뜨면, 사용자는 로고가 링크인지 아닌지를 매번 시험하게 된다.
               누를 수 있게 생긴 것은 어디서나 누를 수 있어야 한다.
             */}
-            <Link to="/" className="flex-none no-underline" aria-label="PEAK OFF 처음으로">
+            <Link to="/" className="flex-none no-underline" aria-label="PEAKOFF 처음으로">
               <BrandLockup />
             </Link>
             <HeaderNav />
@@ -775,7 +797,7 @@ export function HomePage() {
         오늘 하루(장소)와 이번 주(날짜)가 나란히 선다 — 혼잡을 피하는 두 경로가
         한 줄에서 짝을 이룬다.
 
-        "지금 한적한 곳"은 걷어냈다. 위 카드의 "한적할 것으로 예상"과 <b>같은 목록에서
+        "지금 한적한 곳"은 걷어냈다. 위 카드의 "가장 한적한 곳"과 <b>같은 목록에서
         앞의 세 곳만 빼고</b> 그 다음을 보여주고 있었는데, 제목은 "가장 덜 붐빌 곳"이었다.
         정작 가장 한적한 곳이 그 목록에 없었다.
 
@@ -1111,8 +1133,13 @@ export function HomePage() {
             <div className="bg-bg rounded-card hidden flex-col px-4 py-3 lg:flex lg:flex-1">
               {data ? (
                 <>
+                  {/*
+                    라벨은 HEADLINE_TABS에서 가져온다. 예전에는 여기에 글자를 직접 적어
+                    두었는데, 좁은 화면 스위치와 같은 말이어야 한다는 규칙이 <b>지켜지는지
+                    아무도 보증하지 못했다</b> — 실제로 한쪽만 고치면 그대로 어긋난다.
+                  */}
                   <HeadlineGroup
-                    label="붐빌 것으로 예상"
+                    label={HEADLINE_TABS[0].label}
                     spots={data.headline.crowded}
                     className="lg:flex-1 lg:justify-center"
                   />
@@ -1128,7 +1155,7 @@ export function HomePage() {
                   */}
                   <span className="bg-line -mx-4 my-3 h-px" aria-hidden="true" />
                   <HeadlineGroup
-                    label="한적할 것으로 예상"
+                    label={HEADLINE_TABS[1].label}
                     spots={data.headline.quiet}
                     className="lg:flex-1 lg:justify-center"
                   />
