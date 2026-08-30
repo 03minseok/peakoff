@@ -49,7 +49,7 @@ const LEVEL_PHRASE: Record<CongestionLevel, string> = {
  *
  * <p>지금 화면이 하는 정렬은 <b>구간 단위뿐</b>이다({@link tierRank}) — 점수로 줄
  * 세우지 않으므로 분산이 살아 있고, 카드에 적힌 문구와 순서가 어긋나지도 않는다.
- * 자세한 사정은 {@code docs/OPEN_DECISIONS.md} 14번.
+ * 자세한 사정은 {@code CLAUDE.md}의 "추천 분산".
  */
 const ALTERNATIVE_COUNT = 3
 
@@ -187,7 +187,7 @@ function tierPhrase(recommendation: number): string | null {
  * <h3>왜 구간으로만 줄 세우나 (2026-08-30)</h3>
  * 서버는 <b>뽑은 결과를 점수순으로 다시 세우지 않는다.</b> 그렇게 하면 최고점이 언제나
  * 1등이 되어 추천 분산이 죽기 때문이다 — 실측에서 1등 고정률이 38~42%에서
- * <b>68~82%로 뛰었다</b>(docs/OPEN_DECISIONS.md 14번). 같은 대안이 모두에게 1등으로
+ * <b>68~82%로 뛰었다</b>(CLAUDE.md "추천 분산"). 같은 대안이 모두에게 1등으로
  * 나가면 그곳이 새로운 혼잡지가 된다(2차 오버투어리즘).
  *
  * <p>그런데 구간 문구를 화면에 세우면서 <b>새 문제가 생겼다.</b> 문구는 눈에 보이므로
@@ -485,7 +485,7 @@ export function AlternativeSheet({
 
             <p>헤더는 후보를 읽기 <b>전에</b> 보는 곳이라 "믿을 게 못 된다"는 인상을 먼저 주고,
             버튼 위면 다시 뽑을 마음이 든 사람에게 그 말이 닿는다.
-            {@code docs/OPEN_DECISIONS.md} 14번 참고.
+            {@code CLAUDE.md}의 "추천 분산" 참고.
           */}
           {/*
             ⚠️ <b>붐비는 자리에서는 아무 말도 하지 않는다.</b> "더 여유롭게 즐길 수 있는
