@@ -219,9 +219,9 @@ function ForecastCompactRow({
         점수 막대. 남는 폭을 전부 가져간다 — 날짜·점수·배지가 폭이 정해진 덩이라
         여기만 flex-1로 두면 화면이 넓어질수록 막대가 길어져 날짜별 차이가 더 잘 보인다.
 
-        숫자를 막대 <b>안</b>에 넣지 않았다. 넓은 화면 줄({@link ForecastRow})은 그렇게 하지만
-        거기는 막대가 400px쯤이라 짧은 막대도 두 자리를 담는다. 좁은 화면에서는 140px 남짓이라
-        점수가 낮은 날은 채운 부분이 20px도 안 돼 숫자가 잘린다.
+        숫자를 막대 <b>안</b>에 넣지 않는다. 점수가 낮은 날은 채운 부분이 20px도 안 돼
+        숫자가 잘린다. 넓은 화면 줄({@link ForecastRow})은 한때 안에 넣었다가 같은 이유로
+        깨져서(2026-08-30) 이쪽으로 맞췄다 — 이제 두 줄이 같은 방식이다.
 
         빈 부분은 흰색이다. 패널이 회백이라 예전 회백 트랙은 바탕에 묻힌다.
       */}
@@ -236,9 +236,13 @@ function ForecastCompactRow({
         />
       </div>
 
-      {/* 점수와 배지를 오른쪽에 나란히. 세로로 훑을 때 숫자 열이 한 줄로 맞는다 */}
+      {/*
+        점수와 배지를 오른쪽에 나란히. 세로로 훑을 때 숫자 열이 한 줄로 맞는다.
+        폭을 고정한 것은 세 자리(100)가 왔을 때 배지를 밀어내지 않게 하려는 것이다 —
+        지금 실데이터는 두 자리뿐이라 눈에 띄지 않지만 한 자리만 와도 열이 어긋난다.
+      */}
       <span
-        className={`flex-none font-mono text-[16px] font-semibold tracking-[-0.02em] ${
+        className={`w-8 flex-none text-right font-mono text-[16px] font-semibold tracking-[-0.02em] ${
           day.level === 'QUIET'
             ? 'text-quiet-deep'
             : day.level === 'MODERATE'
@@ -310,21 +314,53 @@ function ForecastRow({
         </span>
       </div>
 
-      {/* 막대는 왼쪽에서 자란다. 길수록(한적할수록) 멀리 뻗는다 */}
+      {/*
+        막대는 왼쪽에서 자란다. 길수록(한적할수록) 멀리 뻗는다.
+
+        ⚠️ 숫자를 막대 <b>안</b>에 넣지 않는다 (2026-08-30). 한때 채운 부분 오른쪽 끝에
+        흰 글자로 얹어 두고, 여기는 막대가 400px쯤이라 짧은 막대도 두 자리를 담는다고
+        적어 두었다. <b>그 전제가 틀렸다</b> — 홈은 세 칸으로 나뉘어 이 줄의 막대가
+        180px 남짓이다. 20점이면 채운 폭이 36px이라 글자가 삐져나가고,
+        트랙의 overflow-hidden이 그것을 잘라 <b>"20"이 반만 보였다.</b>
+
+        폭을 재서 넣고 빼는 식으로는 못 고친다. 이 줄은 지역 칸 안에 있고 칸 폭은
+        화면 크기와 옆 칸 내용에 따라 변한다 — <b>얼마가 될지 여기서 알 수 없다.</b>
+        막대 밖으로 꺼내면 막대가 얼마나 짧든 숫자는 온전하다.
+
+        좁은 화면 줄({@link ForecastCompactRow})이 처음부터 그렇게 하고 있었다.
+        같은 값을 두 방식으로 그리다가 한쪽만 깨진 것이라, 멀쩡한 쪽으로 맞췄다.
+      */}
       <div className="bg-surface h-6 min-w-0 flex-1 overflow-hidden rounded-[7px]">
         <div
-          className="flex h-full items-center justify-end rounded-[7px] pr-2"
+          className="h-full rounded-[7px]"
           style={{
-            // 0점인 날도 막대가 보여야 "값이 없다"로 오해되지 않는다.
-            width: `${Math.max(14, day.quietness)}%`,
+            /*
+             * 0점인 날도 막대가 보여야 "값이 없다"로 오해되지 않는다.
+             * 하한이 8인 것은 좁은 화면 줄과 같은 값이라서다 — 숫자를 담느라 14까지
+             * 올려 두었는데, 이제 담을 것이 없으므로 낮은 점수를 부풀릴 이유도 없다.
+             * 두 화면이 같은 값을 같은 길이로 그린다.
+             */
+            width: `${Math.max(8, day.quietness)}%`,
             background: LEVEL_COLOR_VAR[day.level],
           }}
-        >
-          <span className="font-mono text-[11.5px] font-semibold text-white">
-            {day.quietness}
-          </span>
-        </div>
+        />
       </div>
+
+      {/*
+        점수. 폭을 고정해 오른쪽으로 붙인다 — 7줄을 세로로 훑을 때 숫자의 일의 자리가
+        한 열로 맞고, 세 자리(100)가 와도 옆의 배지가 밀리지 않는다.
+      */}
+      <span
+        className={`w-7 flex-none text-right font-mono text-[14px] font-semibold tracking-[-0.02em] ${
+          day.level === 'QUIET'
+            ? 'text-quiet-deep'
+            : day.level === 'MODERATE'
+              ? 'text-moderate-deep'
+              : 'text-crowded-deep'
+        }`}
+      >
+        {day.quietness}
+      </span>
 
       {/* 배지는 늘 등급만 말한다. "가장 한적"은 머리글 문구가 맡는다 */}
       <span
