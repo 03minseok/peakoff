@@ -21,7 +21,7 @@ export function Layout() {
         */}
         <div className="max-w-app mx-auto flex h-full items-center justify-between gap-2 px-4 md:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
-            <Link to="/" className="flex-none no-underline" aria-label="PEAK OFF 처음으로">
+            <Link to="/" className="flex-none no-underline" aria-label="PEAKOFF 처음으로">
               <BrandLockup />
             </Link>
 

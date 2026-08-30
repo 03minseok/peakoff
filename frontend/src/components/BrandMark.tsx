@@ -119,8 +119,9 @@ export function BrandMark({ tone = 'light', size = 26, className = '' }: Props) 
  * 마크를 고칠 때 <b>한 자리만 고치면 된다</b> — 예전에는 네 곳 중 하나를 빠뜨리면
  * 화면마다 다른 로고가 서 있었다.
  *
- * <p>글자는 <b>PEAK OFF</b>로 띄운다. 로고가 그렇게 쓰고, 마크가 그 두 낱말을
- * 그림으로 옮긴 것이라 붙여 쓰면 그림과 글자가 다른 말을 하게 된다.
+ * <p>글자는 <b>PEAKOFF</b>로 붙여 쓴다. 서비스 이름이 한 낱말이라 그렇다 —
+ * 두 낱말(PEAK / OFF)의 뜻은 마크가 이미 그림으로 말하고 있고,
+ * 자간(tracking)이 벌어져 있어 붙여 써도 두 덩어리로 읽힌다.
  *
  * <p>마크에 사방 여백이 들어 있어 {@code gap}은 좁게 둔다 — 넉넉히 주면
  * 마크의 여백과 더해져 글자가 멀리 떨어져 보인다.
@@ -134,7 +135,7 @@ export function BrandLockup({ tone = 'light', size = 26, className = '' }: Props
           tone === 'dark' ? 'text-white' : 'text-fg'
         }`}
       >
-        PEAK OFF
+        PEAKOFF
       </span>
     </span>
   )

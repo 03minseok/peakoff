@@ -44,6 +44,32 @@ export const LEVEL_ON_SOLID: Record<CongestionLevel, string> = {
 }
 
 /**
+ * 어두운 면(bg-fg) 위에 <b>등급을 색으로</b> 말해야 하는 글자.
+ *
+ * -deep은 잉크에 가까워 네이비 위에서 묻고, solid는 등급 서열을 지키느라 셋 다 밝다.
+ * soft가 어두운 면 위의 칸이다 — CLAUDE.md의 다섯 칸 중 "보조 단계·어두운 면 위".
+ * 셋 다 --c-fg 위에서 대형 글자 기준을 지난다 (한적 6.71 · 보통 7.41 · 붐빔 4.79).
+ */
+export const LEVEL_SOFT: Record<CongestionLevel, string> = {
+  QUIET: 'text-quiet-soft',
+  MODERATE: 'text-moderate-soft',
+  CROWDED: 'text-crowded-soft',
+}
+
+/**
+ * 밝은 면(카드·회백 바탕) 위에 <b>등급을 색으로</b> 말해야 하는 글자.
+ *
+ * LEVEL_TINT에서 글자색만 떼어낸 것이다. 배경 없이 숫자만 물들이는 자리에 쓴다 —
+ * 코스 총점, 변경 내역의 한적도. 흰 카드에서 6.85~8.31, 회백 바탕에서 6.28~7.62이라
+ * 본문 기준(4.5)도 지난다.
+ */
+export const LEVEL_DEEP: Record<CongestionLevel, string> = {
+  QUIET: 'text-quiet-deep',
+  MODERATE: 'text-moderate-deep',
+  CROWDED: 'text-crowded-deep',
+}
+
+/**
  * 인라인 style로 넘겨야 하는 자리(원형 게이지의 conic-gradient, 막대 너비 등).
  *
  * 값이 실행 중에 정해져 클래스로 만들 수 없다. CSS 변수를 넘기면

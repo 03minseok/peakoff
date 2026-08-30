@@ -109,8 +109,11 @@ function HeadlineRow({ spot, last }: { spot: HeadlineSpot; last: boolean }) {
  * 등급이다. "이 세 곳이 오늘 가장 붐빈다"는 묶음의 뜻은 제목이 있어야 전해진다.
  *
  * <p>제목 색을 등급색으로 칠하지 않는다. 이 카드에서 색은 3단계 신호이고, 제목은
- * 신호가 아니라 이름표다. 색을 쓰면 "붐빌 것으로 예상"이라는 글자 자체가 배지처럼 읽히고,
+ * 신호가 아니라 이름표다. 색을 쓰면 "가장 붐비는 곳"이라는 글자 자체가 배지처럼 읽히고,
  * 줄마다 이미 배지가 하나씩 서 있어 배지 위에 배지가 얹힌다.
+ *
+ * <p>같은 이유로 제목은 <b>순위</b>만 말한다. 등급은 배지의 몫이다 — 목록이 양 끝을
+ * 잘라 온 것이라 등급이 제목과 어긋날 수 있다({@link HEADLINE_TABS} 참고).
  *
  * <p>대신 <b>굵기와 진하기로 세운다.</b> 처음에는 11.5px 흐린 회색이었는데, 안에 담긴
  * 장소 이름(15px 진한 글자)보다 약해서 묶음의 제목으로 읽히지 않았다. 제목이 자기 내용보다
@@ -133,7 +136,7 @@ function HeadlineGroup({
   className?: string
   /**
    * 소제목을 눈에서만 감춘다. 좁은 화면에서는 바로 위 스위치가 같은 말을 하고 있어,
-   * 그대로 두면 "붐빌 것으로 예상"이 두 줄 연속으로 선다.
+   * 그대로 두면 "가장 붐비는 곳"이 두 줄 연속으로 선다.
    *
    * <b>지우지 않고 감추는</b> 이유: 화면 낭독기에게는 이 묶음이 무엇인지 여전히 필요하다.
    */
@@ -216,9 +219,9 @@ function ForecastCompactRow({
         점수 막대. 남는 폭을 전부 가져간다 — 날짜·점수·배지가 폭이 정해진 덩이라
         여기만 flex-1로 두면 화면이 넓어질수록 막대가 길어져 날짜별 차이가 더 잘 보인다.
 
-        숫자를 막대 <b>안</b>에 넣지 않았다. 넓은 화면 줄({@link ForecastRow})은 그렇게 하지만
-        거기는 막대가 400px쯤이라 짧은 막대도 두 자리를 담는다. 좁은 화면에서는 140px 남짓이라
-        점수가 낮은 날은 채운 부분이 20px도 안 돼 숫자가 잘린다.
+        숫자를 막대 <b>안</b>에 넣지 않는다. 점수가 낮은 날은 채운 부분이 20px도 안 돼
+        숫자가 잘린다. 넓은 화면 줄({@link ForecastRow})은 한때 안에 넣었다가 같은 이유로
+        깨져서(2026-08-30) 이쪽으로 맞췄다 — 이제 두 줄이 같은 방식이다.
 
         빈 부분은 흰색이다. 패널이 회백이라 예전 회백 트랙은 바탕에 묻힌다.
       */}
@@ -233,9 +236,13 @@ function ForecastCompactRow({
         />
       </div>
 
-      {/* 점수와 배지를 오른쪽에 나란히. 세로로 훑을 때 숫자 열이 한 줄로 맞는다 */}
+      {/*
+        점수와 배지를 오른쪽에 나란히. 세로로 훑을 때 숫자 열이 한 줄로 맞는다.
+        폭을 고정한 것은 세 자리(100)가 왔을 때 배지를 밀어내지 않게 하려는 것이다 —
+        지금 실데이터는 두 자리뿐이라 눈에 띄지 않지만 한 자리만 와도 열이 어긋난다.
+      */}
       <span
-        className={`flex-none font-mono text-[16px] font-semibold tracking-[-0.02em] ${
+        className={`w-8 flex-none text-right font-mono text-[16px] font-semibold tracking-[-0.02em] ${
           day.level === 'QUIET'
             ? 'text-quiet-deep'
             : day.level === 'MODERATE'
@@ -307,21 +314,53 @@ function ForecastRow({
         </span>
       </div>
 
-      {/* 막대는 왼쪽에서 자란다. 길수록(한적할수록) 멀리 뻗는다 */}
+      {/*
+        막대는 왼쪽에서 자란다. 길수록(한적할수록) 멀리 뻗는다.
+
+        ⚠️ 숫자를 막대 <b>안</b>에 넣지 않는다 (2026-08-30). 한때 채운 부분 오른쪽 끝에
+        흰 글자로 얹어 두고, 여기는 막대가 400px쯤이라 짧은 막대도 두 자리를 담는다고
+        적어 두었다. <b>그 전제가 틀렸다</b> — 홈은 세 칸으로 나뉘어 이 줄의 막대가
+        180px 남짓이다. 20점이면 채운 폭이 36px이라 글자가 삐져나가고,
+        트랙의 overflow-hidden이 그것을 잘라 <b>"20"이 반만 보였다.</b>
+
+        폭을 재서 넣고 빼는 식으로는 못 고친다. 이 줄은 지역 칸 안에 있고 칸 폭은
+        화면 크기와 옆 칸 내용에 따라 변한다 — <b>얼마가 될지 여기서 알 수 없다.</b>
+        막대 밖으로 꺼내면 막대가 얼마나 짧든 숫자는 온전하다.
+
+        좁은 화면 줄({@link ForecastCompactRow})이 처음부터 그렇게 하고 있었다.
+        같은 값을 두 방식으로 그리다가 한쪽만 깨진 것이라, 멀쩡한 쪽으로 맞췄다.
+      */}
       <div className="bg-surface h-6 min-w-0 flex-1 overflow-hidden rounded-[7px]">
         <div
-          className="flex h-full items-center justify-end rounded-[7px] pr-2"
+          className="h-full rounded-[7px]"
           style={{
-            // 0점인 날도 막대가 보여야 "값이 없다"로 오해되지 않는다.
-            width: `${Math.max(14, day.quietness)}%`,
+            /*
+             * 0점인 날도 막대가 보여야 "값이 없다"로 오해되지 않는다.
+             * 하한이 8인 것은 좁은 화면 줄과 같은 값이라서다 — 숫자를 담느라 14까지
+             * 올려 두었는데, 이제 담을 것이 없으므로 낮은 점수를 부풀릴 이유도 없다.
+             * 두 화면이 같은 값을 같은 길이로 그린다.
+             */
+            width: `${Math.max(8, day.quietness)}%`,
             background: LEVEL_COLOR_VAR[day.level],
           }}
-        >
-          <span className="font-mono text-[11.5px] font-semibold text-white">
-            {day.quietness}
-          </span>
-        </div>
+        />
       </div>
+
+      {/*
+        점수. 폭을 고정해 오른쪽으로 붙인다 — 7줄을 세로로 훑을 때 숫자의 일의 자리가
+        한 열로 맞고, 세 자리(100)가 와도 옆의 배지가 밀리지 않는다.
+      */}
+      <span
+        className={`w-7 flex-none text-right font-mono text-[14px] font-semibold tracking-[-0.02em] ${
+          day.level === 'QUIET'
+            ? 'text-quiet-deep'
+            : day.level === 'MODERATE'
+              ? 'text-moderate-deep'
+              : 'text-crowded-deep'
+        }`}
+      >
+        {day.quietness}
+      </span>
 
       {/* 배지는 늘 등급만 말한다. "가장 한적"은 머리글 문구가 맡는다 */}
       <span
@@ -366,10 +405,29 @@ const COPIED_COURSE_DAYS_AHEAD = 7
  *
  * <p>라벨을 여기 한 번만 적는다 — 스위치 글자와 넓은 화면의 소제목이 같은 말이어야
  * "지금 보고 있는 것"이 화면을 옮겨도 이어진다.
+ *
+ * <h3>⚠️ 제목은 <b>순위</b>를 말하지 <b>등급</b>을 말하지 않는다 (2026-08-30)</h3>
+ * 한때 "붐빌 것으로 예상" / "한적할 것으로 예상"이었다. 그런데 이 두 목록은
+ * 등급으로 고른 것이 아니라 <b>한적도로 줄 세운 양 끝 세 개</b>다. 그래서
+ * 지역이 통째로 붐비는 날에는 "한적할 것으로 예상" 아래에 <b>붐빔 배지가 셋</b> 섰다 —
+ * 제목과 배지가 같은 화면에서 서로를 부정했다. 반대쪽도 같은 병이 있다.
+ * 한산한 날에는 "붐빌 것으로 예상" 아래에 한적 배지가 선다.
+ *
+ * <p>고르는 방식을 바꾸지 않았다. <b>등급이 맞는 것만 남기면</b> 붐비는 날에 한적 쪽이
+ * 통째로 비는데, 피할 곳 옆에 갈 곳이 같은 무게로 서 있어야 이 서비스가 하려는 말이
+ * 완성된다(스위치를 둔 이유와 같다). 대신 <b>제목이 하는 말을 목록이 실제로 하는 일에
+ * 맞췄다.</b> 순위는 언제나 참이고, 등급은 줄마다 배지가 이미 말하고 있다.
+ *
+ * <p>"예상"을 뗀 것은 카드 머리글이 이미 "오늘 예상되는 혼잡이에요. 예측값이라 실제와
+ * 다를 수 있어요"라고 밝히고 있어서다. 같은 카드 안에서 두 번 말할 필요가 없다.
+ *
+ * <p>⚠️ 아래 "지금 한적한 곳"을 걷어낸 이유(같은 파일)와 헷갈리지 말 것. 그 목록은
+ * <b>앞의 세 곳을 빼고</b> 그 다음을 보여주면서 "가장 덜 붐빌 곳"이라 했으니 거짓이었다.
+ * 여기서 같은 말이 참인 것은 이 목록이 정말 그 양 끝이기 때문이다.
  */
 const HEADLINE_TABS = [
-  { key: 'crowded', label: '붐빌 것으로 예상' },
-  { key: 'quiet', label: '한적할 것으로 예상' },
+  { key: 'crowded', label: '가장 붐비는 곳' },
+  { key: 'quiet', label: '가장 한적한 곳' },
 ] as const
 
 type HeadlineTab = (typeof HEADLINE_TABS)[number]['key']
@@ -738,7 +796,7 @@ export function HomePage() {
               어떤 화면에서는 안 뜨면, 사용자는 로고가 링크인지 아닌지를 매번 시험하게 된다.
               누를 수 있게 생긴 것은 어디서나 누를 수 있어야 한다.
             */}
-            <Link to="/" className="flex-none no-underline" aria-label="PEAK OFF 처음으로">
+            <Link to="/" className="flex-none no-underline" aria-label="PEAKOFF 처음으로">
               <BrandLockup />
             </Link>
             <HeaderNav />
@@ -775,7 +833,7 @@ export function HomePage() {
         오늘 하루(장소)와 이번 주(날짜)가 나란히 선다 — 혼잡을 피하는 두 경로가
         한 줄에서 짝을 이룬다.
 
-        "지금 한적한 곳"은 걷어냈다. 위 카드의 "한적할 것으로 예상"과 <b>같은 목록에서
+        "지금 한적한 곳"은 걷어냈다. 위 카드의 "가장 한적한 곳"과 <b>같은 목록에서
         앞의 세 곳만 빼고</b> 그 다음을 보여주고 있었는데, 제목은 "가장 덜 붐빌 곳"이었다.
         정작 가장 한적한 곳이 그 목록에 없었다.
 
@@ -837,60 +895,71 @@ export function HomePage() {
           </span>
           <span className="relative flex flex-col gap-3">
             {/*
-              킥커는 브랜드 틸이다. 다른 색을 쓰면 카드의 색 기운이 둘로 갈린다.
-              "brand는 배경 전용" 규칙은 흰 카드 위의 2.2:1 때문인데, 여기는 어두운 잉크 위라
-              5.1:1로 넉넉하다 — 규칙의 이유가 사라지는 유일한 자리다.
+              킥커(PLAN MY TRIP)를 걷어냈다 (2026-08-30).
+
+              <b>제목이 사용자의 말이 되면서 화자가 갈렸다.</b> 영어 킥커는 서비스가 하는 말인데
+              바로 아래 "가고 싶은 곳이 있어요."는 사용자가 하는 말이라, 한 카드에서
+              두 사람이 번갈아 말하는 꼴이 됐다. 제목이 행동 이름("코스 짜기")이던 때는
+              둘 다 서비스의 말이라 안 걸렸다.
+
+              <p>덧붙여 UI 텍스트는 한국어라는 규칙과도 어긋났고, 제목이 이미 자기 무게를
+              지고 있어 <b>지워도 잃는 정보가 없다.</b>
             */}
-            <span className="text-brand text-[11.5px] font-semibold tracking-[0.1em]">
-              PLAN MY TRIP
-            </span>
             {/*
-              ■ 제목은 <b>서비스가 하는 일</b>이고, 사용자의 상황은 본문이 맡는다
+              ■ 제목은 <b>사용자가 하는 말</b>이다 (2026-08-30)
 
-              제목을 상황으로 두려고 세 번 고쳤다 — "내가 고른 여행"(시제가 틀렸다),
-              "가고 싶은 곳이 있어요"(필요한 것을 적게 말했다), "이미 계획이 있어요"
-              (날짜만 정한 사람이 잘못 들어온다). 고칠 때마다 <b>새로운 예외가 나왔다.</b>
+              두 카드의 제목이 <b>사용자의 1인칭 발화</b>다. 서비스가 무엇을 하는지가 아니라
+              <b>내가 어느 쪽인지</b>를 말하게 두었다 — 갈림길에서 고르는 자리라
+              고르는 사람의 말로 적는 편이 자기 쪽을 찾기 쉽다.
 
-              <p>원인이 문구가 아니라 <b>방식</b>에 있었다. 상황 제목은 "당신은 이런
-              상태다"라고 <b>단언</b>하는 말이라, 어떻게 짜도 그 단언에 안 맞는 사람이 남는다.
-              경우의 수를 다 막으려 하면 제목이 길어지고, 길어진 제목은 훑어지지 않는다.
+              <p>제목이 곧 문패이므로 <b>길 안내를 제목이 직접 한다.</b> 예전에는 제목이
+              행동 이름("코스 짜기")이라 누구를 위한 문인지 말하지 못했고, 그 일을 본문이
+              혼자 맡고 있었다.
 
-              <p>행동 이름은 그럴 수 없다. "코스 짜기"는 <b>버튼을 누르면 벌어지는 일</b>이라
-              누가 읽든 참이다. 대신 길 안내를 못 하므로, 그 일은 본문이 <b>조건</b>으로 맡는다 —
-              "가고 싶은 곳이 있다면"은 단언이 아니라서 틀릴 수가 없으면서
-              자기 쪽인지 알려준다.
+              <p>⚠️ <b>이 문구는 한 번 폐기됐던 것이다.</b> 상황 제목으로 세 번 고쳤다가
+              (내가 고른 여행 → 가고 싶은 곳이 있어요 → 이미 계획이 있어요) 전부 물렸고,
+              그때 사유가 <b>"필요한 것을 적게 말했다"</b>였다 — 이 문을 열면 나오는 것은
+              장소를 담는 화면이 아니라 <b>지역·날짜·기간</b>을 정하는 화면이다.
 
-              <p>⚠️ <b>길 안내는 본문이 한다.</b> 제목이 행동 이름이라 "누구를 위한 문인가"를
-              말하지 않으므로, 그 일을 본문이 맡는다 — 왼쪽은 "가고 싶은 곳은 그대로"로
-              <b>장소를 이미 갖고 있는 사람</b>임을 비추고, 오른쪽은 "새로운 여행지를
-              찾아드려요"로 <b>모르는 사람</b>을 부른다.
+              <p>알고도 되돌린 결정이다. 두 카드를 <b>한 쌍의 발화</b>로 맞추는 값이
+              그 어긋남보다 크다고 보았다. 대신 <b>본문이 그 구멍을 메워야 한다</b> —
+              장소만 정한 사람이 날짜부터 만나도 놀라지 않게.
 
-              <p>특히 오른쪽 그 문장이 <b>경주를 모르는 사용자의 문패</b>다 — 그것이 없으면
-              그 사람이 왼쪽으로 들어가 빈 검색창 앞에서 처음 막힌다.
-              CLAUDE.md 필수 기능 6번이 이 진입점을 둔 이유가 그 사람이다. 지우지 말 것.
+              <p>⚠️ 오른쪽 본문 "새로운 여행지를 찾아드려요"는 <b>경주를 모르는 사용자의
+              문패</b>다. 제목이 그 일을 나눠 맡게 됐지만 지우지 말 것 —
+              CLAUDE.md 필수 기능 6번이 이 진입점을 둔 이유가 그 사람이다.
             */}
             <span className="text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-              코스 짜기
+              가고 싶은 곳이 있어요.
             </span>
             {/*
-              "가고 싶은 곳은 그대로"가 두 몫을 한다 — <b>이 문이 누구 것인지</b>를 비추고
-              (장소를 이미 가진 사람), 동시에 <b>우리가 그것을 무르지 않는다</b>고 약속한다.
+              "그대로"가 <b>우리가 당신 것을 무르지 않는다</b>는 약속이다. 서비스가 하는 일이
+              여행을 대신 정하는 것이 아니라 붐비는 부분만 비껴 주는 것이라,
+              두 진입 카드 다 "당신 것은 그대로 둔다"로 말한다.
 
-              뒤엣말은 이 카드만의 것이 아니다. 진단 화면의 두 회피 경로가 같은 문형으로
-              받는다 — "일정은 그대로, 더 여유로운 날을" · "계획은 그대로, 더 여유로운
-              여행지를". <b>홈에서 한 약속이 그 화면들에서 그대로 지켜진다.</b>
-              서비스가 하는 일이 여행을 대신 정하는 것이 아니라 붐비는 부분만 비껴 주는
-              것이라, 두 진입 카드 다 "당신 것은 그대로 둔다"로 말한다.
+              <p>⚠️ 앞말이 <b>"가고 싶은 곳은"에서 "계획은"으로</b> 바뀌었다 (2026-08-30).
+              제목이 "가고 싶은 곳이 있어요."가 되면서 <b>같은 다섯 음절이 두 줄 연속</b>으로
+              나왔다 — 26px 굵은 글씨 바로 아래라 눈에 띄었다.
+
+              <p>바꾸면서 오히려 이어졌다. 진단 화면의 두 회피 경로가 같은 문형으로 받는다 —
+              "일정은 그대로, 더 여유로운 날을" · <b>"계획은 그대로</b>, 더 여유로운 여행지를".
+              이제 홈·진단이 <b>한 낱말</b>로 이어진다. 예전에는 홈만 다른 말을 썼다.
             */}
             <span className="max-w-62.5 text-sm leading-[1.6] text-white/60">
-              가고 싶은 곳은 그대로, <br/>붐비는 순간만 PEAKOFF가 도와드려요.
+              계획은 그대로, <br/>붐비는 순간만 PEAKOFF가 도와드려요.
             </span>
             {/* 이 링크가 유일한 문이다. button+navigate 대신 Link라 새 탭으로도 열린다 */}
+            {/*
+              보이는 글자는 짧게 두되 <b>접근 이름에는 목적지를 담는다.</b>
+              두 카드의 문이 똑같이 "시작하기"라, 링크만 훑는 사람에게는
+              "시작하기 · 시작하기"로 들려 어느 쪽이 무엇인지 알 수 없었다.
+              눈으로 보는 사람은 바로 위 제목이 문맥을 주지만, 링크 목록에는 그 제목이 없다.
+            */}
             <Link
               to="/plan"
+              aria-label="코스 직접 짜기 시작하기"
               className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
             >
-              {/* 제목이 이미 무엇을 하는지 말하므로 버튼은 짧게 둔다. 옆 카드와 같은 말이다 */}
               시작하기
               {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
               <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
@@ -923,21 +992,42 @@ export function HomePage() {
         <div className={`${CELL} lg:col-span-6`}>
           {/* 왼쪽 카드와 같은 규칙 — 카드는 누르는 것이 아니고, hover는 CTA를 가리킨다 */}
           <div className="group border-brand bg-surface shadow-rest relative w-full overflow-hidden rounded-[24px] border-[1.5px] px-6 pt-6.5 pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
+            {/*
+              글로우 하나. 왼쪽 카드와 <b>같은 장치를 흰 면의 세기로</b> 옮긴 것이다.
+
+              두 문이 짝인데 왼쪽만 오른쪽 절반이 장식으로 차 있고 이쪽은 비어 있어,
+              같은 급의 카드 둘이 아니라 <b>주와 곁다리</b>로 읽혔다. 글자 크기·버튼·
+              여백은 이미 같으니 남은 차이는 면이 비어 있다는 것뿐이었다.
+
+              ⚠️ <b>하나뿐이고, 틸이다.</b> 왼쪽은 틸(한적)과 핑크(붐빔)를 마주 놓아
+              "붐빔에서 한적으로"를 말하지만, 이 문은 붐빔을 진단하는 자리가 아니라
+              한적한 곳을 찾아 주는 자리다 — 핑크를 얹으면 하지 않는 말을 하게 된다.
+
+              ⚠️ <b>면을 통째로 칠하지 않았다.</b> 브랜드 틸을 깔면 로고와 버튼에만 남겨야
+              할 강조색이 화면 절반을 차지하고, 옅은 틸(brand-tint #e1f5f9)은 이 자리에
+              깔린 바탕 wash(#e9f6f7)와 거의 같은 색이라 카드 경계가 녹는다.
+              번지는 원 하나면 면은 흰 채로 두면서 빈 자리만 채운다.
+
+              알파가 왼쪽(0.14)보다 낮다. 흰 면 위에서는 같은 값도 훨씬 진하게 보인다.
+            */}
+            <span
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]"
+              aria-hidden="true"
+            >
+              <span className="absolute -top-16 -right-14 h-52 w-52 rounded-full bg-[rgb(63_193_201/0.08)]" />
+            </span>
             <span className="relative flex flex-col gap-3">
+              {/* 킥커(DISCOVER A TRIP)를 걷어냈다. 왼쪽 카드와 같은 이유다. */}
               {/*
-                ⚠️ 킥커를 "TRUST YOUR LUCK" 같은 말로 두지 않는다.
-                매번 다른 코스가 나오는 것은 <b>운이 아니라 설계</b>다 — 자격을 갖춘 후보만
-                남긴 뒤 점수에 비례해 고른다. 운을 앞세우면 바로 다음 화면에서 펴 보이는
-                한적 지수와 추천 근거가 <b>구색으로 읽힌다.</b> 우리가 파는 것은 뽑기가
-                아니라 "새로운 곳을 데이터로 찾아준다"는 약속이다.
-              */}
-              <span className="text-brand-deep text-[11.5px] font-semibold tracking-[0.1em]">
-                DISCOVER A TRIP
-              </span>
-              {/*
-                왼쪽과 같은 규칙 — 제목은 <b>하는 일</b>이고 상황은 본문이 조건으로 맡는다.
-                "발견하기"인 이유는 이 문이 매번 다른 코스를 내놓기 때문이다(가중 무작위).
-                "추천받기"라고 하면 늘 같은 답이 오는 것처럼 들린다.
+                왼쪽과 같은 규칙 — 제목은 <b>사용자가 하는 말</b>이다.
+
+                "만나고 싶어요"인 이유: 이 문이 하는 일은 <b>대신 정해 주는 것이 아니다.</b>
+                설문 두 문항을 받아 <b>초안</b>을 내놓을 뿐이고, 그 뒤 편집·진단·교체는
+                사용자가 한다. "맡길게요" 같은 말로 두면 여행을 통째로 넘기는 것처럼 읽혀
+                <b>첫 코스는 사용자의 의도를 존중한다</b>는 설계 원칙과 어긋난다.
+
+                <p>"추천받을게요"도 아니다. 이 문은 <b>매번 다른 코스</b>를 내놓는데
+                (가중 무작위) "추천"은 늘 같은 답이 오는 것처럼 들린다.
 
                 ⚠️ 한때 "오늘의 여행 발견하기"였다. <b>오늘이 아니다</b> — 설문은 날짜를
                 고르게 하고 예측 창이 앞으로 24~29일이라 대부분 미래 날짜다. 게다가 이 화면에는
@@ -945,7 +1035,7 @@ export function HomePage() {
                 한 화면에서 같은 말이 두 뜻으로 쓰이면 어느 쪽도 믿기 어려워진다.
               */}
               <span className="text-fg text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-                코스 발견하기
+                새로운 곳을 만나고 싶어요.
               </span>
               {/*
                 ⚠️ "새로운 여행지를 찾아드려요"가 <b>경주를 모르는 사용자를 위한 문패</b>다.
@@ -965,6 +1055,7 @@ export function HomePage() {
               */}
               <Link
                 to="/recommend"
+                aria-label="새로운 코스 발견하기 시작하기"
                 className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
               >
                 시작하기
@@ -1111,8 +1202,13 @@ export function HomePage() {
             <div className="bg-bg rounded-card hidden flex-col px-4 py-3 lg:flex lg:flex-1">
               {data ? (
                 <>
+                  {/*
+                    라벨은 HEADLINE_TABS에서 가져온다. 예전에는 여기에 글자를 직접 적어
+                    두었는데, 좁은 화면 스위치와 같은 말이어야 한다는 규칙이 <b>지켜지는지
+                    아무도 보증하지 못했다</b> — 실제로 한쪽만 고치면 그대로 어긋난다.
+                  */}
                   <HeadlineGroup
-                    label="붐빌 것으로 예상"
+                    label={HEADLINE_TABS[0].label}
                     spots={data.headline.crowded}
                     className="lg:flex-1 lg:justify-center"
                   />
@@ -1128,7 +1224,7 @@ export function HomePage() {
                   */}
                   <span className="bg-line -mx-4 my-3 h-px" aria-hidden="true" />
                   <HeadlineGroup
-                    label="한적할 것으로 예상"
+                    label={HEADLINE_TABS[1].label}
                     spots={data.headline.quiet}
                     className="lg:flex-1 lg:justify-center"
                   />
@@ -1281,6 +1377,23 @@ export function HomePage() {
               여기만 그림자를 두면 같은 버튼이 화면 안에서 두 무게를 갖는다.
             */}
             <div className="flex flex-col gap-2 px-1">
+              {/*
+                ⚠️ 왜 안 눌리는지 <b>여기서 말한다</b> (2026-08-30).
+
+                바로 위 주석이 "비활성일 때 '코스 짜기'라고만 적혀 있으면 왜 안 눌리는지
+                알 수 없다"고 적어 두었는데, 정작 코드가 그렇게 하고 있었다. 날짜를 고르기
+                전에는 회색 버튼 둘에 "코스 짜기"·"추천받기"만 적혀 있어, 바로 위 카드의
+                같은 이름 진입점 둘과 <b>같은 문이 회색으로 죽어 있는 것</b>처럼 보였다.
+
+                버튼 <b>글자</b>를 늘리지 않고 줄을 하나 얹는다. 문구를 버튼마다 넣으면
+                같은 말이 두 번 서고, 날짜를 고른 뒤에는 두 버튼이 각자 날짜를 이미
+                말하고 있어 이 줄이 할 일이 없어진다 — 그래서 고르기 전에만 뜬다.
+              */}
+              {activeDate === null && (
+                <p className="text-hint m-0 pb-0.5 text-[12.5px] leading-[1.5]">
+                  위에서 날짜를 고르면 그 날짜로 시작할 수 있어요.
+                </p>
+              )}
               <button
                 type="button"
                 disabled={activeDate === null}
@@ -1312,7 +1425,23 @@ export function HomePage() {
             나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 둘이다.
           */}
           <section
-            className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:p-5.5`}
+            /*
+              ⚠️ lg:self-start — <b>내용만큼만 키운다</b> (2026-08-30).
+
+              격자 칸은 기본이 stretch라 이 박스가 옆 칸(오늘의 OO + 이번 주) 높이에
+              맞춰 늘어났다. 옆은 목록 여섯 줄에 예보 일곱 줄에 버튼 둘이라 700px가
+              넘는데 이쪽은 카드 넷이 최대다. <b>저장된 코스가 하나도 없을 때는</b>
+              머리글과 작은 안내 상자 하나뿐이라, 세 칸 중 하나가 통째로 흰 여백이 됐다.
+
+              늘리지 않으면 남는 자리는 흰 카드 면이 아니라 <b>페이지 바탕(회백)</b>이다.
+              같은 빈 공간이라도 바탕색이면 "여기서 끝났다"로 읽히고, 흰 면이면
+              "무언가 안 뜬다"로 읽힌다. 채울 것이 없을 때 할 수 있는 정직한 일은
+              큰 빈 상자를 세우는 것이 아니라 상자를 그만큼만 세우는 것이다.
+
+              칸을 채우려고 OTHER_COURSE_COUNT를 늘리는 것은 답이 아니다 —
+              그 수는 실제 저장된 코스가 정하지 우리가 정하지 않는다.
+            */
+            className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:self-start lg:p-5.5`}
           >
             <div className="flex flex-col gap-0.75 px-1">
               <h2 className={SECTION_TITLE}>다른 사람들의 여행</h2>
