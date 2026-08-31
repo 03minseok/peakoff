@@ -60,25 +60,6 @@ export function regionNameOf(slug: string): string {
 }
 
 /**
- * 지금 지역 다음에 올 지역. 마지막이면 처음으로 돌아온다.
- *
- * 홈 화면이 일정 시간마다 지역을 넘기는 데 쓴다. <b>지역이 하나뿐이면 자기 자신을
- * 돌려주므로</b>, 호출하는 쪽은 개수를 세지 않아도 된다.
- */
-export function nextRegion(slug: string): string {
-  const index = regions.findIndex((option) => option.slug === slug)
-  if (index < 0) {
-    return defaultRegionSlug()
-  }
-  return regions[(index + 1) % regions.length].slug
-}
-
-/** 넘길 지역이 둘 이상인지. 하나뿐일 때 타이머를 걸거나 화살표를 그리지 않기 위해 쓴다 */
-export function hasMultipleRegions(): boolean {
-  return regions.length > 1
-}
-
-/**
  * 검색어로 지역을 거른다.
  *
  * <p>무엇으로 걸리는지는 <b>서버가 준 {@code searchText}</b>가 정한다 — 짧은 이름("속초")과
