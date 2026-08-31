@@ -7,7 +7,7 @@ import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID, LEVEL_TINT } from '../components/levelStyles'
 import { PublicCourseSheet } from '../components/PublicCourseSheet'
 import { CARD_RAISED } from '../components/styles'
-import { DEFAULT_REGION, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
+import { defaultRegionSlug, hasMultipleRegions, nextRegion, regionNameOf } from '../constants/regions'
 import { useHomeData } from '../hooks/useHomeData'
 import { fetchRecentCourses } from '../services/api'
 import type { ForecastDay, HeadlineSpot } from '../hooks/useHomeData'
@@ -534,7 +534,7 @@ export function HomePage() {
    * 일정 시간마다 넘기려면 nextRegion(regionSlug)로 이 값을 바꾸는 타이머만 걸면 된다.
    * 지역이 하나뿐인 지금은 nextRegion이 자기 자신을 돌려주므로 걸어도 아무 일이 없다.
    */
-  const [regionSlug, setRegionSlug] = useState(DEFAULT_REGION)
+  const [regionSlug, setRegionSlug] = useState(defaultRegionSlug())
 
   /*
    * 일정 시간마다 다음 지역으로 넘긴다.

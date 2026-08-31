@@ -18,6 +18,7 @@ import type {
   NearbyPlace,
   PublicCourse,
   Place,
+  RegionOption,
   SaveCourseRequest,
   SavedCourseDetail,
   SavedCourseSummary,
@@ -266,6 +267,18 @@ function rememberSlots<T extends { slots: { place: Place }[] }>(response: T): T 
  * ⚠️ 대표 목록의 순서는 <b>인기 순</b>이지 추천 순이 아니다. 인기 장소는 붐비는 장소이므로
  * 이 순서를 추천 근거로 쓰면 오버투어리즘 과제와 어긋난다.
  */
+/**
+ * GET /api/regions
+ *
+ * 서비스가 지원하는 지역 전부. <b>앱이 뜰 때 한 번만</b> 부른다 —
+ * 공사를 부르지 않는 서버 메모리 조회라 빠르고, 목록이 세션 중에 바뀌지 않는다.
+ *
+ * 화면이 이 목록을 상수로 들고 있지 않은 이유는 {@link RegionOption} 주석에 적어 두었다.
+ */
+export function fetchRegions(signal?: AbortSignal): Promise<RegionOption[]> {
+  return apiRequest<RegionOption[]>('/regions', { signal })
+}
+
 export function fetchPlaces(
   region: string,
   options: { keyword?: string; limit?: number; signal?: AbortSignal } = {},

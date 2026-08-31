@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CongestionBadge } from '../components/CongestionBadge'
-import { DEFAULT_REGION, regionNameOf } from '../constants/regions'
+import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { ApiRequestError, fetchPlaces } from '../services/api'
 
 /**
@@ -15,8 +15,8 @@ export function PreviewPage() {
   useEffect(() => {
     const controller = new AbortController()
 
-    fetchPlaces(DEFAULT_REGION, { limit: 30, signal: controller.signal })
-      .then((places) => setConnection(`연결됨 · ${regionNameOf(DEFAULT_REGION)} ${places.length}곳`))
+    fetchPlaces(defaultRegionSlug(), { limit: 30, signal: controller.signal })
+      .then((places) => setConnection(`연결됨 · ${regionNameOf(defaultRegionSlug())} ${places.length}곳`))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return

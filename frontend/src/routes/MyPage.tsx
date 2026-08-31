@@ -11,7 +11,7 @@ import { SavedCourseCard } from '../components/SavedCourseCard'
 import { CARD } from '../components/styles'
 import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
 import { useAuth } from '../state/authContext'
-import { DEFAULT_REGION, regionNameOf } from '../constants/regions'
+import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { useBrowserChromeInset } from '../hooks/useBrowserChromeInset'
 import { useTrip } from '../state/tripContext'
 import type { SavedCourseDetail, SavedCourseSummary } from '../types/api'
@@ -470,7 +470,7 @@ export function MyPage() {
           <div className="flex flex-col gap-1.5">
             <span className="text-fg text-[16.5px] font-bold">아직 저장한 코스가 없어요</span>
             <span className="text-muted max-w-[340px] text-[13.5px] leading-[1.6]">
-              한적한 {regionNameOf(DEFAULT_REGION)} 여행을 계획하고 저장하면 여기에 모여요.
+              한적한 {regionNameOf(defaultRegionSlug())} 여행을 계획하고 저장하면 여기에 모여요.
             </span>
           </div>
           {/*

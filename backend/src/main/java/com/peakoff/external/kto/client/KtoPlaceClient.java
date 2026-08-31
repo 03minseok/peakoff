@@ -165,7 +165,7 @@ public class KtoPlaceClient {
 		JsonNode body = caller.body(LIST_PATH, Map.of(
 				"numOfRows", String.valueOf(MAX_ROWS),
 				"pageNo", "1",
-				"lDongRegnCd", RegionCodes.areaCodeOf(region),
+				"lDongRegnCd", RegionCodes.lDongRegnCodeOf(region),
 				"lDongSignguCd", RegionCodes.lDongSignguCodeOf(region),
 				// 제목순. 순서가 정해져 있어야 같은 검색이 늘 같은 차례로 나온다.
 				"arrange", "A"));
