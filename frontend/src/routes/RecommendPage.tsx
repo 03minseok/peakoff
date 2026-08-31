@@ -7,7 +7,7 @@ import { ListEdgeJump } from '../components/ListEdgeJump'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { RegionPicker } from '../components/RegionPicker'
-import { defaultRegionSlug, regionNameOf } from '../constants/regions'
+import { regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type {
@@ -144,15 +144,20 @@ export function RecommendPage() {
    * 상수가 아니라 상태인 이유: 이 화면은 코스 짜기를 <b>거치지 않고도</b> 들어올 수 있다.
    * 그 경로로 들어온 사람에게 지역이 고정돼 있으면, 경주를 보러 온 것이 아닌데도
    * 경주 코스를 받게 된다.
+   *
+   * <p>같은 이유로 <b>기본값도 두지 않는다.</b> 미리 켜 두면 고르지 않은 사람과
+   * 경주를 고른 사람이 구분되지 않는다 — 이 문은 어디로 갈지 모르는 사람의 진입점이라
+   * 더더욱 대신 정해 주면 안 된다.
    */
-  const [region, setRegion] = useState(state.plan?.region ?? defaultRegionSlug())
+  const [region, setRegion] = useState(state.plan?.region ?? '')
   const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
   /*
-   * 세 문항 모두 기본값이 있어 아무것도 안 눌러도 코스를 받을 수 있다.
-   * 남은 잠금 조건은 지난 날짜뿐이다 — 예측이 없는 날은 계산할 것이 없다.
+   * 두 문항 모두 기본값이 있어 아무것도 안 눌러도 코스를 받을 수 있다.
+   * 잠그는 것은 둘뿐이다 — 지역을 안 골랐을 때(찾을 범위가 없다)와
+   * 지난 날짜일 때(예측이 없어 계산할 것이 없다).
    */
-  const canSubmit = !isPastDate
+  const canSubmit = Boolean(region) && !isPastDate
 
   async function requestDraft() {
     setView({ phase: 'loading' })
