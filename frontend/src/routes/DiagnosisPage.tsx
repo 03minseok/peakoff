@@ -8,6 +8,7 @@ import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { LEVEL_COLOR_VAR, LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, NOTICE, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
+import { regionNameOf } from '../constants/regions'
 import { currentDiagnosis, toSlots, useDiagnosis } from '../hooks/useDiagnosis'
 import { fetchDateAlternatives } from '../services/api'
 import { planKeyOf } from '../services/alternativeCache'
@@ -610,7 +611,8 @@ export function DiagnosisPage() {
               더 낫다는 약속이 아니다.
 
               <p>얼마나 나은지는 <b>약속이 아니라 그 화면에서</b> 말한다. 대안 카드마다
-              구간 문구와 개선폭("지금보다 +27")이 붙어 있다.
+              구간 문구와 개선폭("한적 지수 +27")이 붙어 있다 — 이 카드의 날짜 대안과
+              <b>같은 이름의 수</b>다.
 
               "더 한적한 날짜"는 <b>지표 이름</b>이지 사용자가 할 일이 아니었다. 이름을
               행동으로 바꾸면 두 경로가 한 짝으로 읽히고, 서비스가 파는 것이
@@ -1381,6 +1383,8 @@ export function DiagnosisPage() {
           originQuietness={sheet.quietness}
           originLevel={sheet.level}
           visitDate={sheet.visitDate}
+          /* 제목이 "다른 경주를 둘러볼까요?"로 범위를 밝힌다. 슬러그가 아니라 이름을 넘긴다 */
+          regionName={regionNameOf(plan.region)}
           /*
             ■ 여행 <b>전체</b>에 담긴 곳을 뺀다 — 그 날치가 아니다 (2026-08-30 고침)
 

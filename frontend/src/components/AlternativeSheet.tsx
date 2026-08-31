@@ -7,6 +7,7 @@ import { ChevronRight } from './icons'
 import { CongestionBadge } from './CongestionBadge'
 import { LEVEL_SOLID } from './levelStyles'
 import { formatMonthDay } from '../utils/date'
+import { withJosa } from '../utils/josa'
 import { useScrollLock } from '../hooks/useScrollLock'
 
 /**
@@ -71,6 +72,18 @@ interface Props {
   originLevel: CongestionLevel | null
   /** 그 자리를 방문하는 날짜. 같은 후보라도 날짜에 따라 한적도가 다르다 */
   visitDate: string
+  /**
+   * 여행 지역 이름(경주·제주시·서귀포시). <b>제목이 이 말로 범위를 밝힌다.</b>
+   *
+   * <p>후보는 언제나 이 지역 안에서만 나온다(검색·대안 모두 지역으로 잠겨 있다).
+   * 그러면서 제목은 "다른 곳"이라고만 말해, 어디까지 뒤진 결과인지 화면이 밝히지 않았다 —
+   * 이미 지키고 있는 약속을 말하지 않고 있었던 셈이다.
+   *
+   * <p>⚠️ 슬러그를 넘기지 않는다. {@code regionNameOf}는 모르는 슬러그에 빈 문자열을
+   * 주므로, 여기서 다시 조회하면 이 컴포넌트가 그 빈 값을 처리할 책임까지 지게 된다.
+   * 이름을 받아 두면 비었는지 한 번만 보면 된다.
+   */
+  regionName: string
   /**
    * 이미 <b>여행에</b> 담겨 있는 장소들. 후보에서 빼야 같은 곳이 두 번 들어가지 않는다.
    *
@@ -236,6 +249,7 @@ export function AlternativeSheet({
   originQuietness,
   originLevel,
   visitDate,
+  regionName,
   excludePlaceIds,
   planKey,
   onClose,
@@ -408,7 +422,7 @@ export function AlternativeSheet({
                 화면을 가리켜 같은 이름으로 말할 수 있다.
 
                 ⚠️ 뒤에 "· 다른 곳 둘러보기"를 붙였다가 뺐다. 바로 아래 제목이
-                "…다른 곳도 둘러볼까요?"라 <b>같은 말이 두 줄 연달아</b> 섰다.
+                "…다른 경주를 둘러볼까요?"라 <b>같은 말이 두 줄 연달아</b> 섰다.
                 진단 화면의 TIME OFF도 이름만 서 있어 그쪽과 모양이 맞는다.
               */}
               <span className="text-brand-deep text-[12px] font-semibold">
@@ -420,13 +434,39 @@ export function AlternativeSheet({
                 홈 카드에서 "오늘의 여행"을 걷어낸 것과 같은 이유 — 화면이 시점을 틀리게
                 말하면 그 아래 숫자들도 같이 의심받는다.
               */}
+              {/*
+                ■ 제목이 <b>범위</b>를 말한다 — "다른 곳"이 아니라 "다른 경주"
+
+                후보는 <b>언제나 이 여행의 지역 안</b>에서만 나온다. 그런데 제목이
+                "다른 곳도"라고만 말해, 사용자는 그 범위를 알 길이 없었다 —
+                전국을 뒤진 것인지 이 도시 안인지에 따라 목록을 읽는 눈이 달라진다.
+                지역명을 넣으면 <b>이미 지키고 있는 약속</b>이 화면에 드러난다.
+
+                <p>"다른 경주"는 장소를 세는 말이 아니라 <b>같은 도시의 다른 얼굴</b>을
+                가리키는 말이라, 이 시트가 하는 일(붐비는 한 곳을 이 지역 안에서 바꿔 끼우는 일)과
+                뜻이 맞는다.
+
+                <p>⚠️ 조사를 글자로 박지 않는다. 지금 세 지역은 모두 받침이 없어 "를"이지만,
+                받침으로 끝나는 지역이 하나만 늘어도(부산<b>을</b>) 이 줄이 비문이 된다.
+
+                <p>⚠️ 지역명이 비면 <b>옛 문구로 돌아간다.</b> {@code regionNameOf}는 모르는
+                슬러그에 빈 문자열을 주는데, 그대로 이으면 "다른 를 둘러볼까요?"가 된다.
+
+                <p>두 모드가 <b>같은 자리에서 줄을 바꾼다.</b> 장소 이름은 길이가 제각각이라
+                (첨성대 · 경주 동부 사적지대) 흐르는 대로 두면 어디서 접힐지 알 수 없다.
+                쉼표에서 끊으면 <b>윗줄은 지금 자리, 아랫줄은 제안</b>으로 역할이 갈린다.
+              */}
               <h2
                 id="sheet-title"
                 className="text-fg m-0 text-[19px] leading-[1.35] font-bold tracking-[-0.015em] text-pretty"
               >
+                {originName} 말고,
+                <br />
                 {nearbyMode
-                  ? `${originName} 말고, 가까운 곳을 볼까요?`
-                  : `${originName} 말고, 다른 곳도 둘러볼까요?`}
+                  ? '가까운 곳을 볼까요?'
+                  : regionName
+                    ? `다른 ${withJosa(regionName, '을/를')} 둘러볼까요?`
+                    : '다른 곳도 둘러볼까요?'}
               </h2>
             </div>
             <button
@@ -447,8 +487,13 @@ export function AlternativeSheet({
             날짜를 적어 두면 아래 후보들의 한적도가 <b>같은 날 기준</b>이라는 것도 함께 전해진다.
 
             점은 색 자체가 신호인 자리라 {@code LEVEL_SOLID}를 쓴다. 색만 두면 색각 이상에서
-            갈리지 않으므로 <b>등급 이름과 한적도를 글자로 함께</b> 적는다 —
+            갈리지 않으므로 <b>등급 이름과 한적 지수를 글자로 함께</b> 적는다 —
             CLAUDE.md가 3단계를 색과 명도로 함께 가르는 것과 같은 이유다.
+
+            ⚠️ <b>"한적도"가 아니라 "한적 지수"다.</b> 코드와 문서는 이 값을 한적도라 부르지만
+            화면에 서는 이름은 줄곧 "한적 지수"였다(홈·마이페이지·진단·저장 카드·약관).
+            여기만 안쪽 이름이 새어 나와 있었고, 바로 아래 개선폭이 "한적 지수 +33"이 되면서
+            <b>같은 수의 이름이 한 시트 안에서 둘</b>이 될 참이었다.
           */}
           {originLevel !== null && originQuietness !== null && (
             <p className="text-muted m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px]">
@@ -463,7 +508,7 @@ export function AlternativeSheet({
               */}
               {formatMonthDay(visitDate)}은
               <span className="text-fg font-semibold">{LEVEL_PHRASE[originLevel]}</span>
-              <span className="text-hint">· 한적도 {originQuietness}</span>
+              <span className="text-hint">· 한적 지수 {originQuietness}</span>
             </p>
           )}
           {/*
@@ -728,13 +773,21 @@ export function AlternativeSheet({
 
                         <p>⚠️ 0 이하면 아예 적지 않는다. 서버가 개선폭 하한(5점)을 통과한
                         후보만 내려보내므로 정상 경로에서는 나올 수 없는 값인데, 그래도
-                        "지금보다 +0"·"-3" 같은 말이 화면에 서는 일은 없어야 한다.
+                        "한적 지수 +0"·"-3" 같은 말이 화면에 서는 일은 없어야 한다.
                         <b>계산해서 나온 수만 적는다.</b>
+
+                        <p>⚠️ <b>이름은 "한적 지수"다</b> — 진단 화면의 날짜 대안이 쓰는 말과
+                        같다("한적 지수 +4"). PLACE OFF와 TIME OFF는 같은 화면에 나란히 선
+                        두 회피 경로라, 같은 뜻의 수를 다른 이름으로 적으면 <b>형제로 안 읽힌다.</b>
+                        "지금보다 +33"이었던 것을 맞춘 것이다 — 무엇이 33만큼 늘었는지를
+                        그 줄이 혼자 말하지 못했고, 기준("지금")은 바로 위 머리글이
+                        이미 적고 있다(원래 자리의 한적 지수).
                       */}
                       {quietnessGain !== null && quietnessGain > 0 && (
                         <span className="text-quiet-deep text-[12.5px] font-semibold whitespace-nowrap">
-                          <span className="sr-only">원래 장소보다 한적도 </span>
-                          지금보다 +{quietnessGain}
+                          {/* 화면에 없는 <b>기준</b>만 남긴다. 지표 이름은 이제 눈에 보인다 */}
+                          <span className="sr-only">원래 장소보다 </span>
+                          한적 지수 +{quietnessGain}
                         </span>
                       )}
                     </div>
@@ -837,6 +890,15 @@ export function AlternativeSheet({
                     "교체"는 서류의 말이다. 사용자가 하는 일은 <b>이곳으로 가기로 정하는 것</b>이고,
                     문구도 그 사람의 말로 적는다. 이 시트를 연 버튼("새로운 곳 발견하기")과 한 짝이라
                     발견하고 → 고르는 흐름이 문장으로도 이어진다.
+
+                    <p>⚠️ <b>"갈래요"가 아니라 "가볼래요"다.</b> 이 버튼이 정하는 것은 여행이 아니라
+                    <b>후보 하나</b>이고, 누른 뒤에도 그 자리에 되돌리기가 선다. 단정하는 말을 두면
+                    무를 수 없는 일처럼 읽혀 누르기가 무거워진다. 바로 위 제목이 "둘러볼까요?"로
+                    묻는 자리라, <b>물음과 대답이 같은 결</b>로 이어지기도 한다.
+
+                    <p>⚠️ <b>"이곳으로"는 남긴다.</b> 카드 세 장이 세로로 이어지고 버튼은 전부
+                    같은 글자라, 이 말이 빠지면 목록을 훑다 멈춘 자리에서 <b>무엇에 대한 대답인지</b>가
+                    바로 위 카드에만 남는다. 버튼이 칸을 꽉 채우므로 네 글자를 더 얹는 값도 없다.
                   */}
                   <button
                     type="button"
@@ -861,7 +923,7 @@ export function AlternativeSheet({
                       onSelect(alternative.place.id)
                     }}
                   >
-                    이곳으로 갈래요
+                    이곳으로 가볼래요
                   </button>
                 </li>
                 )
