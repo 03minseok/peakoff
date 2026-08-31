@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
-import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
+import { RegionPicker } from '../components/RegionPicker'
+import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { fetchForecastWindow } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import { daysFromToday, formatDateRange, formatKoreanDate, today } from '../utils/date'
@@ -43,7 +44,6 @@ const SEGMENT_BASE =
   // 초점링은 brand-deep이다. brand(틸)는 흰 카드 위에서 2.2:1이라 링으로는 보이지 않는다
   'flex h-11 cursor-pointer items-center justify-center rounded-ui px-3 text-[15px] font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-deep'
 
-const REGION_SEGMENT = `${SEGMENT_BASE} border border-line bg-surface text-muted peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-fg`
 
 const DURATION_SEGMENT = `${SEGMENT_BASE} border border-line bg-surface text-muted peer-checked:border-fg peer-checked:bg-fg peer-checked:font-semibold peer-checked:text-white`
 
@@ -64,7 +64,7 @@ export function PlanPage() {
   const suggestedDate = (location.state as { startDate?: string } | null)?.startDate
 
   // 이전에 입력한 값이 있으면 그것부터 보여준다 (뒤로 왔을 때 다시 채우지 않게).
-  const [region, setRegion] = useState(state.plan?.region ?? DEFAULT_REGION)
+  const [region, setRegion] = useState(state.plan?.region ?? defaultRegionSlug())
   const [startDate, setStartDate] = useState(
     suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
   )
@@ -192,27 +192,14 @@ export function PlanPage() {
 
       <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
-          <div className="flex items-baseline justify-between">
-            <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
-            {REGIONS.length === 1 && (
-              <span className="text-hint text-xs">지역 확대 예정</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            {REGIONS.map((option) => (
-              <label key={option.slug}>
-                <input
-                  type="radio"
-                  name="region"
-                  className="peer sr-only"
-                  value={option.slug}
-                  checked={region === option.slug}
-                  onChange={() => setRegion(option.slug)}
-                />
-                <span className={REGION_SEGMENT}>{option.name}</span>
-              </label>
-            ))}
-          </div>
+          <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
+          {/*
+            칩 묶음에서 검색으로 바꿨다. 지역이 일곱이 되면서 390px에서 두 줄이 되고,
+            더 늘면 화면을 덮는다 — 목록을 훑는 화면은 확장되지 않는다.
+            고르는 방식은 RegionPicker 한 곳에만 있다. 여기와 코스 발견이 같은 것을
+            각자 그리다가 모았다 — 하나를 빠뜨리면 두 화면이 다르게 동작한다.
+          */}
+          <RegionPicker value={region} onChange={setRegion} />
         </fieldset>
 
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>

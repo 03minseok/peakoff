@@ -6,7 +6,8 @@ import { CourseMap } from '../components/CourseMap'
 import { ListEdgeJump } from '../components/ListEdgeJump'
 import { LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
-import { DEFAULT_REGION, REGIONS, regionNameOf } from '../constants/regions'
+import { RegionPicker } from '../components/RegionPicker'
+import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type {
@@ -82,7 +83,6 @@ const SEGMENT_BASE =
  * 지역 칸. <b>브랜드색으로 고른 것을 표시한다</b> — 아래 답들(잉크색)과 색을 갈라
  * "어디"와 "어떻게"가 다른 층위임을 눈으로 알린다. 코스 짜기 화면과 같은 규칙이다.
  */
-const REGION_SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-[15px] font-medium text-muted peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-fg`
 
 const SEGMENT = `${SEGMENT_BASE} h-11 border border-line bg-surface text-[15px] font-medium text-muted peer-checked:border-fg peer-checked:bg-fg peer-checked:font-semibold peer-checked:text-white`
 
@@ -145,7 +145,7 @@ export function RecommendPage() {
    * 그 경로로 들어온 사람에게 지역이 고정돼 있으면, 경주를 보러 온 것이 아닌데도
    * 경주 코스를 받게 된다.
    */
-  const [region, setRegion] = useState(state.plan?.region ?? DEFAULT_REGION)
+  const [region, setRegion] = useState(state.plan?.region ?? defaultRegionSlug())
   const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
   /*
@@ -367,24 +367,9 @@ export function RecommendPage() {
           코스 짜기 화면도 지역을 첫 칸에 두고 있어 두 화면의 순서가 맞는다.
         */}
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
-          <div>
-            <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            {REGIONS.map((option) => (
-              <label key={option.slug}>
-                <input
-                  type="radio"
-                  name="region"
-                  className="peer sr-only"
-                  value={option.slug}
-                  checked={region === option.slug}
-                  onChange={() => setRegion(option.slug)}
-                />
-                <span className={REGION_SEGMENT}>{option.name}</span>
-              </label>
-            ))}
-          </div>
+          <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
+          {/* 코스 짜기와 같은 컴포넌트다. RegionPicker 주석 참고 */}
+          <RegionPicker value={region} onChange={setRegion} />
         </fieldset>
 
         {/*
