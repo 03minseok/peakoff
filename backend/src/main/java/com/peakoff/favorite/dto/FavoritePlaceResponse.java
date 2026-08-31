@@ -11,7 +11,10 @@ import com.peakoff.favorite.domain.FavoritePlace;
  * 재야 할지 정해지지 않는다. 날짜 없이 점수를 붙이면 화면이 재지 않은 것을 말하게 된다 —
  * 한적도는 여행 날짜가 정해진 진단 화면의 몫이다.
  *
- * @param placeName 찜한 시점의 이름. 목록을 열 때 공사를 다시 부르지 않으려고 남겨둔 값이다
+ * @param placeName    찜한 시점의 이름. 목록을 열 때 공사를 다시 부르지 않으려고 남겨둔 값이다
+ * @param categoryName ⚠️ <b>null일 수 있다.</b> 이 칸이 생기기 전에 찜한 행이 그렇다 —
+ *                     자세한 사정은 {@link FavoritePlace}의 컬럼 주석. 화면은 그 자리를 비운다
+ * @param imageUrl     대표 이미지. 이미지가 빈 관광지가 흔해 처음부터 null을 허용한다
  */
 public record FavoritePlaceResponse(
 		String placeId,

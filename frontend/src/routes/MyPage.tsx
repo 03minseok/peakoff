@@ -678,6 +678,7 @@ export function MyPage() {
                     toggle({
                       id: favorite.placeId,
                       name: favorite.placeName,
+                      // 지우는 길이라 이 값들은 쓰이지 않지만, 되돌릴 때 그대로 복원된다
                       categoryName: favorite.categoryName,
                       imageUrl: favorite.imageUrl,
                     })
@@ -692,9 +693,15 @@ export function MyPage() {
                   <span className="text-fg truncate text-[13.5px] font-semibold">
                     {favorite.placeName}
                   </span>
-                  <span className="text-hint truncate text-[11.5px]">
-                    {favorite.categoryName}
-                  </span>
+                  {/*
+                    분류가 없는 찜이 있다. 이 칸이 서버에 생기기 전에 찜한 곳이다 —
+                    <b>빈 줄을 세우지 않는다.</b> 자리만 비워두면 "안 불러온 값"으로 읽힌다.
+                  */}
+                  {favorite.categoryName && (
+                    <span className="text-hint truncate text-[11.5px]">
+                      {favorite.categoryName}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}
