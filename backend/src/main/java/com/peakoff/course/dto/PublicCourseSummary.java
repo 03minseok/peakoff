@@ -11,7 +11,7 @@ import com.peakoff.course.domain.SavedCoursePlace;
 import com.peakoff.place.domain.SupportedRegion;
 
 /**
- * 남이 저장한 코스를 <b>익명으로</b> 요약한 것. 홈의 "다른 사람들의 여행"에 쓴다.
+ * 저장된 코스를 요약한 것. 홈의 "요즘 저장된 여행"에 쓴다.
  *
  * <h2>무엇을 빼는가</h2>
  * <b>코스 id</b>가 없다.
