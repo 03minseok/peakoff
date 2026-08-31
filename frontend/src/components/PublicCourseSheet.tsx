@@ -1,15 +1,23 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Close } from './icons'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
+import { TEXT_INPUT } from './styles'
 import type { PublicCourse, PublicPlace } from '../types/api'
-import { formatDateRange, formatNights, isPastDate } from '../utils/date'
+import { formatDateRange, formatNights, isPastDate, today } from '../utils/date'
 import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
   course: PublicCourse
   onClose: () => void
-  /** 이 코스를 그대로 내 편집 화면에 담는다 */
-  onCopyToFlow: (course: PublicCourse) => void
+  /**
+   * 이 코스를 그대로 내 편집 화면에 담는다.
+   *
+   * <p>⚠️ <b>날짜는 이 시트가 받아서 넘긴다.</b> 남의 코스에서 가져오는 것은 장소와
+   * 순서이고, 언제 떠날지는 베끼는 사람이 정할 일이다 — 남의 출발일을 그대로 물려주면
+   * 이미 지난 날짜이기 십상이고(예측 밖이라 진단이 통째로 빈다), 지나지 않았더라도
+   * 그 사람 사정에 맞춘 날이다.
+   */
+  onCopyToFlow: (course: PublicCourse, startDate: string) => void
 }
 
 /**
@@ -56,6 +64,24 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
   })
 
   const past = isPastDate(course.endDate)
+
+  /**
+   * 고른 출발일. <b>빈 문자열이면 아직 안 골랐다.</b>
+   *
+   * <h3>왜 미리 채워두지 않는가</h3>
+   * 남의 출발일을 넣어두면 <b>그 날로 가겠다고 고른 것처럼</b> 보인다. 이 시트가 묻는 것은
+   * 딱 하나이므로 그 하나만큼은 사용자가 실제로 골라야 한다 — 조건 화면에서
+   * 기본 선택을 걷어낸 것과 같은 판단이다.
+   *
+   * <h3>왜 시트 안에서 묻는가</h3>
+   * 조건 화면으로 보내면 지역·기간까지 다시 묻게 된다. 그 둘은 <b>베껴 오는 코스가 이미
+   * 정하고 있다</b> — 장소가 그 지역의 것이고, 일차 수가 곧 기간이다.
+   * 이미 답이 있는 것을 다시 묻는 화면은 베끼는 일을 번거롭게만 만든다.
+   */
+  const [startDate, setStartDate] = useState('')
+
+  /** 날짜를 묻는 중인가. 버튼을 누르기 전에는 이 시트가 <b>읽는 자리</b>다 */
+  const [picking, setPicking] = useState(false)
   // "경상북도 경주시" → "경주시". 카드가 좁아 앞쪽 도명까지는 들어가지 않는다.
   const shortRegion = course.regionName.replace(/^.*\s/, '')
 
@@ -174,23 +200,66 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
               남의 코스는 고칠 수 없다. 할 수 있는 것은 <b>베껴 와서 내 것으로 짜는 일</b>이고,
               그러면 편집 화면으로 간다 — 진단 화면이 아니다. 남의 일정을 그대로 진단해 봐야
               내 여행이 아니고, 대개 날짜부터 갈아야 한다.
+
+              <p>■ <b>날짜 하나만 묻고 보낸다</b> (2026-08-31)
+
+              예전에는 누르는 즉시 넘어갔다. 남의 출발일을 그대로 물려주고, 지난 날짜면
+              일주일 뒤로 <b>대신 정해</b> 주었다 — 사용자는 자기 여행이 언제 시작하는지
+              모르는 채 편집 화면에 도착했다.
+
+              <p>대신 <b>이 시트가 그 한 가지만 묻는다.</b> 조건 화면으로 보내면 지역·기간까지
+              다시 묻게 되는데, 그 둘은 베껴 오는 코스가 이미 정하고 있다(장소가 그 지역의
+              것이고 일차 수가 곧 기간이다). 이미 답이 있는 것을 다시 묻는 화면은
+              베끼는 일을 번거롭게만 만든다.
+
+              <p>누르기 <b>전에는</b> 날짜 칸을 세우지 않는다. 이 시트는 먼저 읽는 자리이고,
+              펼치자마자 입력칸이 서 있으면 남의 여행을 구경하러 온 사람에게 숙제가 생긴다.
             */}
-            <button
-              type="button"
-              onClick={() => onCopyToFlow(course)}
-              className="border-brand bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border-[1.5px] text-sm font-semibold transition-colors"
-            >
-              이 코스로 나도 짜보기
-            </button>
-            {past && (
+            {!picking ? (
+              <button
+                type="button"
+                onClick={() => setPicking(true)}
+                className="border-brand bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border-[1.5px] text-sm font-semibold transition-colors"
+              >
+                이 코스로 나도 짜보기
+              </button>
+            ) : (
+              <div className="mt-1 flex flex-col gap-2.5">
+                <label className="text-fg text-[13.5px] font-semibold" htmlFor="copy-start-date">
+                  언제 떠나세요?
+                </label>
+                {/*
+                  min을 오늘로 건다. 지난 날짜는 예측이 없어 진단이 통째로 비는데,
+                  담고 나서 숫자가 안 나오면 사용자는 그것을 고장으로 읽는다.
+                  ⚠️ 예측 창 <b>끝</b>은 막지 않는다 — 여행은 원래 미리 계획한다.
+                */}
+                <input
+                  id="copy-start-date"
+                  type="date"
+                  className={TEXT_INPUT}
+                  value={startDate}
+                  min={today()}
+                  onChange={(event) => setStartDate(event.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={!startDate}
+                  onClick={() => onCopyToFlow(course, startDate)}
+                  className="bg-brand hover:bg-brand-hover text-fg rounded-ui disabled:bg-bg disabled:text-hint h-12 cursor-pointer text-sm font-semibold transition-colors disabled:cursor-not-allowed"
+                >
+                  이 날짜로 코스 짜기
+                </button>
+              </div>
+            )}
+            {past && !picking && (
               /*
-                지난 날짜 그대로 담으면 진단이 통째로 비어 나온다(예측은 앞으로 24일치뿐).
-                담기 전에 미리 말해 준다 — 담고 나서 숫자가 안 나오면 고장으로 읽힌다.
+                지난 여행이라는 사실은 그대로 알린다. 다만 "날짜는 새로 골라 드려요"가
+                아니라 <b>사용자가 고른다</b> — 위 버튼이 이제 날짜부터 묻는다.
               */
               <p className="text-hint m-0 text-center text-[11.5px] leading-[1.6]">
-                지난 날짜의 여행이라 장소만 담고
+                지난 날짜의 여행이라
                 <br />
-                날짜는 새로 골라 드려요.
+                장소만 담고 날짜는 새로 골라요.
               </p>
             )}
           </article>
