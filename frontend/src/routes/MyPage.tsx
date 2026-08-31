@@ -393,7 +393,10 @@ export function MyPage() {
           <span className="text-fg text-[19px] font-bold tracking-[-0.015em] md:text-[22px]">
             {member.nickname}
           </span>
-          <span className="text-hint truncate text-[13px]">{member.email}</span>
+          {/* 소셜로만 가입한 회원은 이메일이 없다(카카오 선택 동의). 빈 줄로 두지 않는다 */}
+          <span className="text-hint truncate text-[13px]">
+            {member.email ?? '간편 로그인 계정'}
+          </span>
         </div>
 
         {/* 넓은 화면에서는 통계가 프로필 옆에 선다. 좁으면 아래로 내려간다 */}
@@ -838,7 +841,8 @@ export function MyPage() {
           그 절차 없이 바꾸게 두면 남의 주소를 적어 계정을 잠글 수 있다.
         */}
         <div className={`${CARD} flex flex-col px-4`}>
-          <AccountRow label="이메일" value={member.email} />
+          {/* 소셜 전용 회원은 이메일이 없다. 빈 칸이면 고장으로 읽히니 이유를 적는다 */}
+          <AccountRow label="이메일" value={member.email ?? '간편 로그인으로 가입한 계정'} />
           <AccountRow
             label="닉네임"
             value={member.nickname}
