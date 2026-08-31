@@ -7,6 +7,7 @@ import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { ListEdgeJump } from '../components/ListEdgeJump'
+import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
 import { CARD } from '../components/styles'
 import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
@@ -16,7 +17,6 @@ import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { useBrowserChromeInset } from '../hooks/useBrowserChromeInset'
 import { useTrip } from '../state/tripContext'
 import type { SavedCourseDetail, SavedCourseSummary } from '../types/api'
-import { isPastDate } from '../utils/date'
 
 type ListState =
   | { status: 'loading' }
@@ -27,6 +27,19 @@ type ListState =
 const COMPARE_COUNT = 2
 
 const STAT_VALUE = 'text-fg font-mono text-[19px] font-semibold'
+
+/**
+ * 좁은 화면의 두 갈래.
+ *
+ * <p>라벨을 여기 한 번만 적는다 — 탭 글자와 아래 소제목이 같은 말이어야
+ * "지금 보고 있는 것"이 화면을 옮겨도 이어진다.
+ */
+const MY_TABS = [
+  { key: 'courses', label: '저장한 코스' },
+  { key: 'favorites', label: '찜한 장소' },
+] as const
+
+type MyTab = (typeof MY_TABS)[number]['key']
 
 /** 계정 정보 줄의 오른쪽에 서는 작은 버튼 */
 const ROW_ACTION =
@@ -101,6 +114,28 @@ export function MyPage() {
   const [accountSheet, setAccountSheet] = useState<AccountSheet | null>(null)
 
   /**
+   * 좁은 화면에서 무엇을 보고 있는가.
+   *
+   * <h3>넓은 화면에는 탭이 없다</h3>
+   * 저장한 코스와 찜한 곳은 <b>함께 볼 수 있으면 함께 보는 편이 낫다</b> — 둘 다 "내가 모아
+   * 둔 것"이고, 찜한 곳을 보다가 코스로 눈이 가는 일이 자연스럽다. 자리가 넉넉한 곳에서
+   * 굳이 하나를 감출 이유가 없다.
+   *
+   * <p>좁은 화면은 사정이 다르다. 코스 카드가 한 장에 100px을 넘게 쓰는데 그 아래
+   * 찜한 곳까지 이어 붙이면, 찜을 보려면 코스를 전부 지나쳐 내려가야 한다.
+   * 스크롤로 옮겨 다니는 대신 <b>같은 자리에서 갈아끼운다</b> — CLAUDE.md가 홈의
+   * "붐빌 것/한적할 것"과 최종 비교의 "원안/개선안"에 쓴 것과 같은 장치다.
+   */
+  const [tab, setTab] = useState<MyTab>('courses')
+
+  /*
+   * 탭이 감추는 것은 <b>좁은 화면에서만</b>이다. {@code contents}는 상자를 만들지 않고
+   * 자식을 부모의 흐름에 그대로 놓으므로, 감싸도 바깥 flex의 간격이 그대로 산다 —
+   * 여느 div로 감쌌다면 섹션 사이 간격이 한 겹 사라진다.
+   */
+  const paneClass = (name: MyTab) => (tab === name ? 'contents' : 'hidden md:contents')
+
+  /**
    * @param silent 스켈레톤을 띄우지 않고 조용히 다시 읽는다.
    *               삭제 직후처럼 이미 목록이 그려져 있을 때 쓴다 — 카드 하나를 지웠는데
    *               화면 전체가 스켈레톤으로 깜빡이면 뭐가 일어났는지 알 수 없다.
@@ -145,7 +180,7 @@ export function MyPage() {
       return [
         { label: '저장한 코스', value: '0' },
         { label: '평균 한적 지수', value: '—' },
-        { label: '다녀온 여행', value: '0' },
+        { label: '찜한 곳', value: String(favorites.length) },
       ]
     }
     /*
@@ -161,12 +196,16 @@ export function MyPage() {
         label: '평균 한적 지수',
         value: scored.length === 0 ? '—' : String(Math.round(total / scored.length)),
       },
-      {
-        label: '다녀온 여행',
-        value: String(loaded.filter((course) => isPastDate(course.endDate)).length),
-      },
+      /*
+       * ⚠️ 셋째 칸이 <b>"다녀온 여행"에서 "찜한 곳"으로</b> 바뀌었다 (2026-08-31).
+       *
+       * 지난 여행 수는 이 화면에서 <b>할 일이 없는 숫자</b>였다 — 늘기만 하고 눌러도
+       * 아무 데도 가지 않으며, 여행이 끝났다는 사실은 코스 카드마다 이미 적혀 있다.
+       * 찜한 곳은 아래 목록과 짝이 되는 값이라 세어 둘 이유가 있다.
+       */
+      { label: '찜한 곳', value: String(favorites.length) },
     ]
-  }, [list])
+  }, [list, favorites])
 
   const courses = list.status === 'loaded' ? list.courses : []
 
@@ -265,6 +304,7 @@ export function MyPage() {
 
   const empty = list.status === 'loaded' && courses.length === 0
 
+
   return (
     <div className="mx-auto flex w-full max-w-[430px] flex-col gap-5.5 px-4 pt-5 pb-10 md:max-w-app md:px-0">
       {/* 프로필 */}
@@ -310,8 +350,39 @@ export function MyPage() {
         ))}
       </div>
 
+      {/*
+        좁은 화면의 탭. 편집 화면의 일차 탭과 같은 모양을 쓴다 —
+        같은 일(한 자리에서 갈아끼우기)을 하는 장치가 화면마다 다르게 생기면
+        사용자가 매번 다시 배운다.
+      */}
+      <div className="border-line flex gap-2 border-t pt-5 md:hidden">
+        {MY_TABS.map((option) => {
+          const active = tab === option.key
+          return (
+            <button
+              key={option.key}
+              type="button"
+              aria-current={active}
+              onClick={() => setTab(option.key)}
+              className={`rounded-ui flex h-12 flex-1 cursor-pointer items-center justify-center gap-1.5 border-0 px-3 transition-colors ${
+                active ? 'bg-fg' : 'bg-surface shadow-rest'
+              }`}
+            >
+              <span className={`text-sm font-semibold ${active ? 'text-white' : 'text-fg'}`}>
+                {option.label}
+              </span>
+              <span className={`text-[12px] ${active ? 'text-white/60' : 'text-hint'}`}>
+                {option.key === 'courses' ? courses.length : favorites.length}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className={paneClass('courses')}>
+
       {/* 섹션 헤더 */}
-      <section className="border-line flex flex-wrap items-center justify-between gap-3 border-t pt-5">
+      <section className="flex flex-wrap items-center justify-between gap-3 border-line border-t pt-5 md:border-t md:pt-5">
         <div className="flex items-baseline gap-2">
           <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
             내가 저장한 코스
@@ -510,54 +581,115 @@ export function MyPage() {
         </div>
       )}
 
+      </div>
+
+      <div className={paneClass('favorites')}>
+
       {/*
         ■ 찜한 곳.
 
-        저장한 코스 <b>아래</b>에 둔다. 이 화면의 주인공은 코스이고 찜은 그 재료다 —
-        언젠가 갈 곳을 모아 둔 것이지 완성된 여행이 아니다.
+        넓은 화면에서는 저장한 코스 <b>아래</b>에 이어 선다. 이 화면의 주인공은 코스이고
+        찜은 그 재료다 — 언젠가 갈 곳을 모아 둔 것이지 완성된 여행이 아니다.
+        좁은 화면에서는 위쪽 탭이 둘을 갈아끼운다.
 
         <p>⚠️ <b>한적도를 붙이지 않는다.</b> 찜은 날짜가 없는 표시라("언젠가 가고 싶다")
         어느 날 기준으로 재야 할지 정해지지 않는다. 날짜 없이 점수를 붙이면 화면이
         재지 않은 것을 말하게 된다 — 한적도는 여행 날짜가 정해진 진단 화면의 몫이다.
-
-        <p>하나도 없을 때는 <b>줄 자체를 세우지 않는다.</b> 빈 안내를 두면 아직 써 보지도
-        않은 기능이 "비어 있는 것"으로 먼저 보이고, 이 화면에는 이미 코스 쪽 빈 안내가 있다.
       */}
-      {favorites.length > 0 && (
-        <section className="border-line flex flex-col gap-3 border-t pt-5">
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
-              찜한 곳
-            </h2>
+      <section className="border-line flex flex-col gap-3 border-t pt-5 max-md:border-t-0 max-md:pt-0">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
+            찜한 곳
+          </h2>
+          {favorites.length > 0 && (
             <span className="text-hint text-[12.5px]">{favorites.length}곳</span>
-          </div>
+          )}
+        </div>
 
-          <ul className="m-0 grid list-none grid-cols-1 gap-2 p-0 sm:grid-cols-2">
+        {favorites.length === 0 ? (
+          /*
+            빈 안내를 <b>탭이 생기면서 세우게 됐다.</b> 예전에는 줄 자체를 그리지 않았는데,
+            이제 좁은 화면에서 "찜한 장소" 탭을 누를 수 있으므로 눌렀는데 아무것도 없으면
+            고장으로 읽힌다. 눌러서 온 자리는 비어 있더라도 <b>왜 비었는지</b>는 말해야 한다.
+          */
+          <div className="border-line flex flex-col items-center gap-2 rounded-[18px] border border-dashed px-5 py-9 text-center">
+            <span className="text-hint" aria-hidden="true">
+              <Heart size={26} />
+            </span>
+            <span className="text-fg text-[14.5px] font-semibold">아직 찜한 곳이 없어요</span>
+            <span className="text-muted text-[12.5px] leading-[1.6]">
+              장소를 열고 하트를 누르면 여기에 모여요.
+            </span>
+          </div>
+        ) : (
+          /*
+            ■ 사진을 세운 <b>타일</b>이다
+
+            한 줄짜리 이름표였다가 바꿨다. 이름만 늘어놓으면 "어디였더라"를 짚어주지 못한다 —
+            찜은 언젠가 갈 곳을 모아 두는 자리라 <b>기억을 되살리는 그림</b>이 목록의 값이다.
+            진단 화면의 좁은 화면 카드가 같은 이유로 사진을 배너로 세운다.
+
+            <p>두 칸으로 나눠 사진이 <b>정사각형에 가깝게</b> 선다. 한 칸이면 사진이
+            가로로 길어져 배너가 되고, 세 칸이면 이름이 두 줄로 접힌다.
+          */
+          <ul className="m-0 grid list-none grid-cols-2 gap-2.5 p-0 md:grid-cols-3 lg:grid-cols-4">
             {favorites.map((favorite) => (
               <li
                 key={favorite.placeId}
-                className="bg-surface shadow-rest rounded-card flex items-center gap-2 px-3.5 py-2.75"
+                className={`${CARD} relative flex flex-col overflow-hidden p-0`}
               >
-                <span className="text-fg min-w-0 flex-1 truncate text-[14px] font-semibold">
-                  {favorite.placeName}
-                </span>
                 {/*
-                  여기서도 풀 수 있다. 찜한 곳을 모아 보는 자리인데 지우려면 그 장소를
-                  다시 찾아 열어야 한다면, 모아 둔 의미가 절반만 남는다.
+                  사진 칸을 정사각형으로 잡는다. 사진이 없는 곳은 이름 첫 글자가 대신 서는데,
+                  그때도 <b>같은 크기</b>여야 격자가 들쭉날쭉해지지 않는다.
+                */}
+                <span className="block aspect-square w-full overflow-hidden">
+                  <PlaceThumbnail
+                    name={favorite.placeName}
+                    imageUrl={favorite.imageUrl}
+                    size="banner"
+                    className="h-full w-full sm:h-full sm:w-full sm:rounded-none"
+                  />
+                </span>
+
+                {/*
+                  하트를 사진 위 오른쪽에 얹는다. 여기서도 풀 수 있어야 한다 —
+                  모아 보는 자리인데 지우려면 그 장소를 다시 찾아 열어야 한다면
+                  모아 둔 의미가 절반만 남는다.
+
+                  <p>흐린 검정 바탕을 깐다. 공사 사진은 밝은 하늘이 많아
+                  빨간 하트만 얹으면 묻힌다.
                 */}
                 <button
                   type="button"
-                  onClick={() => toggle({ id: favorite.placeId, name: favorite.placeName })}
+                  onClick={() =>
+                    toggle({
+                      id: favorite.placeId,
+                      name: favorite.placeName,
+                      categoryName: favorite.categoryName,
+                      imageUrl: favorite.imageUrl,
+                    })
+                  }
                   aria-label={`${favorite.placeName} 찜 취소`}
-                  className="press touch-hitbox text-brand-deep grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-chip bg-transparent"
+                  className="press text-like absolute top-1.5 right-1.5 grid h-8 w-8 cursor-pointer place-items-center rounded-full border-0 bg-[rgb(42_62_84/0.42)]"
                 >
                   <Heart size={17} filled />
                 </button>
+
+                <span className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2">
+                  <span className="text-fg truncate text-[13.5px] font-semibold">
+                    {favorite.placeName}
+                  </span>
+                  <span className="text-hint truncate text-[11.5px]">
+                    {favorite.categoryName}
+                  </span>
+                </span>
               </li>
             ))}
           </ul>
-        </section>
-      )}
+        )}
+      </section>
+
+      </div>
 
       {/*
         계정.

@@ -105,7 +105,7 @@ export function PlaceDetailSheet({
       setNeedsLogin(true)
       return
     }
-    toggle({ id: placeId, name: placeName })
+    toggle({ id: placeId, name: placeName, categoryName, imageUrl })
   }
 
   // 닫았을 때 보던 자리로 돌아와야 한다.
@@ -223,13 +223,15 @@ export function PlaceDetailSheet({
                   aria-pressed={favorite}
                   aria-label={favorite ? `${placeName} 찜 취소` : `${placeName} 찜하기`}
                   /*
-                    ⚠️ 켜졌을 때 <b>핑크가 아니라 브랜드 틸</b>이다. 핑크는 이 서비스에서
-                    "붐빔"이 쓰는 색이라(CLAUDE.md 혼잡 3단계), 하트에 쓰면 같은 화면에서
-                    같은 색이 두 뜻을 갖는다 — 한적한 곳을 찜했는데 붉게 켜지면 신호가 엇갈린다.
-                    찜은 등급이 아니라 <b>사용자가 미는 것</b>이라 브랜드색이 맞다.
+                    켜지면 <b>빨강</b>이다({@code --c-like}). 하트는 어느 문화에서나 빨강이라
+                    이 자리에서만큼은 색이 곧 뜻이다.
+
+                    <p>⚠️ 그 빨강은 <b>붐빔과 다른 색</b>이어야 한다. 붐빔(#e82c6e)은 자홍 기운이고
+                    이쪽은 주황 기운이라 나란히 두어도 갈린다 — 같은 색을 쓰면 한적한 곳을
+                    찜했는데 "붐빔"과 같은 색으로 켜져 신호가 엇갈린다. 자세한 것은 index.css.
                   */
                   className={`press touch-hitbox grid h-9 w-9 flex-none cursor-pointer place-items-center rounded-chip bg-transparent transition-colors ${
-                    favorite ? 'text-brand-deep' : 'text-hint hover:text-fg'
+                    favorite ? 'text-like' : 'text-hint hover:text-fg'
                   }`}
                 >
                   <Heart size={20} filled={favorite} />

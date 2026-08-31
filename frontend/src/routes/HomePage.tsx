@@ -107,36 +107,41 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
         공사 이름은 원래 길다(강원특별자치도산림박물관·여수 낭도리 공룡발자국화석 산지) —
         <b>무엇인지 알아볼 수 없는 이름은 카드가 하는 일을 못 한다.</b>
 
-        <p>배지와 지역을 아랫줄로 내리면 이름이 카드 폭을 다 쓴다. 그래도 넘치면 두 줄까지
-        간다 — 잘라 버리는 것보다 한 줄 더 쓰는 편이 낫다.
+        <p>지역을 아랫줄로 내리면 이름이 그만큼 넓게 쓴다. 그래도 넘치면 두 줄까지 간다 —
+        잘라 버리는 것보다 한 줄 더 쓰는 편이 낫다.
 
-        <p>분류는 뺐다. 아랫줄에 지역과 배지가 이미 서 있고, 분류는 눌러서 여는
-        상세 시트가 맡는다. 좁은 줄에 여럿을 밀어 넣으면 다 못 읽는다.
+        <p>분류는 뺐다. 아랫줄에 지역이 이미 서 있고, 분류는 눌러서 여는 상세 시트가 맡는다.
+        좁은 줄에 여럿을 밀어 넣으면 다 못 읽는다.
+
+        <p>■ <b>한적 지수는 카드의 오른쪽 위</b>다 (2026-08-31)
+
+        이름 아랫줄에서 지역 알약 옆에 있었다. 카드 다섯이 세로로 늘어서면 배지의 왼쪽 끝이
+        <b>이름 길이에 따라 제각기 다른 자리</b>에 서서, 점수끼리 눈으로 훑을 수가 없었다 —
+        이 목록에서 견주게 되는 값이 바로 그 점수인데.
+
+        <p>오른쪽 위로 올리면 다섯 장의 배지가 <b>한 세로줄</b>에 맞는다. 위쪽인 이유는
+        이름과 같은 높이에 두어야 "이 곳의 점수"로 읽히기 때문이다 —
+        아래로 내리면 그 아랫줄(지역)에 붙은 값처럼 보인다.
       */}
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-fg line-clamp-2 text-[15px] leading-[1.35] font-semibold tracking-[-0.01em]">
-          {spot.place.name}
-        </span>
-
-        <span className="flex min-w-0 items-center gap-1.5">
-          {/*
-            지역 알약. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
-            지역은 신호가 아니라 이름표다. 같은 카드에 색이 둘이면 어느 쪽이 등급인지 흐려진다.
-          */}
-          <span className="bg-surface text-hint rounded-chip flex-none px-1.5 py-0.5 text-[11px] font-semibold">
-            {spot.regionName}
+        <span className="flex min-w-0 items-start gap-2">
+          <span className="text-fg line-clamp-2 min-w-0 flex-1 text-[15px] leading-[1.35] font-semibold tracking-[-0.01em]">
+            {spot.place.name}
           </span>
-          {/*
-            "가장 한적"이 아니라 "이 날 한적해요"다. 이 카드가 견주는 것은 <b>그 곳의
-            다른 날들</b>이지 다른 장소가 아니다 — 순위처럼 읽히면 목록이 점수순이라는
-            말이 되는데, 실제 순서는 뽑힌 순서다.
-          */}
           <CongestionBadge
             level={spot.level}
             label={spot.levelLabel}
             quietness={spot.quietness}
             size="sm"
           />
+        </span>
+
+        {/*
+          지역 알약. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
+          지역은 신호가 아니라 이름표다. 같은 카드에 색이 둘이면 어느 쪽이 등급인지 흐려진다.
+        */}
+        <span className="bg-surface text-hint rounded-chip w-fit px-1.5 py-0.5 text-[11px] font-semibold">
+          {spot.regionName}
         </span>
       </span>
     </button>

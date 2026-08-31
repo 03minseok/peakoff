@@ -558,6 +558,9 @@ export interface PublicCourse {
 export interface FavoritePlace {
   placeId: string
   placeName: string
+  categoryName: string
+  /** 대표 이미지. <b>없을 수 있다</b> — 그때는 이름 첫 글자를 대신 세운다 */
+  imageUrl: string | null
   createdAt: string
 }
 

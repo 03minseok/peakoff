@@ -16,6 +16,7 @@ import jakarta.persistence.UniqueConstraint;
 
 import com.peakoff.global.support.Texts;
 import com.peakoff.member.domain.Member;
+import com.peakoff.place.domain.Place;
 
 /**
  * 회원이 찜해 둔 장소 한 곳.
@@ -59,9 +60,25 @@ public class FavoritePlace {
 	@Column(name = "place_id", nullable = false, length = 64)
 	private String placeId;
 
-	/** 찜한 시점의 이름. 목록을 그릴 때 공사를 다시 부르지 않게 하는 값이다 */
+	/**
+	 * 찜한 시점의 <b>표시용 값들</b>. 목록을 그릴 때 공사를 다시 부르지 않게 한다.
+	 *
+	 * <p>⚠️ <b>여기까지가 경계다.</b> 이름·분류·사진은 화면에 그대로 찍히는 값이고,
+	 * 우리가 계산에 쓰는 값(한적도·집중률)은 하나도 담지 않는다 — 그것들은 화면을 그릴
+	 * 때마다 여전히 공사에서 받아 온다. 절대 규칙 1이 막는 것은 "공사를 사실상 부르지 않는
+	 * 구조"이지 화면에 남길 이름표가 아니다.
+	 *
+	 * <p>사진은 없을 수 있다. 공사 관광지 중 이미지가 빈 곳이 흔하다.
+	 */
 	@Column(name = "place_name", nullable = false, length = 100)
 	private String placeName;
+
+	@Column(name = "category_name", nullable = false, length = 50)
+	private String categoryName;
+
+	/** 대표 이미지. <b>없을 수 있다</b> — 그때는 화면이 이름 첫 글자를 대신 세운다 */
+	@Column(name = "image_url", length = 500)
+	private String imageUrl;
 
 	@Column(nullable = false, updatable = false)
 	private Instant createdAt;
@@ -69,15 +86,22 @@ public class FavoritePlace {
 	protected FavoritePlace() {
 	}
 
-	private FavoritePlace(Member member, String placeId, String placeName, Instant now) {
+	private FavoritePlace(Member member, Place place, Instant now) {
+		Objects.requireNonNull(place, "장소는 필수입니다.");
 		this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
-		this.placeId = Texts.requireNotBlank(placeId, "장소 ID");
-		this.placeName = Texts.requireNotBlank(placeName, "장소 이름");
+		this.placeId = Texts.requireNotBlank(place.id(), "장소 ID");
+		this.placeName = Texts.requireNotBlank(place.name(), "장소 이름");
+		this.categoryName = Texts.requireNotBlank(place.category().name(), "분류 이름");
+		this.imageUrl = place.imageUrl();
 		this.createdAt = Objects.requireNonNull(now, "생성 시각은 필수입니다.");
 	}
 
-	public static FavoritePlace of(Member member, String placeId, String placeName, Instant now) {
-		return new FavoritePlace(member, placeId, placeName, now);
+	/**
+	 * 장소를 통째로 받는다. 필드를 하나씩 받으면 부르는 쪽이 어느 값을 남길지 정하게 되고,
+	 * 화면에 쓸 값이 늘 때마다 시그니처와 호출부를 함께 고쳐야 한다.
+	 */
+	public static FavoritePlace of(Member member, Place place, Instant now) {
+		return new FavoritePlace(member, place, now);
 	}
 
 	public String placeId() {
@@ -86,6 +110,14 @@ public class FavoritePlace {
 
 	public String placeName() {
 		return placeName;
+	}
+
+	public String categoryName() {
+		return categoryName;
+	}
+
+	public String imageUrl() {
+		return imageUrl;
 	}
 
 	public Instant createdAt() {

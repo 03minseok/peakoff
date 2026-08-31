@@ -49,7 +49,7 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
    * 아무 이유 없이 꺼져 있는 것으로 보인다.
    */
   const toggle = useCallback(
-    (place: { id: string; name: string }) => {
+    (place: { id: string; name: string; categoryName: string; imageUrl: string | null }) => {
       if (!member) {
         return
       }
@@ -65,7 +65,13 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
              * 자리를 채워야 한다 — 다음 로그인에 서버 값으로 갈린다.
              */
             [
-              { placeId: place.id, placeName: place.name, createdAt: new Date().toISOString() },
+              {
+                placeId: place.id,
+                placeName: place.name,
+                categoryName: place.categoryName,
+                imageUrl: place.imageUrl,
+                createdAt: new Date().toISOString(),
+              },
               ...previous,
             ],
       )

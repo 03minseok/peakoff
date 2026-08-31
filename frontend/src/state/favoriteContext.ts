@@ -28,7 +28,12 @@ export interface FavoriteContextValue {
    * <p>게스트가 부르면 아무 일도 일어나지 않는다 — 화면이 먼저 막지만,
    * 여기서도 막아야 화면 하나를 고칠 때 규칙이 새지 않는다.
    */
-  toggle: (place: { id: string; name: string }) => void
+  toggle: (place: {
+    id: string
+    name: string
+    categoryName: string
+    imageUrl: string | null
+  }) => void
 }
 
 export const FavoriteContext = createContext<FavoriteContextValue | null>(null)
