@@ -184,13 +184,34 @@ const TIER_FAIR_MIN = 46
  * ("그 자리에 얼마나 맞는가"), 별은 관습적으로 평점으로 읽혀 우리가 재지 않은 것을
  * 말하게 된다.
  *
+ * <h3>맨 위 구간에만 반짝임을 붙인다 (2026-09-01)</h3>
+ * "이날 가기 좋아요"와 "이런 곳도 있어요"가 <b>글자만으로는 잘 안 갈렸다.</b> 둘 다
+ * 같은 색·같은 크기의 짧은 칭찬이라, 카드를 훑을 때 어느 쪽이 위인지 읽어야 알았다.
+ *
+ * <p><b>둘 다에 붙이지 않는다.</b> 개수로 세기(✨✨ / ✨)를 해 봤다가 걷어냈다 —
+ * 개수가 곧 등급이 되면 <b>척도로 읽히기 시작한다.</b> 위의 "별점을 쓰지 않는다"가
+ * 막으려던 것이 정확히 그것이다. 하나만 붙이면 세는 것이 아니라 <b>있고 없고</b>가 되어,
+ * "맨 위 구간에만 표시가 붙는다"는 뜻이 그대로 남는다.
+ *
+ * <p>아래 구간이 <b>말은 그대로 두고 표시만 없는 것</b>도 같은 규칙의 연장이다.
+ * 최하 구간이 문구 자체를 갖지 않는 것처럼, 여기서도 <b>덜어내는 것으로</b> 층을 가른다 —
+ * 깎아내리는 말을 새로 지어내지 않는다.
+ *
+ * <p><b>글자 뒤에 붙인다.</b> 앞에 두면 카드에서 <b>가장 먼저 읽히는 것이 반짝임</b>이
+ * 된다 — 이 카드는 이름부터 읽혀야 하고 구간 문구조차 그다음이다. 뜻을 나르지 않는
+ * 장식이 첫 자리를 가져가면 목록이 다시 "무엇이 제일 반짝이나"를 고르는 화면이 된다
+ * (숫자를 전면에서 내린 이유와 같다).
+ *
+ * <p>반짝임은 <b>장식</b>이라 화면 낭독기에서는 감춘다({@code aria-hidden}).
+ * 뜻은 앞의 말이 이미 전부 담고 있다.
+ *
  * <p>⚠️ <b>언젠가 서버로 옮길 값이다.</b> 반영 비율이 바뀌면 분포가 통째로 움직이는데,
  * 경계를 화면이 들고 있으면 따라오지 않는다 — 반영 비율을 서버가 내려보내는 것과
  * 같은 이유다. 지금은 계산 로직을 건드리지 않기로 해 화면에 둔다.
  */
-function tierPhrase(recommendation: number): string | null {
-  if (recommendation >= TIER_GOOD_MIN) return '이날 가기 좋아요'
-  if (recommendation >= TIER_FAIR_MIN) return '이런 곳도 있어요'
+function tierPhrase(recommendation: number): { mark: string | null; text: string } | null {
+  if (recommendation >= TIER_GOOD_MIN) return { mark: '✨', text: '이날 가기 좋아요' }
+  if (recommendation >= TIER_FAIR_MIN) return { mark: null, text: '이런 곳도 있어요' }
   return null
 }
 
@@ -740,7 +761,13 @@ export function AlternativeSheet({
                     */}
                     {phrase !== null && (
                       <span className="text-brand-deep text-[15.5px] leading-[1.35] font-bold tracking-[-0.01em]">
-                        {phrase}
+                        {/*
+                          반짝임은 <b>세는 것</b>이지 읽는 것이 아니다. 화면 낭독기가
+                          "반짝임 반짝임 이날 가기 좋아요"로 읽으면 앞의 두 마디가
+                          뜻 없는 소음이 된다 — 개수 차이는 눈으로만 쓰는 신호다.
+                        */}
+                        {phrase.text}
+                        {phrase.mark !== null && <span aria-hidden="true"> {phrase.mark}</span>}
                       </span>
                     )}
 
