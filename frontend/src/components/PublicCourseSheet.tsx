@@ -99,7 +99,7 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
             {/* 홈 카드와 같은 제목을 쓴다. 눌러서 열었는데 제목이 달라지면 같은 코스로 안 읽힌다 */}
             <div className="flex flex-col gap-1">
               <span className="text-fg text-[16.5px] font-bold tracking-[-0.01em]">
-                {course.name}
+                {course.nickname}님의 {course.regionShortName}
               </span>
               <span className="text-hint text-[12.5px]">
                 {shortRegion} {formatNights(course.nights)} ·{' '}

@@ -165,9 +165,14 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
  * 목록 응답이 장소를 전부 들고 온다 — 열어 보는 데 필요한 것이 이미 손에 있으므로
  * 남의 코스에 주소를 주지 않고도 펼칠 수 있다. 그래서 누를 때 서버를 다시 부르지 않는다.
  *
- * <p>제목은 <b>저장한 사람이 붙인 이름</b>이다. 지역과 기간만 세웠더니 어느 카드나
- * "경주 1박 2일"이라 서로 구분되지 않았다 — 이름이 있어야 남의 여행이 남의 여행답게 읽힌다.
- * 지역·기간은 그 아래 줄로 내렸다.
+ * <p>제목은 <b>"챔석님의 경주"</b>다. 지역과 기간만 세웠더니 어느 카드나 "경주 1박 2일"이라
+ * 서로 구분되지 않아 한동안 <b>사용자가 붙인 코스 이름</b>을 썼는데, 그 이름은 저마다
+ * 문법이 달라("엄마 생신 여행" · "경주 2일") 카드 다섯이 한 목록으로 읽히지 않았다.
+ * 사람으로 가르면 <b>모든 카드가 같은 문형</b>이 되면서도 서로 구분된다 —
+ * 그리고 이 목록이 하려는 말("다른 사람들은 어디로 갔나")이 제목에서 바로 드러난다.
+ *
+ * <p>지역·기간은 그 아래 줄에 그대로 있다. 제목의 "경주"는 <b>어디</b>만 말하고,
+ * 며칠·언제는 아랫줄이 맡는다.
  *
  * <p>흰 카드가 아니라 <b>바탕색으로 눌러 담은 칸</b>이다. 이 카드가 흰 박스 안에 들어가서,
  * 흰 면 위에 흰 카드를 얹으면 그림자로만 갈려 층이 흐릿해진다.
@@ -180,6 +185,10 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
 function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () => void }) {
   const preview = course.places.slice(0, PREVIEW_PLACES)
   // "경상북도 경주시" → "경주시". 좁은 카드라 앞쪽 도명까지는 들어가지 않는다.
+  /*
+   * 아랫줄의 지역. 제목이 이미 짧은 이름("경주")을 쓰므로 여기서 같은 말을 반복하지 않게
+   * <b>정식 이름에서 도명만 뗀</b> "경주시"를 쓴다 — 제목은 사람, 이 줄은 여정이다.
+   */
   const shortRegion = course.regionName.replace(/^.*\s/, '')
 
   return (
@@ -218,7 +227,7 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
             <span className="text-fg min-w-0 flex-1 truncate text-[14.5px] font-semibold tracking-[-0.01em]">
-              {course.name}
+              {course.nickname}님의 {course.regionShortName}
             </span>
             {/* 한적도는 어디서나 3단계 배지로 말한다. 게이지는 정도를, 배지는 등급을 맡는다 */}
             <span
