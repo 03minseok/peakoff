@@ -222,26 +222,24 @@ export function PlanPage() {
             onChange={(event) => setStartDate(event.target.value)}
             required
           />
-          {/* 고른 날짜를 요일까지 되읽어준다. 달력 입력만으로는 무슨 요일인지 안 보인다. */}
-          <div
-            className={`rounded-ui flex items-center gap-2.5 px-3.5 py-3 ${
-              isPastDate ? 'bg-crowded-tint' : 'bg-bg'
-            }`}
-          >
-            <span
-              className={`h-2 w-2 flex-none rounded-full ${
-                isPastDate ? 'bg-crowded' : 'bg-brand'
-              }`}
-              aria-hidden="true"
-            />
-            <p
-              className={`m-0 text-[12.5px] leading-[1.5] ${
-                isPastDate ? 'text-crowded-deep' : ''
-              }`}
-            >
-              {isPastDate ? '오늘 이후 날짜를 골라주세요.' : formatKoreanDate(startDate)}
-            </p>
-          </div>
+          {/*
+            고른 날짜를 요일까지 되읽어주던 회색 줄을 걷어냈다 (2026-08-31).
+            달력 입력이 이미 고른 날짜를 보여주고 있어서, 바로 아래에서 같은 날짜를 다시 적으면
+            <b>같은 사실이 두 번</b> 선다. 아래 예측 창 안내가 진짜 새 소식인데
+            회색 줄이 그 앞에 서서 무게를 나눠 가졌다.
+
+            ⚠️ <b>지난 날짜 경고는 남긴다.</b> 이건 되읽기가 아니라 <b>고칠 것을 알리는 말</b>이다.
+            input의 {@code min}이 대개 막아 주지만 직접 입력하면 통과하고,
+            그때 아무 말이 없으면 사용자가 왜 다음으로 못 넘어가는지 모른다.
+          */}
+          {isPastDate && (
+            <div className="bg-crowded-tint rounded-ui flex items-center gap-2.5 px-3.5 py-3">
+              <span className="bg-crowded h-2 w-2 flex-none rounded-full" aria-hidden="true" />
+              <p className="text-crowded-deep m-0 text-[12.5px] leading-[1.5]">
+                오늘 이후 날짜를 골라주세요.
+              </p>
+            </div>
+          )}
 
           {/*
             예측 창 밖이라고 <b>막지 않는다.</b> 색도 경고(붐빔)가 아니라 보통(앰버)이다 —
