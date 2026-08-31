@@ -31,15 +31,10 @@ const STAT_VALUE = 'text-fg font-mono text-[19px] font-semibold'
 /**
  * 좁은 화면의 두 갈래.
  *
- * <p>라벨을 여기 한 번만 적는다 — 탭 글자와 아래 소제목이 같은 말이어야
- * "지금 보고 있는 것"이 화면을 옮겨도 이어진다.
+ * <p>라벨을 따로 두지 않는다. 탭 노릇을 하는 것이 <b>통계 카드</b>이고 그 글자는
+ * {@code stats}가 이미 들고 있다 — 여기 또 적으면 한쪽만 고쳐지는 날이 온다.
  */
-const MY_TABS = [
-  { key: 'courses', label: '저장한 코스' },
-  { key: 'favorites', label: '찜한 장소' },
-] as const
-
-type MyTab = (typeof MY_TABS)[number]['key']
+type MyTab = 'courses' | 'favorites'
 
 /** 계정 정보 줄의 오른쪽에 서는 작은 버튼 */
 const ROW_ACTION =
@@ -171,6 +166,17 @@ export function MyPage() {
   /**
    * 프로필 옆(넓은 화면)과 아래(좁은 화면)가 함께 쓰는 통계.
    *
+   * <h3>둘은 세는 값이자 <b>가는 문</b>이다</h3>
+   * 좁은 화면에서 "저장한 코스"·"찜한 곳" 칸이 그대로 탭이 된다({@code tab} 필드).
+   * 아래에 탭 막대를 따로 뒀다가 걷어냈다 — <b>같은 두 낱말이 화면에 두 번</b> 서고,
+   * 위의 숫자와 아래의 숫자가 같은 것을 두 번 세는 꼴이었다.
+   * 이미 그 수를 말하고 있는 칸이 그 목록으로 가는 문이 되는 편이 짧다.
+   *
+   * <p>"평균 한적 지수"에는 {@code tab}이 없다. 갈 목록이 없는 값이라 눌러도 갈 곳이 없다.
+   *
+   * <p>순서는 <b>저장한 코스 → 찜한 곳 → 나머지</b>다. 앞의 둘이 탭이므로 나란히 붙어야
+   * 하나의 스위치로 읽힌다 — 사이에 누를 수 없는 칸이 끼면 셋 다 버튼처럼 보인다.
+   *
    * <p>list를 의존성으로 둔다. courses를 렌더 중에 만들면(로딩 중에는 새 빈 배열)
    * 매 렌더 참조가 바뀌어 useMemo가 무의미해진다.
    */
@@ -178,9 +184,9 @@ export function MyPage() {
     const loaded = list.status === 'loaded' ? list.courses : []
     if (loaded.length === 0) {
       return [
-        { label: '저장한 코스', value: '0' },
-        { label: '평균 한적 지수', value: '—' },
-        { label: '찜한 곳', value: String(favorites.length) },
+        { label: '저장한 코스', value: '0', tab: 'courses' as const },
+        { label: '찜한 곳', value: String(favorites.length), tab: 'favorites' as const },
+        { label: '평균 한적 지수', value: '—', tab: undefined },
       ]
     }
     /*
@@ -191,19 +197,20 @@ export function MyPage() {
     const scored = loaded.filter((course) => course.totalQuietness !== null)
     const total = scored.reduce((sum, course) => sum + (course.totalQuietness ?? 0), 0)
     return [
-      { label: '저장한 코스', value: String(loaded.length) },
-      {
-        label: '평균 한적 지수',
-        value: scored.length === 0 ? '—' : String(Math.round(total / scored.length)),
-      },
+      { label: '저장한 코스', value: String(loaded.length), tab: 'courses' as const },
       /*
-       * ⚠️ 셋째 칸이 <b>"다녀온 여행"에서 "찜한 곳"으로</b> 바뀌었다 (2026-08-31).
+       * ⚠️ 이 칸이 <b>"다녀온 여행"에서 "찜한 곳"으로</b> 바뀌었고 자리도 둘째로 왔다.
        *
        * 지난 여행 수는 이 화면에서 <b>할 일이 없는 숫자</b>였다 — 늘기만 하고 눌러도
        * 아무 데도 가지 않으며, 여행이 끝났다는 사실은 코스 카드마다 이미 적혀 있다.
-       * 찜한 곳은 아래 목록과 짝이 되는 값이라 세어 둘 이유가 있다.
+       * 찜한 곳은 아래 목록과 짝이 되는 값이고, 이제 그 목록으로 가는 문이기도 하다.
        */
-      { label: '찜한 곳', value: String(favorites.length) },
+      { label: '찜한 곳', value: String(favorites.length), tab: 'favorites' as const },
+      {
+        label: '평균 한적 지수',
+        value: scored.length === 0 ? '—' : String(Math.round(total / scored.length)),
+        tab: undefined,
+      },
     ]
   }, [list, favorites])
 
@@ -337,42 +344,48 @@ export function MyPage() {
         좁은 화면용 통계. 위와 같은 stats를 돌린다 — 목록을 두 벌로 적으면
         항목을 하나 더할 때 한쪽만 고쳐져 화면 크기에 따라 다른 내용이 나온다.
         배치만 다르고(옆줄 vs 카드 3칸) 내용은 한 곳에서 온다.
+
+        <p>■ <b>앞의 두 칸이 곧 탭이다</b> (2026-08-31)
+
+        아래에 탭 막대를 따로 뒀다가 걷어냈다. <b>같은 두 낱말이 화면에 두 번</b> 서고,
+        위의 숫자와 아래의 숫자가 같은 것을 두 번 세는 꼴이었다 — 게다가 통계 줄과
+        탭 줄이 같은 폭의 상자 셋·둘로 잇달아 서서 어느 쪽이 누르는 것인지 흐렸다.
+        이미 그 수를 말하고 있는 칸이 그 목록으로 가는 문이 되는 편이 짧다.
+
+        <p>켜진 칸은 <b>어두운 면</b>이다. 편집 화면의 일차 탭과 같은 신호라
+        "지금 이걸 보고 있다"가 화면을 옮겨도 같은 모양으로 읽힌다.
+
+        <p>⚠️ 셋째 칸("평균 한적 지수")은 <b>버튼이 아니다.</b> 갈 목록이 없는 값이라
+        눌러도 갈 곳이 없다. 그래서 {@code div}로 남기고 손가락 커서도 주지 않는다 —
+        앞의 둘 중 하나는 언제나 켜져 있으므로, 셋이 늘어서도 어느 둘이 스위치인지 보인다.
       */}
       <div className="grid grid-cols-3 gap-2 md:hidden">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-surface shadow-rest flex flex-col items-center gap-0.75 rounded-[14px] p-3"
-          >
-            <span className={STAT_VALUE}>{stat.value}</span>
-            <span className="text-hint text-[11.5px]">{stat.label}</span>
-          </div>
-        ))}
-      </div>
+        {stats.map((stat) => {
+          const active = stat.tab !== undefined && stat.tab === tab
+          const shell = 'flex flex-col items-center gap-0.75 rounded-[14px] p-3 transition-colors'
 
-      {/*
-        좁은 화면의 탭. 편집 화면의 일차 탭과 같은 모양을 쓴다 —
-        같은 일(한 자리에서 갈아끼우기)을 하는 장치가 화면마다 다르게 생기면
-        사용자가 매번 다시 배운다.
-      */}
-      <div className="border-line flex gap-2 border-t pt-5 md:hidden">
-        {MY_TABS.map((option) => {
-          const active = tab === option.key
+          if (stat.tab === undefined) {
+            return (
+              <div key={stat.label} className={`bg-surface shadow-rest ${shell}`}>
+                <span className={STAT_VALUE}>{stat.value}</span>
+                <span className="text-hint text-[11.5px]">{stat.label}</span>
+              </div>
+            )
+          }
+
           return (
             <button
-              key={option.key}
+              key={stat.label}
               type="button"
               aria-current={active}
-              onClick={() => setTab(option.key)}
-              className={`rounded-ui flex h-12 flex-1 cursor-pointer items-center justify-center gap-1.5 border-0 px-3 transition-colors ${
+              onClick={() => setTab(stat.tab)}
+              className={`cursor-pointer border-0 ${shell} ${
                 active ? 'bg-fg' : 'bg-surface shadow-rest'
               }`}
             >
-              <span className={`text-sm font-semibold ${active ? 'text-white' : 'text-fg'}`}>
-                {option.label}
-              </span>
-              <span className={`text-[12px] ${active ? 'text-white/60' : 'text-hint'}`}>
-                {option.key === 'courses' ? courses.length : favorites.length}
+              <span className={`${STAT_VALUE} ${active ? 'text-white' : ''}`}>{stat.value}</span>
+              <span className={`text-[11.5px] ${active ? 'text-white/70' : 'text-hint'}`}>
+                {stat.label}
               </span>
             </button>
           )
