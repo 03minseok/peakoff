@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 import { CourseMap } from '../components/CourseMap'
 import { useDragSort } from '../hooks/useDragSort'
 import { CARD, CHIP_BUTTON, NOTICE, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
@@ -38,8 +38,43 @@ const ICON_BUTTON =
 
 export function CoursePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { state, addPlace, removePlace, reorderPlace, markBaseline } = useTrip()
   const plan = state.plan
+
+  /**
+   * 홈의 "이 장소로 여행가기"가 실어 보낸 장소. <b>1일차에 담긴 채로 시작한다.</b>
+   *
+   * <p>버튼이 "이 장소로"라고 말했으므로 그 장소가 코스에 있어야 말이 지켜진다.
+   * 조건 화면까지만 채우고 빈 코스를 내밀면, 사용자는 방금 읽은 그 곳을
+   * <b>검색창에 다시 쳐서</b> 찾아야 한다.
+   *
+   * <p>이름은 이미 손에 있다 — 홈이 목록을 받을 때 장소를 기억해 두었으므로
+   * ({@code placeCache}) 검색 결과를 기다리지 않고 그려진다.
+   *
+   * <h3>⚠️ 한 번만 담는다</h3>
+   * 라우터 state는 <b>화면이 다시 그려져도 그대로 있다.</b> 그냥 두면 장소를 지운 순간
+   * 다시 담기고, 지울 수 없는 칸이 된다. 담았다는 사실을 ref로 기억해 두는 이유다
+   * (상태로 두면 그 값을 바꾸느라 한 번 더 그려진다).
+   *
+   * <p>담기 전에 <b>1일차가 비어 있는지</b> 본다. 뒤로 갔다 돌아온 경우처럼
+   * 이미 짜 놓은 코스가 있으면 남의 자리를 밀고 들어가지 않는다.
+   */
+  const seeded = useRef(false)
+  const seedPlaceId = (location.state as { seedPlaceId?: string } | null)?.seedPlaceId
+
+  useEffect(() => {
+    if (seeded.current || !seedPlaceId || !plan) {
+      return
+    }
+    seeded.current = true
+    if (state.days[0]?.length === 0) {
+      addPlace(1, seedPlaceId)
+    }
+    // plan·days는 담을지 <b>정하는 순간</b>의 값만 보면 된다. 의존성에 넣으면
+    // 장소를 담아 days가 바뀌는 순간 이 effect가 다시 돌아 자기 자신을 쫓는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedPlaceId])
 
   const [places, setPlaces] = useState<Place[]>([])
   const [load, setLoad] = useState<LoadState>({ phase: 'loading' })
