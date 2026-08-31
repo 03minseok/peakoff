@@ -104,7 +104,7 @@ export function MyPage() {
   const navigate = useNavigate()
   const { member, loading: authLoading, logout } = useAuth()
   /* 찜은 앱이 뜰 때 한 번 받아 둔 것을 그대로 읽는다 — 이 화면이 따로 부르지 않는다 */
-  const { favorites, toggle } = useFavorites()
+  const { favorites, isFavorite, toggle } = useFavorites()
   const { restore } = useTrip()
   // 아래 고정 CTA가 브라우저 도구막대 뒤로 숨지 않게 하는 보정.
   const chromeInset = useBrowserChromeInset()
@@ -157,6 +157,39 @@ export function MyPage() {
    */
   const [courseLimit, setCourseLimit] = useState(COURSE_PAGE)
   const [favoriteLimit, setFavoriteLimit] = useState(FAVORITE_PAGE)
+
+  /**
+   * ■ 이 화면에 <b>머무는 동안 자리를 지키는</b> 찜 목록.
+   *
+   * <p>하트를 끄면 카드가 즉시 사라졌다. 그런데 이 목록은 <b>훑어보며 정리하는 자리</b>라,
+   * 사라지는 순간 방금 무엇을 껐는지 확인할 수도, 잘못 눌렀을 때 되돌릴 수도 없었다.
+   * 아래 카드들이 한 칸씩 밀려 올라와 누르려던 다음 카드가 손가락 밑에서 바뀌기도 한다.
+   *
+   * <p>그래서 <b>끈 자리는 그대로 두고 하트만 빈 모양으로</b> 바꾼다. 다시 누르면 되살아난다.
+   * 진짜로 목록에서 빠지는 것은 <b>이 화면을 떠났다 돌아왔을 때</b>다 — 그때는 이 상태가
+   * 사라지고 서버 목록에서 다시 세운다(라우트가 바뀌면 이 컴포넌트가 통째로 내려간다).
+   *
+   * <p>⚠️ 숫자는 <b>따라오지 않는다.</b> 위의 "N곳"과 통계 카드는 진짜 찜 개수를 쓴다 —
+   * 자리를 지키는 것은 되돌릴 틈을 주려는 화면 사정이고, 몇 곳을 찜해 두었는가는 사실이다.
+   */
+  const [lingering, setLingering] = useState<FavoritePlace[]>(favorites)
+
+  /*
+   * 새로 들어온 것만 앞에 붙이고, 빠진 것은 자리를 지킨다.
+   *
+   * 목록을 통째로 갈아끼우지 않는 이유가 이 화면의 요구 그 자체다. 대신 새로 찜한 것은
+   * 따라와야 한다 — 이 화면에서도 상세 시트를 열어 하트를 켤 수 있다.
+   *
+   * 더할 것이 없으면 <b>같은 배열을 그대로 돌려준다.</b> 새 배열을 만들면 favorites가
+   * 바뀔 때마다(하트를 끌 때마다) 목록 전체가 다시 그려진다.
+   */
+  useEffect(() => {
+    setLingering((current) => {
+      const shown = new Set(current.map((favorite) => favorite.placeId))
+      const added = favorites.filter((favorite) => !shown.has(favorite.placeId))
+      return added.length === 0 ? current : [...added, ...current]
+    })
+  }, [favorites])
 
   /**
    * 찜해 둔 곳으로 여행을 시작한다.
@@ -689,7 +722,12 @@ export function MyPage() {
           )}
         </div>
 
-        {favorites.length === 0 ? (
+        {/*
+          ⚠️ 빈 화면인지는 <b>lingering</b>으로 가른다. 마지막 하나의 하트를 껐을 때
+          favorites는 곧바로 0이 되는데, 그것으로 가르면 방금 끈 카드가 사라지고
+          "아직 찜한 곳이 없어요"가 서 버린다 — 자리를 지키려던 것이 무의미해진다.
+        */}
+        {lingering.length === 0 ? (
           /*
             빈 안내를 <b>탭이 생기면서 세우게 됐다.</b> 예전에는 줄 자체를 그리지 않았는데,
             이제 좁은 화면에서 "찜한 장소" 탭을 누를 수 있으므로 눌렀는데 아무것도 없으면
@@ -733,7 +771,14 @@ export function MyPage() {
             <b>같은 무게의 것</b>으로 보인다. 이 화면의 주인공은 코스다.
           */}
           <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
-            {favorites.slice(0, favoriteLimit).map((favorite) => (
+            {lingering.slice(0, favoriteLimit).map((favorite) => {
+              /*
+                하트가 켜져 있는가는 <b>진짜 목록에게 묻는다.</b> 이 카드가 서 있다는 것과
+                찜이 살아 있다는 것은 이제 다른 사실이다 — 끈 카드는 자리만 지키고 있다.
+              */
+              const liked = isFavorite(favorite.placeId)
+
+              return (
               <li
                 key={favorite.placeId}
                 className={`${CARD} relative flex flex-col overflow-hidden p-0`}
@@ -756,8 +801,10 @@ export function MyPage() {
                   두는데, 찜 목록에는 그 값이 없다(날짜가 정해지지 않은 표시라서) —
                   <b>그 자리를 하트가 받는다.</b>
 
-                  <p>흐린 검정 바탕을 깐다. 공사 사진은 밝은 하늘이 많아 빨간 하트만
-                  얹으면 묻힌다.
+                  <p>⚠️ 흐린 <b>동그란 바탕을 걷어냈다.</b> 사진 위에 회색 알약이 하나 떠 있는
+                  것으로 보였다. 바탕이 하던 일(밝은 하늘에 하트가 묻히지 않게)은
+                  <b>그림자</b>가 대신한다 — 하트 모양을 따라 지므로 네모난 자국이 남지 않고,
+                  꺼진 하트의 가는 획도 함께 받쳐준다.
                 */}
                 <button
                   type="button"
@@ -765,15 +812,29 @@ export function MyPage() {
                     toggle({
                       id: favorite.placeId,
                       name: favorite.placeName,
-                      // 지우는 길이라 이 값들은 쓰이지 않지만, 되돌릴 때 그대로 복원된다
                       categoryName: favorite.categoryName,
                       imageUrl: favorite.imageUrl,
+                      /*
+                        ⚠️ 지역까지 넘긴다. 이제 <b>이 자리에서 다시 켤 수 있어서</b>다 —
+                        끈 카드가 남아 있으므로 되살리는 길이 생겼는데, 그때 지역을 빼놓으면
+                        서버가 채워줄 때까지 그 카드의 "여행가기" 문이 사라진다.
+                      */
+                      region: favorite.region,
+                      regionName: favorite.regionName,
                     })
                   }
-                  aria-label={`${favorite.placeName} 찜 취소`}
-                  className="press text-like absolute top-2.5 right-2.5 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-0 bg-[rgb(42_62_84/0.42)]"
+                  aria-pressed={liked}
+                  aria-label={`${favorite.placeName} ${liked ? '찜 취소' : '다시 찜하기'}`}
+                  /*
+                    꺼지면 <b>흰 테두리 하트</b>다. 사진 위라 text-hint(회색)로 두면
+                    어두운 사진에서 통째로 묻힌다 — 밝은 사진은 그림자가, 어두운 사진은
+                    흰색이 받친다.
+                  */
+                  className={`press absolute top-2.5 right-2.5 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-0 bg-transparent drop-shadow-[0_1px_3px_rgb(42_62_84/0.55)] ${
+                    liked ? 'text-like' : 'text-white'
+                  }`}
                 >
-                  <Heart size={18} filled />
+                  <Heart size={18} filled={liked} />
                 </button>
 
                 <div className="flex min-w-0 flex-col gap-0.5 px-4 pt-3.5">
@@ -808,12 +869,14 @@ export function MyPage() {
                   </button>
                 </div>
               </li>
-            ))}
+              )
+            })}
           </ul>
 
-          {favorites.length > favoriteLimit && (
+          {/* 더보기도 화면에 선 개수(lingering)로 센다. 남은 수와 실제로 펼쳐지는 수가 어긋나면 안 된다 */}
+          {lingering.length > favoriteLimit && (
             <MoreButton
-              remaining={favorites.length - favoriteLimit}
+              remaining={lingering.length - favoriteLimit}
               onClick={() => setFavoriteLimit((n) => n + FAVORITE_PAGE)}
             />
           )}
