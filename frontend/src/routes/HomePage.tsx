@@ -15,8 +15,10 @@ import { useTrip } from '../state/tripContext'
 import {
   daysFromToday,
   formatCompactDate,
+  formatKoreanDate,
   formatNights,
   isPastDate,
+  today,
 } from '../utils/date'
 
 /**
@@ -699,10 +701,14 @@ export function HomePage() {
             <div className="flex items-baseline justify-between gap-2">
               <h2 className={SECTION_TITLE}>이번 주 한적한 곳</h2>
               {/*
-                "전국"이라 쓰지 않는다. 우리가 보는 것은 <b>서비스가 지원하는 일곱 곳</b>이지
-                전국이 아니다 — 계산하지 않은 것을 근거로 말하지 않는다는 규칙이 여기에도 걸린다.
+                ⚠️ <b>오늘 날짜다. 목록이 오늘의 것이라는 뜻이 아니다.</b>
+                여기 서는 곳들은 앞으로 이레 사이에 한적한 곳이고, 각자 한적한 날이 따로 있다.
+                이 줄이 말하는 것은 <b>언제 계산한 값인가</b>다 — 공사 예측은 하루 한 번
+                갱신되므로 같은 목록도 내일 다시 열면 값이 달라진다.
+
+                <p>toISOString은 UTC라 저녁에 날짜가 하루 밀린다. 로컬 기준 today()를 쓴다.
               */}
-              <span className="text-hint text-xs">앞으로 7일</span>
+              <span className="text-hint text-xs">{formatKoreanDate(today())}</span>
             </div>
             <span className="text-hint text-[12.5px]">
               눌러서 어떤 곳인지 볼 수 있어요

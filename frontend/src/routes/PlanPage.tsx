@@ -245,7 +245,16 @@ export function PlanPage() {
 
       <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
-          <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
+          {/*
+            legend를 div로 한 겹 감싼다.
+
+            감싸지 않으면 브라우저가 legend를 <b>fieldset 테두리 위로 끌어올려</b> 특별하게 배치한다.
+            테두리를 지운 카드에서는 그 자리가 카드 <b>바깥</b>이 되어, 제목만 상자 위로 튀어나온다.
+            다른 카드들과 같은 규칙이다 — 하나만 빼먹으면 그 카드의 제목만 위치가 다르다.
+          */}
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
+          </div>
           {/*
             칩 묶음에서 검색으로 바꿨다. 지역이 일곱이 되면서 390px에서 두 줄이 되고,
             더 늘면 화면을 덮는다 — 목록을 훑는 화면은 확장되지 않는다.
