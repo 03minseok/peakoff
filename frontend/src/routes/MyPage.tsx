@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDownToLine, Close, Heart } from '../components/icons'
+import { ProfileAvatar } from '../components/ProfileAvatar'
 import type { ReactNode } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { AccountSheets } from '../components/AccountSheets'
@@ -416,12 +417,12 @@ export function MyPage() {
     <div className="mx-auto flex w-full max-w-[430px] flex-col gap-5.5 px-4 pt-5 pb-10 md:max-w-app md:px-0">
       {/* 프로필 */}
       <section className="flex items-center gap-3.5 md:gap-4.5">
-        <span
-          className="bg-quiet-tint text-brand-deep grid h-14 w-14 flex-none place-items-center rounded-[18px] text-[23px] font-bold md:h-16 md:w-16 md:rounded-[20px] md:text-[26px]"
-          aria-hidden="true"
-        >
-          {member.nickname.slice(0, 1)}
-        </span>
+        {/*
+          사진을 올리기 전의 기본 그림. 예전에는 닉네임 첫 글자를 박아 두었는데,
+          바로 옆에 같은 닉네임이 전체로 다시 적혀 있어 같은 정보가 두 번 섰다.
+          그림 정의는 ProfileAvatar 한 곳에 있다.
+        */}
+        <ProfileAvatar className="h-14 w-14 rounded-[18px] md:h-16 md:w-16 md:rounded-[20px]" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.75">
           <span className="text-fg text-[19px] font-bold tracking-[-0.015em] md:text-[22px]">
             {member.nickname}
