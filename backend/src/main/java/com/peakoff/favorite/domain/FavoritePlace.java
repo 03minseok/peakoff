@@ -69,11 +69,29 @@ public class FavoritePlace {
 	 * 구조"이지 화면에 남길 이름표가 아니다.
 	 *
 	 * <p>사진은 없을 수 있다. 공사 관광지 중 이미지가 빈 곳이 흔하다.
+	 *
+	 * <h3>⚠️ 분류와 사진 칸은 <b>DB에서 null을 허용한다</b> (2026-08-31)</h3>
+	 * 이 둘은 이름보다 <b>나중에</b> 생긴 칸이다. {@code ddl-auto: update}는 이미 행이 있는
+	 * 테이블에 {@code not null} 컬럼을 붙이지 못한다 — 기존 행을 채울 값이 없어서
+	 * <b>서버가 아예 뜨지 않는다.</b> 실제로 그렇게 한 번 죽었다:
+	 *
+	 * <pre>
+	 * Error executing DDL "alter table favorite_places add column category_name varchar(50) not null"
+	 *   NULL not allowed for column "CATEGORY_NAME"
+	 * </pre>
+	 *
+	 * <p>그래서 <b>제약은 풀되 앱은 늘 채운다</b> — 아래 생성자가 빈 값을 거절하므로
+	 * 지금부터 들어오는 행에는 반드시 값이 있고, null인 것은 이 칸이 생기기 전에 찜한 행뿐이다.
+	 * 화면은 그 자리를 비워 그린다(다시 찜하면 채워진다).
+	 *
+	 * <p>⚠️ <b>앞으로 칸을 더할 때도 같다.</b> 이 저장소에는 마이그레이션 도구가 없다
+	 * ({@code ddl-auto: update}). 새 칸은 null을 허용하거나, 기존 행이 없다고 확신할 때만
+	 * {@code not null}로 둔다.
 	 */
 	@Column(name = "place_name", nullable = false, length = 100)
 	private String placeName;
 
-	@Column(name = "category_name", nullable = false, length = 50)
+	@Column(name = "category_name", length = 50)
 	private String categoryName;
 
 	/** 대표 이미지. <b>없을 수 있다</b> — 그때는 화면이 이름 첫 글자를 대신 세운다 */

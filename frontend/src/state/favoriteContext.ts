@@ -31,7 +31,8 @@ export interface FavoriteContextValue {
   toggle: (place: {
     id: string
     name: string
-    categoryName: string
+    /** 새로 찜할 때는 늘 있다. 목록에서 되돌릴 때만 옛 행의 null이 그대로 실려 온다 */
+    categoryName: string | null
     imageUrl: string | null
   }) => void
 }

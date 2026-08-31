@@ -49,7 +49,12 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
    * 아무 이유 없이 꺼져 있는 것으로 보인다.
    */
   const toggle = useCallback(
-    (place: { id: string; name: string; categoryName: string; imageUrl: string | null }) => {
+    (place: {
+      id: string
+      name: string
+      categoryName: string | null
+      imageUrl: string | null
+    }) => {
       if (!member) {
         return
       }
