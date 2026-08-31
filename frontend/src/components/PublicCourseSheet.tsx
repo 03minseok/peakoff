@@ -108,7 +108,7 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
             id="public-course-title"
             className="text-fg m-0 text-[17px] font-bold tracking-[-0.015em] lg:text-[18px]"
           >
-            다른 사람의 여행
+            저장된 여행
           </h2>
           <button
             type="button"
@@ -221,7 +221,13 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
                 onClick={() => setPicking(true)}
                 className="border-brand bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border-[1.5px] text-sm font-semibold transition-colors"
               >
-                이 코스로 나도 짜보기
+                {/*
+                  ⚠️ <b>"나도"를 뺐다</b> (2026-08-31). 목록에 <b>내 코스도 섞이면서</b>
+                  남의 것을 따라 한다는 뜻이 늘 참이지는 않게 됐다. 화면은 이 코스가
+                  누구 것인지 모른다 — 닉네임으로 견주는 방법도 있지만, 그러면 같은 이름을
+                  쓰는 두 사람에게 화면이 거짓말을 한다.
+                */}
+                이 코스로 짜보기
               </button>
             ) : (
               <div className="mt-1 flex flex-col gap-2.5">
