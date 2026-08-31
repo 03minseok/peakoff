@@ -3,6 +3,7 @@ package com.peakoff.global.config;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -81,6 +82,16 @@ public class SecurityConfig {
 	private final HandlerExceptionResolver handlerExceptionResolver;
 
 	/**
+	 * 개발용 경로를 열어 둘지. <b>개발 기기에서만 참이다</b>({@code application-local.yml}).
+	 *
+	 * <p>{@code /api/dev/**}를 위 허용 목록에 그냥 넣지 않는 이유: 이 파일은
+	 * "실수했을 때 닫히는 쪽이 안전하다"를 원칙으로 삼는데, 상수로 넣어 두면
+	 * 나중에 누가 조건을 안 붙인 개발용 컨트롤러를 만드는 순간 <b>운영에서 그대로 열린다.</b>
+	 * 열쇠를 설정값에 묶어 두면 그 실수가 안 통한다 — 기본값이 꺼짐이다.
+	 */
+	private final boolean devEndpointsEnabled;
+
+	/**
 	 * 인증 실패 응답을 직접 만들지 않고 {@link HandlerExceptionResolver}에 떠넘긴다.
 	 *
 	 * <p>필터에서 거절당한 요청은 컨트롤러에 닿지 못해 {@code @RestControllerAdvice}가 돌지 않는다.
@@ -92,9 +103,11 @@ public class SecurityConfig {
 	 */
 	public SecurityConfig(
 			JwtAuthenticationFilter jwtAuthenticationFilter,
-			@Qualifier("handlerExceptionResolver") HandlerExceptionResolver handlerExceptionResolver) {
+			@Qualifier("handlerExceptionResolver") HandlerExceptionResolver handlerExceptionResolver,
+			@Value("${peakoff.dev.endpoints:false}") boolean devEndpointsEnabled) {
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
 		this.handlerExceptionResolver = handlerExceptionResolver;
+		this.devEndpointsEnabled = devEndpointsEnabled;
 	}
 
 	@Bean
@@ -118,6 +131,12 @@ public class SecurityConfig {
 						.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
 						.requestMatchers(PUBLIC_API).permitAll() // 게스트도 사용 가능
 						.requestMatchers(PUBLIC_DOCS).permitAll() // api 문서
+						/*
+						 * 개발용(공사 호출 수 확인 등). peakoff.dev.endpoints가 켜졌을 때만 열린다.
+						 * 운영에서는 이 문이 닫혀 401이고, 컨트롤러 빈도 만들어지지 않는다 — 잠금이 둘이다.
+						 */
+						.requestMatchers(request -> devEndpointsEnabled
+								&& request.getRequestURI().startsWith("/api/dev/")).permitAll()
 						.anyRequest().authenticated()) //나머지는 로그인 필수
 				.exceptionHandling(handling -> handling
 						.authenticationEntryPoint((request, response, exception) ->

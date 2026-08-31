@@ -70,6 +70,26 @@ export interface Place {
 }
 
 /**
+ * 홈의 "이번 주 한적한 곳" 한 줄. 서버 QuietSpotResponse와 짝을 이룬다.
+ *
+ * <p><b>장소와 날짜가 한 몸이다.</b> 같은 곳이라도 날짜마다 값이 달라서, 날짜 없이는
+ * "한적하다"를 말할 수 없다. {@code date}는 앞으로 7일 중 <b>가장 한적한 하루</b>다.
+ *
+ * <p>지역이 슬러그와 이름 둘 다 오는 이유: 이름은 카드에 적을 것이고, 슬러그는
+ * "이 장소로 여행가기"가 여행 조건 화면에 넘길 값이다. 이름으로 슬러그를 되찾게 두면
+ * 표기가 바뀌는 순간 그 길이 끊긴다.
+ */
+export interface QuietSpot {
+  place: Place
+  region: string
+  regionName: string
+  date: string
+  quietness: number
+  level: CongestionLevel
+  levelLabel: string
+}
+
+/**
  * 추천도를 이룬 항목 하나. 서버 ScoreFactor와 짝을 이룬다.
  *
  * weightPercent가 서버에서 오는 이유: 가중치는 서버에만 있어야 한다.

@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { RegionPicker } from '../components/RegionPicker'
-import { defaultRegionSlug, regionNameOf } from '../constants/regions'
+import { regionNameOf } from '../constants/regions'
 import { fetchForecastWindow } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import { daysFromToday, formatDateRange, formatKoreanDate, today } from '../utils/date'
@@ -56,19 +56,50 @@ export function PlanPage() {
   const { state, setPlan } = useTrip()
 
   /*
-   * 홈의 "이 날로 코스 짜기"가 실어 보낸 날짜.
+   * 홈이 실어 보낸 것.
    *
    * 전역 상태에 미리 써두지 않고 라우터 state로 넘긴다. 사용자가 아직 아무것도
    * 확정하지 않은 시점이라, 여기서 되돌아 나가면 흔적이 남지 않아야 한다.
+   *
+   * <p>{@code seedPlaceId}는 <b>여기서 쓰지 않고 편집 화면으로 그대로 넘긴다.</b>
+   * "이 장소로 여행가기"로 들어온 사람의 그 장소다. 이 화면이 담아 버리면
+   * 조건을 고치는 동안 이미 코스가 있는 셈이 되고, {@code setPlan}이 장소를 비우므로
+   * 어차피 지워진다 — 담는 일은 담을 화면이 한다.
    */
-  const suggestedDate = (location.state as { startDate?: string } | null)?.startDate
+  const handoff = location.state as
+    | { startDate?: string; region?: string; seedPlaceId?: string }
+    | null
+  const suggestedDate = handoff?.startDate
 
-  // 이전에 입력한 값이 있으면 그것부터 보여준다 (뒤로 왔을 때 다시 채우지 않게).
-  const [region, setRegion] = useState(state.plan?.region ?? defaultRegionSlug())
+  /*
+   * 지역은 <b>비워 두고 시작한다.</b> 이전에 고른 적이 있으면 그것부터 보여준다
+   * (뒤로 왔을 때 다시 채우지 않게).
+   *
+   * 파일럿 지역을 미리 골라 두면 <b>고르지 않은 사람과 경주를 고른 사람이 구분되지 않는다.</b>
+   * 지역이 셋일 때는 "일단 경주"가 그럴듯했지만 일곱이 되면서 경주는 여럿 중 하나가 됐고,
+   * 미리 켜 두면 아래 요약과 버튼이 <b>사용자가 하지 않은 선택</b>을 확정된 것처럼 말한다.
+   */
+  /*
+   * ⚠️ <b>고른 적 있는 값을 끌어오지 않는다</b> (2026-08-31).
+   *
+   * 예전에는 {@code state.plan}에 남아 있던 지역·기간으로 시작했다. 뒤로 왔을 때
+   * 다시 채우지 않게 하려던 것인데, 실제로는 <b>새 여행을 시작하는 사람에게도</b>
+   * 지난번 값이 켜진 채로 보였다 — 이 화면은 홈에서 새로 들어오는 길이 주 통로다.
+   *
+   * <p>켜진 칩은 <b>사용자가 고른 것과 구분되지 않는다.</b> "경주 · 2일"이 이미 서 있으면
+   * 그대로 눌러 넘어가게 되고, 어느 지역으로 며칠을 가는지 정한 적 없이 다음 화면에
+   * 도착한다. 뒤로 갔다 오면 다시 골라야 하는 값은 셋뿐이고, 정하지 않은 것을
+   * 정한 것처럼 보이는 쪽이 더 나쁘다.
+   *
+   * <p>{@code handoff}는 예외다. 홈의 "이 장소로 여행가기"가 실어 보낸 것이라
+   * <b>사용자가 방금 그 지역을 눌러서</b> 온 값이다.
+   */
+  const [region, setRegion] = useState(handoff?.region ?? '')
   const [startDate, setStartDate] = useState(
     suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
   )
-  const [nights, setNights] = useState(state.plan?.nights ?? 1)
+  /** 며칠 머무를지. <b>고르기 전에는 없다</b> — 위 지역과 같은 이유다 */
+  const [nights, setNights] = useState<number | null>(null)
 
   const isPastDate = startDate < today()
 
@@ -103,13 +134,35 @@ export function PlanPage() {
   const regionName = regionNameOf(region)
   const durationLabel = DURATIONS.find((option) => option.nights === nights)?.label ?? ''
 
+  /*
+   * 지역과 기간을 고르기 전에는 넘어갈 수 없다.
+   *
+   * 지역이 없으면 검색할 범위가 없고, 기간이 없으면 <b>몇 일치 칸을 만들지</b> 모른다.
+   * 기본값으로 채워 두고 넘기면 사용자가 정하지 않은 여행이 만들어진다.
+   */
+  const canSubmit = Boolean(region) && nights !== null && !isPastDate
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (isPastDate) {
+    if (!canSubmit) {
+      return
+    }
+    // canSubmit이 null을 이미 걸렀다. 타입만 좁힌다.
+    if (nights === null) {
       return
     }
     setPlan({ region, startDate, nights })
-    navigate('/course')
+    /*
+     * 씨앗 장소를 편집 화면까지 들고 간다. {@code setPlan}이 방금 장소를 전부 비웠으므로
+     * 이 값이 다음 화면에서 1일차의 첫 장소가 된다.
+     *
+     * ⚠️ <b>지역을 바꿨으면 함께 버린다.</b> 그 장소는 홈에서 고른 지역의 곳이라,
+     * 다른 지역으로 옮긴 코스에 남아 있으면 <b>검색으로는 찾을 수도 없는 장소</b>가
+     * 1일차에 박힌다. 검사를 여기서 하는 이유는 두 값이 여기에만 함께 있어서다 —
+     * 편집 화면은 원래 지역이 무엇이었는지 모른다.
+     */
+    const seedPlaceId = region === handoff?.region ? handoff?.seedPlaceId : undefined
+    navigate('/course', { state: { seedPlaceId } })
   }
 
   return (
@@ -192,7 +245,16 @@ export function PlanPage() {
 
       <form className="flex flex-col gap-3.5 lg:col-span-7" onSubmit={handleSubmit}>
         <fieldset className={`${CARD_RAISED} m-0 flex flex-col gap-3.5 border-0 p-4.5`}>
-          <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
+          {/*
+            legend를 div로 한 겹 감싼다.
+
+            감싸지 않으면 브라우저가 legend를 <b>fieldset 테두리 위로 끌어올려</b> 특별하게 배치한다.
+            테두리를 지운 카드에서는 그 자리가 카드 <b>바깥</b>이 되어, 제목만 상자 위로 튀어나온다.
+            다른 카드들과 같은 규칙이다 — 하나만 빼먹으면 그 카드의 제목만 위치가 다르다.
+          */}
+          <div>
+            <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
+          </div>
           {/*
             칩 묶음에서 검색으로 바꿨다. 지역이 일곱이 되면서 390px에서 두 줄이 되고,
             더 늘면 화면을 덮는다 — 목록을 훑는 화면은 확장되지 않는다.
@@ -222,26 +284,24 @@ export function PlanPage() {
             onChange={(event) => setStartDate(event.target.value)}
             required
           />
-          {/* 고른 날짜를 요일까지 되읽어준다. 달력 입력만으로는 무슨 요일인지 안 보인다. */}
-          <div
-            className={`rounded-ui flex items-center gap-2.5 px-3.5 py-3 ${
-              isPastDate ? 'bg-crowded-tint' : 'bg-bg'
-            }`}
-          >
-            <span
-              className={`h-2 w-2 flex-none rounded-full ${
-                isPastDate ? 'bg-crowded' : 'bg-brand'
-              }`}
-              aria-hidden="true"
-            />
-            <p
-              className={`m-0 text-[12.5px] leading-[1.5] ${
-                isPastDate ? 'text-crowded-deep' : ''
-              }`}
-            >
-              {isPastDate ? '오늘 이후 날짜를 골라주세요.' : formatKoreanDate(startDate)}
-            </p>
-          </div>
+          {/*
+            고른 날짜를 요일까지 되읽어주던 회색 줄을 걷어냈다 (2026-08-31).
+            달력 입력이 이미 고른 날짜를 보여주고 있어서, 바로 아래에서 같은 날짜를 다시 적으면
+            <b>같은 사실이 두 번</b> 선다. 아래 예측 창 안내가 진짜 새 소식인데
+            회색 줄이 그 앞에 서서 무게를 나눠 가졌다.
+
+            ⚠️ <b>지난 날짜 경고는 남긴다.</b> 이건 되읽기가 아니라 <b>고칠 것을 알리는 말</b>이다.
+            input의 {@code min}이 대개 막아 주지만 직접 입력하면 통과하고,
+            그때 아무 말이 없으면 사용자가 왜 다음으로 못 넘어가는지 모른다.
+          */}
+          {isPastDate && (
+            <div className="bg-crowded-tint rounded-ui flex items-center gap-2.5 px-3.5 py-3">
+              <span className="bg-crowded h-2 w-2 flex-none rounded-full" aria-hidden="true" />
+              <p className="text-crowded-deep m-0 text-[12.5px] leading-[1.5]">
+                오늘 이후 날짜를 골라주세요.
+              </p>
+            </div>
+          )}
 
           {/*
             예측 창 밖이라고 <b>막지 않는다.</b> 색도 경고(붐빔)가 아니라 보통(앰버)이다 —
@@ -307,14 +367,22 @@ export function PlanPage() {
         */}
         <div className="mt-2 pb-4">
           <div className="flex items-center justify-between px-1 pb-2.5">
+            {/*
+              지역을 고르기 전에는 그 자리를 비운다. "경주 · 2일"처럼 적어 두면
+              고르지 않았는데 고른 것처럼 읽힌다.
+            */}
+            {/*
+              고르지 않은 것은 적지 않는다. 기간을 고르기 전에는 며칠인지도, 언제까지인지도
+              말할 수 없다 — 빈 자리가 "아직 안 골랐다"를 그대로 말한다.
+            */}
             <span className="text-[13px]">
-              {regionName} · {durationLabel}
+              {[regionName, durationLabel].filter(Boolean).join(' · ')}
             </span>
             <span className="text-fg font-mono text-[13px] font-medium">
-              {formatDateRange(startDate, nights)}
+              {nights === null ? '' : formatDateRange(startDate, nights)}
             </span>
           </div>
-          <button type="submit" className={PRIMARY_BUTTON} disabled={isPastDate}>
+          <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit}>
             코스 짜러 가기
           </button>
           <p className="text-hint mt-3 text-center text-xs">

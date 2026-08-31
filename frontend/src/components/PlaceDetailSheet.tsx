@@ -34,6 +34,18 @@ interface Props {
   quietness?: number | null
   level?: CongestionLevel | null
   levelLabel?: string | null
+  /**
+   * "이 장소로 여행가기". <b>주는 쪽이 있을 때만 선다.</b>
+   *
+   * <p>홈의 "이번 주 한적한 곳"에서 연 시트에만 있다. 진단 화면에서 연 장소는
+   * <b>이미 코스에 담겨 있어</b> 다시 담을 일이 없고, 거기서 이 버튼을 누르면
+   * 짜던 코스를 버리고 새로 시작하게 된다 — 같은 시트인데 자리에 따라
+   * 정반대의 일이 일어나는 셈이다.
+   *
+   * <p>그래서 문패가 아니라 <b>넘겨받는 일감</b>으로 둔다. 시트는 이 값이 있으면
+   * 버튼을 세우고, 없으면 세우지 않는다.
+   */
+  onPlanTrip?: () => void
   onClose: () => void
 }
 
@@ -67,6 +79,7 @@ export function PlaceDetailSheet({
   quietness,
   level,
   levelLabel,
+  onPlanTrip,
   onClose,
 }: Props) {
   const [state, setState] = useState<State>({ phase: 'loading' })
@@ -215,6 +228,26 @@ export function PlaceDetailSheet({
                   </p>
                 )}
               </>
+            )}
+
+            {/*
+              ■ 문을 <b>맨 아래</b>에 둔다
+
+              소개글을 읽고 나서 정하는 자리다. 위에 두면 아직 어떤 곳인지 모르는 채
+              눌러야 하고, 소개글이 길 때는 다 읽고 나서 되돌아 올라가야 한다.
+
+              <p>글이 아직 안 왔어도 버튼은 선다. 소개글은 <b>곁들이는 정보</b>이고
+              이 사람이 여기 온 이유는 홈에서 이 곳이 한적하다고 읽었기 때문이다 —
+              소개 조회가 느리다고 갈 길을 막을 이유가 없다.
+            */}
+            {onPlanTrip && (
+              <button
+                type="button"
+                onClick={onPlanTrip}
+                className="press bg-brand hover:bg-brand-hover text-fg rounded-ui mt-1 h-12 w-full cursor-pointer text-[15px] font-semibold transition-colors"
+              >
+                이 장소로 여행가기
+              </button>
             )}
           </div>
         </div>
