@@ -15,6 +15,7 @@ import com.peakoff.member.domain.Member;
 import com.peakoff.member.domain.MemberRepository;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceProvider;
+import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.SupportedRegion;
 
 /**
@@ -41,9 +42,13 @@ public class FavoriteService {
 	 * <p>지역을 아는 찜에는 <b>지금의 장소를 함께 싣는다.</b> 화면이 코스에 담긴 id를
 	 * 이름과 좌표로 되살리는 데 쓴다 — 자세한 사정은 {@link FavoritePlaceResponse}.
 	 *
-	 * <p>⚠️ <b>지역을 모르면 찾지 않는다.</b> {@code findById}는 카탈로그에 없으면
-	 * 공사 낱개 조회까지 가는데, 그러면 목록을 열 때마다 그런 찜 수만큼 호출이 나간다.
-	 * 지역을 알면 그 카탈로그가 이미 메모리에 있으므로 조회가 공짜다.
+	 * <p>⚠️ <b>저장해 둔 지역으로 곧장 찾는다</b>({@code findInRegion}). 한때
+	 * {@code findById}를 썼는데 그것은 지역을 모를 때 쓰는 것이라 일곱 지역을 차례로 훑는다 —
+	 * 캐시가 비어 있으면 춘천 장소 하나를 되살리려고 앞선 여섯 지역 카탈로그를 전부 받아왔다.
+	 * <b>찜할 때 지역을 남겨 두는 이유가 이것이다.</b>
+	 *
+	 * <p>지역을 모르는 찜은 아예 찾지 않는다. 그런 찜에는 "여행가기" 문이 서지 않으므로
+	 * 되살릴 일이 없고, 찾으려 들면 공사 호출이 목록을 열 때마다 나간다.
 	 */
 	@Transactional(readOnly = true)
 	public List<FavoritePlaceResponse> findMine(Long memberId) {
@@ -56,7 +61,8 @@ public class FavoriteService {
 		if (favorite.region() == null) {
 			return null;
 		}
-		return placeProvider.findById(favorite.placeId()).orElse(null);
+		Region region = SupportedRegion.fromSlug(favorite.region()).toRegion();
+		return placeProvider.findInRegion(region, favorite.placeId()).orElse(null);
 	}
 
 	/**
