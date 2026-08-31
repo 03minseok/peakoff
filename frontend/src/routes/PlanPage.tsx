@@ -56,12 +56,20 @@ export function PlanPage() {
   const { state, setPlan } = useTrip()
 
   /*
-   * 홈의 "이 날로 코스 짜기"가 실어 보낸 날짜.
+   * 홈이 실어 보낸 것.
    *
    * 전역 상태에 미리 써두지 않고 라우터 state로 넘긴다. 사용자가 아직 아무것도
    * 확정하지 않은 시점이라, 여기서 되돌아 나가면 흔적이 남지 않아야 한다.
+   *
+   * <p>{@code seedPlaceId}는 <b>여기서 쓰지 않고 편집 화면으로 그대로 넘긴다.</b>
+   * "이 장소로 여행가기"로 들어온 사람의 그 장소다. 이 화면이 담아 버리면
+   * 조건을 고치는 동안 이미 코스가 있는 셈이 되고, {@code setPlan}이 장소를 비우므로
+   * 어차피 지워진다 — 담는 일은 담을 화면이 한다.
    */
-  const suggestedDate = (location.state as { startDate?: string } | null)?.startDate
+  const handoff = location.state as
+    | { startDate?: string; region?: string; seedPlaceId?: string }
+    | null
+  const suggestedDate = handoff?.startDate
 
   /*
    * 지역은 <b>비워 두고 시작한다.</b> 이전에 고른 적이 있으면 그것부터 보여준다
@@ -71,7 +79,7 @@ export function PlanPage() {
    * 지역이 셋일 때는 "일단 경주"가 그럴듯했지만 일곱이 되면서 경주는 여럿 중 하나가 됐고,
    * 미리 켜 두면 아래 요약과 버튼이 <b>사용자가 하지 않은 선택</b>을 확정된 것처럼 말한다.
    */
-  const [region, setRegion] = useState(state.plan?.region ?? '')
+  const [region, setRegion] = useState(handoff?.region ?? state.plan?.region ?? '')
   const [startDate, setStartDate] = useState(
     suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
   )
@@ -119,7 +127,17 @@ export function PlanPage() {
       return
     }
     setPlan({ region, startDate, nights })
-    navigate('/course')
+    /*
+     * 씨앗 장소를 편집 화면까지 들고 간다. {@code setPlan}이 방금 장소를 전부 비웠으므로
+     * 이 값이 다음 화면에서 1일차의 첫 장소가 된다.
+     *
+     * ⚠️ <b>지역을 바꿨으면 함께 버린다.</b> 그 장소는 홈에서 고른 지역의 곳이라,
+     * 다른 지역으로 옮긴 코스에 남아 있으면 <b>검색으로는 찾을 수도 없는 장소</b>가
+     * 1일차에 박힌다. 검사를 여기서 하는 이유는 두 값이 여기에만 함께 있어서다 —
+     * 편집 화면은 원래 지역이 무엇이었는지 모른다.
+     */
+    const seedPlaceId = region === handoff?.region ? handoff?.seedPlaceId : undefined
+    navigate('/course', { state: { seedPlaceId } })
   }
 
   return (

@@ -306,6 +306,30 @@ export function HomePage() {
   }
 
   /**
+   * 그 장소로 여행을 시작한다.
+   *
+   * <h3>왜 조건 화면을 거치는가</h3>
+   * 곧장 편집 화면으로 보낼 수도 있다. 그러나 이 사람이 정한 것은 <b>장소 하나</b>뿐이고
+   * 여행에는 기간이 필요하다 — 며칠짜리인지 묻지 않고 1박 2일로 정해 버리면
+   * 사용자가 하지 않은 선택을 서비스가 대신한 것이 된다.
+   *
+   * <p>대신 <b>아는 것은 채워서 보낸다.</b> 지역과 날짜는 이미 이 카드가 말하고 있으므로
+   * 조건 화면에 미리 들어가 있다. 사용자가 손볼 것은 기간 하나다.
+   *
+   * <p>⚠️ <b>날짜는 그 곳이 한적한 날이다.</b> 오늘이 아니다 — 그 날짜가 한적하다고
+   * 읽고 눌렀는데 다른 날로 시작하면 카드가 한 말이 지켜지지 않는다.
+   *
+   * <p>전역 상태에 미리 쓰지 않고 라우터 state로 넘긴다. 아직 아무것도 확정하지 않은
+   * 시점이라, 조건 화면에서 되돌아 나가면 흔적이 남지 않아야 한다.
+   */
+  function planTripAt(spot: QuietSpot) {
+    setOpenedSpot(null)
+    navigate('/plan', {
+      state: { region: spot.region, startDate: spot.date, seedPlaceId: spot.place.id },
+    })
+  }
+
+  /**
    * 이번 주 한적한 곳. <b>지역을 가리지 않는다.</b>
    *
    * <p>홈이 지금까지는 지역을 하나 골라야 무엇이든 보여줄 수 있었다. 지역이 일곱이 되면서
@@ -805,6 +829,7 @@ export function HomePage() {
           quietness={openedSpot.quietness}
           level={openedSpot.level}
           levelLabel={openedSpot.levelLabel}
+          onPlanTrip={() => planTripAt(openedSpot)}
           onClose={() => setOpenedSpot(null)}
         />
       )}
