@@ -113,12 +113,28 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await auth.login({ email: email.trim(), password })
-      // 로그인 전에 보던 화면으로 돌려보낸다. 계정 만들기는 목적이 아니라 거쳐가는 단계다.
+      /*
+       * 로그인 전에 보던 화면으로 돌려보낸다. 계정 만들기는 목적이 아니라 거쳐가는 단계다.
+       *
+       * ⚠️ <b>돌아갈 곳이 없으면 홈으로 간다</b> (2026-08-31). {@code navigate(-1)}만 두었더니
+       * 주소창에 /login을 직접 친 사람이나 새 탭에서 링크로 온 사람은 <b>앱 밖으로 나갔다</b> —
+       * 브라우저에 이전 기록이 없으니 뒤로 가기가 빈 페이지(about:blank)로 데려간다.
+       * 로그인은 됐는데 화면이 하얗게 남는다.
+       *
+       * <p>가르는 방법은 {@code AuthShell.goBack}과 <b>같은 것</b>을 쓴다 — 리액트 라우터가
+       * 자기가 쌓은 기록의 위치를 {@code history.state.idx}에 남긴다. 이 화면의 <b>취소 버튼</b>이
+       * 이미 그렇게 하고 있었는데, 로그인 성공 경로만 그 판단을 빠뜨리고 있었다.
+       * {@code history.length}로 재지 않는 이유는 그 값이 다른 사이트에서 넘어온 기록까지
+       * 세기 때문이다(뒤로 가면 남의 사이트로 나간다).
+       */
+      const entry = window.history.state as { idx?: number } | null
       if (from) {
         // 저장하러 온 사람은 돌아간 화면에서 시트가 다시 열려야 한다
         navigate(from, { replace: true, state: { resumeSave: true } })
-      } else {
+      } else if (entry?.idx && entry.idx > 0) {
         navigate(-1)
+      } else {
+        navigate('/', { replace: true })
       }
     } catch (error: unknown) {
       setFailure(
