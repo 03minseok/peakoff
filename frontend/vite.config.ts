@@ -34,7 +34,12 @@ export default defineConfig({
        * 여기를 폰이 보는 주소로 바꾸면 오히려 PC에서 안 된다.
        */
       '/api': {
-        target: 'http://localhost:8080',
+        /*
+         * 기본은 8080이다. 백엔드를 다른 포트로 따로 띄워 확인할 때만
+         * PEAKOFF_API_TARGET으로 바꾼다 — 이미 8080에 떠 있는 서버를 죽이지 않고
+         * 새 코드를 확인하기 위해서다. 안 넣으면 지금까지와 똑같이 동작한다.
+         */
+        target: process.env.PEAKOFF_API_TARGET ?? 'http://localhost:8080',
         changeOrigin: true,
       },
     },
