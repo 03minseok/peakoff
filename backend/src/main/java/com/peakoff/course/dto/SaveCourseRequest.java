@@ -73,7 +73,7 @@ public record SaveCourseRequest(
 		Integer forecastTargetCount,
 
 		/**
-		 * 홈의 "다른 사람들의 여행"에 보일지. 저장 화면의 토글이 정한다.
+		 * 홈의 "요즘 저장된 여행"에 보일지. 저장 화면의 토글이 정한다.
 		 * 값이 없으면 <b>비공개</b>다 — 고르지 않은 것을 공개로 받으면 묻지 않고 내보내는
 		 * 셈이 된다. {@link SavedCourse#isPublic()}이 옛 코스를 다루는 방식과 같다.
 		 *

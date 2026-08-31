@@ -146,6 +146,19 @@
   --c-quiet-strong: #0e7a5f; /* 지도 경로 선도 이 값이다 — CourseMap.tsx 참고 */
   --c-moderate-strong: #a46114;
   --c-crowded-strong: #b3175a;
+
+  /*
+   * 찜(하트)의 빨강. <b>혼잡 3단계와 무관한 색이다.</b>
+   *
+   * 하트는 등급이 아니라 <b>사용자가 좋아한다는 표시</b>라, 붐빔(#e82c6e)을 그대로 쓰면
+   * 같은 화면에서 같은 색이 두 뜻을 갖는다 — 한적한 곳을 찜했는데 "붐빔"과 같은 색으로
+   * 켜지면 신호가 엇갈린다.
+   *
+   * <p>그래서 <b>순수한 빨강 쪽</b>으로 뺐다. 붐빔은 자홍 기운(hue 336°)이고 이쪽은
+   * 주황 기운(hue 5°)이라 나란히 두어도 다른 색으로 읽힌다. 하트는 어느 문화에서나
+   * 빨강이라 이 자리에서만큼은 색이 곧 뜻이다.
+   */
+  --c-like: #e2373c;
 }
 
 @theme inline {
@@ -185,6 +198,7 @@
   --color-crowded-tint: var(--c-crowded-tint);
   --color-crowded-soft: var(--c-crowded-soft);
   --color-crowded-strong: var(--c-crowded-strong);
+  --color-like: var(--c-like);
 
   --font-sans: Pretendard, -apple-system, system-ui, 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;

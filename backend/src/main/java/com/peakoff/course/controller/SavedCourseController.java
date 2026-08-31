@@ -131,38 +131,37 @@ public class SavedCourseController {
 		return ApiResponse.ok(null);
 	}
 	/**
-	 * GET /api/courses/recent?limit=4 — 다른 사람들이 최근에 저장한 코스.
+	 * GET /api/courses/recent?limit=4 — 최근 저장된 코스.
 	 *
 	 * <p><b>로그인 없이 볼 수 있다.</b> 홈에 서는 목록이고, 게스트도 홈을 본다.
-	 * 대신 나가는 것은 익명 요약이라 코스 id도 이름도 담기지 않는다.
+	 * 나가는 것은 요약이라 코스 id도 코스 이름도 담기지 않는다(닉네임은 나간다).
 	 *
-	 * <p>로그인한 사람에게는 자기 코스를 뺀다 — 내가 저장한 것을 "다른 사람들의 여행"이라고
-	 * 보여줄 수는 없다. 이 화면은 열려 있으므로 {@code member}가 {@code null}일 수 있다.
+	 * <p>⚠️ <b>보는 사람을 가리지 않는다.</b> 예전에는 로그인한 사람의 코스를 뺐는데,
+	 * 그러면 저장한 사람만 자기 코스를 못 본다. 그래서 인증 주체를 받지 않는다 —
+	 * 받아 두면 언젠가 다시 그 값으로 목록이 갈린다.
 	 */
 	@Operation(
 			summary = "다른 사람들의 최근 코스 (익명)",
 			description = """
-					최근 저장된 코스를 익명으로 요약해 돌려준다. 로그인 없이 부를 수 있다.
+					최근 저장된 코스를 요약해 돌려준다. 로그인 없이 부를 수 있고,
+					<b>보는 사람이 누구든 같은 목록</b>이다.
 
-					코스 id와 이름, 저장한 사람은 담기지 않는다. 이름은 사용자가 자기만 볼 줄 알고
+					코스 id와 코스 이름은 담기지 않는다. 이름은 사용자가 자기만 볼 줄 알고
 					지은 것이라 공개에 동의한 적이 없고, id는 열어 볼 길을 아예 두지 않으려고 뺐다.
+					대신 저장한 사람의 닉네임이 나간다 — 카드 제목이 "OO님의 OO"로 선다.
 
 					지역·기간·총점과 <b>담긴 장소 전부</b>가 나간다. 홈에서 카드를 눌러 펼쳐 볼 수
 					있는데, 상세 엔드포인트를 따로 열지 않고 이 목록에 내용을 실었다 —
 					코스에 주소를 주면 번호를 훑어 남의 코스를 하나씩 여는 통로가 생긴다.
-					카드에 보이는 앞 세 곳은 화면이 잘라 쓴다.
-
-					로그인 상태면 자기 코스는 빠진다.""")
+					카드에 보이는 앞 세 곳은 화면이 잘라 쓴다.""")
 	@GetMapping("/recent")
 	public ApiResponse<List<PublicCourseSummary>> findRecent(
-			@AuthenticationPrincipal AuthenticatedMember member,
-
 			@Parameter(description = "최대 개수")
 			@RequestParam(defaultValue = "" + DEFAULT_RECENT_LIMIT)
 			@Min(value = 1, message = "개수는 1 이상이어야 합니다.")
 			@Max(value = 12, message = "한 번에 12개까지 볼 수 있습니다.")
 			int limit) {
 
-		return ApiResponse.ok(savedCourseService.recent(member == null ? null : member.id(), limit));
+		return ApiResponse.ok(savedCourseService.recent(limit));
 	}
 }

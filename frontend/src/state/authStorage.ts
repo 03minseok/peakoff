@@ -28,7 +28,13 @@ function isValidMember(value: unknown): boolean {
   const member = value as Record<string, unknown>
   return (
     typeof member.id === 'number' &&
-    typeof member.email === 'string' &&
+    /*
+     * 이메일은 null도 정상이다. 카카오는 이메일 제공이 선택 동의라 소셜로만 가입한
+     * 회원에게는 이메일이 없다. 여기서 string만 받으면 그 회원의 저장값이
+     * "깨진 값"으로 오판되어, 방금 로그인하고도 새로고침마다 로그아웃된다 —
+     * 토큰이 멀쩡한데 서버에 물어보기도 전에 지워버리는 것이다.
+     */
+    (typeof member.email === 'string' || member.email === null) &&
     typeof member.nickname === 'string'
   )
 }

@@ -1,21 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDownToLine, Close } from '../components/icons'
+import { ArrowDownToLine, Close, Heart } from '../components/icons'
+import { ProfileAvatar } from '../components/ProfileAvatar'
 import type { ReactNode } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { AccountSheets } from '../components/AccountSheets'
 import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
-import { ListEdgeJump } from '../components/ListEdgeJump'
+import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
+import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
 import { CARD } from '../components/styles'
 import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
 import { useAuth } from '../state/authContext'
+import { useFavorites } from '../state/favoriteContext'
 import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { useBrowserChromeInset } from '../hooks/useBrowserChromeInset'
 import { useTrip } from '../state/tripContext'
-import type { SavedCourseDetail, SavedCourseSummary } from '../types/api'
-import { isPastDate } from '../utils/date'
+import type { FavoritePlace, SavedCourseDetail, SavedCourseSummary } from '../types/api'
 
 type ListState =
   | { status: 'loading' }
@@ -26,6 +28,46 @@ type ListState =
 const COMPARE_COUNT = 2
 
 const STAT_VALUE = 'text-fg font-mono text-[19px] font-semibold'
+
+/**
+ * 한 번에 보여줄 수와 <b>더보기 한 번에 늘어나는 수</b>.
+ *
+ * <p>넓은 화면의 <b>한 줄</b>과 같은 수다 — 코스는 세 칸, 찜은 네 칸. 그래야 더보기를
+ * 누를 때마다 줄이 정확히 하나씩 늘고, 남는 칸 없이 격자가 채워진다.
+ *
+ * <p>⚠️ <b>좁은 화면도 같은 수를 쓴다.</b> 거기서는 한 줄에 하나씩이라 "한 줄"이라는 근거가
+ * 사라지지만, 화면 크기마다 다른 수를 쓰면 같은 계정이 기기에 따라 다른 만큼 보인다.
+ * 무엇보다 더보기가 필요한 이유가 좁은 화면에서 더 크다 — 이 화면은 목록 <b>뒤에</b>
+ * 계정·로그아웃이 있어서, 목록이 길면 거기까지 내려가는 것 자체가 일이 된다.
+ */
+const COURSE_PAGE = 3
+const FAVORITE_PAGE = 4
+
+/**
+ * 더 불러오는 버튼. <b>남은 수를 적는다.</b>
+ *
+ * <p>"더보기"만 두면 몇 번을 더 눌러야 끝인지 알 수 없다. 남은 수를 보여주면
+ * 한 번 더 누를지 그만둘지를 <b>누르기 전에</b> 정할 수 있다.
+ */
+function MoreButton({ remaining, onClick }: { remaining: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="press border-line bg-surface text-muted hover:bg-bg rounded-ui h-12 w-full cursor-pointer border text-[13.5px] font-semibold transition-colors"
+    >
+      더보기 <span className="text-hint">({remaining})</span>
+    </button>
+  )
+}
+
+/**
+ * 좁은 화면의 두 갈래.
+ *
+ * <p>라벨을 따로 두지 않는다. 탭 노릇을 하는 것이 <b>통계 카드</b>이고 그 글자는
+ * {@code stats}가 이미 들고 있다 — 여기 또 적으면 한쪽만 고쳐지는 날이 온다.
+ */
+type MyTab = 'courses' | 'favorites'
 
 /** 계정 정보 줄의 오른쪽에 서는 작은 버튼 */
 const ROW_ACTION =
@@ -62,6 +104,8 @@ function AccountRow({
 export function MyPage() {
   const navigate = useNavigate()
   const { member, loading: authLoading, logout } = useAuth()
+  /* 찜은 앱이 뜰 때 한 번 받아 둔 것을 그대로 읽는다 — 이 화면이 따로 부르지 않는다 */
+  const { favorites, isFavorite, toggle } = useFavorites()
   const { restore } = useTrip()
   // 아래 고정 CTA가 브라우저 도구막대 뒤로 숨지 않게 하는 보정.
   const chromeInset = useBrowserChromeInset()
@@ -96,6 +140,96 @@ export function MyPage() {
 
   /** 열려 있는 계정 시트. 입력값과 처리 상태는 AccountSheets가 들고 있다 */
   const [accountSheet, setAccountSheet] = useState<AccountSheet | null>(null)
+
+  /**
+   * 펼쳐 보고 있는 찜한 곳. <b>id가 아니라 줄 전체를 들고 있다.</b>
+   *
+   * <p>상세 시트에 넘길 것이 이름·분류·사진이고 그 셋이 이미 이 객체에 있다.
+   * id만 들고 있으면 목록에서 다시 찾아와야 하고, 찾는 코드가 목록을 그리는 코드와
+   * 갈라져 한쪽만 고쳐지는 자리가 생긴다 — 홈이 한적한 곳을 여는 방식과 같다.
+   */
+  const [openedPlace, setOpenedPlace] = useState<FavoritePlace | null>(null)
+
+  /**
+   * 지금까지 펼쳐 본 만큼. <b>더보기를 누를 때마다 늘어난다.</b>
+   *
+   * <p>목록이 바뀌어도(코스를 지우거나 찜을 풀어도) 되돌리지 않는다 — 이미 펼쳐 본 것이
+   * 다시 접히면 방금 보던 자리를 잃는다. 목록보다 커져도 {@code slice}가 알아서 자른다.
+   */
+  const [courseLimit, setCourseLimit] = useState(COURSE_PAGE)
+  const [favoriteLimit, setFavoriteLimit] = useState(FAVORITE_PAGE)
+
+  /**
+   * ■ 이 화면에 <b>머무는 동안 자리를 지키는</b> 찜 목록.
+   *
+   * <p>하트를 끄면 카드가 즉시 사라졌다. 그런데 이 목록은 <b>훑어보며 정리하는 자리</b>라,
+   * 사라지는 순간 방금 무엇을 껐는지 확인할 수도, 잘못 눌렀을 때 되돌릴 수도 없었다.
+   * 아래 카드들이 한 칸씩 밀려 올라와 누르려던 다음 카드가 손가락 밑에서 바뀌기도 한다.
+   *
+   * <p>그래서 <b>끈 자리는 그대로 두고 하트만 빈 모양으로</b> 바꾼다. 다시 누르면 되살아난다.
+   * 진짜로 목록에서 빠지는 것은 <b>이 화면을 떠났다 돌아왔을 때</b>다 — 그때는 이 상태가
+   * 사라지고 서버 목록에서 다시 세운다(라우트가 바뀌면 이 컴포넌트가 통째로 내려간다).
+   *
+   * <p>⚠️ 숫자는 <b>따라오지 않는다.</b> 위의 "N곳"과 통계 카드는 진짜 찜 개수를 쓴다 —
+   * 자리를 지키는 것은 되돌릴 틈을 주려는 화면 사정이고, 몇 곳을 찜해 두었는가는 사실이다.
+   */
+  const [lingering, setLingering] = useState<FavoritePlace[]>(favorites)
+
+  /*
+   * 새로 들어온 것만 앞에 붙이고, 빠진 것은 자리를 지킨다.
+   *
+   * 목록을 통째로 갈아끼우지 않는 이유가 이 화면의 요구 그 자체다. 대신 새로 찜한 것은
+   * 따라와야 한다 — 이 화면에서도 상세 시트를 열어 하트를 켤 수 있다.
+   *
+   * 더할 것이 없으면 <b>같은 배열을 그대로 돌려준다.</b> 새 배열을 만들면 favorites가
+   * 바뀔 때마다(하트를 끌 때마다) 목록 전체가 다시 그려진다.
+   */
+  useEffect(() => {
+    setLingering((current) => {
+      const shown = new Set(current.map((favorite) => favorite.placeId))
+      const added = favorites.filter((favorite) => !shown.has(favorite.placeId))
+      return added.length === 0 ? current : [...added, ...current]
+    })
+  }, [favorites])
+
+  /**
+   * 찜해 둔 곳으로 여행을 시작한다.
+   *
+   * <p>홈의 한적한 곳과 <b>넘기는 것이 하나 적다</b> — 거기는 "그 곳이 한적한 날"을 알아서
+   * 날짜까지 채워 보내지만, 찜에는 날짜가 없다("언젠가 가고 싶다"는 표시다).
+   * 지역과 장소만 넘기고 <b>언제 떠날지는 조건 화면에서 고른다.</b>
+   *
+   * <p>전역 상태에 미리 쓰지 않고 라우터 state로 넘긴다. 아직 아무것도 확정하지 않은
+   * 시점이라 되돌아 나가면 흔적이 남지 않아야 한다.
+   */
+  function planTripFrom(favorite: FavoritePlace) {
+    setOpenedPlace(null)
+    navigate('/plan', {
+      state: { region: favorite.region, seedPlaceId: favorite.placeId },
+    })
+  }
+
+  /**
+   * 좁은 화면에서 무엇을 보고 있는가.
+   *
+   * <h3>넓은 화면에는 탭이 없다</h3>
+   * 저장한 코스와 찜한 곳은 <b>함께 볼 수 있으면 함께 보는 편이 낫다</b> — 둘 다 "내가 모아
+   * 둔 것"이고, 찜한 곳을 보다가 코스로 눈이 가는 일이 자연스럽다. 자리가 넉넉한 곳에서
+   * 굳이 하나를 감출 이유가 없다.
+   *
+   * <p>좁은 화면은 사정이 다르다. 코스 카드가 한 장에 100px을 넘게 쓰는데 그 아래
+   * 찜한 곳까지 이어 붙이면, 찜을 보려면 코스를 전부 지나쳐 내려가야 한다.
+   * 스크롤로 옮겨 다니는 대신 <b>같은 자리에서 갈아끼운다</b> — CLAUDE.md가 홈의
+   * "붐빌 것/한적할 것"과 최종 비교의 "원안/개선안"에 쓴 것과 같은 장치다.
+   */
+  const [tab, setTab] = useState<MyTab>('courses')
+
+  /*
+   * 탭이 감추는 것은 <b>좁은 화면에서만</b>이다. {@code contents}는 상자를 만들지 않고
+   * 자식을 부모의 흐름에 그대로 놓으므로, 감싸도 바깥 flex의 간격이 그대로 산다 —
+   * 여느 div로 감쌌다면 섹션 사이 간격이 한 겹 사라진다.
+   */
+  const paneClass = (name: MyTab) => (tab === name ? 'contents' : 'hidden md:contents')
 
   /**
    * @param silent 스켈레톤을 띄우지 않고 조용히 다시 읽는다.
@@ -133,6 +267,17 @@ export function MyPage() {
   /**
    * 프로필 옆(넓은 화면)과 아래(좁은 화면)가 함께 쓰는 통계.
    *
+   * <h3>둘은 세는 값이자 <b>가는 문</b>이다</h3>
+   * 좁은 화면에서 "저장한 코스"·"찜한 곳" 칸이 그대로 탭이 된다({@code tab} 필드).
+   * 아래에 탭 막대를 따로 뒀다가 걷어냈다 — <b>같은 두 낱말이 화면에 두 번</b> 서고,
+   * 위의 숫자와 아래의 숫자가 같은 것을 두 번 세는 꼴이었다.
+   * 이미 그 수를 말하고 있는 칸이 그 목록으로 가는 문이 되는 편이 짧다.
+   *
+   * <p>"평균 한적 지수"에는 {@code tab}이 없다. 갈 목록이 없는 값이라 눌러도 갈 곳이 없다.
+   *
+   * <p>순서는 <b>저장한 코스 → 찜한 곳 → 나머지</b>다. 앞의 둘이 탭이므로 나란히 붙어야
+   * 하나의 스위치로 읽힌다 — 사이에 누를 수 없는 칸이 끼면 셋 다 버튼처럼 보인다.
+   *
    * <p>list를 의존성으로 둔다. courses를 렌더 중에 만들면(로딩 중에는 새 빈 배열)
    * 매 렌더 참조가 바뀌어 useMemo가 무의미해진다.
    */
@@ -140,9 +285,9 @@ export function MyPage() {
     const loaded = list.status === 'loaded' ? list.courses : []
     if (loaded.length === 0) {
       return [
-        { label: '저장한 코스', value: '0' },
-        { label: '평균 한적 지수', value: '—' },
-        { label: '다녀온 여행', value: '0' },
+        { label: '저장한 코스', value: '0', tab: 'courses' as const },
+        { label: '찜한 곳', value: String(favorites.length), tab: 'favorites' as const },
+        { label: '평균 한적 지수', value: '—', tab: undefined },
       ]
     }
     /*
@@ -153,17 +298,22 @@ export function MyPage() {
     const scored = loaded.filter((course) => course.totalQuietness !== null)
     const total = scored.reduce((sum, course) => sum + (course.totalQuietness ?? 0), 0)
     return [
-      { label: '저장한 코스', value: String(loaded.length) },
+      { label: '저장한 코스', value: String(loaded.length), tab: 'courses' as const },
+      /*
+       * ⚠️ 이 칸이 <b>"다녀온 여행"에서 "찜한 곳"으로</b> 바뀌었고 자리도 둘째로 왔다.
+       *
+       * 지난 여행 수는 이 화면에서 <b>할 일이 없는 숫자</b>였다 — 늘기만 하고 눌러도
+       * 아무 데도 가지 않으며, 여행이 끝났다는 사실은 코스 카드마다 이미 적혀 있다.
+       * 찜한 곳은 아래 목록과 짝이 되는 값이고, 이제 그 목록으로 가는 문이기도 하다.
+       */
+      { label: '찜한 곳', value: String(favorites.length), tab: 'favorites' as const },
       {
         label: '평균 한적 지수',
         value: scored.length === 0 ? '—' : String(Math.round(total / scored.length)),
-      },
-      {
-        label: '다녀온 여행',
-        value: String(loaded.filter((course) => isPastDate(course.endDate)).length),
+        tab: undefined,
       },
     ]
-  }, [list])
+  }, [list, favorites])
 
   const courses = list.status === 'loaded' ? list.courses : []
 
@@ -262,21 +412,25 @@ export function MyPage() {
 
   const empty = list.status === 'loaded' && courses.length === 0
 
+
   return (
     <div className="mx-auto flex w-full max-w-[430px] flex-col gap-5.5 px-4 pt-5 pb-10 md:max-w-app md:px-0">
       {/* 프로필 */}
       <section className="flex items-center gap-3.5 md:gap-4.5">
-        <span
-          className="bg-quiet-tint text-brand-deep grid h-14 w-14 flex-none place-items-center rounded-[18px] text-[23px] font-bold md:h-16 md:w-16 md:rounded-[20px] md:text-[26px]"
-          aria-hidden="true"
-        >
-          {member.nickname.slice(0, 1)}
-        </span>
+        {/*
+          사진을 올리기 전의 기본 그림. 예전에는 닉네임 첫 글자를 박아 두었는데,
+          바로 옆에 같은 닉네임이 전체로 다시 적혀 있어 같은 정보가 두 번 섰다.
+          그림 정의는 ProfileAvatar 한 곳에 있다.
+        */}
+        <ProfileAvatar className="h-14 w-14 rounded-[18px] md:h-16 md:w-16 md:rounded-[20px]" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.75">
           <span className="text-fg text-[19px] font-bold tracking-[-0.015em] md:text-[22px]">
             {member.nickname}
           </span>
-          <span className="text-hint truncate text-[13px]">{member.email}</span>
+          {/* 소셜로만 가입한 회원은 이메일이 없다(카카오 선택 동의). 빈 줄로 두지 않는다 */}
+          <span className="text-hint truncate text-[13px]">
+            {member.email ?? '간편 로그인 계정'}
+          </span>
         </div>
 
         {/* 넓은 화면에서는 통계가 프로필 옆에 선다. 좁으면 아래로 내려간다 */}
@@ -294,21 +448,58 @@ export function MyPage() {
         좁은 화면용 통계. 위와 같은 stats를 돌린다 — 목록을 두 벌로 적으면
         항목을 하나 더할 때 한쪽만 고쳐져 화면 크기에 따라 다른 내용이 나온다.
         배치만 다르고(옆줄 vs 카드 3칸) 내용은 한 곳에서 온다.
+
+        <p>■ <b>앞의 두 칸이 곧 탭이다</b> (2026-08-31)
+
+        아래에 탭 막대를 따로 뒀다가 걷어냈다. <b>같은 두 낱말이 화면에 두 번</b> 서고,
+        위의 숫자와 아래의 숫자가 같은 것을 두 번 세는 꼴이었다 — 게다가 통계 줄과
+        탭 줄이 같은 폭의 상자 셋·둘로 잇달아 서서 어느 쪽이 누르는 것인지 흐렸다.
+        이미 그 수를 말하고 있는 칸이 그 목록으로 가는 문이 되는 편이 짧다.
+
+        <p>켜진 칸은 <b>어두운 면</b>이다. 편집 화면의 일차 탭과 같은 신호라
+        "지금 이걸 보고 있다"가 화면을 옮겨도 같은 모양으로 읽힌다.
+
+        <p>⚠️ 셋째 칸("평균 한적 지수")은 <b>버튼이 아니다.</b> 갈 목록이 없는 값이라
+        눌러도 갈 곳이 없다. 그래서 {@code div}로 남기고 손가락 커서도 주지 않는다 —
+        앞의 둘 중 하나는 언제나 켜져 있으므로, 셋이 늘어서도 어느 둘이 스위치인지 보인다.
       */}
       <div className="grid grid-cols-3 gap-2 md:hidden">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-surface shadow-rest flex flex-col items-center gap-0.75 rounded-[14px] p-3"
-          >
-            <span className={STAT_VALUE}>{stat.value}</span>
-            <span className="text-hint text-[11.5px]">{stat.label}</span>
-          </div>
-        ))}
+        {stats.map((stat) => {
+          const active = stat.tab !== undefined && stat.tab === tab
+          const shell = 'flex flex-col items-center gap-0.75 rounded-[14px] p-3 transition-colors'
+
+          if (stat.tab === undefined) {
+            return (
+              <div key={stat.label} className={`bg-surface shadow-rest ${shell}`}>
+                <span className={STAT_VALUE}>{stat.value}</span>
+                <span className="text-hint text-[11.5px]">{stat.label}</span>
+              </div>
+            )
+          }
+
+          return (
+            <button
+              key={stat.label}
+              type="button"
+              aria-current={active}
+              onClick={() => setTab(stat.tab)}
+              className={`cursor-pointer border-0 ${shell} ${
+                active ? 'bg-fg' : 'bg-surface shadow-rest'
+              }`}
+            >
+              <span className={`${STAT_VALUE} ${active ? 'text-white' : ''}`}>{stat.value}</span>
+              <span className={`text-[11.5px] ${active ? 'text-white/70' : 'text-hint'}`}>
+                {stat.label}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
+      <div className={paneClass('courses')}>
+
       {/* 섹션 헤더 */}
-      <section className="border-line flex flex-wrap items-center justify-between gap-3 border-t pt-5">
+      <section className="flex flex-wrap items-center justify-between gap-3 border-line border-t pt-5 md:border-t md:pt-5">
         <div className="flex items-baseline gap-2">
           <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
             내가 저장한 코스
@@ -429,17 +620,15 @@ export function MyPage() {
       {list.status === 'loaded' && !empty && (
         <>
         {/*
-          ⚠️ 이동 버튼을 격자 <b>바깥</b>에 둔다. 안에 넣었더니 카드 한 칸을 차지해
-          넓은 화면에서 3열 중 하나가 버튼으로 채워졌다. 저장 코스는 회원당 50개까지라
-          목록이 길어질 수 있어 버튼 자체는 필요하다.
-        */}
-        <div className="flex justify-end px-0.5">
-          <div id="saved-top" className="scroll-mt-20" />
-          <ListEdgeJump targetId="saved-bottom" direction="down" label="목록" />
-        </div>
+          ⚠️ <b>"목록 끝으로 / 처음으로"를 걷어냈다</b> (2026-08-31).
 
+          저장 코스가 회원당 50개까지라 목록이 길어질 수 있어 둔 버튼이었다. 아래 "더보기"가
+          그 문제를 <b>원인 쪽에서</b> 푼다 — 긴 목록을 빨리 지나가게 해 주는 대신
+          애초에 길어지지 않게 한다. 둘을 함께 두면 세 곳(위·아래·더보기)에 이동 수단이 서서
+          어느 것을 눌러야 할지가 오히려 흐려진다.
+        */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
+          {courses.slice(0, courseLimit).map((course) => (
             <SavedCourseCard
               key={course.id}
               course={course}
@@ -452,10 +641,12 @@ export function MyPage() {
           ))}
         </div>
 
-        <div className="flex justify-end px-0.5">
-          <ListEdgeJump targetId="saved-top" direction="up" label="목록" />
-          <div id="saved-bottom" className="scroll-mt-20" />
-        </div>
+        {courses.length > courseLimit && (
+          <MoreButton
+            remaining={courses.length - courseLimit}
+            onClick={() => setCourseLimit((n) => n + COURSE_PAGE)}
+          />
+        )}
         </>
       )}
 
@@ -507,6 +698,195 @@ export function MyPage() {
         </div>
       )}
 
+      </div>
+
+      <div className={paneClass('favorites')}>
+
+      {/*
+        ■ 찜한 곳.
+
+        넓은 화면에서는 저장한 코스 <b>아래</b>에 이어 선다. 이 화면의 주인공은 코스이고
+        찜은 그 재료다 — 언젠가 갈 곳을 모아 둔 것이지 완성된 여행이 아니다.
+        좁은 화면에서는 위쪽 탭이 둘을 갈아끼운다.
+
+        <p>⚠️ <b>한적도를 붙이지 않는다.</b> 찜은 날짜가 없는 표시라("언젠가 가고 싶다")
+        어느 날 기준으로 재야 할지 정해지지 않는다. 날짜 없이 점수를 붙이면 화면이
+        재지 않은 것을 말하게 된다 — 한적도는 여행 날짜가 정해진 진단 화면의 몫이다.
+      */}
+      <section className="border-line flex flex-col gap-3 border-t pt-5 max-md:border-t-0 max-md:pt-0">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
+            찜한 곳
+          </h2>
+          {favorites.length > 0 && (
+            <span className="text-hint text-[12.5px]">{favorites.length}곳</span>
+          )}
+        </div>
+
+        {/*
+          ⚠️ 빈 화면인지는 <b>lingering</b>으로 가른다. 마지막 하나의 하트를 껐을 때
+          favorites는 곧바로 0이 되는데, 그것으로 가르면 방금 끈 카드가 사라지고
+          "아직 찜한 곳이 없어요"가 서 버린다 — 자리를 지키려던 것이 무의미해진다.
+        */}
+        {lingering.length === 0 ? (
+          /*
+            빈 안내를 <b>탭이 생기면서 세우게 됐다.</b> 예전에는 줄 자체를 그리지 않았는데,
+            이제 좁은 화면에서 "찜한 장소" 탭을 누를 수 있으므로 눌렀는데 아무것도 없으면
+            고장으로 읽힌다. 눌러서 온 자리는 비어 있더라도 <b>왜 비었는지</b>는 말해야 한다.
+          */
+          <div className="border-line flex flex-col items-center gap-2 rounded-[18px] border border-dashed px-5 py-9 text-center">
+            <span className="text-hint" aria-hidden="true">
+              <Heart size={26} />
+            </span>
+            <span className="text-fg text-[14.5px] font-semibold">아직 찜한 곳이 없어요</span>
+            <span className="text-muted text-[12.5px] leading-[1.6]">
+              장소를 열고 하트를 누르면 여기에 모여요.
+            </span>
+          </div>
+        ) : (
+          /*
+            ■ 사진을 세운 <b>타일</b>이다
+
+            한 줄짜리 이름표였다가 바꿨다. 이름만 늘어놓으면 "어디였더라"를 짚어주지 못한다 —
+            찜은 언젠가 갈 곳을 모아 두는 자리라 <b>기억을 되살리는 그림</b>이 목록의 값이다.
+            진단 화면의 좁은 화면 카드가 같은 이유로 사진을 배너로 세운다.
+
+            <p>두 칸으로 나눠 사진이 <b>정사각형에 가깝게</b> 선다. 한 칸이면 사진이
+            가로로 길어져 배너가 되고, 세 칸이면 이름이 두 줄로 접힌다.
+          */
+          /*
+            ■ 진단 화면의 <b>좁은 화면 카드와 같은 모양</b>이다
+
+            사진이 카드 폭을 가로지르고, 그 아래 이름·분류가 서고, 맨 아래를 버튼이 가로지른다.
+            같은 것(장소 한 곳)을 보여주는 카드가 화면마다 다르게 생기면 사용자가
+            매번 다시 읽는다 — 진단 화면에서 익힌 모양을 여기서도 그대로 쓴다.
+
+            <p>한 줄에 하나가 아니라 <b>화면이 넓어지면 나란히</b> 선다. 진단 카드는 넓은
+            화면에서 가로로 눕지만(사진·이름·버튼이 한 줄) 여기는 그럴 이유가 없다 —
+            거기는 순서가 있는 일정이라 세로로 이어져야 하고, 찜은 순서 없는 모음이다.
+          */
+          <>
+          {/*
+            ⚠️ 넓은 화면에서 <b>넉 줄</b>이다. 코스가 셋일 때 찜도 셋이면, 카드 하나가
+            훨씬 단순한데도(사진·이름·분류·버튼) 코스 카드와 같은 폭을 차지해
+            <b>같은 무게의 것</b>으로 보인다. 이 화면의 주인공은 코스다.
+          */}
+          <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
+            {lingering.slice(0, favoriteLimit).map((favorite) => {
+              /*
+                하트가 켜져 있는가는 <b>진짜 목록에게 묻는다.</b> 이 카드가 서 있다는 것과
+                찜이 살아 있다는 것은 이제 다른 사실이다 — 끈 카드는 자리만 지키고 있다.
+              */
+              const liked = isFavorite(favorite.placeId)
+
+              return (
+              <li
+                key={favorite.placeId}
+                className={`${CARD} relative flex flex-col overflow-hidden p-0`}
+              >
+                <PlaceThumbnail
+                  name={favorite.placeName}
+                  imageUrl={favorite.imageUrl}
+                  size="banner"
+                  /*
+                    ⚠️ sm:부터 작은 정사각형으로 돌아가는 것을 <b>되돌린다.</b>
+                    banner는 진단 카드가 넓은 화면에서 가로로 눕는 것을 전제로 만들어졌는데,
+                    이 카드는 어느 폭에서나 세로다 — 그대로 두면 넓은 화면에서만
+                    사진이 64px 조각으로 쪼그라든다.
+                  */
+                  className="sm:h-40 sm:w-full sm:rounded-none sm:text-[30px]"
+                />
+
+                {/*
+                  하트를 사진 위 오른쪽에 얹는다. 진단 카드가 같은 자리에 한적도 배지를
+                  두는데, 찜 목록에는 그 값이 없다(날짜가 정해지지 않은 표시라서) —
+                  <b>그 자리를 하트가 받는다.</b>
+
+                  <p>⚠️ 흐린 <b>동그란 바탕을 걷어냈다.</b> 사진 위에 회색 알약이 하나 떠 있는
+                  것으로 보였다. 바탕이 하던 일(밝은 하늘에 하트가 묻히지 않게)은
+                  <b>그림자</b>가 대신한다 — 하트 모양을 따라 지므로 네모난 자국이 남지 않고,
+                  꺼진 하트의 가는 획도 함께 받쳐준다.
+                */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggle({
+                      id: favorite.placeId,
+                      name: favorite.placeName,
+                      categoryName: favorite.categoryName,
+                      imageUrl: favorite.imageUrl,
+                      /*
+                        ⚠️ 지역까지 넘긴다. 이제 <b>이 자리에서 다시 켤 수 있어서</b>다 —
+                        끈 카드가 남아 있으므로 되살리는 길이 생겼는데, 그때 지역을 빼놓으면
+                        서버가 채워줄 때까지 그 카드의 "여행가기" 문이 사라진다.
+                      */
+                      region: favorite.region,
+                      regionName: favorite.regionName,
+                    })
+                  }
+                  aria-pressed={liked}
+                  aria-label={`${favorite.placeName} ${liked ? '찜 취소' : '다시 찜하기'}`}
+                  /*
+                    꺼지면 <b>흰 테두리 하트</b>다. 사진 위라 text-hint(회색)로 두면
+                    어두운 사진에서 통째로 묻힌다 — 밝은 사진은 그림자가, 어두운 사진은
+                    흰색이 받친다.
+                  */
+                  className={`press absolute top-2.5 right-2.5 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-0 bg-transparent drop-shadow-[0_1px_3px_rgb(42_62_84/0.55)] ${
+                    liked ? 'text-like' : 'text-white'
+                  }`}
+                >
+                  <Heart size={18} filled={liked} />
+                </button>
+
+                <div className="flex min-w-0 flex-col gap-0.5 px-4 pt-3.5">
+                  <p className="text-fg m-0 text-[17px] font-bold tracking-[-0.01em]">
+                    {favorite.placeName}
+                  </p>
+                  {/*
+                    분류가 없는 찜이 있다. 이 칸이 서버에 생기기 전에 찜한 곳이다 —
+                    <b>빈 줄을 세우지 않는다.</b> 자리만 비워두면 "안 불러온 값"으로 읽힌다.
+                  */}
+                  {favorite.categoryName && (
+                    <p className="text-hint m-0 text-[12.5px]">{favorite.categoryName}</p>
+                  )}
+                </div>
+
+                {/*
+                  ■ 카드 아래를 가로지르는 문 하나
+
+                  진단 카드에서는 이 자리가 "새로운 곳 발견하기"이고 분류 옆에 "상세보기"가
+                  작은 글자로 붙어 있다. 여기서는 <b>상세보기가 그 자리로 내려온다</b> —
+                  찜 목록에서 할 일은 대안을 찾는 것이 아니라 <b>이곳이 어디였는지 보는 것</b>이라,
+                  그 하나가 카드의 주된 행동이면 작은 글자로 둘 이유가 없다.
+                */}
+                <div className="px-4 pt-3 pb-4">
+                  <button
+                    type="button"
+                    onClick={() => setOpenedPlace(favorite)}
+                    aria-label={`${favorite.placeName} 상세보기`}
+                    className="press border-line bg-surface text-fg hover:bg-bg rounded-ui h-11 w-full cursor-pointer border text-[13.5px] font-semibold transition-colors"
+                  >
+                    상세보기
+                  </button>
+                </div>
+              </li>
+              )
+            })}
+          </ul>
+
+          {/* 더보기도 화면에 선 개수(lingering)로 센다. 남은 수와 실제로 펼쳐지는 수가 어긋나면 안 된다 */}
+          {lingering.length > favoriteLimit && (
+            <MoreButton
+              remaining={lingering.length - favoriteLimit}
+              onClick={() => setFavoriteLimit((n) => n + FAVORITE_PAGE)}
+            />
+          )}
+          </>
+        )}
+      </section>
+
+      </div>
+
       {/*
         계정.
 
@@ -525,7 +905,8 @@ export function MyPage() {
           그 절차 없이 바꾸게 두면 남의 주소를 적어 계정을 잠글 수 있다.
         */}
         <div className={`${CARD} flex flex-col px-4`}>
-          <AccountRow label="이메일" value={member.email} />
+          {/* 소셜 전용 회원은 이메일이 없다. 빈 칸이면 고장으로 읽히니 이유를 적는다 */}
+          <AccountRow label="이메일" value={member.email ?? '간편 로그인으로 가입한 계정'} />
           <AccountRow
             label="닉네임"
             value={member.nickname}
@@ -634,6 +1015,34 @@ export function MyPage() {
           courseIds={opened}
           onClose={() => setOpened([])}
           onOpenInFlow={openInFlow}
+        />
+      )}
+
+      {/*
+        찜한 곳 펼쳐 보기. 한적도는 넘기지 않는다 — 찜은 날짜가 없는 표시라
+        어느 날 기준으로 재야 할지 정해지지 않는다. 시트는 값이 없으면 배지를 그리지 않는다.
+
+        <p>"이 장소로 여행가기"({@code onPlanTrip})도 넘기지 않는다. 그 버튼은 <b>지역과
+        날짜를 아는 자리</b>에서만 선다(홈의 한적한 곳은 둘 다 안다). 찜에는 날짜가 없으므로
+        여기서 열면 시트가 그 문을 세우지 않는다.
+      */}
+      {openedPlace && (
+        <PlaceDetailSheet
+          placeId={openedPlace.placeId}
+          placeName={openedPlace.placeName}
+          categoryName={openedPlace.categoryName}
+          imageUrl={openedPlace.imageUrl}
+          /*
+            ⚠️ <b>지역을 아는 찜에만</b> 이 문을 세운다. 지역이 코스의 단위라, 모르는 채로
+            조건 화면을 열면 사용자가 아무 지역이나 고르게 되고 그 장소는 <b>검색으로도
+            찾을 수 없는 칸</b>이 된다(조건 화면이 지역이 어긋난 씨앗을 버린다).
+
+            <p>지역을 모르는 찜은 이 칸이 생기기 전에 찜한 것뿐이다. 하트를 껐다 켜면 채워진다.
+          */
+          onPlanTrip={
+            openedPlace.region === null ? undefined : () => planTripFrom(openedPlace)
+          }
+          onClose={() => setOpenedPlace(null)}
         />
       )}
 

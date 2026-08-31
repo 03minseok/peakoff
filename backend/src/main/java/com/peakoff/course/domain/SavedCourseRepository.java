@@ -32,20 +32,21 @@ public interface SavedCourseRepository extends JpaRepository<SavedCourse, Long> 
 	Optional<SavedCourse> findByIdAndMemberId(Long id, Long memberId);
 
 	/**
-	 * 최근 저장된 코스. <b>주인을 가리지 않는다</b> — 홈의 "다른 사람들의 여행"에 쓴다.
+	 * 최근 저장된 코스. <b>주인을 가리지 않는다</b> — 홈의 "요즘 저장된 여행"에 쓴다.
 	 *
 	 * <p>이 저장소의 다른 메서드가 전부 {@code memberId}를 받는 것과 어긋나 보이지만,
 	 * 여기서 나가는 것은 코스 자체가 아니라 <b>익명 요약</b>이다({@code PublicCourseSummary}).
 	 * 이름도 id도 담기지 않아 열어 볼 길이 없다.
 	 *
-	 * <p>둘로 나눈 이유: 로그인한 사람에게 자기 코스를 "다른 사람들의 여행"이라고
-	 * 보여줄 수는 없다. 게스트는 가릴 것이 없어 위쪽을 쓴다.
+	 * <p>⚠️ <b>보는 사람이 누구든 같은 목록이다</b> (2026-08-31). 한때
+	 * {@code findTop12ByMemberIdNot…}으로 자기 코스를 뺐다 — 목록 이름이
+	 * "다른 사람들의 여행"이었기 때문인데, 그러면 <b>저장한 사람만 자기 코스를 못 본다.</b>
+	 * 홈의 빈 목록 문구가 이미 "코스를 짜고 저장하면 여기 처음으로 올라와요"라고
+	 * 말하고 있었으니, 실제 동작과 어긋나 있던 쪽은 거르기였다.
+	 * 이름을 바꾸고 거르기를 걷었다.
 	 */
 	@EntityGraph(attributePaths = "places")
 	List<SavedCourse> findTop12ByOrderByCreatedAtDesc();
-
-	@EntityGraph(attributePaths = "places")
-	List<SavedCourse> findTop12ByMemberIdNotOrderByCreatedAtDesc(Long memberId);
 
 	/** 저장 상한을 넘었는지 확인할 때 쓴다. */
 	long countByMemberId(Long memberId);

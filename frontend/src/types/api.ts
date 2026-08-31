@@ -522,10 +522,19 @@ export interface PublicPlace {
  * 누를 때 추가 호출도 없다. 카드에 보이는 앞 세 곳은 화면이 잘라 쓴다.
  */
 export interface PublicCourse {
-  /** 저장한 사람이 붙인 이름. 홈 카드의 제목이 된다 */
-  name: string
+  /**
+   * 저장한 사람의 닉네임. 카드 제목이 <b>"챔석님의 경주"</b>로 서는 데 쓴다.
+   *
+   * <p>⚠️ <b>코스 이름은 오지 않는다.</b> 예전에는 그것이 제목이었는데, 사용자가 지은
+   * 이름은 저마다 문법이 달라("엄마 생신 여행" · "경주 2일") 카드 다섯이 한 목록으로
+   * 읽히지 않았다. 구분은 이제 사람이 한다.
+   */
+  nickname: string
   region: string
+  /** 정식 이름("경상북도 경주시"). 제목에는 아래 짧은 이름을 쓴다 */
   regionName: string
+  /** 짧은 이름("경주"). 앞을 잘라 만들지 않는다 — 표기 규칙은 서버가 정한다 */
+  regionShortName: string
   startDate: string
   endDate: string
   nights: number
@@ -538,10 +547,57 @@ export interface PublicCourse {
   createdAt: string
 }
 
+/**
+ * 찜한 장소 하나. 서버 FavoritePlaceResponse와 짝을 이룬다.
+ *
+ * <p>⚠️ <b>한적도가 없다.</b> 찜은 날짜가 없는 표시라("언젠가 가고 싶다") 어느 날 기준으로
+ * 재야 할지 정해지지 않는다. 날짜 없이 점수를 붙이면 화면이 재지 않은 것을 말하게 된다.
+ *
+ * @param placeName 찜한 시점의 이름. 목록을 열 때 공사를 다시 부르지 않으려고 서버가 남겨 둔다
+ */
+export interface FavoritePlace {
+  /**
+   * 지금의 장소. <b>좌표까지 든 온전한 값이다.</b>
+   *
+   * <p>이 값이 있어야 찜해 둔 곳으로 시작한 코스에서 그 칸이 <b>이름</b>으로 보인다 —
+   * 코스는 id만 들고 다니고, 화면은 {@code placeCache}로 이름과 좌표를 되살린다.
+   *
+   * <p>⚠️ null일 수 있다. 지역을 모르는 찜에는 서버가 담지 않는다(찾으려면 공사 호출이
+   * 목록을 열 때마다 나간다). 그런 찜에는 "여행가기" 문도 서지 않으므로 되살릴 일이 없다.
+   */
+  place: Place | null
+  placeId: string
+  placeName: string
+  /**
+   * ⚠️ <b>null일 수 있다.</b> 이 칸이 서버에 생기기 전에 찜한 곳이 그렇다 —
+   * 마이그레이션 도구가 없어 새 칸은 null을 허용해야 했다(FavoritePlace 주석).
+   * 화면은 그 줄을 비워 그린다. 다시 찜하면 채워진다.
+   */
+  categoryName: string | null
+  /** 대표 이미지. <b>없을 수 있다</b> — 그때는 이름 첫 글자를 대신 세운다 */
+  imageUrl: string | null
+  /**
+   * 이 곳이 든 지역. <b>"이 장소로 여행가기"가 이 값을 쓴다.</b>
+   *
+   * <p>⚠️ null일 수 있다 — 이 칸이 생기기 전에 찜했거나, 서버가 지역을 못 찾은 장소다.
+   * 그때는 화면이 그 문을 세우지 않는다. 지역을 모르는 채 코스를 열면 그 장소는
+   * 검색으로도 찾을 수 없는 칸이 된다.
+   */
+  region: string | null
+  /** 화면에 적을 짧은 지역 이름("경주"). region이 null이면 함께 null이다 */
+  regionName: string | null
+  createdAt: string
+}
+
 /** 서버 MemberResponse. 비밀번호 관련 값은 어떤 형태로도 내려오지 않는다. */
 export interface AuthMember {
   id: number
-  email: string
+  /**
+   * ⚠️ null일 수 있다 — 카카오는 이메일 제공이 선택 동의라, 소셜로만 가입한 회원은
+   * 이메일이 없다(서버 Member.email nullable과 같은 사정). string으로 적어 두었다가
+   * 저장 검증(authStorage)이 이 회원을 "깨진 값"으로 오판해 새로고침마다 로그아웃시켰다.
+   */
+  email: string | null
   nickname: string
   /** ISO-8601 시각 */
   createdAt: string

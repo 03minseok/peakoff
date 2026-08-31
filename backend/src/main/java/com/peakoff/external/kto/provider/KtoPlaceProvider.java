@@ -1,6 +1,7 @@
 package com.peakoff.external.kto.provider;
 
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -177,6 +178,27 @@ public class KtoPlaceProvider implements PlaceProvider {
 					placeId, e.getMessage());
 			return Optional.empty();
 		}
+	}
+
+	/**
+	 * 이 장소가 든 지역. 카탈로그를 하나씩 훑어 찾는다.
+	 *
+	 * <p>{@link #findById}와 같은 순회이지만 <b>돌려주는 것이 다르다</b> — 저쪽은 장소를,
+	 * 이쪽은 지역을 준다. 카탈로그는 6시간 캐시라 대개 메모리 조회로 끝난다.
+	 *
+	 * <p>⚠️ 카탈로그에 없으면 빈 값이다. {@code findById}는 마지막 수단으로 낱개 조회까지
+	 * 가지만 <b>그 응답에는 지역이 없다</b> — 없는 것을 지어내느니 모른다고 답한다.
+	 */
+	@Override
+	public Optional<Place> findInRegion(Region region, String placeId) {
+		return placeClient.catalogOf(region).findById(placeId);
+	}
+
+	@Override
+	public Optional<SupportedRegion> regionOf(String placeId) {
+		return Arrays.stream(SupportedRegion.values())
+				.filter(region -> placeClient.catalogOf(region.toRegion()).findById(placeId).isPresent())
+				.findFirst();
 	}
 
 	@Override

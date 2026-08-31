@@ -13,6 +13,7 @@ import { PreviewPage } from './routes/PreviewPage'
 import { ResultPage } from './routes/ResultPage'
 import { SignupPage } from './routes/SignupPage'
 import { AuthProvider } from './state/AuthProvider'
+import { FavoriteProvider } from './state/FavoriteProvider'
 import { RegionProvider } from './state/RegionProvider'
 import { TripProvider } from './state/TripProvider'
 
@@ -37,6 +38,14 @@ function App() {
         목록 없이 그리면 그 자리들이 잠깐 빈 문자열로 섰다가 채워진다.
         공사를 부르지 않는 요청이라 기다리는 대가가 작다 — RegionProvider 주석 참고.
       */}
+      {/*
+        찜은 로그인한 사람의 것이라 AuthProvider 안쪽이다. 바깥에 두면 "지금 누구인지"를
+        모르는 채로 목록을 받으러 가게 된다.
+
+        <p>RegionProvider와 달리 <b>기다리지 않는다.</b> 지역 목록은 거의 모든 화면이
+        첫 줄부터 쓰지만 찜은 하트 하나라, 늦게 와도 그때 켜지면 그만이다.
+      */}
+      <FavoriteProvider>
       <RegionProvider>
       <TripProvider>
         <Routes>
@@ -96,6 +105,7 @@ function App() {
         </Routes>
       </TripProvider>
       </RegionProvider>
+      </FavoriteProvider>
     </AuthProvider>
   )
 }
