@@ -53,9 +53,19 @@ public class KtoApiCaller {
 	private final RestClient restClient;
 	private final KtoProperties properties;
 
-	public KtoApiCaller(RestClient.Builder builder, KtoProperties properties) {
+	/**
+	 * 오늘 몇 번 불렀는지 센다.
+	 *
+	 * <p><b>여기서 세는 이유</b>: 이 메서드가 공사로 나가는 <b>유일한 길목</b>이다.
+	 * 클라이언트 넷이 각자 세면 새 클라이언트를 붙일 때 한 곳이 빠지고,
+	 * 그러면 "한도를 넘겼나"에 틀린 답을 하게 된다.
+	 */
+	private final KtoCallLog callLog;
+
+	public KtoApiCaller(RestClient.Builder builder, KtoProperties properties, KtoCallLog callLog) {
 		this.restClient = builder.build();
 		this.properties = properties;
+		this.callLog = callLog;
 	}
 
 	/**
@@ -71,25 +81,47 @@ public class KtoApiCaller {
 					+ "환경변수 KTO_SERVICE_KEY 또는 application-local.yml의 peakoff.kto.service-key를 확인하세요.");
 		}
 
+		/*
+		 * 실제로 나간 호출만 센다. 인증키가 없어 위에서 되돌아간 경우는 공사에 닿지도 않았다.
+		 *
+		 * ⚠️ 실패도 센다. 2026-08-26 사고에서 드러난 것이 <b>실패한 호출도 한도를 먹는다</b>는
+		 * 사실이었다 — 429가 나는 동안 재시도를 계속해 다음 날 치까지 태웠다.
+		 */
 		String raw;
 		try {
 			raw = restClient.get().uri(uriOf(path, params)).retrieve().body(String.class);
 		}
 		catch (RestClientException e) {
+			callLog.record(path, false);
 			throw new KtoApiException("공사 OpenAPI 호출에 실패했습니다: " + e.getMessage(), e);
 		}
 
-		JsonNode root = readTree(raw);
-		failIfAuthError(root);
-		failIfParameterError(root);
+		/*
+		 * <b>응답이 200으로 와도 내용이 오류일 수 있다</b> — 한도 초과·키 미등록이 그렇게 온다.
+		 * 그런 호출도 한도를 먹으므로 성공으로 세면 안 된다. 무엇보다 한도 초과 응답이야말로
+		 * 이 기록을 남기는 이유라, 그것을 "성공"으로 적으면 보고 싶은 신호를 스스로 지운다.
+		 *
+		 * ⚠️ 실패도 <b>센다</b>(빼지 않는다). 2026-08-26 사고에서 드러난 것이 실패한 호출도
+		 * 한도를 먹는다는 사실이었다 — 429가 나는 동안 재시도를 계속해 다음 날 치까지 태웠다.
+		 */
+		boolean ok = false;
+		try {
+			JsonNode root = readTree(raw);
+			failIfAuthError(root);
+			failIfParameterError(root);
 
-		JsonNode header = root.path("response").path("header");
-		String resultCode = header.path("resultCode").asText("");
-		if (!SUCCESS_CODE.equals(resultCode)) {
-			throw new KtoApiException("공사 OpenAPI가 오류를 돌려줬습니다. resultCode=%s, resultMsg=%s"
-					.formatted(resultCode, header.path("resultMsg").asText("")));
+			JsonNode header = root.path("response").path("header");
+			String resultCode = header.path("resultCode").asText("");
+			if (!SUCCESS_CODE.equals(resultCode)) {
+				throw new KtoApiException("공사 OpenAPI가 오류를 돌려줬습니다. resultCode=%s, resultMsg=%s"
+						.formatted(resultCode, header.path("resultMsg").asText("")));
+			}
+			ok = true;
+			return root.path("response").path("body");
 		}
-		return root.path("response").path("body");
+		finally {
+			callLog.record(path, ok);
+		}
 	}
 
 	/** {@code response.body.items.item}. 결과가 없으면 배열이 아닌 빈 노드다. */

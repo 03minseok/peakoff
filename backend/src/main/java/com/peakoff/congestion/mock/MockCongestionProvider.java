@@ -2,6 +2,9 @@ package com.peakoff.congestion.mock;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -9,8 +12,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.peakoff.congestion.domain.CongestionProvider;
+import com.peakoff.congestion.domain.QuietSpot;
+import com.peakoff.congestion.domain.QuietSpotProvider;
 import com.peakoff.global.config.DataSourceProfiles;
 import com.peakoff.global.support.Scores;
+import com.peakoff.place.domain.PlaceCategories;
+import com.peakoff.place.domain.Region;
 import com.peakoff.place.mock.GyeongjuMockCatalog;
 
 /**
@@ -30,7 +37,7 @@ import com.peakoff.place.mock.GyeongjuMockCatalog;
 @Component
 @Profile(DataSourceProfiles.MOCK)
 @ConditionalOnProperty(name = "peakoff.kto.congestion", havingValue = "mock", matchIfMissing = true)
-public class MockCongestionProvider implements CongestionProvider {
+public class MockCongestionProvider implements CongestionProvider, QuietSpotProvider {
 
 	/**
 	 * 요일 보정은 <b>뺄셈이 아니라 곱셈</b>이다.
@@ -80,6 +87,43 @@ public class MockCongestionProvider implements CongestionProvider {
 	@Override
 	public Optional<LocalDate> lastForecastDate() {
 		return Optional.empty();
+	}
+
+	/**
+	 * 목업 카탈로그에서 기간 안 가장 한적한 곳들.
+	 *
+	 * <p>⚠️ <b>경주가 아니면 빈 목록이다.</b> 목업 카탈로그가 경주 한 곳뿐이라
+	 * 다른 지역을 물으면 지어낼 것이 없다. 없는 지역에 가짜 장소를 만들어 주면
+	 * 실데이터로 넘어갈 때 "목업에서는 되던 것"이 사라져 고장으로 읽힌다.
+	 *
+	 * <p>부르는 쪽이 지역을 여럿 도는 자리라, 빈 목록은 정상적인 답이다.
+	 */
+	@Override
+	public List<QuietSpot> quietestWithin(Region region, LocalDate from, int days, int limit) {
+		if (days < 1 || limit < 1 || !GyeongjuMockCatalog.GYEONGJU.equals(region)) {
+			return List.of();
+		}
+
+		List<QuietSpot> spots = new ArrayList<>();
+		for (GyeongjuMockCatalog.Entry entry : GyeongjuMockCatalog.entries()) {
+			// 실연동과 같은 게이트다. 목업에서만 밥집이 "한적한 여행지"로 서면 안 된다.
+			if (!PlaceCategories.isCourseCandidate(entry.place().category())) {
+				continue;
+			}
+			LocalDate bestDate = from;
+			int best = Integer.MIN_VALUE;
+			for (int offset = 0; offset < days; offset++) {
+				LocalDate date = from.plusDays(offset);
+				int quietness = quietnessOf(entry.place().id(), date);
+				if (quietness > best) {
+					best = quietness;
+					bestDate = date;
+				}
+			}
+			spots.add(new QuietSpot(entry.place(), bestDate, best));
+		}
+		spots.sort(Comparator.comparingInt(QuietSpot::quietness).reversed());
+		return List.copyOf(spots.size() > limit ? spots.subList(0, limit) : spots);
 	}
 
 	private static double factorFor(DayOfWeek dayOfWeek) {

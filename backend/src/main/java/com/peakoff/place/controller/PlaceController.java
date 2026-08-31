@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.peakoff.congestion.dto.QuietSpotResponse;
+import com.peakoff.congestion.service.QuietWeekService;
 import com.peakoff.global.response.ApiResponse;
 import com.peakoff.place.dto.NearbyPlaceResponse;
 import com.peakoff.place.dto.PlaceDescriptionResponse;
@@ -44,6 +46,16 @@ public class PlaceController {
 
 	private final PlaceService placeService;
 	private final RecommendationService recommendationService;
+	private final QuietWeekService quietWeekService;
+
+	/**
+	 * 홈이 세우는 "이번 주 한적한 곳" 수.
+	 *
+	 * <p>카드 셋이다. 넷을 넘기면 홈에서 이 박스만 길어지고, 무엇보다
+	 * <b>지역 대표가 일곱까지밖에 모이지 않는다</b> — 요청 수가 후보 수에 가까워지면
+	 * 가중 무작위가 고를 것이 없어져 분산 장치가 일하지 않는다.
+	 */
+	private static final int DEFAULT_QUIET_SPOT_LIMIT = 3;
 
 	/** 화면이 한 번에 보여줄 만큼. 지역 전체(경주만 621곳)를 늘어놓지 않는다. */
 	private static final int DEFAULT_SEARCH_LIMIT = 20;
@@ -73,6 +85,31 @@ public class PlaceController {
 			@Max(value = 100, message = "한 번에 100곳까지 볼 수 있습니다.")
 			int limit) {
 		return ApiResponse.ok(placeService.search(region, keyword, limit));
+	}
+
+	/** GET /api/places/quiet-week?limit=3 */
+	@Operation(
+			summary = "이번 주 한적한 곳",
+			description = """
+					지역을 가리지 않고, 앞으로 7일 안에 한적할 것으로 예측된 곳을 돌려준다.
+
+					곳마다 <b>그 기간 중 가장 한적한 하루</b>가 함께 온다(date).
+					같은 장소라도 날짜마다 값이 달라서, 날짜 없이는 "한적하다"를 말할 수 없다.
+
+					<b>한적(QUIET) 등급인 곳만 담는다.</b> 수를 채우려고 보통인 곳을 섞지 않으므로
+					자료가 모자라면 limit보다 적게 온다.
+
+					⚠️ <b>순서는 점수 순이 아니라 뽑힌 순서다.</b> 매번 가중 무작위로 고르기 때문에
+					같은 요청에 다른 답이 온다. 홈에 뜨는 곳이 늘 같으면 그곳이 새로운 혼잡지가
+					되기 때문이고, 그래서 이 목록은 서버도 캐시하지 않는다.""")
+	@GetMapping("/quiet-week")
+	public ApiResponse<List<QuietSpotResponse>> quietWeek(
+			@Parameter(description = "최대 개수")
+			@RequestParam(defaultValue = "" + DEFAULT_QUIET_SPOT_LIMIT)
+			@Min(value = 1, message = "개수는 1 이상이어야 합니다.")
+			@Max(value = 10, message = "한 번에 10곳까지 볼 수 있습니다.")
+			int limit) {
+		return ApiResponse.ok(quietWeekService.thisWeek(limit));
 	}
 
 	/** GET /api/places/{placeId}/alternatives?date=2026-09-12&limit=5 */

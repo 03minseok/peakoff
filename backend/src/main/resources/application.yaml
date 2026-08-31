@@ -81,6 +81,19 @@ peakoff:
       redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:5173/oauth/callback/naver}
 
   # 공사 OpenAPI. 인증키는 application-local.yml이나 환경변수로 넣는다 — 여기 적지 않는다.
+  # 개발용 경로(/api/dev/**)를 열지.
+  #
+  # 공사 API를 오늘 몇 번 불렀는지 보는 화면이 여기 달린다. 일일 한도가 있고
+  # 소진되면 하루 종일 막히기 때문에(docs/OPEN_DECISIONS.md 15번) 개발 중에는 필요하지만,
+  # 운영에서 열려 있으면 우리 호출 습관이 그대로 밖으로 나간다.
+  #
+  # ⚠️ 프로파일로 가르지 않는 이유: 이 저장소는 spring.config.import로
+  # application-local.yml을 프로파일과 무관하게 불러온다. 그래서 'local 프로파일'은
+  # 실제로 활성화되는 일이 없고, @Profile("local")은 영원히 꺼져 있다.
+  # KTO_CONGESTION과 같은 방식으로 값 스위치를 둔다 — 기본은 꺼짐이다.
+  dev:
+    endpoints: ${PEAKOFF_DEV_ENDPOINTS:false}
+
   kto:
     # 공공데이터포털 마이페이지의 "일반 인증키(Encoding)".
     #
