@@ -18,6 +18,7 @@ import type {
   NearbyPlace,
   PublicCourse,
   Place,
+  QuietSpot,
   RegionOption,
   SaveCourseRequest,
   SavedCourseDetail,
@@ -291,6 +292,29 @@ export function fetchPlaces(
     query.set('limit', String(options.limit))
   }
   return apiRequest<Place[]>(`/places?${query}`, { signal: options.signal }).then(remember)
+}
+
+/**
+ * GET /api/places/quiet-week?limit=
+ *
+ * 지역을 가리지 않고, 앞으로 7일 안에 한적할 것으로 예측된 곳들.
+ * 곳마다 <b>그 기간 중 가장 한적한 하루</b>가 함께 온다.
+ *
+ * <p>⚠️ <b>순서는 점수 순이 아니라 뽑힌 순서다.</b> 서버가 매번 가중 무작위로 고르므로
+ * 같은 요청에 다른 답이 온다 — 홈에 뜨는 곳이 늘 같으면 그곳이 새로운 혼잡지가 되기
+ * 때문이다. 화면이 받은 뒤 다시 정렬하면 그 장치가 통째로 죽는다.
+ *
+ * <p>한적 등급인 곳만 오므로 <b>요청보다 적게 올 수 있다.</b> 자리를 채우려고
+ * 보통인 곳을 섞지 않는 편이 목록의 이름과 맞는다.
+ */
+export function fetchQuietSpots(limit = 3, signal?: AbortSignal): Promise<QuietSpot[]> {
+  return apiRequest<QuietSpot[]>(`/places/quiet-week?limit=${limit}`, { signal }).then(
+    (spots) => {
+      // 장소가 서버에서 들어오는 길목이라 여기서도 기억해 둔다. 상세 시트가 id로 찾는다.
+      rememberPlaces(spots.map((spot) => spot.place))
+      return spots
+    },
+  )
 }
 
 /**
