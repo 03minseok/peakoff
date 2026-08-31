@@ -39,6 +39,33 @@ export function Close({ size = 14, className = '' }: Props) {
   )
 }
 
+/**
+ * 하트. 찜한 곳에 <b>색이 찬다.</b>
+ *
+ * <p>⚠️ <b>이 아이콘만 좌표계가 24×24다.</b> 다른 것들은 획 몇 개라 20×20에 그렸지만
+ * 하트는 곡선이 이어진 하나의 형태라, 널리 쓰이는 24 기준 경로를 그대로 옮기는 편이
+ * 손으로 다시 그리는 것보다 정확하다. 획 굵기도 같은 비율(1.6 × 24/20)로 키워야
+ * 다른 아이콘 옆에서 같은 두께로 보인다.
+ *
+ * <p><b>켜고 끄는 것은 채움뿐</b>이다. 크기·위치·획이 그대로라 눌러도 자리가 흔들리지 않는다 —
+ * 아이콘을 통째로 갈아끼우면 두 그림의 여백이 달라 하트가 튄다.
+ */
+export function Heart({ size = 20, className = '', filled = false }: Props & { filled?: boolean }) {
+  return (
+    <svg
+      {...ICON}
+      viewBox="0 0 24 24"
+      strokeWidth={1.9}
+      fill={filled ? 'currentColor' : 'none'}
+      width={size}
+      height={size}
+      className={className}
+    >
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  )
+}
+
 /** 오른쪽 꺾쇠. "누르면 이어진다"는 뜻으로만 쓴다 */
 export function ChevronRight({ size = 16, className = '' }: Props) {
   return (

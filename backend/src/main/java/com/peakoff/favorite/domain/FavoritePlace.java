@@ -1,0 +1,94 @@
+package com.peakoff.favorite.domain;
+
+import java.time.Instant;
+import java.util.Objects;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+import com.peakoff.global.support.Texts;
+import com.peakoff.member.domain.Member;
+
+/**
+ * 회원이 찜해 둔 장소 한 곳.
+ *
+ * <h2>⚠️ 공사 데이터를 적재하는 것이 아니다</h2>
+ * 절대 규칙 1은 <b>공사가 준 자료를 DB에 쌓아 API를 사실상 호출하지 않는 구조</b>를 금한다.
+ * 여기 남는 것은 그 자료가 아니라 <b>사용자가 눌렀다는 사실</b>이고, 한적도·집중률·분류처럼
+ * 공사가 계산해 주는 값은 하나도 담지 않는다 — 그것들은 화면을 그릴 때마다 여전히
+ * 공사에서 받아 온다. {@code SavedCoursePlace}가 코스에 담긴 장소를 남기는 것과 같은 성격이다.
+ *
+ * <h2>이름을 함께 남기는 이유</h2>
+ * 목록을 열 때마다 장소 수만큼 공사를 부르지 않기 위해서다. 찜하는 일은 가끔이고
+ * 목록을 여는 일은 자주다 — 자주 도는 쪽에서 비용을 걷어내고 가끔 도는 쪽에 한 번 둔다.
+ * 저장 코스가 같은 맞바꿈을 한다({@code SavedCourseService.toEntries}).
+ *
+ * <p>⚠️ <b>이름은 서버가 찾아 넣는다.</b> 요청에서 받으면 찜 목록이 실제 장소와 다른 것을
+ * 가리킬 수 있다. 출처가 서버여야 믿을 수 있다.
+ *
+ * <h2>같은 곳을 두 번 찜할 수 없다</h2>
+ * {@code (member_id, place_id)}에 유니크 제약을 건다. 화면이 토글이라 두 번 눌릴 일이 없어
+ * 보이지만, 연타나 두 탭에서는 실제로 두 번 들어온다 — 그러면 목록에 같은 카드가 둘 서고,
+ * 취소를 눌러도 하나만 지워진다.
+ */
+@Entity
+@Table(
+		name = "favorite_places",
+		uniqueConstraints = @UniqueConstraint(
+				name = "uk_favorite_member_place",
+				columnNames = {"member_id", "place_id"}))
+public class FavoritePlace {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "member_id", nullable = false)
+	private Member member;
+
+	/** 공사 콘텐츠 ID. 우리가 발급한 값이 아니라 문자열로 받는다 */
+	@Column(name = "place_id", nullable = false, length = 64)
+	private String placeId;
+
+	/** 찜한 시점의 이름. 목록을 그릴 때 공사를 다시 부르지 않게 하는 값이다 */
+	@Column(name = "place_name", nullable = false, length = 100)
+	private String placeName;
+
+	@Column(nullable = false, updatable = false)
+	private Instant createdAt;
+
+	protected FavoritePlace() {
+	}
+
+	private FavoritePlace(Member member, String placeId, String placeName, Instant now) {
+		this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
+		this.placeId = Texts.requireNotBlank(placeId, "장소 ID");
+		this.placeName = Texts.requireNotBlank(placeName, "장소 이름");
+		this.createdAt = Objects.requireNonNull(now, "생성 시각은 필수입니다.");
+	}
+
+	public static FavoritePlace of(Member member, String placeId, String placeName, Instant now) {
+		return new FavoritePlace(member, placeId, placeName, now);
+	}
+
+	public String placeId() {
+		return placeId;
+	}
+
+	public String placeName() {
+		return placeName;
+	}
+
+	public Instant createdAt() {
+		return createdAt;
+	}
+}
