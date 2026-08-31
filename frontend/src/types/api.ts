@@ -556,6 +556,16 @@ export interface PublicCourse {
  * @param placeName 찜한 시점의 이름. 목록을 열 때 공사를 다시 부르지 않으려고 서버가 남겨 둔다
  */
 export interface FavoritePlace {
+  /**
+   * 지금의 장소. <b>좌표까지 든 온전한 값이다.</b>
+   *
+   * <p>이 값이 있어야 찜해 둔 곳으로 시작한 코스에서 그 칸이 <b>이름</b>으로 보인다 —
+   * 코스는 id만 들고 다니고, 화면은 {@code placeCache}로 이름과 좌표를 되살린다.
+   *
+   * <p>⚠️ null일 수 있다. 지역을 모르는 찜에는 서버가 담지 않는다(찾으려면 공사 호출이
+   * 목록을 열 때마다 나간다). 그런 찜에는 "여행가기" 문도 서지 않으므로 되살릴 일이 없다.
+   */
+  place: Place | null
   placeId: string
   placeName: string
   /**
@@ -566,6 +576,16 @@ export interface FavoritePlace {
   categoryName: string | null
   /** 대표 이미지. <b>없을 수 있다</b> — 그때는 이름 첫 글자를 대신 세운다 */
   imageUrl: string | null
+  /**
+   * 이 곳이 든 지역. <b>"이 장소로 여행가기"가 이 값을 쓴다.</b>
+   *
+   * <p>⚠️ null일 수 있다 — 이 칸이 생기기 전에 찜했거나, 서버가 지역을 못 찾은 장소다.
+   * 그때는 화면이 그 문을 세우지 않는다. 지역을 모르는 채 코스를 열면 그 장소는
+   * 검색으로도 찾을 수 없는 칸이 된다.
+   */
+  region: string | null
+  /** 화면에 적을 짧은 지역 이름("경주"). region이 null이면 함께 null이다 */
+  regionName: string | null
   createdAt: string
 }
 

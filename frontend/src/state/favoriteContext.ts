@@ -34,6 +34,9 @@ export interface FavoriteContextValue {
     /** 새로 찜할 때는 늘 있다. 목록에서 되돌릴 때만 옛 행의 null이 그대로 실려 온다 */
     categoryName: string | null
     imageUrl: string | null
+    /** 상세 시트에서 새로 찜할 때는 화면이 모른다 — 서버가 찾아 담는다 */
+    region?: string | null
+    regionName?: string | null
   }) => void
 }
 

@@ -17,6 +17,7 @@ import jakarta.persistence.UniqueConstraint;
 import com.peakoff.global.support.Texts;
 import com.peakoff.member.domain.Member;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.SupportedRegion;
 
 /**
  * 회원이 찜해 둔 장소 한 곳.
@@ -98,14 +99,30 @@ public class FavoritePlace {
 	@Column(name = "image_url", length = 500)
 	private String imageUrl;
 
+	/**
+	 * 이 곳이 든 지역의 슬러그.
+	 *
+	 * <p><b>"이 장소로 여행가기"가 이 값을 쓴다.</b> 지역이 코스의 단위라, 어느 지역으로
+	 * 조건 화면을 열지 모르면 그 문을 세울 수 없다 — 장소 ID에는 지역이 묻어 있지 않다.
+	 *
+	 * <p>⚠️ 위 두 칸과 같이 <b>null을 허용한다.</b> 나중에 생긴 칸이라 그렇고, 사정은 같다.
+	 * 지역을 모르는 찜에는 화면이 그 문을 세우지 않는다(다시 찜하면 채워진다).
+	 *
+	 * <p>⚠️ 카탈로그에 없는 장소도 null이 된다. 없는 지역을 지어내느니 문을 세우지 않는 편이
+	 * 낫다 — 엉뚱한 지역으로 코스를 열면 그 장소는 검색으로도 찾을 수 없는 칸이 된다.
+	 */
+	@Column(name = "region", length = 30)
+	private String region;
+
 	@Column(nullable = false, updatable = false)
 	private Instant createdAt;
 
 	protected FavoritePlace() {
 	}
 
-	private FavoritePlace(Member member, Place place, Instant now) {
+	private FavoritePlace(Member member, Place place, SupportedRegion region, Instant now) {
 		Objects.requireNonNull(place, "장소는 필수입니다.");
+		this.region = region == null ? null : region.slug();
 		this.member = Objects.requireNonNull(member, "회원은 필수입니다.");
 		this.placeId = Texts.requireNotBlank(place.id(), "장소 ID");
 		this.placeName = Texts.requireNotBlank(place.name(), "장소 이름");
@@ -118,8 +135,9 @@ public class FavoritePlace {
 	 * 장소를 통째로 받는다. 필드를 하나씩 받으면 부르는 쪽이 어느 값을 남길지 정하게 되고,
 	 * 화면에 쓸 값이 늘 때마다 시그니처와 호출부를 함께 고쳐야 한다.
 	 */
-	public static FavoritePlace of(Member member, Place place, Instant now) {
-		return new FavoritePlace(member, place, now);
+	public static FavoritePlace of(
+			Member member, Place place, SupportedRegion region, Instant now) {
+		return new FavoritePlace(member, place, region, now);
 	}
 
 	public String placeId() {
@@ -136,6 +154,11 @@ public class FavoritePlace {
 
 	public String imageUrl() {
 		return imageUrl;
+	}
+
+	/** 지역 슬러그. <b>null일 수 있다</b> — 위 필드 주석 참고 */
+	public String region() {
+		return region;
 	}
 
 	public Instant createdAt() {

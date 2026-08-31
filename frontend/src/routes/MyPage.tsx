@@ -119,6 +119,23 @@ export function MyPage() {
   const [openedPlace, setOpenedPlace] = useState<FavoritePlace | null>(null)
 
   /**
+   * 찜해 둔 곳으로 여행을 시작한다.
+   *
+   * <p>홈의 한적한 곳과 <b>넘기는 것이 하나 적다</b> — 거기는 "그 곳이 한적한 날"을 알아서
+   * 날짜까지 채워 보내지만, 찜에는 날짜가 없다("언젠가 가고 싶다"는 표시다).
+   * 지역과 장소만 넘기고 <b>언제 떠날지는 조건 화면에서 고른다.</b>
+   *
+   * <p>전역 상태에 미리 쓰지 않고 라우터 state로 넘긴다. 아직 아무것도 확정하지 않은
+   * 시점이라 되돌아 나가면 흔적이 남지 않아야 한다.
+   */
+  function planTripFrom(favorite: FavoritePlace) {
+    setOpenedPlace(null)
+    navigate('/plan', {
+      state: { region: favorite.region, seedPlaceId: favorite.placeId },
+    })
+  }
+
+  /**
    * 좁은 화면에서 무엇을 보고 있는가.
    *
    * <h3>넓은 화면에는 탭이 없다</h3>
@@ -893,6 +910,16 @@ export function MyPage() {
           placeName={openedPlace.placeName}
           categoryName={openedPlace.categoryName}
           imageUrl={openedPlace.imageUrl}
+          /*
+            ⚠️ <b>지역을 아는 찜에만</b> 이 문을 세운다. 지역이 코스의 단위라, 모르는 채로
+            조건 화면을 열면 사용자가 아무 지역이나 고르게 되고 그 장소는 <b>검색으로도
+            찾을 수 없는 칸</b>이 된다(조건 화면이 지역이 어긋난 씨앗을 버린다).
+
+            <p>지역을 모르는 찜은 이 칸이 생기기 전에 찜한 것뿐이다. 하트를 껐다 켜면 채워진다.
+          */
+          onPlanTrip={
+            openedPlace.region === null ? undefined : () => planTripFrom(openedPlace)
+          }
           onClose={() => setOpenedPlace(null)}
         />
       )}

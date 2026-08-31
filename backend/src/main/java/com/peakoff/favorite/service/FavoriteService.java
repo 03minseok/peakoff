@@ -15,6 +15,7 @@ import com.peakoff.member.domain.Member;
 import com.peakoff.member.domain.MemberRepository;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.PlaceProvider;
+import com.peakoff.place.domain.SupportedRegion;
 
 /**
  * 장소 찜하기.
@@ -34,12 +35,28 @@ public class FavoriteService {
 	private final PlaceProvider placeProvider;
 	private final Clock clock;
 
-	/** 내가 찜한 곳. 최근에 찜한 것부터 */
+	/**
+	 * 내가 찜한 곳. 최근에 찜한 것부터.
+	 *
+	 * <p>지역을 아는 찜에는 <b>지금의 장소를 함께 싣는다.</b> 화면이 코스에 담긴 id를
+	 * 이름과 좌표로 되살리는 데 쓴다 — 자세한 사정은 {@link FavoritePlaceResponse}.
+	 *
+	 * <p>⚠️ <b>지역을 모르면 찾지 않는다.</b> {@code findById}는 카탈로그에 없으면
+	 * 공사 낱개 조회까지 가는데, 그러면 목록을 열 때마다 그런 찜 수만큼 호출이 나간다.
+	 * 지역을 알면 그 카탈로그가 이미 메모리에 있으므로 조회가 공짜다.
+	 */
 	@Transactional(readOnly = true)
 	public List<FavoritePlaceResponse> findMine(Long memberId) {
 		return favoriteRepository.findByMemberIdOrderByCreatedAtDesc(memberId).stream()
-				.map(FavoritePlaceResponse::from)
+				.map(favorite -> FavoritePlaceResponse.from(favorite, livePlaceOf(favorite)))
 				.toList();
+	}
+
+	private Place livePlaceOf(FavoritePlace favorite) {
+		if (favorite.region() == null) {
+			return null;
+		}
+		return placeProvider.findById(favorite.placeId()).orElse(null);
 	}
 
 	/**
@@ -59,7 +76,15 @@ public class FavoriteService {
 		Place place = placeProvider.findById(placeId)
 				.orElseThrow(() -> new NotFoundException("존재하지 않는 장소입니다: " + placeId));
 
-		favoriteRepository.save(FavoritePlace.of(member, place, clock.instant()));
+		/*
+		 * 지역도 함께 남긴다. "이 장소로 여행가기"가 어느 지역으로 조건 화면을 열지
+		 * 알아야 하는데, 장소 ID에는 지역이 묻어 있지 않다.
+		 *
+		 * <p>못 찾으면 null로 둔다 — 지어내면 엉뚱한 지역으로 코스가 열리고,
+		 * 그 장소는 검색으로도 찾을 수 없는 칸이 된다.
+		 */
+		SupportedRegion region = placeProvider.regionOf(placeId).orElse(null);
+		favoriteRepository.save(FavoritePlace.of(member, place, region, clock.instant()));
 	}
 
 	/** 찜을 푼다. 찜한 적 없으면 아무 일도 하지 않는다 */

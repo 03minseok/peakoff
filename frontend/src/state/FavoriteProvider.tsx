@@ -54,6 +54,13 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
       name: string
       categoryName: string | null
       imageUrl: string | null
+      /**
+       * ⚠️ 새로 찜할 때는 <b>화면이 모른다</b>(상세 시트는 지역을 받지 않는다).
+       * 서버가 찾아 담으므로, 낙관적으로 그리는 동안만 null이었다가
+       * 다음에 목록을 받을 때 채워진다 — 그 사이에 "여행가기" 문이 잠깐 없을 뿐이다.
+       */
+      region?: string | null
+      regionName?: string | null
     }) => {
       if (!member) {
         return
@@ -71,10 +78,18 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
              */
             [
               {
+                /*
+                 * 낙관적으로 그리는 동안은 <b>온전한 장소를 모른다.</b> 상세 시트가 넘겨준 것은
+                 * 이름·분류·사진뿐이고 좌표가 없다 — 반쯤 채운 장소를 넣으면 캐시가 그것을
+                 * 진짜로 여겨 지도 마커가 (0,0)에 찍힌다. 다음에 목록을 받을 때 서버가 채운다.
+                 */
+                place: null,
                 placeId: place.id,
                 placeName: place.name,
                 categoryName: place.categoryName,
                 imageUrl: place.imageUrl,
+                region: place.region ?? null,
+                regionName: place.regionName ?? null,
                 createdAt: new Date().toISOString(),
               },
               ...previous,
