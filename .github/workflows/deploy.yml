@@ -104,6 +104,27 @@ jobs:
             EOF
 
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # ■ 받기 전에 치운다 (2026-08-31, 디스크가 차서 배포가 죽고서 고침)
+            #
+            # 배포마다 이미지에 커밋 SHA 태그가 하나씩 붙는데 지우는 사람이 없어
+            # t3.micro의 8GB 볼륨이 찼다. pull 도중 "no space left on device"로 죽는다.
+            #
+            # ⚠️ -a가 핵심이다. 옛날에는 헬스체크를 통과한 뒤 `prune -f`를 돌렸는데,
+            # -a 없는 prune은 <태그가 없는> 이미지만 지운다. 우리 옛 이미지는 전부
+            # SHA 태그가 붙어 있어 <하나도 지워지지 않았다> — 있으나 마나였다.
+            #
+            # ⚠️ 자리도 pull <앞>이다. 뒤에 두면 이미 꽉 찬 디스크에 받으려다 죽은 뒤에야
+            # 청소가 돌아, 정작 필요한 그 배포는 실패한다. 실패한 배포는 청소도 못 했다
+            # (성공 경로 안에 있었다).
+            #
+            # 지금 도는 컨테이너가 쓰는 이미지는 사용 중이라 남는다. 그래서 이 시점에
+            # 서버에 남는 것은 <돌고 있는 것 + 방금 받을 것> 둘뿐이다. 더 옛것으로
+            # 되돌려야 하면 GHCR에서 다시 받으면 된다 — 태그는 그대로 있다.
+            docker image prune -af > /dev/null
+            # 청소하고도 얼마 안 남았다면 로그에서 미리 보인다. 다음에 또 터지기 전에 안다.
+            df -h /
+
             docker compose pull
             docker compose up -d
 
@@ -113,7 +134,8 @@ jobs:
             for i in $(seq 1 40); do
               if curl -fsS -m 3 http://localhost:8080/health > /dev/null; then
                 echo "✅ 헬스체크 통과"
-                docker image prune -f > /dev/null   # 옛 이미지 정리. 디스크가 금방 찬다
+                # 청소는 위에서 이미 했다. 여기서 또 돌리면 방금 물러난 이미지까지
+                # 지워져, 새 배포가 잘못됐을 때 바로 되돌릴 것이 서버에 남지 않는다.
                 exit 0
               fi
               sleep 3

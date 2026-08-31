@@ -24,6 +24,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # 로그를 무한정 쌓지 않는다. 도커 기본값은 <한도가 없어서>, 몇 주 도는 서버의
+    # json 로그 파일이 혼자 기가 단위로 자란다. 이미지가 디스크를 채워 배포가 죽은 뒤
+    # (2026-08-31) 같은 방향의 구멍을 함께 막았다.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
   app:
     # 태그는 배포 워크플로가 .env에 IMAGE로 넣어 준다. 커밋 SHA가 붙으므로
@@ -73,6 +81,15 @@ services:
     # 앱이 메모리를 다 먹어 DB까지 말려 죽이는 것을 막는다.
     # t3.micro(1GB)면 이 값이 특히 중요하다.
     mem_limit: 700m
+
+    # 로그를 무한정 쌓지 않는다. 도커 기본값은 <한도가 없어서>, 몇 주 도는 서버의
+    # json 로그 파일이 혼자 기가 단위로 자란다. 이미지가 디스크를 채워 배포가 죽은 뒤
+    # (2026-08-31) 같은 방향의 구멍을 함께 막았다.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
 
 volumes:
   pgdata:
