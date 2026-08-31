@@ -592,7 +592,12 @@ export interface FavoritePlace {
 /** 서버 MemberResponse. 비밀번호 관련 값은 어떤 형태로도 내려오지 않는다. */
 export interface AuthMember {
   id: number
-  email: string
+  /**
+   * ⚠️ null일 수 있다 — 카카오는 이메일 제공이 선택 동의라, 소셜로만 가입한 회원은
+   * 이메일이 없다(서버 Member.email nullable과 같은 사정). string으로 적어 두었다가
+   * 저장 검증(authStorage)이 이 회원을 "깨진 값"으로 오판해 새로고침마다 로그아웃시켰다.
+   */
+  email: string | null
   nickname: string
   /** ISO-8601 시각 */
   createdAt: string
