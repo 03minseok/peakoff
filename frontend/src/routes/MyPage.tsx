@@ -6,7 +6,6 @@ import { AccountSheets } from '../components/AccountSheets'
 import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
-import { ListEdgeJump } from '../components/ListEdgeJump'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
@@ -28,6 +27,38 @@ type ListState =
 const COMPARE_COUNT = 2
 
 const STAT_VALUE = 'text-fg font-mono text-[19px] font-semibold'
+
+/**
+ * 한 번에 보여줄 수와 <b>더보기 한 번에 늘어나는 수</b>.
+ *
+ * <p>넓은 화면의 <b>한 줄</b>과 같은 수다 — 코스는 세 칸, 찜은 네 칸. 그래야 더보기를
+ * 누를 때마다 줄이 정확히 하나씩 늘고, 남는 칸 없이 격자가 채워진다.
+ *
+ * <p>⚠️ <b>좁은 화면도 같은 수를 쓴다.</b> 거기서는 한 줄에 하나씩이라 "한 줄"이라는 근거가
+ * 사라지지만, 화면 크기마다 다른 수를 쓰면 같은 계정이 기기에 따라 다른 만큼 보인다.
+ * 무엇보다 더보기가 필요한 이유가 좁은 화면에서 더 크다 — 이 화면은 목록 <b>뒤에</b>
+ * 계정·로그아웃이 있어서, 목록이 길면 거기까지 내려가는 것 자체가 일이 된다.
+ */
+const COURSE_PAGE = 3
+const FAVORITE_PAGE = 4
+
+/**
+ * 더 불러오는 버튼. <b>남은 수를 적는다.</b>
+ *
+ * <p>"더보기"만 두면 몇 번을 더 눌러야 끝인지 알 수 없다. 남은 수를 보여주면
+ * 한 번 더 누를지 그만둘지를 <b>누르기 전에</b> 정할 수 있다.
+ */
+function MoreButton({ remaining, onClick }: { remaining: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="press border-line bg-surface text-muted hover:bg-bg rounded-ui h-12 w-full cursor-pointer border text-[13.5px] font-semibold transition-colors"
+    >
+      더보기 <span className="text-hint">({remaining})</span>
+    </button>
+  )
+}
 
 /**
  * 좁은 화면의 두 갈래.
@@ -117,6 +148,15 @@ export function MyPage() {
    * 갈라져 한쪽만 고쳐지는 자리가 생긴다 — 홈이 한적한 곳을 여는 방식과 같다.
    */
   const [openedPlace, setOpenedPlace] = useState<FavoritePlace | null>(null)
+
+  /**
+   * 지금까지 펼쳐 본 만큼. <b>더보기를 누를 때마다 늘어난다.</b>
+   *
+   * <p>목록이 바뀌어도(코스를 지우거나 찜을 풀어도) 되돌리지 않는다 — 이미 펼쳐 본 것이
+   * 다시 접히면 방금 보던 자리를 잃는다. 목록보다 커져도 {@code slice}가 알아서 자른다.
+   */
+  const [courseLimit, setCourseLimit] = useState(COURSE_PAGE)
+  const [favoriteLimit, setFavoriteLimit] = useState(FAVORITE_PAGE)
 
   /**
    * 찜해 둔 곳으로 여행을 시작한다.
@@ -543,17 +583,15 @@ export function MyPage() {
       {list.status === 'loaded' && !empty && (
         <>
         {/*
-          ⚠️ 이동 버튼을 격자 <b>바깥</b>에 둔다. 안에 넣었더니 카드 한 칸을 차지해
-          넓은 화면에서 3열 중 하나가 버튼으로 채워졌다. 저장 코스는 회원당 50개까지라
-          목록이 길어질 수 있어 버튼 자체는 필요하다.
-        */}
-        <div className="flex justify-end px-0.5">
-          <div id="saved-top" className="scroll-mt-20" />
-          <ListEdgeJump targetId="saved-bottom" direction="down" label="목록" />
-        </div>
+          ⚠️ <b>"목록 끝으로 / 처음으로"를 걷어냈다</b> (2026-08-31).
 
+          저장 코스가 회원당 50개까지라 목록이 길어질 수 있어 둔 버튼이었다. 아래 "더보기"가
+          그 문제를 <b>원인 쪽에서</b> 푼다 — 긴 목록을 빨리 지나가게 해 주는 대신
+          애초에 길어지지 않게 한다. 둘을 함께 두면 세 곳(위·아래·더보기)에 이동 수단이 서서
+          어느 것을 눌러야 할지가 오히려 흐려진다.
+        */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
+          {courses.slice(0, courseLimit).map((course) => (
             <SavedCourseCard
               key={course.id}
               course={course}
@@ -566,10 +604,12 @@ export function MyPage() {
           ))}
         </div>
 
-        <div className="flex justify-end px-0.5">
-          <ListEdgeJump targetId="saved-top" direction="up" label="목록" />
-          <div id="saved-bottom" className="scroll-mt-20" />
-        </div>
+        {courses.length > courseLimit && (
+          <MoreButton
+            remaining={courses.length - courseLimit}
+            onClick={() => setCourseLimit((n) => n + COURSE_PAGE)}
+          />
+        )}
         </>
       )}
 
@@ -683,8 +723,14 @@ export function MyPage() {
             화면에서 가로로 눕지만(사진·이름·버튼이 한 줄) 여기는 그럴 이유가 없다 —
             거기는 순서가 있는 일정이라 세로로 이어져야 하고, 찜은 순서 없는 모음이다.
           */
-          <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
-            {favorites.map((favorite) => (
+          <>
+          {/*
+            ⚠️ 넓은 화면에서 <b>넉 줄</b>이다. 코스가 셋일 때 찜도 셋이면, 카드 하나가
+            훨씬 단순한데도(사진·이름·분류·버튼) 코스 카드와 같은 폭을 차지해
+            <b>같은 무게의 것</b>으로 보인다. 이 화면의 주인공은 코스다.
+          */}
+          <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
+            {favorites.slice(0, favoriteLimit).map((favorite) => (
               <li
                 key={favorite.placeId}
                 className={`${CARD} relative flex flex-col overflow-hidden p-0`}
@@ -761,6 +807,14 @@ export function MyPage() {
               </li>
             ))}
           </ul>
+
+          {favorites.length > favoriteLimit && (
+            <MoreButton
+              remaining={favorites.length - favoriteLimit}
+              onClick={() => setFavoriteLimit((n) => n + FAVORITE_PAGE)}
+            />
+          )}
+          </>
         )}
       </section>
 

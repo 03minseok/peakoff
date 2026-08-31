@@ -53,6 +53,22 @@ public interface PlaceProvider {
 	Optional<SupportedRegion> regionOf(String placeId);
 
 	/**
+	 * <b>어느 지역인지 이미 아는</b> 장소를 찾는다. 그 지역 카탈로그만 본다.
+	 *
+	 * <p>{@link #findById}와 갈라 둔 이유: 저쪽은 지역을 모를 때 쓰는 것이라
+	 * <b>일곱 지역을 차례로 훑는다.</b> 캐시가 데워져 있으면 메모리 조회라 싸지만,
+	 * 비어 있으면 찾는 지역에 닿기까지 앞선 지역 카탈로그를 <b>전부 받아온다</b> —
+	 * 춘천 장소 하나를 되살리려고 공사를 여섯 번 더 부르는 셈이다.
+	 *
+	 * <p>찜은 저장할 때 지역을 함께 남긴다. 아는 값을 두고 다시 찾을 이유가 없다.
+	 *
+	 * <p>⚠️ 카탈로그에 없으면 빈 값이다. {@link #findById}처럼 낱개 조회로 넘어가지 않는다 —
+	 * 여기를 부르는 자리는 <b>목록</b>이라, 없는 장소 하나가 공사 호출로 이어지면
+	 * 목록을 열 때마다 그만큼 나간다.
+	 */
+	Optional<Place> findInRegion(Region region, String placeId);
+
+	/**
 	 * 기준 장소 근처의 <b>같은 분류</b> 장소들. 가까운 순.
 	 *
 	 * <p>지역을 받지 않는 것은 {@link #findById}와 같은 이유다 — 장소 ID만으로는 지역을 알 수 없어

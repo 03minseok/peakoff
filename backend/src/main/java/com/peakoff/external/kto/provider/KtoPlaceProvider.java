@@ -190,6 +190,11 @@ public class KtoPlaceProvider implements PlaceProvider {
 	 * 가지만 <b>그 응답에는 지역이 없다</b> — 없는 것을 지어내느니 모른다고 답한다.
 	 */
 	@Override
+	public Optional<Place> findInRegion(Region region, String placeId) {
+		return placeClient.catalogOf(region).findById(placeId);
+	}
+
+	@Override
 	public Optional<SupportedRegion> regionOf(String placeId) {
 		return Arrays.stream(SupportedRegion.values())
 				.filter(region -> placeClient.catalogOf(region.toRegion()).findById(placeId).isPresent())
