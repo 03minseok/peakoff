@@ -12,14 +12,7 @@ import { CARD_RAISED } from '../components/styles'
 import { ApiRequestError, fetchQuietSpots, fetchRecentCourses } from '../services/api'
 import type { PublicCourse, QuietSpot } from '../types/api'
 import { useTrip } from '../state/tripContext'
-import {
-  daysFromToday,
-  formatCompactDate,
-  formatKoreanDate,
-  formatNights,
-  isPastDate,
-  today,
-} from '../utils/date'
+import { formatKoreanDate, formatNights, today } from '../utils/date'
 
 /**
  * 화면 폭.
@@ -75,14 +68,6 @@ function messageOf(error: unknown): string {
 
 /** 다른 사람들의 여행 카드 수. 한 열에 담기는 만큼만 */
 const OTHER_COURSE_COUNT = 4
-
-/**
- * 남의 코스를 베껴 올 때, 그 날짜가 이미 지났으면 며칠 뒤로 잡을지.
- *
- * <p>조건 화면({@code PlanPage})의 기본값과 같은 값이다. 새 여행을 시작하는 자리마다
- * 다른 날을 내밀면 사용자가 "이 서비스의 기본 날짜"를 배우지 못한다.
- */
-const COPIED_COURSE_DAYS_AHEAD = 7
 
 /** 카드에 맛보기로 보이는 장소 수. 나머지는 눌러서 펼쳤을 때 나온다 */
 const PREVIEW_PLACES = 3
@@ -236,8 +221,16 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
               {course.levelLabel}
             </span>
           </div>
+          {/*
+            ⚠️ <b>출발일을 적지 않는다</b> (2026-08-31).
+
+            남의 출발일은 이 카드를 보는 사람에게 <b>쓸 데가 없는 날짜</b>다. 베껴 갈 때
+            그 날로 가는 것도 아니고(이제 시트에서 직접 고른다), 지난 날짜면 오히려
+            "지난 여행"으로 읽혀 눌러볼 이유를 깎는다. 남는 것은 <b>어디를 며칠</b>이고,
+            그 둘이 베껴 갈 때 실제로 물려받는 값이다.
+          */}
           <span className="text-hint truncate text-[12px]">
-            {shortRegion} {formatNights(course.nights)} · {formatCompactDate(course.startDate)} 출발
+            {shortRegion} {formatNights(course.nights)}
           </span>
         </div>
       </div>
@@ -301,10 +294,12 @@ export function HomePage() {
    * 코스를 그대로 다시 진단하는 것이지만, 여기는 남의 일정을 베껴 오는 것이라 대개
    * 날짜부터 갈아야 한다. 담긴 채로 편집 화면에 서면 무엇을 고칠지 바로 보인다.
    *
-   * <p>날짜가 지났으면 새로 잡는다. 지난 날짜로 담으면 예측 범위 밖이라
-   * 진단이 통째로 비어 나오고, 사용자는 그것을 고장으로 읽는다.
+   * <p>⚠️ <b>출발일은 시트가 받아서 넘긴다.</b> 예전에는 남의 출발일을 그대로 쓰고
+   * 지난 날짜면 일주일 뒤로 대신 정해 주었는데, 사용자는 자기 여행이 언제 시작하는지
+   * 모르는 채 편집 화면에 도착했다. 가져오는 것은 <b>장소와 순서</b>이고 언제 떠날지는
+   * 베끼는 사람이 정한다.
    */
-  function copyToFlow(course: PublicCourse) {
+  function copyToFlow(course: PublicCourse, startDate: string) {
     const days: string[][] = Array.from({ length: course.days }, () => [])
     course.places.forEach((place) => {
       days[place.day - 1]?.push(place.placeId)
@@ -313,9 +308,7 @@ export function HomePage() {
     restore(
       {
         region: course.region,
-        startDate: isPastDate(course.startDate)
-          ? daysFromToday(COPIED_COURSE_DAYS_AHEAD)
-          : course.startDate,
+        startDate,
         nights: course.nights,
       },
       days,
