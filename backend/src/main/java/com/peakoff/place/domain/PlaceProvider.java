@@ -41,6 +41,18 @@ public interface PlaceProvider {
 	Optional<Place> findById(String placeId);
 
 	/**
+	 * 이 장소가 <b>어느 지역의 것인가</b>. 못 찾으면 빈 값.
+	 *
+	 * <h3>왜 필요한가</h3>
+	 * 장소 ID에는 지역이 묻어 있지 않은데, <b>지역이 코스의 단위</b>다 — 찜해 둔 곳으로
+	 * 여행을 시작하려면 어느 지역으로 조건 화면을 열지 알아야 한다.
+	 *
+	 * <p>{@link #findById}가 이미 지역을 하나씩 훑으면서 <b>어느 카탈로그에서 찾았는지를
+	 * 버리고 있다.</b> 부르는 쪽이 그 일을 다시 하게 두면 같은 순회가 두 번 돈다.
+	 */
+	Optional<SupportedRegion> regionOf(String placeId);
+
+	/**
 	 * 기준 장소 근처의 <b>같은 분류</b> 장소들. 가까운 순.
 	 *
 	 * <p>지역을 받지 않는 것은 {@link #findById}와 같은 이유다 — 장소 ID만으로는 지역을 알 수 없어

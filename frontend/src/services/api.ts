@@ -301,7 +301,17 @@ export function fetchPlaces(
  * <p>로그인이 필요하다. 게스트가 부르면 401이므로 화면이 부르지 않는다.
  */
 export function fetchFavorites(signal?: AbortSignal): Promise<FavoritePlace[]> {
-  return apiRequest<FavoritePlace[]>('/favorites', { signal })
+  return apiRequest<FavoritePlace[]>('/favorites', { signal }).then((favorites) => {
+    /*
+     * 장소가 서버에서 들어오는 길목이라 여기서도 기억해 둔다.
+     *
+     * <p>찜해 둔 곳으로 코스를 시작하면 그 칸은 id만 남는데, 편집 화면은 캐시에서
+     * 이름과 좌표를 되살린다 — 기억해 두지 않으면 그 자리가 <b>숫자 id로 보인다.</b>
+     * 실제로 그랬다.
+     */
+    rememberPlaces(favorites.map((favorite) => favorite.place).filter((place) => place !== null))
+    return favorites
+  })
 }
 
 /**
