@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
 import { RegionPicker } from '../components/RegionPicker'
-import { defaultRegionSlug, regionNameOf } from '../constants/regions'
+import { regionNameOf } from '../constants/regions'
 import { fetchForecastWindow } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import { daysFromToday, formatDateRange, formatKoreanDate, today } from '../utils/date'
@@ -63,8 +63,15 @@ export function PlanPage() {
    */
   const suggestedDate = (location.state as { startDate?: string } | null)?.startDate
 
-  // 이전에 입력한 값이 있으면 그것부터 보여준다 (뒤로 왔을 때 다시 채우지 않게).
-  const [region, setRegion] = useState(state.plan?.region ?? defaultRegionSlug())
+  /*
+   * 지역은 <b>비워 두고 시작한다.</b> 이전에 고른 적이 있으면 그것부터 보여준다
+   * (뒤로 왔을 때 다시 채우지 않게).
+   *
+   * 파일럿 지역을 미리 골라 두면 <b>고르지 않은 사람과 경주를 고른 사람이 구분되지 않는다.</b>
+   * 지역이 셋일 때는 "일단 경주"가 그럴듯했지만 일곱이 되면서 경주는 여럿 중 하나가 됐고,
+   * 미리 켜 두면 아래 요약과 버튼이 <b>사용자가 하지 않은 선택</b>을 확정된 것처럼 말한다.
+   */
+  const [region, setRegion] = useState(state.plan?.region ?? '')
   const [startDate, setStartDate] = useState(
     suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
   )
@@ -103,9 +110,12 @@ export function PlanPage() {
   const regionName = regionNameOf(region)
   const durationLabel = DURATIONS.find((option) => option.nights === nights)?.label ?? ''
 
+  /* 지역을 고르기 전에는 다음으로 넘어갈 수 없다. 지역이 없으면 검색할 범위가 없다. */
+  const canSubmit = Boolean(region) && !isPastDate
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (isPastDate) {
+    if (!canSubmit) {
       return
     }
     setPlan({ region, startDate, nights })
@@ -305,14 +315,18 @@ export function PlanPage() {
         */}
         <div className="mt-2 pb-4">
           <div className="flex items-center justify-between px-1 pb-2.5">
+            {/*
+              지역을 고르기 전에는 그 자리를 비운다. "경주 · 2일"처럼 적어 두면
+              고르지 않았는데 고른 것처럼 읽힌다.
+            */}
             <span className="text-[13px]">
-              {regionName} · {durationLabel}
+              {regionName ? `${regionName} · ${durationLabel}` : durationLabel}
             </span>
             <span className="text-fg font-mono text-[13px] font-medium">
               {formatDateRange(startDate, nights)}
             </span>
           </div>
-          <button type="submit" className={PRIMARY_BUTTON} disabled={isPastDate}>
+          <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit}>
             코스 짜러 가기
           </button>
           <p className="text-hint mt-3 text-center text-xs">
