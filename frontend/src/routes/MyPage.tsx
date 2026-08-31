@@ -7,6 +7,7 @@ import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { ListEdgeJump } from '../components/ListEdgeJump'
+import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
 import { CARD } from '../components/styles'
@@ -16,7 +17,7 @@ import { useFavorites } from '../state/favoriteContext'
 import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { useBrowserChromeInset } from '../hooks/useBrowserChromeInset'
 import { useTrip } from '../state/tripContext'
-import type { SavedCourseDetail, SavedCourseSummary } from '../types/api'
+import type { FavoritePlace, SavedCourseDetail, SavedCourseSummary } from '../types/api'
 
 type ListState =
   | { status: 'loading' }
@@ -107,6 +108,15 @@ export function MyPage() {
 
   /** 열려 있는 계정 시트. 입력값과 처리 상태는 AccountSheets가 들고 있다 */
   const [accountSheet, setAccountSheet] = useState<AccountSheet | null>(null)
+
+  /**
+   * 펼쳐 보고 있는 찜한 곳. <b>id가 아니라 줄 전체를 들고 있다.</b>
+   *
+   * <p>상세 시트에 넘길 것이 이름·분류·사진이고 그 셋이 이미 이 객체에 있다.
+   * id만 들고 있으면 목록에서 다시 찾아와야 하고, 찾는 코드가 목록을 그리는 코드와
+   * 갈라져 한쪽만 고쳐지는 자리가 생긴다 — 홈이 한적한 곳을 여는 방식과 같다.
+   */
+  const [openedPlace, setOpenedPlace] = useState<FavoritePlace | null>(null)
 
   /**
    * 좁은 화면에서 무엇을 보고 있는가.
@@ -645,32 +655,43 @@ export function MyPage() {
             <p>두 칸으로 나눠 사진이 <b>정사각형에 가깝게</b> 선다. 한 칸이면 사진이
             가로로 길어져 배너가 되고, 세 칸이면 이름이 두 줄로 접힌다.
           */
-          <ul className="m-0 grid list-none grid-cols-2 gap-2.5 p-0 md:grid-cols-3 lg:grid-cols-4">
+          /*
+            ■ 진단 화면의 <b>좁은 화면 카드와 같은 모양</b>이다
+
+            사진이 카드 폭을 가로지르고, 그 아래 이름·분류가 서고, 맨 아래를 버튼이 가로지른다.
+            같은 것(장소 한 곳)을 보여주는 카드가 화면마다 다르게 생기면 사용자가
+            매번 다시 읽는다 — 진단 화면에서 익힌 모양을 여기서도 그대로 쓴다.
+
+            <p>한 줄에 하나가 아니라 <b>화면이 넓어지면 나란히</b> 선다. 진단 카드는 넓은
+            화면에서 가로로 눕지만(사진·이름·버튼이 한 줄) 여기는 그럴 이유가 없다 —
+            거기는 순서가 있는 일정이라 세로로 이어져야 하고, 찜은 순서 없는 모음이다.
+          */
+          <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
             {favorites.map((favorite) => (
               <li
                 key={favorite.placeId}
                 className={`${CARD} relative flex flex-col overflow-hidden p-0`}
               >
-                {/*
-                  사진 칸을 정사각형으로 잡는다. 사진이 없는 곳은 이름 첫 글자가 대신 서는데,
-                  그때도 <b>같은 크기</b>여야 격자가 들쭉날쭉해지지 않는다.
-                */}
-                <span className="block aspect-square w-full overflow-hidden">
-                  <PlaceThumbnail
-                    name={favorite.placeName}
-                    imageUrl={favorite.imageUrl}
-                    size="banner"
-                    className="h-full w-full sm:h-full sm:w-full sm:rounded-none"
-                  />
-                </span>
+                <PlaceThumbnail
+                  name={favorite.placeName}
+                  imageUrl={favorite.imageUrl}
+                  size="banner"
+                  /*
+                    ⚠️ sm:부터 작은 정사각형으로 돌아가는 것을 <b>되돌린다.</b>
+                    banner는 진단 카드가 넓은 화면에서 가로로 눕는 것을 전제로 만들어졌는데,
+                    이 카드는 어느 폭에서나 세로다 — 그대로 두면 넓은 화면에서만
+                    사진이 64px 조각으로 쪼그라든다.
+                  */
+                  className="sm:h-40 sm:w-full sm:rounded-none sm:text-[30px]"
+                />
 
                 {/*
-                  하트를 사진 위 오른쪽에 얹는다. 여기서도 풀 수 있어야 한다 —
-                  모아 보는 자리인데 지우려면 그 장소를 다시 찾아 열어야 한다면
-                  모아 둔 의미가 절반만 남는다.
+                  하트를 사진 위 오른쪽에 얹는다. 진단 카드가 같은 자리에 한적도 배지를
+                  두는데, 찜 목록에는 그 값이 없다(날짜가 정해지지 않은 표시라서) —
+                  <b>그 자리를 하트가 받는다.</b>
 
-                  <p>흐린 검정 바탕을 깐다. 공사 사진은 밝은 하늘이 많아
-                  빨간 하트만 얹으면 묻힌다.
+                  <p>흐린 검정 바탕을 깐다. 공사 사진은 밝은 하늘이 많아 빨간 하트만
+                  얹으면 묻힌다.
                 */}
                 <button
                   type="button"
@@ -684,25 +705,42 @@ export function MyPage() {
                     })
                   }
                   aria-label={`${favorite.placeName} 찜 취소`}
-                  className="press text-like absolute top-1.5 right-1.5 grid h-8 w-8 cursor-pointer place-items-center rounded-full border-0 bg-[rgb(42_62_84/0.42)]"
+                  className="press text-like absolute top-2.5 right-2.5 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-0 bg-[rgb(42_62_84/0.42)]"
                 >
-                  <Heart size={17} filled />
+                  <Heart size={18} filled />
                 </button>
 
-                <span className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2">
-                  <span className="text-fg truncate text-[13.5px] font-semibold">
+                <div className="flex min-w-0 flex-col gap-0.5 px-4 pt-3.5">
+                  <p className="text-fg m-0 text-[17px] font-bold tracking-[-0.01em]">
                     {favorite.placeName}
-                  </span>
+                  </p>
                   {/*
                     분류가 없는 찜이 있다. 이 칸이 서버에 생기기 전에 찜한 곳이다 —
                     <b>빈 줄을 세우지 않는다.</b> 자리만 비워두면 "안 불러온 값"으로 읽힌다.
                   */}
                   {favorite.categoryName && (
-                    <span className="text-hint truncate text-[11.5px]">
-                      {favorite.categoryName}
-                    </span>
+                    <p className="text-hint m-0 text-[12.5px]">{favorite.categoryName}</p>
                   )}
-                </span>
+                </div>
+
+                {/*
+                  ■ 카드 아래를 가로지르는 문 하나
+
+                  진단 카드에서는 이 자리가 "새로운 곳 발견하기"이고 분류 옆에 "상세보기"가
+                  작은 글자로 붙어 있다. 여기서는 <b>상세보기가 그 자리로 내려온다</b> —
+                  찜 목록에서 할 일은 대안을 찾는 것이 아니라 <b>이곳이 어디였는지 보는 것</b>이라,
+                  그 하나가 카드의 주된 행동이면 작은 글자로 둘 이유가 없다.
+                */}
+                <div className="px-4 pt-3 pb-4">
+                  <button
+                    type="button"
+                    onClick={() => setOpenedPlace(favorite)}
+                    aria-label={`${favorite.placeName} 상세보기`}
+                    className="press border-line bg-surface text-fg hover:bg-bg rounded-ui h-11 w-full cursor-pointer border text-[13.5px] font-semibold transition-colors"
+                  >
+                    상세보기
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -838,6 +876,24 @@ export function MyPage() {
           courseIds={opened}
           onClose={() => setOpened([])}
           onOpenInFlow={openInFlow}
+        />
+      )}
+
+      {/*
+        찜한 곳 펼쳐 보기. 한적도는 넘기지 않는다 — 찜은 날짜가 없는 표시라
+        어느 날 기준으로 재야 할지 정해지지 않는다. 시트는 값이 없으면 배지를 그리지 않는다.
+
+        <p>"이 장소로 여행가기"({@code onPlanTrip})도 넘기지 않는다. 그 버튼은 <b>지역과
+        날짜를 아는 자리</b>에서만 선다(홈의 한적한 곳은 둘 다 안다). 찜에는 날짜가 없으므로
+        여기서 열면 시트가 그 문을 세우지 않는다.
+      */}
+      {openedPlace && (
+        <PlaceDetailSheet
+          placeId={openedPlace.placeId}
+          placeName={openedPlace.placeName}
+          categoryName={openedPlace.categoryName}
+          imageUrl={openedPlace.imageUrl}
+          onClose={() => setOpenedPlace(null)}
         />
       )}
 
