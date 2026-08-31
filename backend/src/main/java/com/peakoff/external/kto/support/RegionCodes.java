@@ -21,14 +21,25 @@ public final class RegionCodes {
 	private RegionCodes() {
 	}
 
-	/** 시도 코드. 법정동 코드 앞 2자리. (4713000000 → 47 경상북도) */
+	/** 시도 코드. 법정동 코드 앞 2자리. (4713000000 → 47 경상북도) — 집중률·연관·중심용 */
 	public static String areaCodeOf(Region region) {
-		return legalDongCode(region).substring(0, 2);
+		return checked(region.legalDongCode()).substring(0, 2);
 	}
 
-	/** 시군구 코드. 앞 5자리. (4713000000 → 47130 경주시) */
+	/** 시군구 코드. 앞 5자리. (4713000000 → 47130 경주시) — 집중률·연관·중심용 */
 	public static String sigunguCodeOf(Region region) {
-		return legalDongCode(region).substring(0, 5);
+		return checked(region.legalDongCode()).substring(0, 5);
+	}
+
+	/**
+	 * 국문 관광정보가 받는 시도 코드.
+	 *
+	 * <p>⚠️ <b>{@link #areaCodeOf}와 다를 수 있다.</b> 광주·전남이 통합되면서 코드가
+	 * {@code 46} → {@code 12}로 바뀌었는데 국문 관광정보만 옮겨갔다.
+	 * 자세한 것은 {@link Region} 주석에 적어 두었다.
+	 */
+	public static String lDongRegnCodeOf(Region region) {
+		return checked(region.tourLegalDongCode()).substring(0, 2);
 	}
 
 	/**
@@ -38,11 +49,10 @@ public final class RegionCodes {
 	 * 오류가 아니라 빈 응답이라 <b>"경주에 관광지가 없다"로 잘못 읽힌다.</b>
 	 */
 	public static String lDongSignguCodeOf(Region region) {
-		return sigunguCodeOf(region).substring(2);
+		return checked(region.tourLegalDongCode()).substring(2, 5);
 	}
 
-	private static String legalDongCode(Region region) {
-		String code = region.legalDongCode();
+	private static String checked(String code) {
 		if (code == null || code.length() < 5) {
 			throw new KtoApiException("법정동 코드가 5자리 이상이어야 시군구를 가릅니다. 입력값: " + code);
 		}
