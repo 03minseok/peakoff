@@ -358,6 +358,21 @@ public class SavedCourse {
 		return id;
 	}
 
+	/**
+	 * 이 코스를 저장한 사람의 <b>닉네임</b>.
+	 *
+	 * <p>{@code Member}를 통째로 내주지 않고 이 하나만 연다. 코스 밖에서 필요한 것은
+	 * 홈 카드에 적을 이름뿐이고, 엔티티를 넘겨주면 이메일까지 손이 닿는다 —
+	 * 그 값이 응답 DTO로 새는 것은 실수 한 줄이면 된다.
+	 *
+	 * <p>⚠️ 닉네임은 <b>공개 화면에 그대로 적히는 값</b>이다. 회원가입 문구와
+	 * 개인정보 처리방침이 닉네임을 "화면에 표시할 이름"이라 말하고 있어 그 범위 안이지만,
+	 * 어디에 적히는지는 저장 시트의 공개 토글이 함께 알려야 한다.
+	 */
+	public String authorNickname() {
+		return member.nickname();
+	}
+
 	public String name() {
 		return name;
 	}

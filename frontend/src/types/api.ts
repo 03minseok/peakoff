@@ -522,10 +522,19 @@ export interface PublicPlace {
  * 누를 때 추가 호출도 없다. 카드에 보이는 앞 세 곳은 화면이 잘라 쓴다.
  */
 export interface PublicCourse {
-  /** 저장한 사람이 붙인 이름. 홈 카드의 제목이 된다 */
-  name: string
+  /**
+   * 저장한 사람의 닉네임. 카드 제목이 <b>"챔석님의 경주"</b>로 서는 데 쓴다.
+   *
+   * <p>⚠️ <b>코스 이름은 오지 않는다.</b> 예전에는 그것이 제목이었는데, 사용자가 지은
+   * 이름은 저마다 문법이 달라("엄마 생신 여행" · "경주 2일") 카드 다섯이 한 목록으로
+   * 읽히지 않았다. 구분은 이제 사람이 한다.
+   */
+  nickname: string
   region: string
+  /** 정식 이름("경상북도 경주시"). 제목에는 아래 짧은 이름을 쓴다 */
   regionName: string
+  /** 짧은 이름("경주"). 앞을 잘라 만들지 않는다 — 표기 규칙은 서버가 정한다 */
+  regionShortName: string
   startDate: string
   endDate: string
   nights: number
