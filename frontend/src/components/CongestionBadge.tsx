@@ -52,8 +52,12 @@ export function CongestionBadge({ level, label, quietness, size = 'md' }: Props)
       {label ?? FALLBACK_LABEL[level]}
       {quietness !== undefined && (
         <span className="font-mono font-semibold">
-          {/* 화면에서는 숫자만 보이고, 스크린리더는 무슨 숫자인지 듣는다 */}
-          <span className="sr-only">한적도 </span>
+          {/*
+            화면에서는 숫자만 보이고, 스크린리더는 무슨 숫자인지 듣는다.
+            이름은 <b>화면이 쓰는 말</b>로 부른다 — 다른 화면들이 이 값을 "한적 지수"라
+            적어두고 여기서만 "한적도"라 읽어주면, 듣는 사람에게는 다른 값이 된다.
+          */}
+          <span className="sr-only">한적 지수 </span>
           {quietness}
         </span>
       )}
