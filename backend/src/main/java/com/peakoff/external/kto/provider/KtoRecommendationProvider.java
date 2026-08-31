@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -329,6 +330,21 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 
 		NameIndex index = relatedIndex.get(region, this::newIndex);
 		List<ScoredPlace> scored = new ArrayList<>();
+		/*
+		 * ⚠️ 이미 담은 장소를 다시 담지 않는다 (2026-08-31).
+		 *
+		 * 이 루프는 <b>이름</b>을 도는데 여러 이름이 <b>같은 장소</b>로 이어진다. 연관 목록에
+		 * "영랑호"와 "영랑호수윗길"이 따로 들어 있으면 둘 다 우리 카탈로그의 영랑호(127565)로
+		 * 이어져, 같은 곳이 후보 목록에 두 번 들어간다. 7-1에서 양방향 포함 매칭을 열어 준
+		 * 대가이고, 지역이 늘면서 눈에 띄었다 — 속초에서 8번 물어 8번 다 중복이 나왔다.
+		 *
+		 * 화면에서는 <b>대안 셋 중 둘이 같은 곳</b>으로 서서, 고를 것을 셋 준 척하며 둘만 준다.
+		 * Pool이 3이라 중복 하나가 선택지의 3분의 1을 통째로 먹는다.
+		 *
+		 * 거르기는 {@code considered}를 세기 <b>전에</b> 한다. 같은 장소를 두 번 "따져 봤다"고
+		 * 세면 "왜 대안이 비었나"를 설명하는 분모가 틀어진다.
+		 */
+		Set<String> alreadyTaken = new HashSet<>();
 		int considered = 0;
 
 		for (String relatedName : related.relatedTo(originName.get())) {
@@ -338,6 +354,9 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 				continue;
 			}
 			if (candidate.id().equals(origin.id())) {
+				continue;
+			}
+			if (!alreadyTaken.add(candidate.id())) {
 				continue;
 			}
 			if (!PlaceCategories.compatible(origin.category(), candidate.category())) {
