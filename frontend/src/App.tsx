@@ -13,6 +13,7 @@ import { PreviewPage } from './routes/PreviewPage'
 import { ResultPage } from './routes/ResultPage'
 import { SignupPage } from './routes/SignupPage'
 import { AuthProvider } from './state/AuthProvider'
+import { RegionProvider } from './state/RegionProvider'
 import { TripProvider } from './state/TripProvider'
 
 /**
@@ -31,6 +32,12 @@ function App() {
     // AuthProvider가 바깥이다. 저장한 코스를 계정에 올리려면 여행 상태 쪽에서
     // "지금 누가 로그인했는지"를 물을 수 있어야 하고, 그 반대는 필요 없다.
     <AuthProvider>
+      {/*
+        지역 목록을 받은 뒤에 화면을 그린다. 거의 모든 화면이 첫 줄부터 지역명을 쓰는데,
+        목록 없이 그리면 그 자리들이 잠깐 빈 문자열로 섰다가 채워진다.
+        공사를 부르지 않는 요청이라 기다리는 대가가 작다 — RegionProvider 주석 참고.
+      */}
+      <RegionProvider>
       <TripProvider>
         <Routes>
           <Route element={<Layout />}>
@@ -88,6 +95,7 @@ function App() {
           <Route path="oauth/callback/:provider" element={<OAuthCallbackPage />} />
         </Routes>
       </TripProvider>
+      </RegionProvider>
     </AuthProvider>
   )
 }
