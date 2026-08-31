@@ -31,7 +31,11 @@ import { useScrollLock } from '../hooks/useScrollLock'
 interface Props {
   placeId: string
   placeName: string
-  categoryName: string
+  /**
+   * ⚠️ <b>null일 수 있다.</b> 찜 목록에서 여는 경우가 그렇다 — 분류 칸이 서버에 생기기 전에
+   * 찜한 곳은 값이 없다. 없으면 그 줄을 세우지 않는다(빈 자리는 "안 불러온 값"으로 읽힌다).
+   */
+  categoryName: string | null
   imageUrl: string | null
   /** 그 날의 한적도. 예측이 닿지 않는 장소는 null이라 배지를 그리지 않는다 */
   quietness?: number | null
@@ -252,7 +256,7 @@ export function PlaceDetailSheet({
               )}
 
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-hint text-[12.5px]">{categoryName}</span>
+                {categoryName && <span className="text-hint text-[12.5px]">{categoryName}</span>}
                 {/*
                   한적도는 있을 때만. 예측이 닿지 않는 장소(음식점·숙박·상점)에는 없는데,
                   없는 값에 아무 등급이나 얹으면 그 자체가 거짓말이 된다.
