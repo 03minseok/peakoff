@@ -504,7 +504,25 @@ export function CoursePage() {
         */}
         {/* 아래 고정 막대를 걷어내서 이제 어느 폭에서나 바닥에 붙는다. */}
         {/* z-30 — 진단 화면과 같은 이유다. 값이 없으면 지도와 겹치는 구간에서 뒤로 숨는다 */}
-        <div className="from-bg/0 to-bg sticky bottom-0 z-30 mt-auto bg-gradient-to-b to-[30%] pt-3.5 pb-5">
+        {/*
+          ■ 막대는 <b>불투명한 면</b>이고, 페이드는 그 위에 따로 얹는다 (2026-08-31 고침)
+
+          예전에는 막대 자체가 그라데이션이었다(<code>from-bg/0 to-bg to-[30%]</code>).
+          그런데 <b>불투명해지는 지점이 안내 문구보다 아래</b>라, "Day 2에 장소를 담아주세요"가
+          아직 투명한 구간에 놓였다 — 뒤로 지나가는 후보 카드가 글자를 뚫고 보였다.
+
+          <p>비율(30%)을 만지는 것으로는 못 고친다. 막대 높이가 안내 문구의 유무에 따라
+          달라지므로, 어떤 값을 골라도 한쪽 상태에서는 어긋난다.
+
+          <p>둘을 갈랐다. 막대는 <code>bg-bg</code>로 완전히 덮고, 목록이 사라지는 느낌은
+          <b>막대 위에 붙는 32px 띠</b>가 맡는다. 글자가 놓이는 자리에는 언제나 불투명한
+          바탕이 있고, 페이드는 내용이 없는 구간에서만 일어난다.
+        */}
+        <div className="bg-bg sticky bottom-0 z-30 mt-auto pt-3.5 pb-5">
+          <span
+            className="from-bg/0 to-bg pointer-events-none absolute inset-x-0 bottom-full h-8 bg-gradient-to-b"
+            aria-hidden="true"
+          />
           {!allDaysFilled && emptyDays.length > 0 && (
             <p className="mb-2.5 text-center text-[13px]">
               {emptyDays.map((day) => `Day ${day}`).join(', ')}에 장소를 담아주세요.

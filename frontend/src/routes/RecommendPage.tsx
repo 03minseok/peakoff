@@ -131,11 +131,19 @@ export function RecommendPage() {
   const [startDate, setStartDate] = useState(
     suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
   )
-  const [nights, setNights] = useState(state.plan?.nights ?? 1)
-  const [answers, setAnswers] = useState<Answers>({
-    density: 'BALANCED',
-    sensitivity: 'QUIET',
-  })
+  /*
+   * ⚠️ <b>아무것도 고른 채로 시작하지 않는다</b> (2026-08-31).
+   *
+   * 기간은 {@code state.plan?.nights ?? 1}이었고 두 문항에는 기본값이 박혀 있었다.
+   * 아무것도 안 눌러도 코스를 받을 수 있게 하려던 것인데, <b>켜진 칩은 사용자가 고른 것과
+   * 구분되지 않는다</b> — 설문 화면을 열자마자 세 답이 이미 켜져 있으니 그대로 눌러
+   * 넘어가게 되고, 자기가 무엇을 골랐는지 모르는 채 결과를 받는다.
+   *
+   * <p>설문이 이 화면의 <b>전부</b>라 더 그렇다. 문항이 둘뿐인데 둘 다 미리 답해 두면
+   * 설문을 두는 의미가 없다.
+   */
+  const [nights, setNights] = useState<number | null>(null)
+  const [answers, setAnswers] = useState<Partial<Answers>>({})
   const [view, setView] = useState<Phase>({ phase: 'survey' })
 
   /*
@@ -153,16 +161,33 @@ export function RecommendPage() {
   const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
   /*
-   * 두 문항 모두 기본값이 있어 아무것도 안 눌러도 코스를 받을 수 있다.
-   * 잠그는 것은 둘뿐이다 — 지역을 안 골랐을 때(찾을 범위가 없다)와
-   * 지난 날짜일 때(예측이 없어 계산할 것이 없다).
+   * <b>다 골라야 넘어간다.</b> 예전에는 두 문항에 기본값이 있어 지역만 고르면 됐다.
+   *
+   * <p>지역이 없으면 찾을 범위가 없고, 지난 날짜면 예측이 없어 계산할 것이 없다.
+   * 기간과 두 문항은 <b>서버가 실제로 쓰는 값</b>이라(밀도는 슬롯 수를, 민감도는
+   * 점수 비중과 하한을 바꾼다) 우리가 대신 정하면 사용자가 고르지 않은 코스가 나온다.
    */
-  const canSubmit = Boolean(region) && !isPastDate
+  const canSubmit =
+    Boolean(region) &&
+    nights !== null &&
+    answers.density !== undefined &&
+    answers.sensitivity !== undefined &&
+    !isPastDate
 
   async function requestDraft() {
+    // canSubmit이 이미 걸렀다. 타입만 좁힌다.
+    if (nights === null || answers.density === undefined || answers.sensitivity === undefined) {
+      return
+    }
     setView({ phase: 'loading' })
     try {
-      const draft = await recommendCourse({ region, startDate, nights, ...answers })
+      const draft = await recommendCourse({
+        region,
+        startDate,
+        nights,
+        density: answers.density,
+        sensitivity: answers.sensitivity,
+      })
       setView({ phase: 'result', draft })
     } catch (error) {
       /* 서버 메시지를 그대로 쓴다. "이 지역에서 예상 혼잡을 계산할 수 있는 장소를 찾지
@@ -348,7 +373,8 @@ export function RecommendPage() {
                 value:
                   SENSITIVITY_OPTIONS.find((o) => o.value === answers.sensitivity)?.label ?? '',
               },
-              { term: '날짜', value: formatDateRange(startDate, nights) },
+              // 기간을 고르기 전에는 언제까지인지 말할 수 없다. 빈 자리가 그대로 답이다.
+              { term: '날짜', value: nights === null ? '' : formatDateRange(startDate, nights) },
             ].map((row) => (
               <div key={row.term} className="flex items-baseline justify-between gap-3">
                 <dt className="text-hint m-0 flex-none text-[12.5px]">{row.term}</dt>
@@ -500,8 +526,9 @@ export function RecommendPage() {
         <div className="mt-2 pb-4">
           <div className="flex items-center justify-between px-1 pb-2.5">
             <span className="text-[13px]">{regionName}</span>
+            {/* 위 요약표와 같은 규칙 — 고르지 않은 기간의 날짜 범위는 적지 않는다 */}
             <span className="text-fg font-mono text-[13px] font-medium">
-              {formatDateRange(startDate, nights)}
+              {nights === null ? '' : formatDateRange(startDate, nights)}
             </span>
           </div>
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit || view.phase === 'loading'}>

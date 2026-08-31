@@ -133,8 +133,13 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
             다른 날들</b>이지 다른 장소가 아니다 — 순위처럼 읽히면 목록이 점수순이라는
             말이 되는데, 실제 순서는 뽑힌 순서다.
           */}
+          {/*
+            ⚠️ 요일은 <b>한 글자</b>다. 박스가 셋으로 갈리면서 이 줄에 남는 폭이 줄어
+            "9.6 일요일 한적해…"로 잘렸다 — 잘린 끝이 화면에 서면 그 자체가 고장으로 읽힌다.
+            "9.6 일 한적해요"는 두 글자를 덜 쓰면서 잃는 뜻이 없다.
+          */}
           <span className="text-quiet-deep truncate text-[12px] font-semibold">
-            {formatCompactDate(spot.date)} {formatWeekday(spot.date)} 한적해요
+            {formatCompactDate(spot.date)} {formatWeekday(spot.date).charAt(0)} 한적해요
           </span>
           <CongestionBadge
             level={spot.level}
@@ -679,14 +684,13 @@ export function HomePage() {
         */}
         <section
           /*
-            lg:col-span-6 — 옆의 "다른 사람들의 여행"과 <b>반씩</b> 나눈다.
-            나중에 셋째 박스가 들어오면 셋 다 4로 바꾸면 된다. 지금 빈 박스를 세워
-            자리만 맡아두지 않는 이유: 흰 면이 비어 있으면 "여기 뭔가 안 떴다"로 읽힌다.
+            ■ 데이터 줄은 <b>넉 칸씩 셋</b>이다 (2026-08-31)
 
-            lg:self-start — 내용만큼만 키운다. 옆 칸과 높이를 맞추려 늘리면
-            카드 셋뿐인 이 박스 아래가 흰 여백으로 남는다.
+            {@code lg:self-start}를 뺐다. 그 값은 "내용만큼만 키운다"는 뜻이라 박스마다
+            높이가 제각각이었는데, 셋이 나란히 선 줄에서는 <b>아랫변이 안 맞는 것</b>이
+            더 눈에 띈다. 격자 기본값(stretch)으로 두면 셋이 가장 큰 것에 맞춰 늘어난다.
           */
-          className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-6 lg:self-start lg:p-5.5`}
+          className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:p-5.5`}
         >
           <div className="flex flex-col gap-0.75 px-1">
             <div className="flex items-baseline justify-between gap-2">
@@ -748,30 +752,44 @@ export function HomePage() {
           )}
         </section>
 
+        {/*
+          4. <b>비워 둔 칸.</b>
+
+          아직 무엇을 넣을지 정하지 않았다. 자리를 먼저 잡아 두는 이유는, 나중에 채울 때
+          양옆 박스의 폭을 다시 계산할 일이 없게 하려는 것이다 — 넷·넷·넷이 이미 서 있다.
+
+          ⚠️ <b>좁은 화면에서는 그리지 않는다.</b> 한 줄로 쌓이는 자리에서 빈 흰 카드는
+          자리를 맡아둔 것으로 읽히지 않고 <b>내용이 안 뜬 박스</b>로 읽힌다.
+          넓은 화면에서는 옆에 형제가 있어 "세 칸 중 하나"로 보이지만, 위아래로 쌓이면
+          그 문맥이 사라진다.
+        */}
+        <section
+          className={`${CARD_RAISED} hidden p-4.5 lg:col-span-4 lg:block lg:p-5.5`}
+          aria-hidden="true"
+        />
+
           {/*
-            4. 다른 사람들의 여행 — 지역이 넘어가도 그대로 선다.
+            5. 다른 사람들의 여행 — 지역이 넘어가도 그대로 선다.
 
             옆 칸과 <b>같은 박스</b>에 담는다. 예전에는 이쪽만 테두리 없이 배경 위에 떠 있어,
-            나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 둘이다.
+            나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 셋이다.
           */}
           <section
             /*
-              ⚠️ lg:self-start — <b>내용만큼만 키운다</b> (2026-08-30).
+              ■ 높이를 줄에 맞춘다 (2026-08-31)
 
-              격자 칸은 기본이 stretch라 이 박스가 옆 칸(오늘의 OO + 이번 주) 높이에
-              맞춰 늘어났다. 옆은 목록 여섯 줄에 예보 일곱 줄에 버튼 둘이라 700px가
-              넘는데 이쪽은 카드 넷이 최대다. <b>저장된 코스가 하나도 없을 때는</b>
-              머리글과 작은 안내 상자 하나뿐이라, 세 칸 중 하나가 통째로 흰 여백이 됐다.
+              {@code lg:self-start}가 있었다. "내용만큼만 키운다"는 뜻이었고, 옆이
+              700px가 넘던 시절에는 <b>저장된 코스가 없을 때 이 칸이 통째로 흰 여백</b>이
+              되는 것을 막아 주었다.
 
-              늘리지 않으면 남는 자리는 흰 카드 면이 아니라 <b>페이지 바탕(회백)</b>이다.
-              같은 빈 공간이라도 바탕색이면 "여기서 끝났다"로 읽히고, 흰 면이면
-              "무언가 안 뜬다"로 읽힌다. 채울 것이 없을 때 할 수 있는 정직한 일은
-              큰 빈 상자를 세우는 것이 아니라 상자를 그만큼만 세우는 것이다.
+              <p>그 옆 칸이 사라졌다. 이제 나란히 서는 셋은 높이가 비슷하고,
+              <b>셋의 아랫변이 안 맞는 것</b>이 흰 여백보다 눈에 띈다.
+              격자 기본값(stretch)으로 되돌린다.
 
-              칸을 채우려고 OTHER_COURSE_COUNT를 늘리는 것은 답이 아니다 —
+              칸을 채우려고 OTHER_COURSE_COUNT를 늘리는 것은 여전히 답이 아니다 —
               그 수는 실제 저장된 코스가 정하지 우리가 정하지 않는다.
             */
-            className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-6 lg:self-start lg:p-5.5`}
+            className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:p-5.5`}
           >
             <div className="flex flex-col gap-0.75 px-1">
               <h2 className={SECTION_TITLE}>다른 사람들의 여행</h2>

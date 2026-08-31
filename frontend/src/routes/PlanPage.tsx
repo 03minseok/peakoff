@@ -79,11 +79,27 @@ export function PlanPage() {
    * 지역이 셋일 때는 "일단 경주"가 그럴듯했지만 일곱이 되면서 경주는 여럿 중 하나가 됐고,
    * 미리 켜 두면 아래 요약과 버튼이 <b>사용자가 하지 않은 선택</b>을 확정된 것처럼 말한다.
    */
-  const [region, setRegion] = useState(handoff?.region ?? state.plan?.region ?? '')
+  /*
+   * ⚠️ <b>고른 적 있는 값을 끌어오지 않는다</b> (2026-08-31).
+   *
+   * 예전에는 {@code state.plan}에 남아 있던 지역·기간으로 시작했다. 뒤로 왔을 때
+   * 다시 채우지 않게 하려던 것인데, 실제로는 <b>새 여행을 시작하는 사람에게도</b>
+   * 지난번 값이 켜진 채로 보였다 — 이 화면은 홈에서 새로 들어오는 길이 주 통로다.
+   *
+   * <p>켜진 칩은 <b>사용자가 고른 것과 구분되지 않는다.</b> "경주 · 2일"이 이미 서 있으면
+   * 그대로 눌러 넘어가게 되고, 어느 지역으로 며칠을 가는지 정한 적 없이 다음 화면에
+   * 도착한다. 뒤로 갔다 오면 다시 골라야 하는 값은 셋뿐이고, 정하지 않은 것을
+   * 정한 것처럼 보이는 쪽이 더 나쁘다.
+   *
+   * <p>{@code handoff}는 예외다. 홈의 "이 장소로 여행가기"가 실어 보낸 것이라
+   * <b>사용자가 방금 그 지역을 눌러서</b> 온 값이다.
+   */
+  const [region, setRegion] = useState(handoff?.region ?? '')
   const [startDate, setStartDate] = useState(
     suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
   )
-  const [nights, setNights] = useState(state.plan?.nights ?? 1)
+  /** 며칠 머무를지. <b>고르기 전에는 없다</b> — 위 지역과 같은 이유다 */
+  const [nights, setNights] = useState<number | null>(null)
 
   const isPastDate = startDate < today()
 
@@ -118,12 +134,21 @@ export function PlanPage() {
   const regionName = regionNameOf(region)
   const durationLabel = DURATIONS.find((option) => option.nights === nights)?.label ?? ''
 
-  /* 지역을 고르기 전에는 다음으로 넘어갈 수 없다. 지역이 없으면 검색할 범위가 없다. */
-  const canSubmit = Boolean(region) && !isPastDate
+  /*
+   * 지역과 기간을 고르기 전에는 넘어갈 수 없다.
+   *
+   * 지역이 없으면 검색할 범위가 없고, 기간이 없으면 <b>몇 일치 칸을 만들지</b> 모른다.
+   * 기본값으로 채워 두고 넘기면 사용자가 정하지 않은 여행이 만들어진다.
+   */
+  const canSubmit = Boolean(region) && nights !== null && !isPastDate
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!canSubmit) {
+      return
+    }
+    // canSubmit이 null을 이미 걸렀다. 타입만 좁힌다.
+    if (nights === null) {
       return
     }
     setPlan({ region, startDate, nights })
@@ -337,11 +362,15 @@ export function PlanPage() {
               지역을 고르기 전에는 그 자리를 비운다. "경주 · 2일"처럼 적어 두면
               고르지 않았는데 고른 것처럼 읽힌다.
             */}
+            {/*
+              고르지 않은 것은 적지 않는다. 기간을 고르기 전에는 며칠인지도, 언제까지인지도
+              말할 수 없다 — 빈 자리가 "아직 안 골랐다"를 그대로 말한다.
+            */}
             <span className="text-[13px]">
-              {regionName ? `${regionName} · ${durationLabel}` : durationLabel}
+              {[regionName, durationLabel].filter(Boolean).join(' · ')}
             </span>
             <span className="text-fg font-mono text-[13px] font-medium">
-              {formatDateRange(startDate, nights)}
+              {nights === null ? '' : formatDateRange(startDate, nights)}
             </span>
           </div>
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit}>
