@@ -59,8 +59,7 @@ public class FavoriteService {
 		Place place = placeProvider.findById(placeId)
 				.orElseThrow(() -> new NotFoundException("존재하지 않는 장소입니다: " + placeId));
 
-		favoriteRepository.save(
-				FavoritePlace.of(member, placeId, place.name(), clock.instant()));
+		favoriteRepository.save(FavoritePlace.of(member, place, clock.instant()));
 	}
 
 	/** 찜을 푼다. 찜한 적 없으면 아무 일도 하지 않는다 */

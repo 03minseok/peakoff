@@ -13,10 +13,19 @@ import com.peakoff.favorite.domain.FavoritePlace;
  *
  * @param placeName 찜한 시점의 이름. 목록을 열 때 공사를 다시 부르지 않으려고 남겨둔 값이다
  */
-public record FavoritePlaceResponse(String placeId, String placeName, Instant createdAt) {
+public record FavoritePlaceResponse(
+		String placeId,
+		String placeName,
+		String categoryName,
+		String imageUrl,
+		Instant createdAt) {
 
 	public static FavoritePlaceResponse from(FavoritePlace favorite) {
 		return new FavoritePlaceResponse(
-				favorite.placeId(), favorite.placeName(), favorite.createdAt());
+				favorite.placeId(),
+				favorite.placeName(),
+				favorite.categoryName(),
+				favorite.imageUrl(),
+				favorite.createdAt());
 	}
 }
