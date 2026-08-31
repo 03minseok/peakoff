@@ -16,6 +16,7 @@ import type {
   DeleteAccountRequest,
   LoginRequest,
   NearbyPlace,
+  FavoritePlace,
   PublicCourse,
   Place,
   QuietSpot,
@@ -292,6 +293,35 @@ export function fetchPlaces(
     query.set('limit', String(options.limit))
   }
   return apiRequest<Place[]>(`/places?${query}`, { signal: options.signal }).then(remember)
+}
+
+/**
+ * GET /api/favorites — 내가 찜한 곳. 최근에 찜한 것부터.
+ *
+ * <p>로그인이 필요하다. 게스트가 부르면 401이므로 화면이 부르지 않는다.
+ */
+export function fetchFavorites(signal?: AbortSignal): Promise<FavoritePlace[]> {
+  return apiRequest<FavoritePlace[]>('/favorites', { signal })
+}
+
+/**
+ * PUT/DELETE /api/favorites/{placeId} — 찜하고 푼다.
+ *
+ * <p><b>둘 다 멱등이다.</b> 이미 찜한 곳을 또 찜하거나 찜하지 않은 곳을 취소해도 성공한다 —
+ * 하트 하나로 토글하는 자리라 같은 요청이 두 번 가는 일이 실제로 생긴다(연타·두 탭).
+ */
+export function addFavorite(placeId: string, signal?: AbortSignal): Promise<void> {
+  return apiRequest<void>(`/favorites/${encodeURIComponent(placeId)}`, {
+    method: 'PUT',
+    signal,
+  })
+}
+
+export function removeFavorite(placeId: string, signal?: AbortSignal): Promise<void> {
+  return apiRequest<void>(`/favorites/${encodeURIComponent(placeId)}`, {
+    method: 'DELETE',
+    signal,
+  })
 }
 
 /**

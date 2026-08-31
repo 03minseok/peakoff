@@ -547,6 +547,20 @@ export interface PublicCourse {
   createdAt: string
 }
 
+/**
+ * 찜한 장소 하나. 서버 FavoritePlaceResponse와 짝을 이룬다.
+ *
+ * <p>⚠️ <b>한적도가 없다.</b> 찜은 날짜가 없는 표시라("언젠가 가고 싶다") 어느 날 기준으로
+ * 재야 할지 정해지지 않는다. 날짜 없이 점수를 붙이면 화면이 재지 않은 것을 말하게 된다.
+ *
+ * @param placeName 찜한 시점의 이름. 목록을 열 때 공사를 다시 부르지 않으려고 서버가 남겨 둔다
+ */
+export interface FavoritePlace {
+  placeId: string
+  placeName: string
+  createdAt: string
+}
+
 /** 서버 MemberResponse. 비밀번호 관련 값은 어떤 형태로도 내려오지 않는다. */
 export interface AuthMember {
   id: number

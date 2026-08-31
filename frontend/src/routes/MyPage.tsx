@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDownToLine, Close } from '../components/icons'
+import { ArrowDownToLine, Close, Heart } from '../components/icons'
 import type { ReactNode } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { AccountSheets } from '../components/AccountSheets'
@@ -11,6 +11,7 @@ import { SavedCourseCard } from '../components/SavedCourseCard'
 import { CARD } from '../components/styles'
 import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
 import { useAuth } from '../state/authContext'
+import { useFavorites } from '../state/favoriteContext'
 import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { useBrowserChromeInset } from '../hooks/useBrowserChromeInset'
 import { useTrip } from '../state/tripContext'
@@ -62,6 +63,8 @@ function AccountRow({
 export function MyPage() {
   const navigate = useNavigate()
   const { member, loading: authLoading, logout } = useAuth()
+  /* 찜은 앱이 뜰 때 한 번 받아 둔 것을 그대로 읽는다 — 이 화면이 따로 부르지 않는다 */
+  const { favorites, toggle } = useFavorites()
   const { restore } = useTrip()
   // 아래 고정 CTA가 브라우저 도구막대 뒤로 숨지 않게 하는 보정.
   const chromeInset = useBrowserChromeInset()
@@ -505,6 +508,55 @@ export function MyPage() {
             </Link>
           </div>
         </div>
+      )}
+
+      {/*
+        ■ 찜한 곳.
+
+        저장한 코스 <b>아래</b>에 둔다. 이 화면의 주인공은 코스이고 찜은 그 재료다 —
+        언젠가 갈 곳을 모아 둔 것이지 완성된 여행이 아니다.
+
+        <p>⚠️ <b>한적도를 붙이지 않는다.</b> 찜은 날짜가 없는 표시라("언젠가 가고 싶다")
+        어느 날 기준으로 재야 할지 정해지지 않는다. 날짜 없이 점수를 붙이면 화면이
+        재지 않은 것을 말하게 된다 — 한적도는 여행 날짜가 정해진 진단 화면의 몫이다.
+
+        <p>하나도 없을 때는 <b>줄 자체를 세우지 않는다.</b> 빈 안내를 두면 아직 써 보지도
+        않은 기능이 "비어 있는 것"으로 먼저 보이고, 이 화면에는 이미 코스 쪽 빈 안내가 있다.
+      */}
+      {favorites.length > 0 && (
+        <section className="border-line flex flex-col gap-3 border-t pt-5">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
+              찜한 곳
+            </h2>
+            <span className="text-hint text-[12.5px]">{favorites.length}곳</span>
+          </div>
+
+          <ul className="m-0 grid list-none grid-cols-1 gap-2 p-0 sm:grid-cols-2">
+            {favorites.map((favorite) => (
+              <li
+                key={favorite.placeId}
+                className="bg-surface shadow-rest rounded-card flex items-center gap-2 px-3.5 py-2.75"
+              >
+                <span className="text-fg min-w-0 flex-1 truncate text-[14px] font-semibold">
+                  {favorite.placeName}
+                </span>
+                {/*
+                  여기서도 풀 수 있다. 찜한 곳을 모아 보는 자리인데 지우려면 그 장소를
+                  다시 찾아 열어야 한다면, 모아 둔 의미가 절반만 남는다.
+                */}
+                <button
+                  type="button"
+                  onClick={() => toggle({ id: favorite.placeId, name: favorite.placeName })}
+                  aria-label={`${favorite.placeName} 찜 취소`}
+                  className="press touch-hitbox text-brand-deep grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-chip bg-transparent"
+                >
+                  <Heart size={17} filled />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {/*
