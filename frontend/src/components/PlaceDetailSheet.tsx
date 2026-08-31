@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Close } from './icons'
+import { Link } from 'react-router'
+import { Close, Heart } from './icons'
 import { CongestionBadge } from './CongestionBadge'
 import { fetchPlaceDescription } from '../services/api'
 import type { CongestionLevel } from '../types/api'
+import { useAuth } from '../state/authContext'
+import { useFavorites } from '../state/favoriteContext'
 import { useScrollLock } from '../hooks/useScrollLock'
 
 /**
@@ -28,7 +31,11 @@ import { useScrollLock } from '../hooks/useScrollLock'
 interface Props {
   placeId: string
   placeName: string
-  categoryName: string
+  /**
+   * ⚠️ <b>null일 수 있다.</b> 찜 목록에서 여는 경우가 그렇다 — 분류 칸이 서버에 생기기 전에
+   * 찜한 곳은 값이 없다. 없으면 그 줄을 세우지 않는다(빈 자리는 "안 불러온 값"으로 읽힌다).
+   */
+  categoryName: string | null
   imageUrl: string | null
   /** 그 날의 한적도. 예측이 닿지 않는 장소는 null이라 배지를 그리지 않는다 */
   quietness?: number | null
@@ -83,6 +90,27 @@ export function PlaceDetailSheet({
   onClose,
 }: Props) {
   const [state, setState] = useState<State>({ phase: 'loading' })
+
+  const { member } = useAuth()
+  const { isFavorite, toggle } = useFavorites()
+  const favorite = isFavorite(placeId)
+
+  /**
+   * 게스트가 하트를 눌렀는가.
+   *
+   * <p><b>하트를 감추지 않는다.</b> 감추면 게스트는 이 기능이 있는 줄도 모르고,
+   * 로그인할 이유도 하나 줄어든다. 대신 누르면 <b>왜 안 되는지</b>를 그 자리에서 말한다 —
+   * 로그인 화면으로 튕겨내지 않는 이유는 지금 읽던 장소를 잃기 때문이다.
+   */
+  const [needsLogin, setNeedsLogin] = useState(false)
+
+  function handleHeart() {
+    if (!member) {
+      setNeedsLogin(true)
+      return
+    }
+    toggle({ id: placeId, name: placeName, categoryName, imageUrl })
+  }
 
   // 닫았을 때 보던 자리로 돌아와야 한다.
   // ⚠️ body가 아니라 html에 건다 — 그래야 sticky가 얼지 않는다(useScrollLock 주석).
@@ -176,14 +204,59 @@ export function PlaceDetailSheet({
             <span className="text-hint text-[11px]">공공데이터 기반 이미지</span>
 
             <div className="flex flex-col gap-1.5">
-              <h2
-                id="place-detail-title"
-                className="text-fg m-0 text-[20px] leading-[1.35] font-bold tracking-[-0.015em] text-pretty"
-              >
-                {placeName}
-              </h2>
+              {/*
+                ■ 하트는 <b>제목 옆</b>이다
+
+                사진 위(닫기 버튼 옆)에 얹을 수도 있지만, 거기는 사진 밝기에 따라 아이콘이
+                묻힌다 — 공사 사진은 밝은 하늘이 많다. 흰 면 위에 두면 켜짐·꺼짐이 늘 또렷하다.
+
+                <p>제목과 <b>같은 줄</b>에 둔 이유: 찜은 "이 장소"에 거는 표시라 이름 옆이
+                가장 짧게 이어진다. 아래 버튼 자리로 내리면 "이 장소로 여행가기"와 나란히 서서
+                <b>둘 다 다음 단계</b>로 읽히는데, 하트는 다음 단계가 아니라 표시다.
+              */}
+              <div className="flex items-start justify-between gap-3">
+                <h2
+                  id="place-detail-title"
+                  className="text-fg m-0 text-[20px] leading-[1.35] font-bold tracking-[-0.015em] text-pretty"
+                >
+                  {placeName}
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleHeart}
+                  aria-pressed={favorite}
+                  aria-label={favorite ? `${placeName} 찜 취소` : `${placeName} 찜하기`}
+                  /*
+                    켜지면 <b>빨강</b>이다({@code --c-like}). 하트는 어느 문화에서나 빨강이라
+                    이 자리에서만큼은 색이 곧 뜻이다.
+
+                    <p>⚠️ 그 빨강은 <b>붐빔과 다른 색</b>이어야 한다. 붐빔(#e82c6e)은 자홍 기운이고
+                    이쪽은 주황 기운이라 나란히 두어도 갈린다 — 같은 색을 쓰면 한적한 곳을
+                    찜했는데 "붐빔"과 같은 색으로 켜져 신호가 엇갈린다. 자세한 것은 index.css.
+                  */
+                  className={`press touch-hitbox grid h-9 w-9 flex-none cursor-pointer place-items-center rounded-chip bg-transparent transition-colors ${
+                    favorite ? 'text-like' : 'text-hint hover:text-fg'
+                  }`}
+                >
+                  <Heart size={20} filled={favorite} />
+                </button>
+              </div>
+              {/*
+                게스트가 하트를 눌렀을 때만 선다. 자리를 미리 비워두지 않는 이유는,
+                누르기 전에는 아무 문제도 없는데 안내가 서 있으면 <b>못 쓰는 기능</b>처럼
+                보이기 때문이다.
+              */}
+              {needsLogin && (
+                <p className="bg-bg text-muted rounded-ui m-0 px-3 py-2 text-[12.5px] leading-[1.6]">
+                  로그인하면 찜할 수 있어요.{' '}
+                  <Link to="/login" className="text-brand-deep font-semibold">
+                    로그인하기
+                  </Link>
+                </p>
+              )}
+
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-hint text-[12.5px]">{categoryName}</span>
+                {categoryName && <span className="text-hint text-[12.5px]">{categoryName}</span>}
                 {/*
                   한적도는 있을 때만. 예측이 닿지 않는 장소(음식점·숙박·상점)에는 없는데,
                   없는 값에 아무 등급이나 얹으면 그 자체가 거짓말이 된다.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { BrandLockup } from '../components/BrandMark'
 import { CongestionBadge } from '../components/CongestionBadge'
@@ -12,14 +12,7 @@ import { CARD_RAISED } from '../components/styles'
 import { ApiRequestError, fetchQuietSpots, fetchRecentCourses } from '../services/api'
 import type { PublicCourse, QuietSpot } from '../types/api'
 import { useTrip } from '../state/tripContext'
-import {
-  daysFromToday,
-  formatCompactDate,
-  formatKoreanDate,
-  formatNights,
-  isPastDate,
-  today,
-} from '../utils/date'
+import { formatKoreanDate, formatNights, today } from '../utils/date'
 
 /**
  * 화면 폭.
@@ -77,12 +70,50 @@ function messageOf(error: unknown): string {
 const OTHER_COURSE_COUNT = 4
 
 /**
- * 남의 코스를 베껴 올 때, 그 날짜가 이미 지났으면 며칠 뒤로 잡을지.
+ * 서버에서 받아 둘 후보 수. 엔드포인트 상한(12)과 같다.
  *
- * <p>조건 화면({@code PlanPage})의 기본값과 같은 값이다. 새 여행을 시작하는 자리마다
- * 다른 날을 내밀면 사용자가 "이 서비스의 기본 날짜"를 배우지 못한다.
+ * <p>카드 수(4)보다 넉넉히 받는 이유: 이 목록은 <b>받은 것 중에서 골라 보여주기</b> 때문이다.
+ * 넷만 받으면 고를 것이 없어 아래 뽑기가 이름뿐인 장치가 된다 — 대안 추천에서
+ * "Pool이 셋인데 여덟을 달라고 하면 Pool이라는 개념이 무의미해진다"고 배운 것의 반대 방향이다.
  */
-const COPIED_COURSE_DAYS_AHEAD = 7
+const OTHER_COURSE_POOL = 12
+
+/** 카드가 갈리는 간격. 왼쪽 두 칸이 쓰던 리듬(예전 14초)보다 약간 빠른 12초 */
+const OTHER_COURSE_ROTATE_MS = 12_000
+
+/** region-fade가 사라지는 시간(index.css의 460ms)과 같아야 한다. 내용 교체는 다 사라진 뒤에 한다 */
+const OTHER_COURSE_FADE_MS = 460
+
+/**
+ * 받아 둔 코스에서 화면에 세울 넷을 뽑는다.
+ *
+ * <h3>한적 상위 절반에서 무작위로</h3>
+ * 최근 저장순을 그대로 세우지 않는다 — 이 서비스가 남의 여행을 보여주는 이유는
+ * "이렇게 한적하게 다녀올 수 있다"는 견본이라서, 붐비는 코스가 최신이라는 이유로
+ * 맨 위에 서면 견본이 반대로 말한다. 그렇다고 점수순으로 세우면 최고점 코스가
+ * 언제나 1등이 된다 — 대안 추천이 겪은 것과 같은 병이라, 여기도 <b>거르고 나서 뽑는다</b>:
+ * 총점 상위 절반만 남기고(거르기), 그 안에서 균등 무작위로 넷을 고른다(뽑기).
+ *
+ * <p>순서도 뽑힌 순서 그대로다. 뽑은 뒤 점수순으로 다시 세우면 뽑기가 하는 일이
+ * 절반 죽는다는 것을 2026-08-26에 실측으로 배웠다.
+ *
+ * <p>⚠️ 다만 <b>절반이 카드 수보다 적으면 카드 수까지 후보를 늘린다.</b> 저장된 코스가
+ * 여덟이 안 되는 동안 절반을 곧이곧대로 지키면 카드가 두어 장만 서서, 거르기가
+ * 한 일이 "목록을 비운 것"뿐이 된다. 후보가 아홉을 넘으면 그때부터 절반 규칙이
+ * 실제로 거른다 — 데이터가 적은 동안의 하한이지 규칙의 예외가 아니다.
+ */
+function drawOtherCourses(pool: PublicCourse[]): PublicCourse[] {
+  const quietHalf = [...pool]
+    .sort((a, b) => b.totalQuietness - a.totalQuietness)
+    .slice(0, Math.max(Math.ceil(pool.length / 2), OTHER_COURSE_COUNT))
+
+  // Fisher-Yates 부분 셔플. 앞 넷만 정하면 되므로 넷째까지만 섞는다.
+  for (let i = 0; i < Math.min(OTHER_COURSE_COUNT, quietHalf.length - 1); i++) {
+    const j = i + Math.floor(Math.random() * (quietHalf.length - i))
+    ;[quietHalf[i], quietHalf[j]] = [quietHalf[j], quietHalf[i]]
+  }
+  return quietHalf.slice(0, OTHER_COURSE_COUNT)
+}
 
 /** 카드에 맛보기로 보이는 장소 수. 나머지는 눌러서 펼쳤을 때 나온다 */
 const PREVIEW_PLACES = 3
@@ -122,36 +153,41 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
         공사 이름은 원래 길다(강원특별자치도산림박물관·여수 낭도리 공룡발자국화석 산지) —
         <b>무엇인지 알아볼 수 없는 이름은 카드가 하는 일을 못 한다.</b>
 
-        <p>배지와 지역을 아랫줄로 내리면 이름이 카드 폭을 다 쓴다. 그래도 넘치면 두 줄까지
-        간다 — 잘라 버리는 것보다 한 줄 더 쓰는 편이 낫다.
+        <p>지역을 아랫줄로 내리면 이름이 그만큼 넓게 쓴다. 그래도 넘치면 두 줄까지 간다 —
+        잘라 버리는 것보다 한 줄 더 쓰는 편이 낫다.
 
-        <p>분류는 뺐다. 아랫줄에 지역과 배지가 이미 서 있고, 분류는 눌러서 여는
-        상세 시트가 맡는다. 좁은 줄에 여럿을 밀어 넣으면 다 못 읽는다.
+        <p>분류는 뺐다. 아랫줄에 지역이 이미 서 있고, 분류는 눌러서 여는 상세 시트가 맡는다.
+        좁은 줄에 여럿을 밀어 넣으면 다 못 읽는다.
+
+        <p>■ <b>한적 지수는 카드의 오른쪽 위</b>다 (2026-08-31)
+
+        이름 아랫줄에서 지역 알약 옆에 있었다. 카드 다섯이 세로로 늘어서면 배지의 왼쪽 끝이
+        <b>이름 길이에 따라 제각기 다른 자리</b>에 서서, 점수끼리 눈으로 훑을 수가 없었다 —
+        이 목록에서 견주게 되는 값이 바로 그 점수인데.
+
+        <p>오른쪽 위로 올리면 다섯 장의 배지가 <b>한 세로줄</b>에 맞는다. 위쪽인 이유는
+        이름과 같은 높이에 두어야 "이 곳의 점수"로 읽히기 때문이다 —
+        아래로 내리면 그 아랫줄(지역)에 붙은 값처럼 보인다.
       */}
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-fg line-clamp-2 text-[15px] leading-[1.35] font-semibold tracking-[-0.01em]">
-          {spot.place.name}
-        </span>
-
-        <span className="flex min-w-0 items-center gap-1.5">
-          {/*
-            지역 알약. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
-            지역은 신호가 아니라 이름표다. 같은 카드에 색이 둘이면 어느 쪽이 등급인지 흐려진다.
-          */}
-          <span className="bg-surface text-hint rounded-chip flex-none px-1.5 py-0.5 text-[11px] font-semibold">
-            {spot.regionName}
+        <span className="flex min-w-0 items-start gap-2">
+          <span className="text-fg line-clamp-2 min-w-0 flex-1 text-[15px] leading-[1.35] font-semibold tracking-[-0.01em]">
+            {spot.place.name}
           </span>
-          {/*
-            "가장 한적"이 아니라 "이 날 한적해요"다. 이 카드가 견주는 것은 <b>그 곳의
-            다른 날들</b>이지 다른 장소가 아니다 — 순위처럼 읽히면 목록이 점수순이라는
-            말이 되는데, 실제 순서는 뽑힌 순서다.
-          */}
           <CongestionBadge
             level={spot.level}
             label={spot.levelLabel}
             quietness={spot.quietness}
             size="sm"
           />
+        </span>
+
+        {/*
+          지역 알약. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
+          지역은 신호가 아니라 이름표다. 같은 카드에 색이 둘이면 어느 쪽이 등급인지 흐려진다.
+        */}
+        <span className="bg-surface text-hint rounded-chip w-fit px-1.5 py-0.5 text-[11px] font-semibold">
+          {spot.regionName}
         </span>
       </span>
     </button>
@@ -165,9 +201,14 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
  * 목록 응답이 장소를 전부 들고 온다 — 열어 보는 데 필요한 것이 이미 손에 있으므로
  * 남의 코스에 주소를 주지 않고도 펼칠 수 있다. 그래서 누를 때 서버를 다시 부르지 않는다.
  *
- * <p>제목은 <b>저장한 사람이 붙인 이름</b>이다. 지역과 기간만 세웠더니 어느 카드나
- * "경주 1박 2일"이라 서로 구분되지 않았다 — 이름이 있어야 남의 여행이 남의 여행답게 읽힌다.
- * 지역·기간은 그 아래 줄로 내렸다.
+ * <p>제목은 <b>"챔석님의 경주"</b>다. 지역과 기간만 세웠더니 어느 카드나 "경주 1박 2일"이라
+ * 서로 구분되지 않아 한동안 <b>사용자가 붙인 코스 이름</b>을 썼는데, 그 이름은 저마다
+ * 문법이 달라("엄마 생신 여행" · "경주 2일") 카드 다섯이 한 목록으로 읽히지 않았다.
+ * 사람으로 가르면 <b>모든 카드가 같은 문형</b>이 되면서도 서로 구분된다 —
+ * 그리고 이 목록이 하려는 말("다른 사람들은 어디로 갔나")이 제목에서 바로 드러난다.
+ *
+ * <p>지역·기간은 그 아래 줄에 그대로 있다. 제목의 "경주"는 <b>어디</b>만 말하고,
+ * 며칠·언제는 아랫줄이 맡는다.
  *
  * <p>흰 카드가 아니라 <b>바탕색으로 눌러 담은 칸</b>이다. 이 카드가 흰 박스 안에 들어가서,
  * 흰 면 위에 흰 카드를 얹으면 그림자로만 갈려 층이 흐릿해진다.
@@ -180,6 +221,10 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
 function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () => void }) {
   const preview = course.places.slice(0, PREVIEW_PLACES)
   // "경상북도 경주시" → "경주시". 좁은 카드라 앞쪽 도명까지는 들어가지 않는다.
+  /*
+   * 아랫줄의 지역. 제목이 이미 짧은 이름("경주")을 쓰므로 여기서 같은 말을 반복하지 않게
+   * <b>정식 이름에서 도명만 뗀</b> "경주시"를 쓴다 — 제목은 사람, 이 줄은 여정이다.
+   */
   const shortRegion = course.regionName.replace(/^.*\s/, '')
 
   return (
@@ -218,7 +263,7 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
             <span className="text-fg min-w-0 flex-1 truncate text-[14.5px] font-semibold tracking-[-0.01em]">
-              {course.name}
+              {course.nickname}님의 {course.regionShortName}
             </span>
             {/* 한적도는 어디서나 3단계 배지로 말한다. 게이지는 정도를, 배지는 등급을 맡는다 */}
             <span
@@ -227,8 +272,16 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
               {course.levelLabel}
             </span>
           </div>
+          {/*
+            ⚠️ <b>출발일을 적지 않는다</b> (2026-08-31).
+
+            남의 출발일은 이 카드를 보는 사람에게 <b>쓸 데가 없는 날짜</b>다. 베껴 갈 때
+            그 날로 가는 것도 아니고(이제 시트에서 직접 고른다), 지난 날짜면 오히려
+            "지난 여행"으로 읽혀 눌러볼 이유를 깎는다. 남는 것은 <b>어디를 며칠</b>이고,
+            그 둘이 베껴 갈 때 실제로 물려받는 값이다.
+          */}
           <span className="text-hint truncate text-[12px]">
-            {shortRegion} {formatNights(course.nights)} · {formatCompactDate(course.startDate)} 출발
+            {shortRegion} {formatNights(course.nights)}
           </span>
         </div>
       </div>
@@ -249,21 +302,31 @@ export function HomePage() {
   // 남의 코스를 내 편집 흐름에 담을 때만 쓴다.
   const { restore } = useTrip()
   /**
-   * 다른 사람들이 최근에 저장한 코스.
+   * 다른 사람들이 저장한 코스 후보. <b>이 화면에 머무는 동안의 캐시다.</b>
    *
-   * <p><b>지역과 무관하다.</b> 왼쪽 두 칸은 8초마다 지역이 넘어가지만 이 칸은 그대로 선다 —
-   * "다른 사람들은 어디로 갔나"에 지역을 걸면 볼 수 있는 여행이 3분의 1로 줄고,
-   * 지금은 저장된 코스 자체가 많지 않다.
+   * <p>서버는 들어올 때 <b>한 번만</b> 부른다. 12초마다 카드가 갈리지만 그때 부르는 것은
+   * 이 배열이지 서버가 아니다 — 회전은 보여주기의 사정이라, 그때마다 호출이 나가면
+   * 홈을 켜 둔 브라우저 하나가 5분에 스물다섯 번을 두드린다.
+   *
+   * <p><b>지역과 무관하다.</b> "다른 사람들은 어디로 갔나"에 지역을 걸면 볼 수 있는
+   * 여행이 줄고, 지금은 저장된 코스 자체가 많지 않다.
    *
    * <p>실패해도 홈은 그대로 그린다. 곁들이는 정보라 이것 때문에 화면을 막을 이유가 없다.
    */
+  const [othersPool, setOthersPool] = useState<PublicCourse[]>([])
+  /** 지금 화면에 선 넷. 후보에서 뽑은 결과다 */
   const [others, setOthers] = useState<PublicCourse[]>([])
+  /** 카드가 갈리는 중인가. region-fade가 이 값으로 사라졌다 나타난다 */
+  const [othersFading, setOthersFading] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchRecentCourses(OTHER_COURSE_COUNT, controller.signal)
-      .then(setOthers)
-      .catch(() => setOthers([]))
+    fetchRecentCourses(OTHER_COURSE_POOL, controller.signal)
+      .then((pool) => {
+        setOthersPool(pool)
+        setOthers(drawOtherCourses(pool))
+      })
+      .catch(() => setOthersPool([]))
     return () => controller.abort()
   }, [])
 
@@ -275,6 +338,51 @@ export function HomePage() {
    * 여는 순간 부를 것이 없다.
    */
   const [openedCourse, setOpenedCourse] = useState<PublicCourse | null>(null)
+
+  /**
+   * 시트가 열려 있는지를 회전 타이머가 읽는 창구.
+   *
+   * <p>상태를 직접 의존성에 넣으면 시트를 여닫을 때마다 타이머가 다시 시작되어,
+   * 시트를 자주 여는 사람일수록 카드가 영영 안 갈린다. ref로 두면 타이머는 한 번만
+   * 걸리고 매 회마다 지금 값을 들여다본다.
+   */
+  const courseSheetOpen = useRef(false)
+  courseSheetOpen.current = openedCourse !== null
+
+  /**
+   * ■ 12초마다 카드를 다시 뽑는다 — 서버는 부르지 않는다
+   *
+   * <p>후보 절반이 카드 수보다 많을 때만 돈다. 뽑아 봐야 같은 넷이면
+   * 사라졌다 나타나는 시늉만 12초마다 반복하는 셈이다.
+   *
+   * <p>건너뛰는 두 경우:
+   * <ul>
+   *   <li><b>탭이 뒤에 있을 때</b> — 안 보는 화면을 갈아 봐야 전환만 쌓이고,
+   *       돌아온 순간 여러 전환이 몰아서 튄다</li>
+   *   <li><b>코스 시트가 열려 있을 때</b> — 눌러 보던 카드가 시트 밑에서 사라지면,
+   *       닫고 돌아온 사람이 방금 보던 것을 찾지 못한다</li>
+   * </ul>
+   *
+   * <p>전환은 왼쪽 칸들이 쓰던 region-fade를 그대로 쓴다. 다 사라진 뒤(460ms) 내용을
+   * 갈아끼우고 다시 나타난다 — 제자리에서 글자만 바뀌면 깜빡임으로 읽힌다.
+   * 움직임을 줄여달라는 설정에서는 CSS가 알아서 멈추고 내용만 조용히 갈린다.
+   */
+  useEffect(() => {
+    if (Math.ceil(othersPool.length / 2) <= OTHER_COURSE_COUNT) {
+      return
+    }
+    const interval = window.setInterval(() => {
+      if (document.hidden || courseSheetOpen.current) {
+        return
+      }
+      setOthersFading(true)
+      window.setTimeout(() => {
+        setOthers(drawOtherCourses(othersPool))
+        setOthersFading(false)
+      }, OTHER_COURSE_FADE_MS)
+    }, OTHER_COURSE_ROTATE_MS)
+    return () => window.clearInterval(interval)
+  }, [othersPool])
 
   /**
    * 펼쳐 보고 있는 한적한 곳. <b>id가 아니라 줄 전체를 들고 있다.</b>
@@ -292,10 +400,12 @@ export function HomePage() {
    * 코스를 그대로 다시 진단하는 것이지만, 여기는 남의 일정을 베껴 오는 것이라 대개
    * 날짜부터 갈아야 한다. 담긴 채로 편집 화면에 서면 무엇을 고칠지 바로 보인다.
    *
-   * <p>날짜가 지났으면 새로 잡는다. 지난 날짜로 담으면 예측 범위 밖이라
-   * 진단이 통째로 비어 나오고, 사용자는 그것을 고장으로 읽는다.
+   * <p>⚠️ <b>출발일은 시트가 받아서 넘긴다.</b> 예전에는 남의 출발일을 그대로 쓰고
+   * 지난 날짜면 일주일 뒤로 대신 정해 주었는데, 사용자는 자기 여행이 언제 시작하는지
+   * 모르는 채 편집 화면에 도착했다. 가져오는 것은 <b>장소와 순서</b>이고 언제 떠날지는
+   * 베끼는 사람이 정한다.
    */
-  function copyToFlow(course: PublicCourse) {
+  function copyToFlow(course: PublicCourse, startDate: string) {
     const days: string[][] = Array.from({ length: course.days }, () => [])
     course.places.forEach((place) => {
       days[place.day - 1]?.push(place.placeId)
@@ -304,9 +414,7 @@ export function HomePage() {
     restore(
       {
         region: course.region,
-        startDate: isPastDate(course.startDate)
-          ? daysFromToday(COPIED_COURSE_DAYS_AHEAD)
-          : course.startDate,
+        startDate,
         nights: course.nights,
       },
       days,
@@ -778,10 +886,20 @@ export function HomePage() {
         />
 
           {/*
-            5. 다른 사람들의 여행 — 지역이 넘어가도 그대로 선다.
+            5. 다른 사람들의 여행.
 
             옆 칸과 <b>같은 박스</b>에 담는다. 예전에는 이쪽만 테두리 없이 배경 위에 떠 있어,
             나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 셋이다.
+
+            이름이 한 번 "요즘 저장된 여행"으로 갔다가 돌아왔다 (2026-09-01).
+            원래 이 이름이 서버의 "내 코스 빼기"와 짝이었는데 그 거르기가 사라졌고
+            (저장한 사람만 자기 코스를 못 봤다 — SavedCourseService.recent 주석),
+            이름만 남으니 내 코스가 섞여도 어색하지 않은 친숙한 쪽을 다시 골랐다.
+            ⚠️ 그래서 이 이름은 이제 <b>거르기의 근거가 아니다.</b> 이 이름을 이유로
+            서버에서 내 코스를 다시 빼지 말 것.
+
+            <p>순서 주장도 하지 않는 이름이다 — 실제로 최신순이 아니라
+            <b>한적 상위 절반에서 무작위</b>로 서고, 12초마다 갈린다(drawOtherCourses).
           */}
           <section
             /*
@@ -808,7 +926,14 @@ export function HomePage() {
             </div>
 
             {others.length > 0 ? (
-              <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-1">
+              /*
+                region-fade는 <b>틀이 아니라 내용에</b> 붙는다 — 왼쪽 칸들과 같은 이유다.
+                카드째 사라지면 12초마다 화면에 구멍이 뚫린 것으로 읽힌다.
+              */
+              <div
+                className="region-fade grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-1"
+                data-fading={othersFading}
+              >
                 {others.map((course) => (
                   <OtherCourseCard
                     key={`${course.region}-${course.startDate}-${course.createdAt}`}

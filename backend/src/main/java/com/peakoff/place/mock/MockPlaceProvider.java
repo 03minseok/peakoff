@@ -96,4 +96,21 @@ public class MockPlaceProvider implements PlaceProvider {
 		GyeongjuMockCatalog.Entry entry = GyeongjuMockCatalog.findById(placeId);
 		return Optional.ofNullable(entry).map(GyeongjuMockCatalog.Entry::place);
 	}
+
+	/**
+	 * 목업 카탈로그는 경주 하나뿐이라, 있는 장소면 언제나 경주다.
+	 *
+	 * <p>없는 장소에 경주를 돌려주지 않는다 — 실데이터로 넘어가면 그때 빈 값이 오는데,
+	 * 목업에서만 되던 것이 사라지면 고장으로 읽힌다.
+	 */
+	/** 목업 카탈로그는 경주뿐이라, 다른 지역을 물으면 빈 값이다 */
+	@Override
+	public Optional<Place> findInRegion(Region region, String placeId) {
+		return GyeongjuMockCatalog.GYEONGJU.equals(region) ? findById(placeId) : Optional.empty();
+	}
+
+	@Override
+	public Optional<SupportedRegion> regionOf(String placeId) {
+		return findById(placeId).map(place -> SupportedRegion.GYEONGJU);
+	}
 }

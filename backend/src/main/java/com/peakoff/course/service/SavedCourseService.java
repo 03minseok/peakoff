@@ -181,20 +181,20 @@ public class SavedCourseService {
 		return SavedCourseDetail.from(course);
 	}
 	/**
-	 * 최근 저장된 남의 코스 몇 개. 익명 요약이라 로그인 없이도 볼 수 있다.
+	 * 최근 저장된 코스 몇 개. 요약만 나가므로 로그인 없이도 볼 수 있다.
 	 *
-	 * @param viewerId 보고 있는 사람. 로그인하지 않았으면 {@code null}.
-	 *                 자기 코스는 "다른 사람들의 여행"이 아니므로 뺀다
+	 * <p>⚠️ <b>보는 사람이 누구든 같은 목록이다.</b> 예전에는 로그인한 사람의 코스를 뺐는데
+	 * (목록 이름이 "다른 사람들의 여행"이었다), 그러면 저장한 사람만 자기 코스를 못 본다 —
+	 * 방금 공개로 저장하고 홈에 왔는데 아무것도 없으면 저장이 안 된 줄 안다.
+	 * 목록 이름을 "요즘 저장된 여행"으로 바꾸고 거르기를 걷었다.
 	 */
 	@Transactional(readOnly = true)
-	public List<PublicCourseSummary> recent(Long viewerId, int limit) {
-		List<SavedCourse> courses = viewerId == null
-				? savedCourseRepository.findTop12ByOrderByCreatedAtDesc()
-				: savedCourseRepository.findTop12ByMemberIdNotOrderByCreatedAtDesc(viewerId);
+	public List<PublicCourseSummary> recent(int limit) {
+		List<SavedCourse> courses = savedCourseRepository.findTop12ByOrderByCreatedAtDesc();
 
 		/*
 		 * <b>진단되지 않은 코스는 뺀다.</b> 총점이 없으면 홈 카드의 원형 게이지와 배지가
-		 * 성립하지 않는다 — 그리고 애초에 "다른 사람들의 여행"으로 아직 재보지도 않은
+		 * 성립하지 않는다 — 그리고 애초에 "요즘 저장된 여행"으로 아직 재보지도 않은
 		 * 코스를 내밀 이유가 없다. 이 목록의 값은 "남들은 얼마나 한적하게 다녔나"다.
 		 *
 		 * 거르기를 limit 앞에 둔다. 뒤에 두면 진단 안 된 코스가 자리를 차지해
