@@ -1,8 +1,9 @@
 package com.peakoff.recommendation.mock;
 
 import java.time.LocalDate;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,6 +24,7 @@ import com.peakoff.recommendation.domain.RecommendationProvider;
 import com.peakoff.recommendation.domain.RecommendationScorer;
 import com.peakoff.recommendation.domain.ScoreWeights;
 import com.peakoff.recommendation.domain.ScoredPlace;
+import com.peakoff.recommendation.domain.WeightedPicker;
 
 /**
  * 목업 대안 추천 공급자.
@@ -42,6 +44,14 @@ import com.peakoff.recommendation.domain.ScoredPlace;
  *
  * <p>실제 구현에서는 이 자리에 <b>연관 관광지 API</b>가 들어간다. "함께 많이 방문되는 곳"이
  * 후보의 출발점이 되고, 그때 추천 근거 문구도 그 데이터로 뒷받침된다.
+ *
+ * <h2>⚠️ 뽑기는 실데이터와 <b>같은 규칙</b>이어야 한다</h2>
+ * 여기는 오래도록 추천도 순으로 정렬해 위에서 잘랐다. 실데이터 쪽은 2026-08-26에
+ * 그 정렬을 걷어냈는데(그것이 분산 장치를 죽이고 있었다) 목업만 옛 코드로 남아 있었다.
+ *
+ * <p>목업이 기본값이라({@code peakoff.kto.recommendation=mock}) <b>목업으로 시연하면
+ * 분산이 아예 없는 화면을 보게 된다</b> — 같은 자리를 몇 번을 물어도 1등이 고정이다.
+ * 두 공급자가 다른 규칙으로 답하면 "이 서비스는 대안을 어떻게 고르나요"에 답이 둘이 된다.
  */
 @Component
 @Profile(DataSourceProfiles.MOCK)
@@ -50,10 +60,13 @@ public class MockRecommendationProvider implements RecommendationProvider {
 
 	private final CongestionProvider congestionProvider;
 	private final RecommendationScorer scorer;
+	private final WeightedPicker picker;
 
-	public MockRecommendationProvider(CongestionProvider congestionProvider, RecommendationScorer scorer) {
+	public MockRecommendationProvider(CongestionProvider congestionProvider,
+			RecommendationScorer scorer, WeightedPicker picker) {
 		this.congestionProvider = congestionProvider;
 		this.scorer = scorer;
+		this.picker = picker;
 	}
 
 	@Override
@@ -98,12 +111,15 @@ public class MockRecommendationProvider implements RecommendationProvider {
 				.filter(scored -> !skip.contains(scored.place().id()))
 				.toList();
 
-		List<Alternative> picked = available.stream()
+		/*
+		 * 상위 후보군에서 가중 무작위로 뽑는다. <b>뽑은 뒤 다시 정렬하지 않는다.</b>
+		 *
+		 * 예전에는 여기서 추천도 순으로 세우고 위에서 잘랐다. 그러면 최고점이 언제나 1등이라
+		 * 같은 자리를 몇 번을 물어도 목록이 바뀌지 않는다 — 분산 장치가 있으나 마나가 된다.
+		 * 실데이터 공급자가 2026-08-26에 걷어낸 그 코드다.
+		 */
+		List<Alternative> picked = drawWithoutRepeat(available, limit).stream()
 				.map(scored -> scored.withReason(reasonFor(origin)))
-				// 정렬 기준이 곧 화면에 보이는 추천도다. 화면에 없는 값으로 줄을 세우면
-				// "왜 이게 1등인지"를 사용자에게도 심사에서도 설명할 수 없다.
-				.sorted(Comparator.comparingInt(Alternative::recommendation).reversed())
-				.limit(limit)
 				.toList();
 
 		/*
@@ -112,6 +128,31 @@ public class MockRecommendationProvider implements RecommendationProvider {
 		 */
 		return Alternatives.of(originQuietness, considered.size(),
 				qualified.size() - available.size(), picked);
+	}
+
+	/**
+	 * 상위 후보군에서 가중 무작위로, <b>중복 없이</b> 뽑는다.
+	 *
+	 * <p>뽑은 것을 후보에서 빼고 다시 뽑는다. 빼지 않으면 같은 곳이 목록에 두 번 오른다 —
+	 * 가중 무작위는 같은 후보를 다시 고를 수 있다.
+	 *
+	 * <p>실데이터 공급자와 같은 절차다({@code KtoRecommendationProvider}).
+	 * 값도 한 곳에서 가져온다({@link WeightedPicker#DEFAULT_POOL_SIZE}).
+	 */
+	private List<ScoredPlace> drawWithoutRepeat(List<ScoredPlace> candidates, int limit) {
+		List<ScoredPlace> remaining = new ArrayList<>(candidates);
+		List<ScoredPlace> drawn = new ArrayList<>();
+
+		while (drawn.size() < limit && !remaining.isEmpty()) {
+			Optional<ScoredPlace> picked = picker.pick(remaining, ScoredPlace::recommendation,
+					WeightedPicker.DEFAULT_BIAS, WeightedPicker.DEFAULT_POOL_SIZE);
+			if (picked.isEmpty()) {
+				break;
+			}
+			drawn.add(picked.get());
+			remaining.remove(picked.get());
+		}
+		return drawn;
 	}
 
 	private static boolean sameCategory(Place candidate, Place origin) {
