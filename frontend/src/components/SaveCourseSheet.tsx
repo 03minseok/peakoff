@@ -208,7 +208,16 @@ export function SaveCourseSheet({
           : '계정을 만들면 짠 코스를 저장해두고, 다음에 짠 코스와 한적 지수를 나란히 맞대어 볼 수 있어요.'
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    /*
+      데스크톱에서는 <b>가운데 대화상자</b>가 된다(2026-09-01).
+
+      좁은 화면에서 시트가 폭을 다 쓰는 것은 그 폭이 곧 화면이기 때문인데, 넓은 화면에서
+      같은 규칙을 쓰면 <b>1180px짜리 띠에 400px어치 내용이 실려</b> 이름 한 줄과 버튼 둘이
+      허허벌판에 놓인다. 물어보는 일의 무게에 견주어 자리가 지나치게 크다.
+
+      ConfirmSheet·CreateTripSheet가 이미 이 모양이다 — 이 시트만 대열에서 빠져 있었다.
+    */
+    <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
       {/*
         뒤 화면을 덮는 막. 눌러서 닫을 수 있다.
         버튼이 아니라 div이므로 키보드 사용자를 위해 아래 "나중에 할게요"와 Esc가 같은 일을 한다.
@@ -220,13 +229,20 @@ export function SaveCourseSheet({
       />
 
       <div
-        className="sheet-panel bg-bg relative max-h-[92svh] overflow-y-auto rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)]"
+        /*
+          {@code dialog-panel}은 넓은 화면에서 <b>아래에서 올라오는 대신 살짝 커지며</b>
+          나타나게 한다. 화면 한가운데 뜨는 면이 아래에서 올라오면 출처가 거짓이 된다.
+        */
+        className="sheet-panel dialog-panel bg-bg relative max-h-[92svh] w-full overflow-y-auto rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-w-[420px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="save-course-title"
       >
-        {/* 손잡이. 이 면이 아래에서 끌어올린 것이라는 신호다. */}
-        <div className="flex justify-center pt-2.5">
+        {/*
+          손잡이. 이 면이 아래에서 끌어올린 것이라는 신호다.
+          넓은 화면에서는 가운데 대화상자라 <b>끌어올릴 아래가 없다</b> — 그래서 감춘다.
+        */}
+        <div className="flex justify-center pt-2.5 lg:hidden">
           <span className="bg-line h-1 w-9.5 rounded-[2px]" aria-hidden="true" />
         </div>
 
