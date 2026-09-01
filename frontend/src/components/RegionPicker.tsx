@@ -1,5 +1,5 @@
-import { useId, useMemo, useState } from 'react'
-import { regionOptions, searchRegions } from '../constants/regions'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { regionNameOf, regionOptions, searchRegions } from '../constants/regions'
 import { TEXT_INPUT } from './styles'
 
 /**
@@ -10,13 +10,17 @@ import { TEXT_INPUT } from './styles'
  * 더 늘면 화면을 덮는다. <b>목록을 훑는 화면은 확장되지 않는다</b> — 장소를 키워드로
  * 찾게 한 것과 같은 이유다.
  *
- * <h3>그래도 목록을 먼저 보여준다</h3>
- * 검색창만 두면 <b>어디를 갈 수 있는지 모르는 사람이 첫 글자를 못 친다.</b> 경주를 모르는
- * 사용자를 위해 대표 관광지 칩을 두는 것과 같은 문제다. 그래서 빈 검색어에는 전부 편다 —
- * 지금은 일곱이라 그대로 보이고, 지역이 늘면 검색이 그 일을 넘겨받는다.
+ * <h3>왜 목록을 늘 펴 두지 않나</h3>
+ * 검색칸 아래에 칩을 늘 세워 두었다가 걷어냈다(2026-09-01). 그 자리는 <b>날짜·기간 칸이
+ * 서는 자리</b>라, 지역을 이미 고른 뒤에도 일곱 개가 계속 화면을 차지했다 —
+ * 고르고 나면 다시 볼 일이 없는 목록이다.
+ *
+ * <p>대신 <b>칸을 누르면 목록이 뜬다.</b> 아무것도 안 쳐도 전부 보이므로 "어디를 갈 수
+ * 있는지 모르는 사람이 첫 글자를 못 친다"는 문제도 그대로 풀린다 —
+ * 검색창만 덩그러니 두는 것과는 다르다.
  *
  * <p>⚠️ <b>가로로 미는 상자를 만들지 않는다.</b> 끝까지 민 제스처가 페이지로 이어져
- * 화면 전체가 옆으로 밀린다. 줄바꿈되는 묶음으로 두고 세로로 흐르게 한다.
+ * 화면 전체가 옆으로 밀린다. 목록은 세로로 흐르고 넘치면 세로로만 스크롤한다.
  *
  * <h3>무엇으로 검색되는지는 서버가 정한다</h3>
  * "강원"이라 치면 속초와 춘천이 나와야 하는데 짧은 이름에는 그 글자가 없다.
@@ -26,100 +30,175 @@ import { TEXT_INPUT } from './styles'
 export function RegionPicker({
   value,
   onChange,
-  name = 'region',
 }: {
   value: string
   onChange: (slug: string) => void
-  /** 라디오 묶음 이름. 한 화면에 둘 이상 두게 되면 갈라야 한다 */
-  name?: string
 }) {
+  const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
-  const inputId = useId()
+  /** 키보드로 짚고 있는 줄. 마우스로만 쓰는 사람에게는 늘 -1이다 */
+  const [active, setActive] = useState(-1)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const listId = useId()
+
+  const matched = useMemo(() => searchRegions(keyword), [keyword])
+  const selectedName = regionNameOf(value)
 
   /*
-   * ⚠️ <b>고른 지역은 검색어에 안 맞아도 목록에 남긴다.</b>
-   *
-   * 안 그러면 "강원"을 친 순간 고른 곳(경주)이 화면에서 사라지는데, 아래 요약 줄은
-   * 여전히 "경주 · 2일"이라고 적혀 있다 — 화면이 두 가지 말을 하게 된다.
-   * 무엇보다 <b>고른 것을 되돌아볼 방법이 없어진다.</b> 검색어를 지워야만 다시 보인다.
-   *
-   * 맨 앞에 세운다. 걸러진 결과 사이에 섞어 두면 왜 그것만 남았는지 읽히지 않는다.
+   * 바깥을 누르면 닫는다. <b>{@code pointerdown}이다</b> — {@code click}으로 걸면
+   * 목록 안의 버튼을 누를 때 그 클릭이 바깥 처리기에 먼저 닿아 목록이 닫히고,
+   * 사라진 버튼 위에서 클릭이 끝나 <b>고르기가 아예 안 먹는</b> 브라우저가 있다.
    */
-  const found = useMemo(() => searchRegions(keyword), [keyword])
-  const matched = useMemo(() => {
-    if (found.some((option) => option.slug === value)) {
-      return found
+  useEffect(() => {
+    if (!open) {
+      return
     }
-    const selected = regionOptions().find((option) => option.slug === value)
-    return selected ? [selected, ...found] : found
-  }, [found, value])
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        close()
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
 
-  /*
-   * 고른 지역을 남겨 두는 것과 <b>"못 찾았다"고 말하는 것은 별개다.</b>
-   * 남긴 칩 하나 때문에 목록이 비지 않으니, 안내가 필요한지는 걸러진 결과로 판단한다 —
-   * 안 그러면 사용자가 오타를 쳐도 자기 칩만 덩그러니 남고 아무 설명이 없다.
-   */
-  const noMatch = keyword.trim().length > 0 && found.length === 0
+  function close() {
+    setOpen(false)
+    /*
+     * 검색어를 비운다. 남겨두면 다음에 열 때 지난번에 치던 글자가 목록을 이미 걸러 놓아,
+     * 고를 수 있는 지역이 줄어 있는 것처럼 보인다.
+     */
+    setKeyword('')
+    setActive(-1)
+  }
+
+  function pick(slug: string) {
+    onChange(slug)
+    close()
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
+      close()
+      return
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()   // 칸 안에서 커서가 튀지 않게
+      if (!open) {
+        setOpen(true)
+        return
+      }
+      const step = event.key === 'ArrowDown' ? 1 : -1
+      setActive((current) => {
+        const next = current + step
+        // 끝에서 반대편으로 돈다. 일곱 줄이라 끝까지 갔다가 되짚어 오는 편이 길다.
+        return next < 0 ? matched.length - 1 : next >= matched.length ? 0 : next
+      })
+      return
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault()   // 폼이 통째로 제출되지 않게
+      /*
+       * 짚어 둔 줄이 없으면 첫 줄을 고른다. "여수"까지 치고 Enter를 누르는 사람에게
+       * 화살표를 한 번 더 누르게 할 이유가 없다.
+       */
+      const target = matched[active >= 0 ? active : 0]
+      if (target) {
+        pick(target.slug)
+      }
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-2.5">
-      {/*
-        검색창은 지역이 몇이든 <b>늘 세운다.</b> 일곱은 아직 한눈에 들어오지만,
-        지역이 늘면서 갑자기 나타나는 칸은 "없던 것이 생겼다"로 읽혀 화면을 다시 익히게 한다.
-        지금 두면 아래 목록이 줄어드는 것으로 사용자가 검색을 먼저 배운다.
-      */}
+    <div ref={rootRef} className="relative flex flex-col gap-2">
       <input
-        id={inputId}
-        type="search"
-        value={keyword}
-        onChange={(event) => setKeyword(event.target.value)}
-        placeholder="지역 이름으로 찾기 (예: 여수, 강원)"
-        className={TEXT_INPUT}
+        ref={inputRef}
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+        aria-label="지역 선택"
+        /*
+         * 닫혀 있을 때는 <b>고른 지역 이름</b>이 값이다. 검색어를 남겨 두면 고르고 난 뒤에도
+         * 칸에 "강원"이 남아, 무엇을 골랐는지가 칸이 아니라 다른 데서 확인된다.
+         */
+        value={open ? keyword : selectedName}
+        onChange={(event) => {
+          setKeyword(event.target.value)
+          setActive(-1)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        /* 눌러서도 열린다. 이미 초점이 있는 칸을 다시 누르면 onFocus가 오지 않는다 */
+        onClick={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
+        placeholder="지역 검색 (예: 여수, 강원)"
         autoComplete="off"
-        aria-label="지역 검색"
+        className={TEXT_INPUT}
       />
 
-      {noMatch && (
+      {open && (
         /*
-         * 못 찾았을 때 지원 지역을 함께 적는다. "결과 없음"만 두면 사용자가
-         * 오타를 냈는지 원래 없는 지역인지 알 수 없다.
+         * 목록. <b>절대 위치로 띄운다</b> — 흐름에 넣으면 열 때마다 아래 날짜·기간 칸이
+         * 통째로 밀려 내려간다. 무엇을 고를지 보려고 열었는데 보고 있던 것이 움직인다.
          *
-         * 조사를 붙여 쓴다 — 앞의 목록과 사이를 띄우면 "춘천 에서"가 된다.
+         * <p><b>넉 줄쯤에서 자르고</b> 나머지는 굴려서 본다({@code max-h-[11.5rem]}).
+         * 일곱을 다 펴면 목록이 날짜 칸을 지나 기간 칸까지 덮어, 지역을 고르는 동안
+         * 나머지 폼이 통째로 가려진다. 잘린 줄이 반쯤 보여야 "아래에 더 있다"도 함께 말한다.
          */
-        <p className="text-hint rounded-ui bg-fill px-3.5 py-3 text-[13px] leading-relaxed">
-          찾는 지역이 없어요. 지금은{' '}
-          <span className="text-fg font-medium">
-            {regionOptions()
-              .map((option) => option.name)
-              .join(' · ')}
-          </span>
-          에서 여행을 계획할 수 있어요.
-        </p>
-      )}
-
-      {matched.length > 0 && (
-        <div className="flex flex-wrap gap-2.5">
-          {matched.map((option) => (
-            <label key={option.slug}>
-              <input
-                type="radio"
-                name={name}
-                className="peer sr-only"
-                value={option.slug}
-                checked={value === option.slug}
-                onChange={() => onChange(option.slug)}
-              />
-              {/*
-                고른 칸은 brand(틸) 배경에 잉크 글자다. 틸이 밝아서 흰 글자는 2.2:1로 안 보인다 —
-                밝게 두고 글자를 어둡게 하는 것이 팔레트 규칙이다.
-                초점링은 brand-deep. brand는 흰 카드 위에서 링으로 보이지 않는다.
-              */}
-              <span className="border-line text-muted peer-checked:border-brand peer-checked:bg-brand peer-checked:text-fg peer-focus-visible:outline-brand-deep flex h-11 cursor-pointer items-center justify-center rounded-ui border bg-surface px-3 text-[15px] font-medium transition-colors peer-checked:font-semibold peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2">
-                {option.name}
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label="지역 목록"
+          className="border-line bg-surface shadow-raised rounded-ui absolute top-full right-0 left-0 z-20 m-0 mt-1.5 max-h-[11.5rem] list-none overflow-y-auto p-1"
+        >
+          {matched.length === 0 ? (
+            /*
+             * 못 찾았을 때 지원 지역을 함께 적는다. "결과 없음"만 두면 사용자가
+             * 오타를 냈는지 원래 없는 지역인지 알 수 없다.
+             */
+            <li className="text-hint px-3 py-3 text-[13px] leading-relaxed">
+              찾는 지역이 없어요. 지금은{' '}
+              <span className="text-fg font-medium">
+                {regionOptions()
+                  .map((option) => option.name)
+                  .join(' · ')}
               </span>
-            </label>
-          ))}
-        </div>
+              에서 여행을 계획할 수 있어요.
+            </li>
+          ) : (
+            matched.map((option, index) => {
+              const selected = option.slug === value
+              return (
+                <li key={option.slug}>
+                  <button
+                    id={`${listId}-${index}`}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    /* 마우스로 짚은 줄과 키보드로 짚은 줄을 하나로 둔다 — 둘이 동시에 켜지면 어느 것이 골라질지 흐려진다 */
+                    onPointerEnter={() => setActive(index)}
+                    onClick={() => pick(option.slug)}
+                    className={`flex w-full cursor-pointer items-baseline justify-between gap-3 rounded-[10px] border-0 px-3 py-2.5 text-left transition-colors ${
+                      index === active ? 'bg-brand-tint' : 'bg-transparent'
+                    }`}
+                  >
+                    <span
+                      className={`text-[15px] ${selected ? 'text-brand-deep font-semibold' : 'text-fg font-medium'}`}
+                    >
+                      {option.name}
+                    </span>
+                    {/* 시도명을 함께 적는다. "강원"으로 찾은 사람에게 왜 이 줄이 나왔는지를 보여준다 */}
+                    <span className="text-hint flex-none text-[12px]">{option.province}</span>
+                  </button>
+                </li>
+              )
+            })
+          )}
+        </ul>
       )}
     </div>
   )

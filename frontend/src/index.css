@@ -442,6 +442,20 @@
   }
 
   /*
+   * 칸 아래에서 펼쳐지는 면 (달력).
+   *
+   * 시트가 아니다 — 화면을 덮으러 온 것이 아니라 <b>누른 칸에서 자라난다.</b>
+   * 그래서 위쪽 모서리를 축으로 잡고(transform-origin) 아주 조금만 커진다.
+   * 가운데에서 커지면 칸과 상관없이 허공에 뜬 것처럼 보인다.
+   *
+   * 시트(240ms)보다 짧다. 이동 거리가 6px뿐이라 같은 시간을 주면 굼떠 보인다.
+   */
+  .calendar-pop {
+    transform-origin: top center;
+    animation: pk-pop-down 160ms var(--ease-out-quart);
+  }
+
+  /*
    * 눌림 — 손끝에 돌려주는 반응.
    *
    * 지금까지 버튼은 hover에서 색만 변했다. hover가 없는 모바일이 주 사용 환경인데,
@@ -569,6 +583,13 @@
   pointer-events: none;
 }
 
+@keyframes pk-pop-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+}
+
 @keyframes pk-shimmer {
   0% {
     background-position: -320px 0;
@@ -614,6 +635,7 @@
   .sheet-dim,
   .sheet-panel,
   .dialog-panel,
+  .calendar-pop,
   .skeleton {
     animation: none;
   }

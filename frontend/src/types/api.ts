@@ -99,7 +99,14 @@ export interface ScoreFactor {
   label: string
   score: number
   weightPercent: number
-  detail: string
+  /**
+   * 점수의 근거. **없을 수 있다.**
+   *
+   * 근거가 점수를 되풀이할 뿐이면 서버가 안 보낸다 — 한적도의 "예상 혼잡 낮음"이 그랬다.
+   * 78이라는 수를 말로 옮긴 것이라 새로 알려주는 것이 없었다.
+   * 근접도의 "직선거리 1.5km"는 점수 뒤의 원자료라 남아 있다.
+   */
+  detail?: string | null
 }
 
 /**
@@ -146,15 +153,13 @@ export type PlaceOffStatus =
 /**
  * 후보를 어디서 가져왔는가. 서버 CandidateSource.
  *
- * ⚠️ 이 값을 화면에 그대로 쓰지 말 것. 사용자에게 필요한 것은 "REGIONAL_FALLBACK"이 아니라
- * 그 장소가 왜 나왔는지이고, 각 후보의 `reason`이 이미 출처에 맞는 말을 담고 있다.
+ * ⚠️ **응답에 담겨 오지 않는다.** 한 목록에 두 출처가 섞이면서 값 하나로는 답할 수 없게 됐다 —
+ * 출처는 후보마다 자기 `reason` 문장이 말한다.
  */
 export type CandidateSource = 'RELATED' | 'REGIONAL_FALLBACK'
 
 export interface Alternatives {
   status: PlaceOffStatus
-  /** 목록이 비었으면 null */
-  source: CandidateSource | null
   /** 화면에 그대로 띄우는 문구. 추천이 있으면 null이다 — 목록 자체가 답이다 */
   statusMessage: string | null
   /** 원래 장소의 그 날 한적도. 모르면 null */
@@ -162,6 +167,22 @@ export interface Alternatives {
   /** 대안으로 권하려면 필요한 최소 개선폭. 서버가 정한다 */
   minQuietnessGain: number
   alternatives: Alternative[]
+}
+
+
+/**
+ * 여행 — 저장한 코스의 묶음. 서버 TripResponse와 짝을 이룬다.
+ *
+ * ⚠️ **여행 총점이 없다.** 코스 총점의 평균은 마이페이지에서 걷어낸 "평균 한적 지수"와
+ * 같은 물건이다 — 지역도 날짜도 다른 값의 평균은 아무 말도 아니다.
+ * 날짜 범위·지역 나열은 화면이 `courses`에서 직접 계산한다.
+ */
+export interface Trip {
+  id: number
+  name: string
+  createdAt: string
+  /** 담은 순서 그대로. 점수·등급은 코스가 각자 자기 것을 갖고 온다 */
+  courses: SavedCourseSummary[]
 }
 
 /**

@@ -112,12 +112,19 @@ class ApiEndpointsTest {
 					.andExpect(jsonPath("$.data.alternatives[0].recommendation").isNumber())
 					.andExpect(jsonPath("$.data.alternatives[0].levelLabel").isNotEmpty())
 					.andExpect(jsonPath("$.data.alternatives[0].reason")
-							.value(org.hamcrest.Matchers.startsWith("불국사 근처의 비슷한 분류")))
+							.value(org.hamcrest.Matchers.startsWith("불국사 근처의 비슷한 곳 중에서")))
 					// 추천도가 어떻게 나왔는지 화면에서 설명할 수 있어야 한다.
 					.andExpect(jsonPath("$.data.alternatives[0].factors[0].label").value("한적도"))
 					.andExpect(jsonPath("$.data.alternatives[0].factors[0].score").isNumber())
 					.andExpect(jsonPath("$.data.alternatives[0].factors[0].weightPercent").isNumber())
-					.andExpect(jsonPath("$.data.alternatives[0].factors[0].detail").isNotEmpty());
+					/*
+					 * 한적도에는 근거가 없다. "예상 혼잡 낮음"은 점수를 말로 옮긴 것이라
+					 * 새로 알려주는 것이 없어 걷어냈다(ScoreFactor.detail 주석).
+					 * 근거가 남아 있는 것은 원자료를 담은 항목뿐이다 — 근접도의 직선거리.
+					 */
+					.andExpect(jsonPath("$.data.alternatives[0].factors[0].detail").doesNotExist())
+					.andExpect(jsonPath("$.data.alternatives[0].factors[1].label").value("동선 근접도"))
+					.andExpect(jsonPath("$.data.alternatives[0].factors[1].detail").isNotEmpty());
 		}
 
 		/**

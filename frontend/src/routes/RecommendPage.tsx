@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { ListEdgeJump } from '../components/ListEdgeJump'
 import { LEVEL_SOLID } from '../components/levelStyles'
-import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
+import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
+import { DatePicker } from '../components/DatePicker'
 import { RegionPicker } from '../components/RegionPicker'
 import { regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
@@ -17,7 +18,6 @@ import type {
   ItineraryDensity,
 } from '../types/api'
 import {
-  daysFromToday,
   formatCompactDate,
   formatDateRange,
   formatWeekday,
@@ -43,9 +43,6 @@ import {
  * "직접 짠 코스"가 아니라 시스템이 유도한 코스가 되어 진단의 의미가 사라진다.
  * 근거를 펴는 자리는 여기 하나뿐이다.
  */
-
-/** 기본 날짜. /plan과 같은 값이어야 두 진입로에서 같은 날이 보인다. */
-const DEFAULT_DAYS_AHEAD = 7
 
 const DURATIONS = [
   { nights: 0, label: '1일' },
@@ -121,16 +118,20 @@ function toDays(draft: CourseDraft): string[][] {
 
 export function RecommendPage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { state, restore } = useTrip()
+  const { restore } = useTrip()
 
-  /* 홈의 "이 날로 코스 짜기"가 실어 보낸 날짜. /plan과 같은 방식으로 받는다 —
-     전역 상태에 미리 쓰지 않아, 되돌아 나가면 흔적이 남지 않는다. */
-  const suggestedDate = (location.state as { startDate?: string } | null)?.startDate
-
-  const [startDate, setStartDate] = useState(
-    suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
-  )
+  /*
+   * 날짜는 <b>언제나 오늘</b>로 시작한다 (2026-09-01).
+   *
+   * 예전에는 앞선 코스 짜기의 날짜({@code state.plan?.startDate})를 물려받고, 없으면
+   * 일주일 뒤를 채워 두었다. 둘 다 <b>사용자가 이 화면에서 고른 적 없는 날</b>이다 —
+   * 특히 물려받은 값은 지난 검색의 흔적이라, 이 문을 다시 열 때마다 남의 답이 먼저 적혀 있다.
+   *
+   * <p>아래 지역·기간·두 문항과 같은 규칙이다. 미리 채워 둔 답은 사용자가 고른 답과
+   * 구분되지 않는다. 날짜만 예외로 비워 둘 수 없으므로(달력 입력은 빈 값이 성립하지 않는다)
+   * <b>가장 중립적인 값인 오늘</b>로 두고, 사용자가 직접 옮기게 한다.
+   */
+  const [startDate, setStartDate] = useState(today)
   /*
    * ⚠️ <b>아무것도 고른 채로 시작하지 않는다</b> (2026-08-31).
    *
@@ -153,11 +154,13 @@ export function RecommendPage() {
    * 그 경로로 들어온 사람에게 지역이 고정돼 있으면, 경주를 보러 온 것이 아닌데도
    * 경주 코스를 받게 된다.
    *
-   * <p>같은 이유로 <b>기본값도 두지 않는다.</b> 미리 켜 두면 고르지 않은 사람과
-   * 경주를 고른 사람이 구분되지 않는다 — 이 문은 어디로 갈지 모르는 사람의 진입점이라
-   * 더더욱 대신 정해 주면 안 된다.
+   * <p>같은 이유로 <b>기본값도, 물려받은 값도 두지 않는다.</b> 미리 켜 두면 고르지 않은
+   * 사람과 경주를 고른 사람이 구분되지 않는다 — 이 문은 어디로 갈지 모르는 사람의 진입점이라
+   * 더더욱 대신 정해 주면 안 된다. 코스 짜기에서 고른 지역을 물려받던 것도 걷어냈다
+   * (2026-09-01): 지난 검색이 남긴 값이라 <b>이번에 고른 것처럼 보이지만 아무도 고른 적이
+   * 없다.</b>
    */
-  const [region, setRegion] = useState(state.plan?.region ?? '')
+  const [region, setRegion] = useState('')
   const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
   /*
@@ -499,14 +502,8 @@ export function RecommendPage() {
           <div>
             <legend className={`${CARD_TITLE} p-0`}>언제 며칠 가세요</legend>
           </div>
-          <input
-            type="date"
-            className={TEXT_INPUT}
-            value={startDate}
-            min={today()}
-            onChange={(event) => setStartDate(event.target.value)}
-            required
-          />
+          {/* 코스 짜기와 같은 컴포넌트다. DatePicker 주석 참고 */}
+          <DatePicker value={startDate} onChange={setStartDate} ariaLabel="여행 시작일" />
           <div className="grid grid-cols-4 gap-2">
             {DURATIONS.map((option) => (
               <label key={option.nights}>

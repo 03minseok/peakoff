@@ -70,9 +70,14 @@ class MockRecommendationProviderTest {
 
 		// "함께 많이 찾는 곳"은 연관 관광지 데이터가 있어야 할 수 있는 말이다.
 		// 목업은 같은 분류·가까운 거리로 뽑으므로 그렇게만 말한다.
-		assertThat(alternatives.get(0).reason())
-				.startsWith("불국사 근처의 비슷한 분류")
-				.containsAnyOf("예상 혼잡 낮음", "예상 혼잡 보통", "예상 혼잡 다소 높음");
+		assertThat(alternatives.get(0).reason()).isEqualTo("불국사 근처의 비슷한 곳 중에서 골랐어요.");
+
+		/*
+		 * 혼잡 문구는 이 문장에 붙지 않는다. 화면에서 바로 윗줄에 한적도 배지가 이미 서 있어
+		 * 같은 사실을 숫자로 한 번, 말로 한 번 말하는 꼴이었다.
+		 * 한적도는 여전히 항목(ScoreFactor)의 근거로 남아 있다.
+		 */
+		assertThat(alternatives.get(0).reason()).doesNotContain("예상 혼잡");
 	}
 
 	@Test
