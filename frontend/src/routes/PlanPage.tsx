@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
+import { CARD_RAISED, PRIMARY_BUTTON } from '../components/styles'
+import { DatePicker } from '../components/DatePicker'
 import { RegionPicker } from '../components/RegionPicker'
 import { regionNameOf } from '../constants/regions'
 import { fetchForecastWindow } from '../services/api'
 import { useTrip } from '../state/tripContext'
-import { daysFromToday, formatDateRange, formatKoreanDate, today } from '../utils/date'
+import { formatDateRange, formatKoreanDate, today } from '../utils/date'
 
 /**
  * 당일치기(1일)부터 4일까지.
@@ -21,14 +22,6 @@ const DURATIONS = [
   { nights: 2, label: '3일' },
   { nights: 3, label: '4일' },
 ]
-
-/**
- * 기본 날짜를 일주일 뒤로 둔다.
- *
- * 오늘로 두면 "지금 당장 출발"이라는 비현실적인 기본값이 되고,
- * 비워두면 심사위원이 달력을 열어 고르는 단계가 하나 늘어난다.
- */
-const DEFAULT_DAYS_AHEAD = 7
 
 /*
  * 선택 버튼. 라디오 입력을 sr-only로 숨기고 옆의 span을 버튼처럼 꾸민다.
@@ -53,7 +46,7 @@ const CARD_TITLE = 'text-fg text-sm font-semibold'
 export function PlanPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { state, setPlan } = useTrip()
+  const { setPlan } = useTrip()
 
   /*
    * 홈이 실어 보낸 것.
@@ -95,9 +88,20 @@ export function PlanPage() {
    * <b>사용자가 방금 그 지역을 눌러서</b> 온 값이다.
    */
   const [region, setRegion] = useState(handoff?.region ?? '')
-  const [startDate, setStartDate] = useState(
-    suggestedDate ?? state.plan?.startDate ?? daysFromToday(DEFAULT_DAYS_AHEAD),
-  )
+  /*
+   * 날짜도 <b>고른 적 있는 값을 끌어오지 않는다</b> (2026-09-01). 위 지역·기간과 같다.
+   *
+   * <p>예전에는 {@code state.plan?.startDate}를 물려받고, 없으면 일주일 뒤를 채웠다.
+   * 물려받은 값은 <b>지난 여행이 남긴 날</b>이라 새로 들어온 사람에게도 남의 답이 적혀 있고,
+   * 일주일 뒤라는 기본값은 <b>우리가 고른 날</b>이다.
+   *
+   * <p>날짜만은 비워 둘 수 없어서(달력 입력은 빈 값이 성립하지 않는다) 가장 중립적인
+   * <b>오늘</b>로 두고 사용자가 옮기게 한다. 코스 발견 화면과 같은 규칙이다.
+   *
+   * <p>{@code suggestedDate}는 예외다 — 홈 주간 예보의 "이 날로 코스 짜기"가 실어 보낸,
+   * <b>사용자가 방금 그 날을 눌러서</b> 온 값이다. {@code handoff.region}과 같은 이유로 살린다.
+   */
+  const [startDate, setStartDate] = useState(() => suggestedDate ?? today())
   /** 며칠 머무를지. <b>고르기 전에는 없다</b> — 위 지역과 같은 이유다 */
   const [nights, setNights] = useState<number | null>(null)
 
@@ -276,13 +280,16 @@ export function PlanPage() {
           <div>
             <legend className={`${CARD_TITLE} p-0`}>언제 떠나요</legend>
           </div>
-          <input
-            type="date"
-            className={TEXT_INPUT}
+          {/*
+            네이티브 달력을 걷어내고 직접 그린다(2026-09-01). 이유는 DatePicker 주석에.
+            <b>예측 창을 함께 넘긴다</b> — 아래 안내문이 하는 말을 달력이 날짜 위에서
+            미리 한다. 고르고 나서 듣는 것과 고르기 전에 보이는 것은 다르다.
+          */}
+          <DatePicker
             value={startDate}
-            min={today()}
-            onChange={(event) => setStartDate(event.target.value)}
-            required
+            onChange={setStartDate}
+            forecastEnd={forecastEnd}
+            ariaLabel="여행 시작일"
           />
           {/*
             고른 날짜를 요일까지 되읽어주던 회색 줄을 걷어냈다 (2026-08-31).

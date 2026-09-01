@@ -91,8 +91,19 @@ public class RecommendationScorer {
 		return new ScoredPlace(candidate, quietness, level, weightedScore(factors), factors);
 	}
 
+	/**
+	 * 한적도 항목.
+	 *
+	 * <p>근거를 붙이지 않는다(2026-09-01). 한때 "예상 혼잡 낮음"이 딸려 있었는데
+	 * <b>78이라는 점수를 말로 옮긴 것</b>이라 새로 알려주는 것이 없었다. 바로 위 카드에도
+	 * 같은 뜻의 한적도 배지가 서 있어 같은 사실이 화면에 세 번 나왔다.
+	 *
+	 * <p>근접도가 근거를 갖는 것과 대비된다 — "직선거리 1.5km"는 92라는 점수 <b>뒤의
+	 * 원자료</b>라 점수만으로는 알 수 없다. 한적도의 원자료는 집중률인데, 그 수를 꺼내면
+	 * 사용자가 처음 보는 지표가 하나 늘고 한적도와 방향이 반대라 오히려 헷갈린다.
+	 */
 	private static ScoreFactor quietnessFactor(int quietness, CongestionLevel level, ScoreWeights weights) {
-		return new ScoreFactor("한적도", quietness, weights.quietness(), level.congestionPhrase());
+		return new ScoreFactor("한적도", quietness, weights.quietness(), null);
 	}
 
 	/** 동선 근접도. 가까울수록 높다. */

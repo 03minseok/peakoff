@@ -113,7 +113,11 @@ interface Props {
  */
 type LoadState =
   | { phase: 'loading' }
-  | { phase: 'loaded'; alternatives: Alternative[]; emptyMessage: string | null }
+  | {
+      phase: 'loaded'
+      alternatives: Alternative[]
+      emptyMessage: string | null
+    }
   | { phase: 'nearby'; nearby: NearbyPlace[] }
   | { phase: 'error'; message: string }
 
@@ -903,14 +907,23 @@ export function AlternativeSheet({
                                 </span>
                               </span>
                             </div>
-                            {/* 근거는 줄을 바꿔 통째로 내린다. 좁은 화면에서 옆에 붙이면 넘친다. */}
-                            <span className="text-hint text-[11.5px] leading-[1.5]">
-                              {factor.detail}
-                            </span>
+                            {/*
+                              근거는 줄을 바꿔 통째로 내린다. 좁은 화면에서 옆에 붙이면 넘친다.
+
+                              ⚠️ <b>없으면 줄을 만들지 않는다.</b> 근거가 점수를 되풀이할 뿐인
+                              항목에는 서버가 아예 안 보낸다(한적도가 그렇다). 빈 줄을 남기면
+                              "근거가 아직 안 왔다"로 읽힌다.
+                            */}
+                            {factor.detail ? (
+                              <span className="text-hint text-[11.5px] leading-[1.5]">
+                                {factor.detail}
+                              </span>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
                     ) : null}
+
                   </details>
 
                   {/*

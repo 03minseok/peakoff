@@ -75,6 +75,35 @@ export function ChevronRight({ size = 16, className = '' }: Props) {
   )
 }
 
+/**
+ * 아래 꺾쇠. <b>펼쳐지는 것</b>에만 붙인다 — 오른쪽 꺾쇠(이어서 간다)와 뜻이 갈린다.
+ *
+ * <p>열렸을 때 180도 돌려 쓴다. 위·아래 두 그림을 갈아끼우면 두 경로의 여백이 달라
+ * 꺾쇠가 미세하게 튄다.
+ */
+export function ChevronDown({ size = 16, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <path d="M5.5 8 10 12.5 14.5 8" />
+    </svg>
+  )
+}
+
+/**
+ * 달력. 날짜를 고르는 칸 앞에 선다.
+ *
+ * <p>고리 두 개를 위로 세워 그린다. 상자만 그리면 창문·카드와 구별되지 않는다 —
+ * 달력을 달력으로 읽히게 하는 것은 이 두 획이다.
+ */
+export function Calendar({ size = 18, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <rect x="3" y="4.5" width="14" height="12.5" rx="2.5" />
+      <path d="M3 8.5h14M7 2.8v3.2M13 2.8v3.2" />
+    </svg>
+  )
+}
+
 /** 왼쪽 꺾쇠. 되돌아가는 링크 앞에 붙는다 */
 export function ChevronLeft({ size = 16, className = '' }: Props) {
   return (
@@ -126,6 +155,65 @@ export function ArrowDownToLine({ size = 20, className = '' }: Props) {
   return (
     <svg {...ICON} width={size} height={size} className={className}>
       <path d="M10 3.5v8M6.5 8.5 10 12l3.5-3.5M4.5 16h11" />
+    </svg>
+  )
+}
+
+/**
+ * 알림. 동그라미 안의 느낌표.
+ *
+ * <p>느낌표를 <b>획 두 개로</b> 그린다 — 세로 막대와 아래 점. 점을 아주 짧은 선으로 두면
+ * {@code strokeLinecap: round} 덕에 동그란 점이 되어, 원 하나를 따로 그리는 것보다
+ * 다른 아이콘과 굵기가 정확히 같아진다.
+ */
+export function Alert({ size = 15, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6.6v4" />
+      <path d="M10 13.4v0" />
+    </svg>
+  )
+}
+
+/**
+ * 코스 — <b>점 둘을 잇는 길</b>.
+ *
+ * <p>지도 핀이 아니라 <b>경로</b>를 그린다. 이 서비스에서 코스는 장소 하나가 아니라
+ * 순서대로 이은 여러 곳이고, 핀 하나는 "장소"를 뜻해 찜과 갈리지 않는다.
+ * 위와 아래 점, 그 사이를 굽어 잇는 선 — 여행 카드의 날짜 축이 쓰는 그림과 같은 뜻이다.
+ */
+export function Route({ size = 20, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <circle cx="5.5" cy="5" r="2.1" />
+      <circle cx="14.5" cy="15" r="2.1" />
+      <path d="M7.6 5h4.15a2.6 2.6 0 0 1 0 5.2H8.25a2.6 2.6 0 0 0 0 5.2h4.15" />
+    </svg>
+  )
+}
+
+/**
+ * 여행 — <b>손잡이 달린 가방</b>.
+ *
+ * <p>코스 여럿을 하나로 묶은 것이 여행이다. 가방은 "담는 그릇"을 곧바로 말하고,
+ * 위의 {@link Route}(길)와 생김새가 겹치지 않는다 — 둘이 이 화면에서 나란히 선다.
+ */
+export function Bag({ size = 20, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <rect x="2.6" y="6.4" width="14.8" height="10" rx="2.4" />
+      <path d="M7.2 6.4V5.1a1.7 1.7 0 0 1 1.7-1.7h2.2a1.7 1.7 0 0 1 1.7 1.7v1.3" />
+    </svg>
+  )
+}
+
+/** 계정 — 어깨와 머리. 프로필 그림({@code ProfileAvatar})과 같은 형태를 획으로만 그린다 */
+export function User({ size = 20, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <circle cx="10" cy="6.6" r="3.1" />
+      <path d="M3.9 16.6a6.1 6.1 0 0 1 12.2 0" />
     </svg>
   )
 }

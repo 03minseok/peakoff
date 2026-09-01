@@ -19,6 +19,7 @@ import type {
   FavoritePlace,
   PublicCourse,
   Place,
+  Trip,
   QuietSpot,
   RegionOption,
   SaveCourseRequest,
@@ -113,9 +114,46 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     throw new ApiRequestError('NETWORK_ERROR', '서버에 연결할 수 없습니다.')
   }
 
+  let raw: string
+  try {
+    raw = await response.text()
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error
+    }
+    throw new ApiRequestError('INTERNAL_ERROR', '서버 응답을 해석할 수 없습니다.')
+  }
+
+  /*
+   * ⚠️ <b>본문 없는 응답을 실패로 만들지 않는다.</b>
+   *
+   * 예전에는 곧바로 {@code response.json()}을 불렀다. {@code 204 No Content}처럼 본문이
+   * 비어 오면 파싱이 터지고, 그것이 {@code INTERNAL_ERROR}가 되어 <b>서버가 제대로 처리한
+   * 일이 화면에서는 실패로</b> 보였다. 여행 삭제가 그랬다 — 서버는 지웠는데 화면은
+   * 그대로 있다가 새로고침해야 사라졌다.
+   *
+   * <p>DELETE에 본문 없이 204를 주는 것은 흔한 REST 관례이고, 우리 서버가 지금은
+   * 봉투를 실어 보내더라도 <b>화면이 그 약속에 매달릴 이유가 없다.</b> 서버를 고쳐도
+   * 옛 빌드가 돌고 있으면 같은 증상이 되살아난다.
+   *
+   * <p>대신 <b>실패한 응답의 빈 본문은 그대로 실패</b>다. 502를 조용히 성공으로
+   * 넘기면 화면이 아무 일 없었다는 듯 서 있게 된다.
+   */
+  if (raw.trim() === '') {
+    if (!response.ok) {
+      /*
+       * 상태 코드를 문구에 적지 않는다. 이 메시지는 그대로 화면 알림이 되는데,
+       * "서버가 502로 응답했습니다"는 사용자가 할 수 있는 일이 없는 말이다.
+       * 숫자는 콘솔에 이미 남는다.
+       */
+      throw new ApiRequestError('INTERNAL_ERROR', '서버 응답을 해석할 수 없습니다.')
+    }
+    return undefined as T
+  }
+
   let payload: ApiResponse<T>
   try {
-    payload = (await response.json()) as ApiResponse<T>
+    payload = JSON.parse(raw) as ApiResponse<T>
   } catch {
     // 서버가 죽어 프록시가 HTML 오류 페이지를 돌려주는 경우 등
     throw new ApiRequestError('INTERNAL_ERROR', '서버 응답을 해석할 수 없습니다.')
@@ -504,6 +542,35 @@ export function fetchRecentCourses(limit = 4, signal?: AbortSignal): Promise<Pub
 }
 
 /** GET /api/courses — 내가 저장한 코스 목록. 최근 저장한 것이 먼저 온다 */
+
+/** GET /api/trips — 내 여행 전부. 최근 만든 것이 위로 온다 */
+export function fetchTrips(signal?: AbortSignal): Promise<Trip[]> {
+  return apiRequest<Trip[]>('/trips', { signal })
+}
+
+/** POST /api/trips — 이름만으로 만든다. 코스는 만들고 나서 담는다 */
+export function createTrip(name: string): Promise<Trip> {
+  return apiRequest<Trip>('/trips', { method: 'POST', body: { name } })
+}
+
+/**
+ * POST /api/trips/{id}/courses — 여행 맨 뒤에 담는다.
+ * 담고 난 여행 전체가 돌아오므로 목록을 다시 조회하지 않아도 된다.
+ */
+export function addCourseToTrip(tripId: number, courseId: number): Promise<Trip> {
+  return apiRequest<Trip>(`/trips/${tripId}/courses`, { method: 'POST', body: { courseId } })
+}
+
+/** DELETE /api/trips/{id}/courses/{courseId} — 여행에서만 뺀다. 저장 목록에는 남는다 */
+export function removeCourseFromTrip(tripId: number, courseId: number): Promise<Trip> {
+  return apiRequest<Trip>(`/trips/${tripId}/courses/${courseId}`, { method: 'DELETE' })
+}
+
+/** DELETE /api/trips/{id} — 묶음만 지운다. 담겨 있던 코스는 그대로 남는다 */
+export function deleteTrip(tripId: number): Promise<void> {
+  return apiRequest<void>(`/trips/${tripId}`, { method: 'DELETE' })
+}
+
 export function fetchSavedCourses(signal?: AbortSignal): Promise<SavedCourseSummary[]> {
   return apiRequest<SavedCourseSummary[]>('/courses', { signal })
 }

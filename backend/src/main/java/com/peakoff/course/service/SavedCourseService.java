@@ -46,6 +46,11 @@ public class SavedCourseService {
 
 	private final SavedCourseRepository savedCourseRepository;
 	private final MemberRepository memberRepository;
+	/**
+	 * 코스를 지울 때 여행 연결을 함께 치우기 위해서다. 코스가 사라졌는데 연결이 남으면
+	 * 여행 목록이 없는 코스를 가리키다 외래키에서 터진다.
+	 */
+	private final com.peakoff.trip.domain.TripCourseRepository tripCourseRepository;
 	private final PlaceProvider placeProvider;
 	private final Clock clock;
 
@@ -127,8 +132,13 @@ public class SavedCourseService {
 
 	@Transactional
 	public void delete(Long memberId, Long courseId) {
-		// 존재 확인과 소유권 확인이 같은 질의에서 끝난다.
-		savedCourseRepository.delete(getOwned(memberId, courseId));
+		SavedCourse course = getOwned(memberId, courseId);   // 존재 확인과 소유권 확인이 같은 질의에서 끝난다
+		/*
+		 * 이 코스를 담고 있던 여행에서 먼저 뺀다. 여행 자체는 남는다 —
+		 * 코스 하나가 사라졌다고 여행이라는 묶음까지 사라질 이유가 없다.
+		 */
+		tripCourseRepository.deleteByCourseId(course.id());
+		savedCourseRepository.delete(course);
 	}
 
 	/**
