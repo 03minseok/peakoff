@@ -117,7 +117,14 @@ class ApiEndpointsTest {
 					.andExpect(jsonPath("$.data.alternatives[0].factors[0].label").value("한적도"))
 					.andExpect(jsonPath("$.data.alternatives[0].factors[0].score").isNumber())
 					.andExpect(jsonPath("$.data.alternatives[0].factors[0].weightPercent").isNumber())
-					.andExpect(jsonPath("$.data.alternatives[0].factors[0].detail").isNotEmpty());
+					/*
+					 * 한적도에는 근거가 없다. "예상 혼잡 낮음"은 점수를 말로 옮긴 것이라
+					 * 새로 알려주는 것이 없어 걷어냈다(ScoreFactor.detail 주석).
+					 * 근거가 남아 있는 것은 원자료를 담은 항목뿐이다 — 근접도의 직선거리.
+					 */
+					.andExpect(jsonPath("$.data.alternatives[0].factors[0].detail").doesNotExist())
+					.andExpect(jsonPath("$.data.alternatives[0].factors[1].label").value("동선 근접도"))
+					.andExpect(jsonPath("$.data.alternatives[0].factors[1].detail").isNotEmpty());
 		}
 
 		/**

@@ -16,7 +16,11 @@ import com.peakoff.global.support.Texts;
  * @param label         항목 이름 (예: "한적도")
  * @param score         이 항목의 점수 (0~100)
  * @param weightPercent 추천도에 반영된 비율(%). 모든 항목을 더하면 100이 된다
- * @param detail        점수의 근거를 짧게 (예: "예상 혼잡 낮음", "직선거리 3.2km")
+ * @param detail        점수의 근거를 짧게 (예: "직선거리 3.2km"). <b>없어도 된다.</b>
+ *                      근거가 점수를 되풀이할 뿐이면 안 적는 편이 낫다 —
+ *                      한적도의 "예상 혼잡 낮음"이 그랬다. 78이라는 수를 말로 옮긴 것이라
+ *                      새로 알려주는 것이 없고, 줄만 하나 늘었다.
+ *                      반대로 근접도의 "직선거리 1.5km"는 <b>점수 뒤의 원자료</b>라 남긴다
  */
 public record ScoreFactor(String label, int score, int weightPercent, String detail) {
 
@@ -26,6 +30,10 @@ public record ScoreFactor(String label, int score, int weightPercent, String det
 		if (weightPercent < 0 || weightPercent > 100) {
 			throw new IllegalArgumentException("반영 비율은 0~100이어야 합니다. 입력값: " + weightPercent);
 		}
-		detail = Texts.requireNotBlank(detail, "항목 근거");
+		/*
+		 * 빈 문자열은 없는 것으로 본다. 화면이 "있는데 비었다"와 "아예 없다"를
+		 * 갈라 다룰 이유가 없어서다 — 둘 다 그리지 않는다.
+		 */
+		detail = (detail == null || detail.isBlank()) ? null : detail.strip();
 	}
 }
