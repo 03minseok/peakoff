@@ -113,7 +113,16 @@ interface Props {
  */
 type LoadState =
   | { phase: 'loading' }
-  | { phase: 'loaded'; alternatives: Alternative[]; emptyMessage: string | null }
+  | {
+      phase: 'loaded'
+      alternatives: Alternative[]
+      emptyMessage: string | null
+      /**
+       * 후보를 어떻게 골랐는지. <b>목록 전체에 하나</b>다 — 한 목록의 출처는 언제나 하나라
+       * (두 출처를 섞지 않는다) 후보마다 다를 수 없다.
+       */
+      candidateNote: string | null
+    }
   | { phase: 'nearby'; nearby: NearbyPlace[] }
   | { phase: 'error'; message: string }
 
@@ -348,7 +357,12 @@ export function AlternativeSheet({
               : result.alternatives.length > 0
                 ? '남은 후보가 이미 이 날 코스에 담겨 있어요.'
                 : result.statusMessage
-          setLoad({ phase: 'loaded', alternatives: selectable, emptyMessage })
+          setLoad({
+            phase: 'loaded',
+            alternatives: selectable,
+            emptyMessage,
+            candidateNote: result.candidateNote,
+          })
         })
 
     request
@@ -911,6 +925,35 @@ export function AlternativeSheet({
                         ))}
                       </ul>
                     ) : null}
+
+                    {/*
+                      ⚠️ <b>점수 항목이 아니라 "후보를 고른 방법"이다.</b>
+
+                      CLAUDE.md는 추천도를 {한적도 + 연관성 + 카테고리 적합성 + 근접도}로
+                      정의하는데 위 목록에는 둘뿐이라, 명세와 나란히 놓으면 한 항목이 빠진
+                      것처럼 보인다. 빠진 것이 아니라 <b>다른 층에서 쓰고 있다</b> —
+                      연관 관광지는 점수를 올리는 값이 아니라 <b>후보를 고르는 문</b>이다.
+
+                      <p>점수로 넣지 않은 이유는 실측이다. 연관 순위와 한적도가 음의 상관이라
+                      (6개 지역 26,819쌍, 켄달 타우 -0.073) 가점을 주면 <b>더 붐비는 곳을
+                      더 밀게</b> 된다. 자세한 것은 서버의 {@code CandidateSource.noteFor}.
+
+                      <p><b>목록에 넣지 않고 아래에 따로 세운다.</b> ul 안에 한 줄로 끼우면
+                      점수 없는 항목이 되어 "계산했는데 0점"으로 읽힌다.
+                      선을 그어 층을 가르고, 회색으로 두어 위의 숫자들과 무게를 달리한다.
+
+                      <p>문장은 <b>서버가 만든 것을 그대로</b> 쓴다. 화면이 source를 보고
+                      조립하면 출처가 늘 때 양쪽을 고쳐야 하고, 한쪽을 놓치면 계산하지 않은
+                      것을 근거로 말하게 된다.
+                    */}
+                    {load.candidateNote !== null && (
+                      <div className="border-line mt-2.5 flex flex-col gap-0.5 border-t pt-2.5">
+                        <span className="text-hint text-[11px] font-semibold">후보를 고른 방법</span>
+                        <span className="text-hint text-[11.5px] leading-[1.5]">
+                          {load.candidateNote}
+                        </span>
+                      </div>
+                    )}
                   </details>
 
                   {/*
