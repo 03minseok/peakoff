@@ -26,11 +26,6 @@ import com.peakoff.recommendation.domain.PlaceOffStatus;
  *                          각 후보의 {@code reason}이 이미 출처에 맞는 말을 담고 있다
  * @param originQuietness   원래 장소의 그 날 한적도. 모르면 {@code null}.
  *                          후보의 절대 점수만 주면 "이게 지금보다 나은가"를 사용자가 암산해야 한다
- * @param candidateNote     <b>후보를 어떻게 골랐는지</b> 한 문장. 목록이 비었으면 {@code null}.
- *                          점수 항목({@code factors})은 한적도와 근접도 둘뿐인데
- *                          명세는 연관성도 든다 — 이 문장이 <b>연관 관광지를 점수가 아니라
- *                          후보 선정에 썼다</b>는 사실을 화면에서 말한다.
- *                          문장을 서버가 만드는 이유는 {@link CandidateSource#noteFor}에 적어 두었다
  * @param minQuietnessGain  대안으로 권하기 위해 필요한 최소 개선폭.
  *                          <b>서버가 내려보낸다.</b> 화면에 숫자를 적어두면 분석 결과로 기준이
  *                          바뀔 때 한쪽만 고쳐져 설명과 실제가 어긋난다
@@ -40,24 +35,15 @@ public record AlternativesResponse(
 		PlaceOffStatus status,
 		String statusMessage,
 		CandidateSource source,
-		String candidateNote,
 		Integer originQuietness,
 		int minQuietnessGain,
 		List<AlternativeResponse> alternatives) {
 
-	/**
-	 * @param originName 기준 장소 이름. 후보를 어떻게 골랐는지 말하려면 <b>무엇을 기준으로
-	 *                   골랐는지</b>가 문장에 들어가야 한다 — {@code Alternatives}는 점수와
-	 *                   목록만 들고 있어 이름을 여기서 받는다
-	 */
-	public static AlternativesResponse from(Alternatives alternatives, String originName) {
-		CandidateSource source = alternatives.source();
+	public static AlternativesResponse from(Alternatives alternatives) {
 		return new AlternativesResponse(
 				alternatives.status(),
 				alternatives.status().message(),
-				source,
-				// 출처가 없으면(목록이 비었으면) 할 말도 없다. 빈 문장을 지어내지 않는다.
-				source == null ? null : source.noteFor(originName),
+				alternatives.source(),
 				alternatives.originQuietness(),
 				AlternativeStandard.MIN_QUIETNESS_GAIN,
 				alternatives.picked().stream().map(AlternativeResponse::from).toList());

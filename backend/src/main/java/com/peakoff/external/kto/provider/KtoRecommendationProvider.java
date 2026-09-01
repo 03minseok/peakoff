@@ -456,9 +456,12 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	 * 추천 근거. <b>후보를 어디서 가져왔느냐에 따라 할 수 있는 말이 다르다.</b>
 	 *
 	 * <pre>
-	 * 연관    "불국사 방문객이 함께 많이 찾는 곳"
-	 * 지역    "불국사 근처의 비슷한 곳"
+	 * 연관    "불국사에 다녀간 사람들이 함께 찾은 곳 중에서 골랐어요."
+	 * 지역    "불국사 근처의 비슷한 곳 중에서 골랐어요."
 	 * </pre>
+	 *
+	 * <p><b>문장은 {@link CandidateSource#noteFor}가 만든다.</b> 여기서 따로 지으면
+	 * 같은 말이 두 벌이 되어 한쪽만 고쳐진다 — 실제로 그랬다.
 	 *
 	 * <p>⚠️ <b>혼잡 문구를 뒤에 붙이지 않는다</b>(2026-09-01에 걷어냈다). 한때
 	 * "… · 예상 혼잡 낮음"으로 끝났는데, <b>바로 윗줄에 한적도 배지가 이미 서 있다</b>
@@ -485,9 +488,7 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	 * 그 장소가 왜 나왔는지다.
 	 */
 	private static String reasonFor(Place origin, CandidateSource source) {
-		return source == CandidateSource.RELATED
-				? "%s 방문객이 함께 많이 찾는 곳".formatted(origin.name())
-				: "%s 근처의 비슷한 곳".formatted(origin.name());
+		return source.noteFor(origin.name());
 	}
 
 	/**

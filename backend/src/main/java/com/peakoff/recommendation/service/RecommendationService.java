@@ -34,7 +34,6 @@ public class RecommendationService {
 		Set<String> skip = excluded == null ? Set.of() : Set.copyOf(excluded);
 
 		return AlternativesResponse.from(
-				recommendationProvider.findAlternatives(origin, date, limit, skip),
-				origin.name());
+				recommendationProvider.findAlternatives(origin, date, limit, skip));
 	}
 }

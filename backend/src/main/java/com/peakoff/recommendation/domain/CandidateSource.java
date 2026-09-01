@@ -61,6 +61,12 @@ public enum CandidateSource {
 	 * <p>여기에 가점을 주면 "더 붐비는 곳을 더 밀어라"가 되어 과제와 정면으로 어긋난다.
 	 * 음의 상관이 <b>가장 강한 곳이 하필 경주·서귀포</b>라 더 그렇다.
 	 *
+	 * <h3>이 문장이 카드에 그대로 선다</h3>
+	 * 한때 두 벌이었다 — 카드 겉면에는 명사구("OO 방문객이 함께 많이 찾는 곳")가,
+	 * 펼쳐보기 안에는 이 문장이 따로 있었다. <b>같은 말이 두 번</b> 서는 데다
+	 * 정작 사용자가 읽는 겉면 쪽이 짧아 무슨 뜻인지 덜 분명했다.
+	 * 지금은 이 문장 하나가 겉면의 근거 줄이 된다({@code reasonFor}가 여기로 위임한다).
+	 *
 	 * <h3>문장을 서버가 만드는 이유</h3>
 	 * 출처에 따라 <b>할 수 있는 말이 다르고</b>, 그 판단은 서버가 한다.
 	 * 화면이 {@code source} 값을 보고 문장을 조립하면, 출처가 하나 늘 때 서버와 화면을
@@ -77,8 +83,7 @@ public enum CandidateSource {
 	public String noteFor(String originName) {
 		return switch (this) {
 			case RELATED -> "%s에 다녀간 사람들이 함께 찾은 곳 중에서 골랐어요.".formatted(originName);
-			case REGIONAL_FALLBACK ->
-				"%s 근처에서 분류가 비슷한 곳 중에서 골랐어요.".formatted(originName);
+			case REGIONAL_FALLBACK -> "%s 근처의 비슷한 곳 중에서 골랐어요.".formatted(originName);
 		};
 	}
 }

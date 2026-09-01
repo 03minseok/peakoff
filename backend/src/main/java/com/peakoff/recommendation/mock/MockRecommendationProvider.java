@@ -135,6 +135,6 @@ public class MockRecommendationProvider implements RecommendationProvider {
 	 * 화면마다 다른 말이 붙으면 사용자가 규칙이 바뀐 줄 안다.
 	 */
 	private static String reasonFor(Place origin) {
-		return "%s 근처의 비슷한 곳".formatted(origin.name());
+		return CandidateSource.REGIONAL_FALLBACK.noteFor(origin.name());
 	}
 }
