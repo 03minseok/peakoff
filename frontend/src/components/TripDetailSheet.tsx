@@ -276,9 +276,24 @@ export function TripDetailSheet({
                       일정보다 공백이 커진다.
                     */}
                         {empty > 0 && (
-                          <p className="text-hint m-0 px-1 py-0.5 text-[12px]">
-                            {empty}일 비어 있어요
-                          </p>
+                          /*
+                            <b>선이 끊김을 말한다.</b> 글자만 왼쪽에 떨어뜨려 두었더니 위 카드에도
+                            아래 카드에도 딸리지 않은 회색 줄이 되어, 카드 사이 여백과 구분되지
+                            않았다 — 비어 있다는 사실이 <b>리듬으로는 전혀 보이지 않았다.</b>
+                            점선이 양쪽으로 뻗으면 그 자리에서 일정이 끊겼다는 것이
+                            훑기만 해도 읽힌다.
+                          */
+                          <div className="flex items-center gap-3 py-0.5" role="separator">
+                            <span
+                              className="border-line flex-1 border-t border-dashed"
+                              aria-hidden="true"
+                            />
+                            <span className="text-hint text-[12px]">{empty}일 비어 있어요</span>
+                            <span
+                              className="border-line flex-1 border-t border-dashed"
+                              aria-hidden="true"
+                            />
+                          </div>
                         )}
 
                         <section className="bg-surface shadow-rest flex flex-col gap-3 rounded-[18px] p-4">
