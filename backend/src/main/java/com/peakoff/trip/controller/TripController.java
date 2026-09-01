@@ -80,12 +80,18 @@ public class TripController {
 		return ApiResponse.ok(tripService.removeCourse(member.id(), tripId, courseId));
 	}
 
+	/**
+	 * ⚠️ <b>204가 아니라 200 + 빈 본문이다.</b> 화면의 {@code apiRequest}가 모든 응답을
+	 * {@code ApiResponse} 봉투로 읽으므로, 본문 없는 204를 받으면 JSON 해석에 실패해
+	 * <b>성공한 삭제가 오류로 처리된다</b> — 실제로 여행이 화면에서 지워지지 않았다.
+	 * 코스 삭제({@code SavedCourseController})도 같은 이유로 {@code ApiResponse<Void>}다.
+	 */
 	@Operation(summary = "여행 삭제", description = "묶음만 사라진다. 담겨 있던 코스는 저장 목록에 그대로 남는다.")
 	@DeleteMapping("/{tripId}")
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void delete(
+	public ApiResponse<Void> delete(
 			@AuthenticationPrincipal AuthenticatedMember member,
 			@PathVariable Long tripId) {
 		tripService.delete(member.id(), tripId);
+		return ApiResponse.ok(null);
 	}
 }
