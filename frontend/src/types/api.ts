@@ -99,7 +99,14 @@ export interface ScoreFactor {
   label: string
   score: number
   weightPercent: number
-  detail: string
+  /**
+   * 점수의 근거. **없을 수 있다.**
+   *
+   * 근거가 점수를 되풀이할 뿐이면 서버가 안 보낸다 — 한적도의 "예상 혼잡 낮음"이 그랬다.
+   * 78이라는 수를 말로 옮긴 것이라 새로 알려주는 것이 없었다.
+   * 근접도의 "직선거리 1.5km"는 점수 뒤의 원자료라 남아 있다.
+   */
+  detail?: string | null
 }
 
 /**
