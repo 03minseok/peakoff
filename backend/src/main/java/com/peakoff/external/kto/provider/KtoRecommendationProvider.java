@@ -244,7 +244,7 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 		 * 82점 아래 79점이 선 목록이 거짓말이 된다.
 		 */
 		List<Alternative> picked = drawWithoutRepeat(available, limit).stream()
-				.map(candidate -> candidate.withReason(reasonFor(origin, candidate, chosen)))
+				.map(candidate -> candidate.withReason(reasonFor(origin, chosen)))
 				.toList();
 
 		return Alternatives.of(
@@ -456,9 +456,14 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	 * 추천 근거. <b>후보를 어디서 가져왔느냐에 따라 할 수 있는 말이 다르다.</b>
 	 *
 	 * <pre>
-	 * 연관    "불국사 방문객이 함께 많이 찾는 곳 · 예상 혼잡 낮음"
-	 * 지역    "불국사 근처의 비슷한 분류 · 예상 혼잡 낮음"
+	 * 연관    "불국사 방문객이 함께 많이 찾는 곳"
+	 * 지역    "불국사 근처의 비슷한 곳"
 	 * </pre>
+	 *
+	 * <p>⚠️ <b>혼잡 문구를 뒤에 붙이지 않는다</b>(2026-09-01에 걷어냈다). 한때
+	 * "… · 예상 혼잡 낮음"으로 끝났는데, <b>바로 윗줄에 한적도 배지가 이미 서 있다</b>
+	 * ("한적 73"). 같은 사실을 숫자로 한 번, 말로 한 번 말하는 셈이라 줄만 길어졌다.
+	 * 이 문장이 할 일은 <b>어디서 왔는지</b>이고 얼마나 한적한지는 배지가 맡는다.
 	 *
 	 * <p>둘 다 <b>장소 이름 뒤에 조사가 오지 않게</b> 지었다. 한국어의 "와/과"는 앞 글자의
 	 * 받침에 따라 갈리는데, 장소 이름은 무엇으로 끝날지 알 수 없다 — 실제로
@@ -468,19 +473,21 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	 * <p>지역 카탈로그에서 고른 후보에게 "함께 많이 찾는 곳"이라고 하면 <b>계산하지 않은 것을
 	 * 근거로 말하는 것</b>이다. 우리가 실제로 본 것은 분류와 거리와 한적도뿐이므로 그것만 말한다.
 	 *
-	 * <p>"같은 분류"가 아니라 "비슷한 분류"인 이유: 역사 유적 자리에 박물관이 올 수 있게
-	 * 호환 범위를 넓혔다({@code PlaceCategories.compatible}). "같은"이라고 하면 화면에 뜬
-	 * 분류명과 어긋나 사용자가 우리 말을 믿지 않게 된다.
+	 * <p>"비슷한 분류"가 아니라 <b>"비슷한 곳"</b>이다(2026-09-01). "분류"는 우리가 나눈
+	 * 체계의 이름이지 사용자가 쓰는 말이 아니다 — 카드에 이미 분류명이 적혀 있어서
+	 * (역사·유적) 그 말을 문장에서 또 할 이유도 없다. 무엇이 비슷한지는 화면이 보여준다.
+	 *
+	 * <p>"같은"이 아니라 "비슷한"인 것은 그대로다: 역사 유적 자리에 박물관이 올 수 있게
+	 * 호환 범위를 넓혔으므로({@code PlaceCategories.compatible}) "같은"이라고 하면
+	 * 화면에 뜬 분류명과 어긋나 사용자가 우리 말을 믿지 않게 된다.
 	 *
 	 * <p>기술 용어는 쓰지 않는다. 사용자에게 필요한 것은 "fallback"이 아니라
 	 * 그 장소가 왜 나왔는지다.
 	 */
-	private static String reasonFor(Place origin, ScoredPlace scored, CandidateSource source) {
-		String basis = source == CandidateSource.RELATED
+	private static String reasonFor(Place origin, CandidateSource source) {
+		return source == CandidateSource.RELATED
 				? "%s 방문객이 함께 많이 찾는 곳".formatted(origin.name())
-				: "%s 근처의 비슷한 분류".formatted(origin.name());
-
-		return "%s · %s".formatted(basis, scored.level().congestionPhrase());
+				: "%s 근처의 비슷한 곳".formatted(origin.name());
 	}
 
 	/**
