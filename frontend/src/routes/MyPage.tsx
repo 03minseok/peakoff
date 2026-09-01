@@ -1304,7 +1304,12 @@ export function MyPage() {
                       </div>
 
                       {/*
-                    ■ 담긴 코스. <b>앞의 셋만</b> 세운다.
+                    ■ 담긴 코스. <b>이름만, 앞의 셋만</b> 세운다.
+
+                    날짜·점수·빼기를 걷어냈다(2026-09-01). 한 줄이 세 가지를 말하니
+                    여행 이름 아래가 <b>코스 카드들의 요약본</b>이 되어, 정작 이 카드의
+                    주인공(여행 이름·기간·지역)이 그 아래 묻혔다. 코스마다의 날짜와
+                    점수는 코스 자신의 것이라 저장 목록에도 상세 창에도 있다.
 
                     전부 세웠더니 코스 수만큼 카드 높이가 달라져 목록이 들쭉날쭉했다 —
                     카드는 <b>훑는 자리</b>라 높이가 고르게 서야 한다.
@@ -1331,6 +1336,7 @@ export function MyPage() {
                             ordered={ordered}
                             seams={seams}
                             limit={TRIP_CARD_COURSES}
+                            compact
                             onOpenCourse={(courseId) => setOpened(courseId)}
                             onRemove={(courseId) => void handleRemoveFromTrip(trip.id, courseId)}
                             onShowAll={() => setDetailTripId(trip.id)}
