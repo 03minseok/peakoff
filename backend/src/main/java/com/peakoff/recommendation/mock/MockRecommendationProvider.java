@@ -99,7 +99,7 @@ public class MockRecommendationProvider implements RecommendationProvider {
 				.toList();
 
 		List<Alternative> picked = available.stream()
-				.map(scored -> scored.withReason(reasonFor(origin, scored)))
+				.map(scored -> scored.withReason(reasonFor(origin)))
 				// 정렬 기준이 곧 화면에 보이는 추천도다. 화면에 없는 값으로 줄을 세우면
 				// "왜 이게 1등인지"를 사용자에게도 심사에서도 설명할 수 없다.
 				.sorted(Comparator.comparingInt(Alternative::recommendation).reversed())
@@ -134,8 +134,7 @@ public class MockRecommendationProvider implements RecommendationProvider {
 	 * <p>실데이터 공급자의 지역 후보 문구와 같은 말을 쓴다 — 같은 성격의 추천에
 	 * 화면마다 다른 말이 붙으면 사용자가 규칙이 바뀐 줄 안다.
 	 */
-	private static String reasonFor(Place origin, ScoredPlace scored) {
-		return "%s 근처의 비슷한 분류 · %s".formatted(
-				origin.name(), scored.level().congestionPhrase());
+	private static String reasonFor(Place origin) {
+		return "%s 근처의 비슷한 곳".formatted(origin.name());
 	}
 }
