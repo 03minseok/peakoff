@@ -6,6 +6,7 @@ import { Link, Navigate, useNavigate } from 'react-router'
 import { AccountSheets } from '../components/AccountSheets'
 import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
+import { HintDot } from '../components/HintDot'
 import { CreateTripSheet } from '../components/CreateTripSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
@@ -1148,7 +1149,7 @@ export function MyPage() {
                     믿어야 할지 흐려진다.
                   */}
                   {ordered.length > 0 && (
-                    <ul className="m-0 mt-4 flex list-none flex-col p-0">
+                    <ul className="m-0 mt-3.5 flex list-none flex-col p-0">
                       {ordered.map((course, index) => {
                         const previous = index > 0 ? ordered[index - 1] : null
                         const gap = previous ? daysBetween(previous.endDate, course.startDate) : null
@@ -1157,11 +1158,18 @@ export function MyPage() {
                           1이면 바로 다음 날이라 딱 이어진다. 2 이상이면 사이가 비고,
                           0 이하면 겹친다 — 같은 날 끝나고 같은 날 시작하면(gap 0) 하루가 겹친다.
                         */
+                        /*
+                          쪽지 안이라 <b>날짜를 그대로 적는다.</b> 겉으로 보일 때는 "1일 비어
+                          있어요"로 짧아야 했지만, 열어서 읽는 말이라면 <b>어느 날이 비었는지</b>가
+                          훨씬 쓸모 있다 — 그 날을 채울지 말지가 다음 판단이다.
+                        */
                         const seam =
-                          gap === null || gap === 1
+                          previous === null || gap === null || gap === 1
                             ? null
                             : gap > 1
-                              ? `${gap - 1}일 비어 있어요`
+                              ? gap === 2
+                                ? `${formatMonthDay(addDays(previous.endDate, 1))}이 비어 있어요`
+                                : `${formatMonthDay(addDays(previous.endDate, 1))} ~ ${formatMonthDay(addDays(course.startDate, -1))}이 비어 있어요`
                               : `앞 코스와 ${1 - gap}일 겹쳐요`
                         const isLast = index === ordered.length - 1
 
@@ -1175,18 +1183,6 @@ export function MyPage() {
                               <p>축의 <b>점선 구간</b>으로 말한다. 이어지지 않는다는 사실을
                               선의 모양이 이미 말하므로 글자는 조용해도 된다.
                             */}
-                            {seam && (
-                              <div className="flex gap-3">
-                                <div className="flex w-2 flex-none justify-center">
-                                  <span
-                                    className="border-line h-full border-l border-dashed"
-                                    aria-hidden="true"
-                                  />
-                                </div>
-                                <span className="text-hint py-1.5 text-[11.5px]">{seam}</span>
-                              </div>
-                            )}
-
                             <div className="flex gap-3">
                               {/* 축. 점 하나와 다음 점까지 잇는 선 */}
                               <div className="flex w-2 flex-none flex-col items-center">
@@ -1199,10 +1195,19 @@ export function MyPage() {
                                 )}
                               </div>
 
-                              <div className="flex min-w-0 flex-1 items-start justify-between gap-2 pb-4">
+                              <div className="flex min-w-0 flex-1 items-start justify-between gap-2 pb-3">
                                 <div className="flex min-w-0 flex-col gap-0.5">
-                                  <span className="text-fg truncate text-[15px] font-semibold">
-                                    {course.name}
+                                  {/*
+                                    이음새 표시가 <b>이름 옆</b>에 붙는다. 축에 따로 한 줄을
+                                    두었더니 코스마다 줄이 하나씩 늘어 카드가 그만큼 길어졌고,
+                                    정작 그 줄은 대부분의 여행에 없다 — 있을 때만 이름 뒤에
+                                    조용히 따라붙는 편이 짧고, 어느 코스의 사정인지도 분명하다.
+                                  */}
+                                  <span className="flex min-w-0 items-center gap-1.5">
+                                    <span className="text-fg truncate text-[15px] font-semibold">
+                                      {course.name}
+                                    </span>
+                                    {seam && <HintDot label={seam} />}
                                   </span>
                                   <span className="text-hint text-[12px]">
                                     {regionNameOf(course.region)} ·{' '}

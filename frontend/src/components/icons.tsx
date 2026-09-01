@@ -129,3 +129,20 @@ export function ArrowDownToLine({ size = 20, className = '' }: Props) {
     </svg>
   )
 }
+
+/**
+ * 알림. 동그라미 안의 느낌표.
+ *
+ * <p>느낌표를 <b>획 두 개로</b> 그린다 — 세로 막대와 아래 점. 점을 아주 짧은 선으로 두면
+ * {@code strokeLinecap: round} 덕에 동그란 점이 되어, 원 하나를 따로 그리는 것보다
+ * 다른 아이콘과 굵기가 정확히 같아진다.
+ */
+export function Alert({ size = 15, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6.6v4" />
+      <path d="M10 13.4v0" />
+    </svg>
+  )
+}
