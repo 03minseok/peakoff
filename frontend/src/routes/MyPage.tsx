@@ -1408,7 +1408,7 @@ export function MyPage() {
                       </div>
 
                       {blocked && (
-                        <p className="text-crowded-deep m-0 px-1 pt-2 text-[12px] leading-[1.5]">
+                        <p className="text-crowded-deep m-0 px-1 pt-2 text-center text-[12px] leading-[1.5]">
                           날짜가 겹치는 코스가 있어 한 번에 볼 수 없어요.
                         </p>
                       )}
@@ -1553,7 +1553,7 @@ export function MyPage() {
               회원 탈퇴
             </button>
 
-            <p className="text-muted m-0 px-1 text-[12px] leading-[1.6]">
+            <p className="text-muted m-0 px-1 text-center text-[12px] leading-[1.6]">
               탈퇴하면 저장한 코스가 함께 사라지고 되돌릴 수 없어요.
               <br />
               저장 기능만 필요 없다면 로그아웃으로 충분해요.
