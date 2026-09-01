@@ -87,6 +87,7 @@ export function TripCourseList({
   ordered,
   seams,
   limit,
+  compact = false,
   onOpenCourse,
   onRemove,
   onShowAll,
@@ -96,6 +97,14 @@ export function TripCourseList({
   seams: (Seam | null)[]
   /** 앞에서 몇 개까지만 그릴지. 없으면 전부 */
   limit?: number
+  /**
+   * <b>이름만</b> 세운다 — 날짜·점수·빼기를 걷어낸다.
+   *
+   * <p>여행 카드가 쓰는 모습이다. 카드는 <b>무엇이 담겼는지</b>만 말하면 되고, 코스마다의
+   * 날짜와 점수는 이미 코스 자신의 것이라 저장 목록에도 상세 창에도 있다 — 카드에서
+   * 한 줄이 세 가지를 말하면 여행 이름 아래가 코스 카드들의 요약본이 된다.
+   */
+  compact?: boolean
   onOpenCourse: (courseId: number) => void
   onRemove: (courseId: number) => void
   /** 잘린 줄을 눌렀을 때. {@code limit}을 줄 때만 쓴다 */
@@ -131,7 +140,11 @@ export function TripCourseList({
                 붉은 동그라미와 "진단 전"이 한 덩어리로 보였다 — 뜻이 다른 둘이 붙으면
                 어느 것이 무엇에 딸린 표시인지 읽히지 않는다.
               */}
-              <div className="flex min-w-0 flex-1 items-start justify-between gap-3 pb-3">
+              <div
+                className={`flex min-w-0 flex-1 items-start justify-between gap-3 ${
+                  compact ? 'pb-2.5' : 'pb-3'
+                }`}
+              >
                 <div className="flex min-w-0 flex-col gap-0.5">
                   {/*
                     이음새 표시가 <b>이름 옆</b>에 붙는다. 축에 따로 한 줄을 두었더니
@@ -161,41 +174,54 @@ export function TripCourseList({
                     </button>
                     {seam && <HintDot label={seam.text} tone={seam.tone} />}
                   </span>
-                  <span className="text-hint text-[12px]">
-                    {regionNameOf(course.region)} · {formatMonthDay(course.startDate)} –{' '}
-                    {formatMonthDay(course.endDate)}
-                  </span>
+                  {!compact && (
+                    <span className="text-hint text-[12px]">
+                      {regionNameOf(course.region)} · {formatMonthDay(course.startDate)} –{' '}
+                      {formatMonthDay(course.endDate)}
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex flex-none items-center gap-0.5">
-                  {/* 점수는 코스가 자기 것을 갖는다. 진단 전이면 그렇게 말한다 */}
-                  {course.level !== null && course.totalQuietness !== null ? (
-                    <CongestionBadge
-                      level={course.level}
-                      label={course.levelLabel ?? undefined}
-                      quietness={course.totalQuietness}
-                      size="sm"
-                    />
-                  ) : (
-                    /*
+                {/*
+                  ⚠️ 이름만 세우는 모습에서는 <b>이 열이 통째로 없다.</b> 배지도 빼기도
+                  코스 <b>하나</b>를 다루는 손잡이인데, 카드는 여행을 훑는 자리다 —
+                  코스를 다루는 일은 상세 창에서 한다.
+
+                  <p>다만 이음새 표시는 이름 옆에 <b>남는다.</b> 그것만은 <b>여행</b>의
+                  사정이라 카드가 말해야 한다 — 날짜가 겹쳤다는 사실을 상세를 열어야만
+                  알 수 있으면 카드가 멀쩡해 보이는 채로 잘못된 일정을 품는다.
+                */}
+                {!compact && (
+                  <div className="flex flex-none items-center gap-0.5">
+                    {/* 점수는 코스가 자기 것을 갖는다. 진단 전이면 그렇게 말한다 */}
+                    {course.level !== null && course.totalQuietness !== null ? (
+                      <CongestionBadge
+                        level={course.level}
+                        label={course.levelLabel ?? undefined}
+                        quietness={course.totalQuietness}
+                        size="sm"
+                      />
+                    ) : (
+                      /*
                       ⚠️ 배지와 <b>같은 알약</b>으로 세운다. 맨 글자로 두었더니 이 줄만
                       오른쪽 열의 폭·높이가 달라 <b>배지 열이 어긋나 보였다</b> — 카드 한 장에
                       칩 셋과 글자 하나가 섞이면 그 하나가 고장으로 읽힌다.
                       색은 중립({@code --c-fill})이다. 진단 전은 등급이 아니라 등급이 없는 것이다.
                     */
-                    <span className="bg-fill text-hint rounded-chip inline-flex h-6.5 flex-none items-center px-2.5 text-[11.5px] font-semibold">
-                      진단 전
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    aria-label={`${course.name} 여행에서 빼기`}
-                    className="text-hint hover:text-fg hover:bg-fill flex-none cursor-pointer rounded-full border-0 bg-transparent p-1.5 transition-colors"
-                    onClick={() => onRemove(course.id)}
-                  >
-                    <Close size={13} />
-                  </button>
-                </div>
+                      <span className="bg-fill text-hint rounded-chip inline-flex h-6.5 flex-none items-center px-2.5 text-[11.5px] font-semibold">
+                        진단 전
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`${course.name} 여행에서 빼기`}
+                      className="text-hint hover:text-fg hover:bg-fill flex-none cursor-pointer rounded-full border-0 bg-transparent p-1.5 transition-colors"
+                      onClick={() => onRemove(course.id)}
+                    >
+                      <Close size={13} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </li>
