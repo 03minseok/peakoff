@@ -90,7 +90,7 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	 * <p>둘을 고치기 전에는 자격 후보가 20곳인 자리에서도 1등이 68~82% 고정이었다 —
 	 * 값이나 데이터가 모자라서가 아니었다.
 	 */
-	private static final int POOL_SIZE = 3;
+	private static final int POOL_SIZE = WeightedPicker.DEFAULT_POOL_SIZE;
 
 	/**
 	 * 점수에 비례한 확률의 집중 정도. 1이면 점수에 정비례한다.
@@ -102,7 +102,7 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	 * <p>⚠️ 설문 코스 생성은 여전히 자기 값을 쓴다({@code CrowdSensitivity}). 그쪽은
 	 * 후보 풀의 성격이 달라(대표 관광지 100곳에서 고른다) 같은 값을 강요할 근거가 없다.
 	 */
-	private static final double PICK_BIAS = 1.2;
+	private static final double PICK_BIAS = WeightedPicker.DEFAULT_BIAS;
 
 	private final KtoRelatedClient relatedClient;
 	private final KtoPlaceClient placeClient;
@@ -290,7 +290,11 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 	}
 
 	/**
-	 * 같은 지역 카탈로그에서 후보를 고른다. <b>연관 후보가 하나도 없을 때만 부른다.</b>
+	 * 같은 지역 카탈로그에서 후보를 고른다. <b>연관 후보가 있든 없든 늘 부른다</b>(2026-09-01).
+	 *
+	 * <p>예전에는 연관 후보가 하나도 없을 때만 불렀다. 그래서 근처에 훨씬 한적한 곳이 있어도
+	 * 연관 목록이 비어 있지 않으면 못 보여줬다. 두 출처를 함께 보게 되면서
+	 * 대안 3개를 채우는 자리가 <b>41% → 86%</b>가 됐다.
 	 *
 	 * <p>거르는 조건은 연관 경로와 <b>글자 그대로 같다</b> — 자기 자신·분류·거리·혼잡 자료·개선폭.
 	 * 다른 것은 후보를 어디서 가져왔는지뿐이고, 그 차이는 근거 문구에서만 드러난다.

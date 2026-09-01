@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { BrandLockup } from '../components/BrandMark'
 import { CongestionBadge } from '../components/CongestionBadge'
@@ -22,7 +23,40 @@ import { formatKoreanDate, formatNights, today } from '../utils/date'
  */
 const SHELL = 'mx-auto w-full max-w-[430px] md:max-w-[680px] lg:max-w-app'
 
-const SECTION_TITLE = 'text-fg m-0 text-[17px] font-bold tracking-[-0.015em]'
+/**
+ * "이번 주 한적한 곳" 카드가 서는 자리.
+ *
+ * <h3>모바일은 <b>한 줄 띠</b>, lg는 예전 세로 목록</h3>
+ * 시안이 카드를 한 줄에 세우고 옆으로 넘긴다. 좁은 폭에 넉 장을 다 욱여넣으면
+ * 한 장이 73px가 되어 이름도 배지도 못 읽으므로, <b>두 장 반쯤 보이는 띠</b>를 놓고
+ * 나머지는 넘겨서 본다. 넘길 것이 옆에 걸쳐 있다는 사실 자체가 조작의 안내다.
+ *
+ * <p>⚠️ <b>스크롤 상자가 아니다.</b> {@code overflow-x-auto}로 만들면 브라우저가 가로
+ * 스크롤을 맡고, 끝까지 민 제스처가 페이지로 이어져 <b>실물 아이폰에서 화면이 통째로
+ * 밀린다</b>({@code overscroll-behavior-x}로도 안 막힌다 — 결과 화면에서 겪었다).
+ * 여기서는 손가락 이동량을 받아 {@code translate}로 옮길 뿐이라 브라우저가 맡는
+ * 가로 스크롤이 아예 없다. {@code touch-pan-y}가 짝이다 — 세로는 브라우저에게 맡기고
+ * <b>가로 제스처만</b> 우리가 가져온다.
+ *
+ * <p>끌기는 <b>화면에 보이지 않는 조작</b>이라 머리글에 넘기는 단추를 함께 둔다.
+ *
+ * <p>lg에서는 띠를 풀어 예전의 세로 목록으로 돌아간다.
+ */
+const QUIET_STRIP =
+  'flex touch-pan-y gap-2.5 translate-x-[var(--strip-x)] select-none lg:grid lg:translate-x-0 lg:grid-cols-1 lg:gap-2 lg:select-auto'
+
+/** 카드 한 장의 폭과 그 옆 간격(px). 한 장 넘길 때 옮기는 거리가 이 둘의 합이다 */
+const QUIET_CARD_W = 120
+const QUIET_CARD_GAP = 10
+
+/**
+ * 박스 머리글.
+ *
+ * <p>모바일은 <b>18px — 위 두 진입 카드의 제목과 같은 값</b>이다. 한 화면에 서는
+ * 머리글이 넷인데(문 둘 · 박스 둘) 크기가 갈리면 <b>급이 다른 것</b>처럼 보인다.
+ * 레퍼런스의 19px에서 한 칸 내려 맞췄다. lg는 예전 17px 그대로.
+ */
+const SECTION_TITLE = 'text-fg m-0 text-[18px] font-bold tracking-[-0.02em] lg:text-[17px] lg:tracking-[-0.015em]'
 
 /**
  * 벤토 칸 하나.
@@ -143,51 +177,97 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
     <button
       type="button"
       onClick={onOpen}
-      className="press bg-bg hover:bg-line/40 rounded-card flex w-full cursor-pointer items-center gap-3 border-0 p-2.5 text-left transition-colors"
+      className="press bg-surface border-line shadow-rest hover:bg-fill lg:bg-bg lg:border-0 lg:shadow-none lg:hover:bg-line/40 lg:rounded-card relative flex w-[var(--quiet-card-w)] flex-none cursor-pointer flex-col overflow-hidden rounded-[16px] border p-0 text-left transition-colors lg:w-full lg:flex-auto lg:flex-row lg:items-center lg:gap-3 lg:p-2.5"
     >
-      <PlaceThumbnail name={spot.place.name} imageUrl={spot.place.imageUrl} size="md" />
+      {/*
+        ■ 모바일은 사진이 위, <b>lg는 예전 그대로</b> 왼쪽 썸네일이다 (2026-09-02)
+
+        좁은 화면에서는 카드가 격자로 서므로 사진이 위를 가로지른다 — 이 목록이 하는 일은
+        "어디로 갈지 정하지 않은 사람에게 서비스가 먼저 말을 거는" 것이라
+        <b>볼거리가 먼저</b> 와야 하고, 반 폭짜리 카드에서 왼쪽 썸네일은 글자가 설 자리를
+        남기지 않는다.
+
+        <p><b>데스크톱은 바꾸지 않는다.</b> lg에서는 세로 목록이라 사진을 위에 얹으면
+        한 장이 길어져 다섯 장이 박스를 넘긴다. 한 컴포넌트가 두 모양을 겸하되
+        <b>모양을 가르는 것은 breakpoint 하나</b>다 — 화면별로 컴포넌트를 나누면
+        나중에 한쪽만 고쳐진다(PlaceThumbnail의 banner가 같은 방법을 쓴다).
+
+        <p>⚠️ <b>옆으로 미는 띠가 아니다.</b> 시안은 카드를 옆으로 넘기게 그렸지만,
+        끝까지 민 제스처가 페이지로 이어져 화면 전체가 밀린다
+        (CLAUDE.md — 주간 예보에서 이미 한 번 걷어낸 자리다).
+      */}
+      <PlaceThumbnail name={spot.place.name} imageUrl={spot.place.imageUrl} size="card" />
 
       {/*
-        ⚠️ <b>이름이 한 줄을 통째로 쓴다.</b> 처음에는 지역 알약과 배지를 이름과 같은 줄에
-        두었는데, 390px에서 이름에 남는 폭이 140px뿐이라 <b>"여수 낭도리 공…"</b>으로 잘렸다.
-        공사 이름은 원래 길다(강원특별자치도산림박물관·여수 낭도리 공룡발자국화석 산지) —
-        <b>무엇인지 알아볼 수 없는 이름은 카드가 하는 일을 못 한다.</b>
+        ⚠️ <b>이름이 한 줄을 통째로 쓴다.</b> 공사 이름은 원래 길다
+        (강원특별자치도산림박물관 · 여수 낭도리 공룡발자국화석 산지) — 옆에 무엇이든 세우면
+        <b>"여수 낭도리 공…"</b>으로 잘리고, 무엇인지 알아볼 수 없는 이름은
+        카드가 하는 일을 못 한다. 두 줄까지 간다.
 
-        <p>지역을 아랫줄로 내리면 이름이 그만큼 넓게 쓴다. 그래도 넘치면 두 줄까지 간다 —
-        잘라 버리는 것보다 한 줄 더 쓰는 편이 낫다.
+        <h3>격자(grid)로 세우는 이유 — 화면마다 자리가 다르다</h3>
+        세 줄의 <b>순서는 같고 자리만 갈린다</b>. 그래서 DOM은 하나로 두고 lg에서
+        칸·줄만 지정한다. flex로는 이게 안 된다 — 세로로 쌓으면 lg에서 이름과 배지를
+        한 줄에 놓을 수 없고, 화면마다 마크업을 나누면 한쪽만 고쳐지는 자리가 생긴다.
 
-        <p>분류는 뺐다. 아랫줄에 지역이 이미 서 있고, 분류는 눌러서 여는 상세 시트가 맡는다.
-        좁은 줄에 여럿을 밀어 넣으면 다 못 읽는다.
+        <pre>
+          모바일            lg (예전 그대로)
+          이름              이름        배지
+          지역              지역
+          배지
+        </pre>
 
-        <p>■ <b>한적 지수는 카드의 오른쪽 위</b>다 (2026-08-31)
-
-        이름 아랫줄에서 지역 알약 옆에 있었다. 카드 다섯이 세로로 늘어서면 배지의 왼쪽 끝이
-        <b>이름 길이에 따라 제각기 다른 자리</b>에 서서, 점수끼리 눈으로 훑을 수가 없었다 —
-        이 목록에서 견주게 되는 값이 바로 그 점수인데.
-
-        <p>오른쪽 위로 올리면 다섯 장의 배지가 <b>한 세로줄</b>에 맞는다. 위쪽인 이유는
-        이름과 같은 높이에 두어야 "이 곳의 점수"로 읽히기 때문이다 —
-        아래로 내리면 그 아랫줄(지역)에 붙은 값처럼 보인다.
+        <p>모바일에서 배지가 마지막 줄에 혼자 서므로 나란한 카드들의 점수가
+        <b>같은 높이</b>에 맞는다 — 배지를 오른쪽 위로 올렸던 이유(이름 길이에 따라
+        제각기 다른 자리에 서던 것)를 격자가 다른 방법으로 푼다.
       */}
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="flex min-w-0 items-start gap-2">
-          <span className="text-fg line-clamp-2 min-w-0 flex-1 text-[15px] leading-[1.35] font-semibold tracking-[-0.01em]">
-            {spot.place.name}
-          </span>
-          <CongestionBadge
-            level={spot.level}
-            label={spot.levelLabel}
-            quietness={spot.quietness}
-            size="sm"
-          />
+      <span className="grid min-w-0 gap-0.75 px-2 pt-2 pb-2.5 lg:flex-1 lg:grid-cols-[1fr_auto] lg:gap-1 lg:p-0">
+        <span className="text-fg line-clamp-2 min-w-0 text-[12px] leading-[1.35] font-semibold tracking-[-0.01em] lg:col-start-1 lg:row-start-1 lg:text-[15px]">
+          {spot.place.name}
         </span>
-
         {/*
-          지역 알약. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
-          지역은 신호가 아니라 이름표다. 같은 카드에 색이 둘이면 어느 쪽이 등급인지 흐려진다.
+          지역. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
+          지역은 신호가 아니라 이름표다.
+
+          <p>모바일에서는 알약을 벗고 맨 글자로 선다. 카드 폭이 절반이라
+          알약의 좌우 여백이 이름 폭을 갉아먹는다. lg는 예전의 흰 알약 그대로.
         */}
-        <span className="bg-surface text-hint rounded-chip w-fit px-1.5 py-0.5 text-[11px] font-semibold">
+        <span className="text-hint bg-fill rounded-chip w-fit min-w-0 truncate px-1.5 py-0.5 text-[10px] font-semibold lg:bg-surface lg:col-start-1 lg:row-start-2 lg:text-[11px]">
           {spot.regionName}
+        </span>
+        {/*
+          ■ 모바일에서는 배지가 <b>사진 오른쪽 위</b>에 얹힌다 (2026-09-02)
+
+          글 아래에 있을 때는 카드마다 이름이 한 줄이냐 두 줄이냐에 따라 배지의 높이가
+          달라져, 나란한 카드끼리 점수를 눈으로 훑을 수 없었다. 사진 모서리에 얹으면
+          <b>네 장의 배지가 언제나 같은 자리</b>에 선다.
+
+          <p>사진 위에 글자가 얹히지만 배지는 <b>불투명한 tint 바탕</b>을 가지고 있어
+          어떤 사진 위에서도 대비가 유지된다 — 반투명하게 두면 밝은 하늘 사진에서 묻힌다.
+
+          <p>lg는 예전 그대로다 — 그쪽은 사진이 왼쪽 썸네일이라 얹을 자리가 없고,
+          이름과 같은 줄에 서는 것이 이미 같은 일을 한다.
+        */}
+        <span className="absolute top-1.5 right-1.5 flex lg:static lg:col-start-2 lg:row-start-1 lg:mt-0 lg:items-start lg:justify-self-end">
+          {/*
+            같은 배지를 화면마다 다른 크기로 그린다 — 좁은 화면에서는 카드가 132px이라
+            sm이 카드 폭의 절반을 먹는다. lg의 세로 목록은 폭이 넉넉해 예전 크기 그대로.
+          */}
+          <span className="lg:hidden">
+            <CongestionBadge
+              level={spot.level}
+              label={spot.levelLabel}
+              quietness={spot.quietness}
+              size="xs"
+            />
+          </span>
+          <span className="hidden lg:inline-flex">
+            <CongestionBadge
+              level={spot.level}
+              label={spot.levelLabel}
+              quietness={spot.quietness}
+              size="sm"
+            />
+          </span>
         </span>
       </span>
     </button>
@@ -231,7 +311,7 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
     <button
       type="button"
       onClick={onOpen}
-      className="group bg-bg hover:bg-fill flex w-full cursor-pointer flex-col gap-2.5 rounded-[16px] border-none p-3.5 text-left transition-colors"
+      className="group bg-bg hover:bg-fill flex w-full cursor-pointer flex-col gap-2.5 rounded-[16px] border-none p-3 text-left transition-colors lg:p-3.5"
     >
       <div className="flex w-full items-center gap-3">
         {/*
@@ -243,7 +323,7 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
         */}
         <div
           // p-1이 곧 고리의 두께다(52px 원에 4px). 시트의 92px/8px과 같은 비율이라 같은 물건으로 보인다
-          className="grid h-13 w-13 flex-none place-items-center rounded-full p-1"
+          className="grid h-12 w-12 flex-none place-items-center rounded-full p-1 lg:h-13 lg:w-13"
           style={{
             background: `conic-gradient(${LEVEL_COLOR_VAR[course.level]} ${course.totalQuietness}%, var(--c-line) 0)`,
           }}
@@ -254,7 +334,7 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
             안 따라가면 손을 올린 순간 가운데만 옛 색으로 남아 동그라미가 두 겹이 된다.
           */}
           <div className="bg-bg group-hover:bg-fill grid h-full w-full place-items-center rounded-full transition-colors">
-            <span className="text-fg font-mono text-[15px] leading-none font-semibold">
+            <span className="text-fg font-mono text-[14px] leading-none font-semibold lg:text-[15px]">
               {course.totalQuietness}
             </span>
           </div>
@@ -286,9 +366,16 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
         </div>
       </div>
 
-      {/* 담긴 순서대로 앞쪽 몇 곳. 코스 전체가 아니라는 뜻으로 말줄임을 붙인다 */}
+      {/*
+        담긴 순서대로 앞쪽 몇 곳. 코스 전체가 아니라는 뜻으로 말줄임을 붙인다.
+
+        <p>⚠️ <b>모바일에서는 접는다</b> (2026-09-02). 좁은 화면에서 이 줄은 대개
+        한 곳 반쯤에서 잘려("여수수산물특화시장 · 여수 연안여객선터미널 ·…") 어디를
+        갔는지 알려주지 못하면서 카드 높이만 한 켜 늘린다. 카드 넷이면 그만큼이 네 번이다.
+        <b>어디를 갔는지는 눌러서 펼친 시트가 전부 보여준다</b> — 잘린 목록보다 낫다.
+      */}
       {preview.length > 0 && (
-        <p className="text-muted m-0 w-full truncate text-[12.5px]">
+        <p className="text-muted m-0 hidden w-full truncate text-[12.5px] lg:block">
           {preview.map((place) => place.name).join(' · ')}
           {course.places.length > preview.length ? ' …' : ''}
         </p>
@@ -394,6 +481,21 @@ export function HomePage() {
   const [openedSpot, setOpenedSpot] = useState<QuietSpot | null>(null)
 
   /**
+   * 한적한 곳 띠가 지금 몇 번째 카드부터 보여주고 있는가. <b>모바일 전용 상태다</b> —
+   * lg에서는 띠가 풀려 세로 목록이 되므로 이 값이 화면에 아무 일도 하지 않는다.
+   */
+  const [stripIndex, setStripIndex] = useState(0)
+  /** 손가락을 따라온 거리(px). 놓는 순간 0으로 돌아가고 자리는 stripIndex가 정한다 */
+  const [stripDrag, setStripDrag] = useState(0)
+  /**
+   * 끌기 한 번의 시작점과 <b>축</b>.
+   *
+   * <p>처음 몇 px은 축을 정하지 않고 지켜본다 — 곧바로 가로로 판정하면
+   * 세로로 넘기려던 손가락이 띠에 붙잡혀 <b>페이지가 안 내려간다.</b>
+   */
+  const strip = useRef({ x: 0, y: 0, dx: 0, axis: '' as '' | 'x' | 'y' })
+
+  /**
    * 남의 코스를 그대로 내 편집 화면에 담는다.
    *
    * <p><b>진단 화면이 아니라 편집 화면으로 간다.</b> 마이페이지의 "수정하기"는 내가 짠
@@ -463,6 +565,30 @@ export function HomePage() {
    */
   const [quietSpots, setQuietSpots] = useState<QuietSpotState>({ phase: 'loading' })
 
+  /**
+   * 띠가 보이는 창의 폭. <b>끝까지 밀었을 때 오른쪽이 비지 않게</b> 하는 데 쓴다.
+   *
+   * <p>카드 수만큼 한 칸씩 미는 방식이었는데, 마지막 자리에서 카드 두어 장만 남아
+   * <b>오른쪽에 빈 자리가 크게 남았다.</b> 옮기는 거리를 "띠 전체 폭 − 창 폭"으로
+   * 막으면, 끝까지 민 순간 마지막 카드의 오른쪽 변이 창의 오른쪽 변에 딱 붙는다.
+   *
+   * <p>창 폭은 화면마다 다르므로(390 · 430 · md) 재서 쓴다.
+   */
+  const [stripWidth, setStripWidth] = useState(0)
+  const stripWindow = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const element = stripWindow.current
+    if (!element) {
+      return
+    }
+    // clientWidth는 좌우 패딩(그림자 자리 px-1, 8px)을 포함한다. 카드가 실제로 서는 폭은 그만큼 좁다
+    const measure = () => setStripWidth(element.clientWidth - 8)
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [quietSpots.phase])
+
   useEffect(() => {
     const controller = new AbortController()
     fetchQuietSpots(QUIET_SPOT_COUNT, controller.signal)
@@ -477,9 +603,80 @@ export function HomePage() {
     return () => controller.abort()
   }, [])
 
+  /*
+   * 띠를 얼마나 옮길지. <b>한 칸씩 옮기되 마지막은 창 끝에 맞춰 멈춘다.</b>
+   *
+   * {@code maxShift}가 그 멈추는 자리다 — 띠 전체 폭에서 창 폭을 뺀 만큼만 옮기면
+   * 마지막 카드의 오른쪽 변이 창의 오른쪽 변과 만난다. 그래서 마지막 한 칸은
+   * 다른 칸보다 <b>덜 움직인다</b>. 진행 막대의 칸 수도 이 값에서 나온다.
+   */
+  const stripCount = quietSpots.phase === 'loaded' ? quietSpots.spots.length : 0
+  const stripStep = QUIET_CARD_W + QUIET_CARD_GAP
+  const stripTotal = stripCount * QUIET_CARD_W + Math.max(stripCount - 1, 0) * QUIET_CARD_GAP
+  const stripMaxShift = Math.max(stripTotal - stripWidth, 0)
+  /** 마지막으로 갈 수 있는 자리. 0이면 넘길 것이 없다(카드가 창 안에 다 들어온다) */
+  const stripLast = Math.ceil(stripMaxShift / stripStep)
+  const stripShift = Math.min(stripIndex * stripStep, stripMaxShift)
+
   return (
     // 아래 고정 막대를 걷어내면서 그것을 피하려던 여백(pb-26)도 함께 뺐다.
-    <div className="flex min-h-svh flex-col pb-10">
+    <div className="relative flex min-h-svh flex-col pb-10">
+      {/*
+        ■ 첫 화면 배경 사진 (2026-09-02) — <b>모바일만</b>
+
+        걷어낸 시안 wash 자리에 사진이 들어온다. 화면이 무슨 이야기를 하는 곳인지
+        글을 읽기 전에 말하는 것이 색 한 겹보다 사진 한 장이 낫다.
+
+        <p>두 겹이다. 아래가 사진, 위가 <b>바탕색으로 지우는 막</b>이다 —
+        위에서 아래로 갈수록 진해져 마지막에는 완전한 {@code --c-bg}가 되므로,
+        사진이 어디서 끝나는지 경계가 보이지 않는다. 막을 안 두면 파란 하늘 위에
+        잉크 글자가 얹혀 대비가 무너진다(로고·"오늘, 어떤 여행을 원하세요?").
+
+        <p>막의 색은 <b>토큰</b>이다({@code from-bg/…}). 여기에 hex를 박으면
+        바탕색을 바꿀 때 사진 아래만 옛 색으로 남는다.
+
+        <p>⚠️ 뿌리에 {@code overflow-hidden}을 걸지 않는다 — sticky 헤더가 깨진다.
+        이 층은 화면 폭을 넘지 않으므로 가릴 것도 없다.
+      */}
+      <span
+        className="pointer-events-none absolute inset-x-0 top-7 h-[380px] bg-cover bg-center bg-no-repeat lg:hidden"
+        /*
+          ⚠️ 시작이 0이 아니라 <b>헤더의 절반(28px)</b>이다 — 로고와 반만 겹친다.
+          그 자리에 사진의 윗변이 그대로 서면 <b>가로줄 하나</b>가 그어지므로,
+          마스크로 첫 36px을 투명에서 불투명으로 띄운다. 위아래 어디에도 경계가 없다.
+        */
+        style={{
+          backgroundImage: "url('/images/hero-sea.jpg')",
+          maskImage: 'linear-gradient(180deg, transparent 0, #000 36px)',
+          WebkitMaskImage: 'linear-gradient(180deg, transparent 0, #000 36px)',
+        }}
+        aria-hidden="true"
+      />
+      <span
+        className="from-bg/45 via-bg/85 to-bg pointer-events-none absolute inset-x-0 top-7 h-[380px] bg-gradient-to-b lg:hidden"
+        aria-hidden="true"
+      />
+
+      {/*
+        같은 사진의 <b>넓은 화면판</b> (2026-09-02).
+
+        <p>파일을 나눈 이유: 모바일이 쓰는 1100px 판은 1440px 화면에서 늘어나 흐려지고,
+        1920px 판은 190KB라 <b>휴대폰 첫 화면에 얹을 무게가 아니다</b>(모바일 판은 84KB).
+        {@code hidden lg:block}이 짝이라 각 화면은 자기 것 하나만 받는다.
+
+        <p>시작이 {@code top-14}인 것은 <b>헤더 높이</b>다. lg의 헤더는 흰 막대라
+        사진 위쪽을 어차피 가리므로, 가려질 부분을 애초에 그리지 않는다.
+        모바일과 달리 마스크가 필요 없는 이유이기도 하다 — 윗변이 막대 뒤에서 시작한다.
+      */}
+      <span
+        className="pointer-events-none absolute inset-x-0 top-14 hidden h-[420px] bg-cover bg-center bg-no-repeat lg:block"
+        style={{ backgroundImage: "url('/images/hero-sea-wide.jpg')" }}
+        aria-hidden="true"
+      />
+      <span
+        className="from-bg/45 via-bg/85 to-bg pointer-events-none absolute inset-x-0 top-14 hidden h-[420px] bg-gradient-to-b lg:block"
+        aria-hidden="true"
+      />
       {/*
         1. 상단 — 공용 헤더(Layout)와 <b>같은 모양의 고정 막대</b>다.
 
@@ -492,7 +689,22 @@ export function HomePage() {
         가장자리 여백을 쓰고 있어, Layout의 본문 패딩이 겹으로 얹히면 전부 다시 만져야 한다.
         대신 이 막대의 클래스는 Layout 헤더와 같은 값을 쓴다 — 다르게 보이면 고친 의미가 없다.
       */}
-      <header className="bg-surface border-line sticky top-0 z-10 h-14 border-b">
+      {/*
+        ■ 모바일에서는 <b>막대가 없다</b> (2026-09-02)
+
+        흰 면·경계선·sticky를 걷고 로고와 메뉴만 바탕 위에 뜬다. 시안이 그렇고,
+        바탕 wash를 지운 뒤로는 <b>흰 막대가 회백 바탕 위에 뜬 또 하나의 면</b>으로
+        보여 첫 화면에 층이 하나 더 생겼다.
+
+        <p>⚠️ <b>sticky도 함께 뗀다.</b> 투명한 채로 붙여 두면 아래 내용이 로고 뒤로
+        지나가 글자가 겹친다 — 시안 화면을 스크롤해 찍은 그림에서 실제로 그렇게 보였다.
+        모바일에서는 헤더가 함께 밀려 올라가고, 메뉴는 위로 올려 연다.
+
+        <p><b>lg는 예전 그대로다</b> — 흰 막대에 경계선, 화면 위에 붙는다.
+        넓은 화면은 세로가 넉넉해 막대 하나를 늘 띄워 둘 여유가 있고,
+        Layout 헤더와 모양이 같아야 화면을 오갈 때 헤더가 안 움직인다.
+      */}
+      <header className="relative top-0 z-10 h-14 bg-transparent lg:sticky lg:border-b lg:border-line lg:bg-surface">
         {/*
           안쪽 폭은 SHELL(본문용 단계 폭)이 아니라 Layout 헤더와 <b>같은 max-w-app</b>이다.
           SHELL을 쓰면 중간 폭 화면에서 로고·메뉴가 본문 폭에 맞춰 안쪽으로 몰렸다가,
@@ -563,10 +775,43 @@ export function HomePage() {
         위·좌우 여백은 Layout 본문(pt-6/lg:pt-8, px-4.5/md:px-6/lg:px-8)과 같은 값이다.
         홈만 다르면 코스짜기 등 다른 화면으로 넘어갈 때마다 내용 시작점이 위아래로 튄다.
       */}
-      <div className={`${SHELL} px-4.5 pt-6 md:px-6 lg:px-8 lg:pt-8`}>
-        <div className="flex flex-col gap-7.5 lg:grid lg:grid-cols-12 lg:gap-4">
+      <div className={`${SHELL} relative px-4.5 md:px-6 lg:px-8 lg:pt-8`}>
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-4">
+          {/*
+            ■ 화면이 자기소개를 먼저 한다 (2026-09-02)
+
+            지금까지 홈의 첫 글자는 곧바로 <b>진입 카드의 제목</b>이었다. 그 둘은
+            <b>사용자가 하는 말</b>("가고 싶은 곳이 있어요")이라, 정작 이 서비스가 무엇을
+            하는 곳인지는 화면 어디에서도 말하지 않았다 — 심사위원이 URL로 처음 닿는 화면이다.
+
+            <p>⚠️ <b>"실시간"이라 하지 않는다.</b> 공사 데이터는 예측·통계값이다
+            (CLAUDE.md 절대 규칙). "붐빔을 줄이고"는 우리가 하는 일이라 시점을 주장하지 않는다.
+
+            <p>둘째 줄만 브랜드색이다. 배경 전용인 brand가 아니라 글자용 brand-deep을 쓴다 —
+            회백 바탕 위에서 대비가 본문 기준(4.5:1)을 크게 넘는다.
+
+            <p>⚠️ <b>모바일에만 세운다.</b> 시안은 모바일 화면이고 데스크톱은 손대지 않는다 —
+            lg에서는 진입 카드 둘이 한 줄에 나란히 서서 첫 화면이 이미 꽉 차 있다.
+
+            <p>■ <b>두 줄 선언에서 한 줄 물음으로</b> (2026-09-02)
+
+            "여행의 붐빔을 줄이고 / 당신의 여행은 더 편하게."였다. <b>서비스가 자기 소개를
+            하는 문장</b>이라 바로 아래 두 카드(사용자가 하는 말)와 화자가 어긋났고,
+            25px 두 줄이 첫 화면의 4분의 1을 썼다. 물음으로 바꾸면 <b>아래 두 카드가
+            그 물음의 답</b>이 되어 세 덩이가 한 문답으로 읽힌다.
+          */}
+          <h1 className="text-fg m-0 -mb-3.5 px-1 text-[15px] leading-[1.5] font-semibold tracking-[-0.01em] lg:hidden">
+            오늘, 어떤 여행을 원하세요?
+          </h1>
+
           {/* 2. 진입점 ① 직접 짜기 — 이 서비스의 원래 흐름 */}
-          <div className={`${CELL} lg:col-span-6`}>
+          {/*
+            ⚠️ 아래 {@code -mb-4}는 <b>두 문 사이만</b> 좁히는 값이다 (모바일).
+            둘은 <b>한 갈림길의 두 선택지</b>라 다른 덩이(박스들) 사이와 같은 간격으로
+            떨어뜨리면 서로 남남으로 보인다. 덩이 사이는 16px, 두 문 사이는 그 절반인 8px.
+            lg에서는 두 문이 한 줄에 나란히 서므로 되돌린다.
+          */}
+          <div className={`${CELL} -mb-2 lg:mb-0 lg:col-span-6`}>
             {/*
               lg:flex-1 — 그리드 칸은 줄 높이만큼 늘어나므로, 버튼이 남는 높이를 채워
               옆 칸과 아랫변이 맞는다. 이게 없으면 큰 칸 아래에만 빈 공간이 남는다.
@@ -581,30 +826,31 @@ export function HomePage() {
               달고 있으면 "여기도 눌리는데?"가 되어 방금 없앤 혼란이 되돌아온다.
               대신 같은 hover에서 CTA가 함께 반응해 눌러야 할 곳을 가리킨다.
             */}
-            <div className="group bg-fg relative w-full overflow-hidden rounded-[24px] px-6 pt-6.5 pb-6 text-left text-white shadow-[0_8px_26px_rgb(42_62_84/0.18)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-[0_14px_34px_rgb(42_62_84/0.24)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
+            <div className="group bg-fg relative w-full overflow-hidden rounded-[24px] px-4.5 pt-4.5 pb-4.5 md:px-6 md:pt-6.5 md:pb-6 text-left text-white shadow-[0_8px_26px_rgb(42_62_84/0.18)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-[0_14px_34px_rgb(42_62_84/0.24)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
           {/*
-            장식 원을 잘라내는 층.
+            ■ 모바일만: 그림글자가 <b>제목 위</b>에 홀로 선다 (2026-09-02)
 
-            원이 카드 오른쪽으로 40px 삐져나가는데, 열(max-w-430)이 가운데 정렬이라
-            화면이 510px보다 넓으면 양옆 여백에 묻힌다. 그보다 좁아지는 순간 화면 밖으로
-            나가 페이지 전체에 가로 스크롤이 생긴다.
+            원 배경을 두른 타일을 왼쪽에 세워 봤다가 걷어냈다. 타일은 <b>글이 쓸 폭을
+            가져가서</b> 좁은 화면에서 본문이 석 줄로 접혔고, 채운 원이 그림글자보다 먼저
+            눈에 들어와 <b>배경이 주인공</b>이 됐다. 배경을 지우고 글자 위로 올리면
+            폭은 온전히 글의 것이 되고, 두 문의 그림글자가 <b>같은 자리에 둘</b> 서서
+            "고르는 자리"라는 것은 그대로 알린다.
 
-            모서리는 카드와 같은 값으로 깎아야 둥근 부분 밖으로 색이 비치지 않는다.
+            <p>⚠️ <b>lg는 예전 그대로다</b> — 위의 그림글자가 숨고({@code lg:hidden})
+            제목 안의 것이 되살아난다(제목 속 {@code hidden lg:inline}).
+            시안은 모바일 화면이고 데스크톱은 손대지 않는다.
           */}
-          <span
-            className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]"
-            aria-hidden="true"
-          >
+          <span className="relative flex flex-col gap-1.5 lg:gap-3">
             {/*
-              글로우 두 개가 서비스의 서사다 — 위는 틸(브랜드·행동이자 한적한 방향), 아래는 핑크(붐빔).
-              어두운 네이비 면마다 이 두 기운을 마주 놓아 "붐빔에서 한적으로"라는 방향을
-              장식에도 배게 한다. 로그인 패널·결과 히어로와 같은 문법이다.
-              알파를 낮게 두는 이유: 진하게 깔면 어두운 면 위에서 탁해진다.
+              배경 없는 맨 그림글자. 제목이 같은 말을 하므로 읽어주지 않는다.
+
+              <p>2026-09-02에 <b>넓은 화면도 이 자리</b>로 모았다. 제목 앞에 붙어 있던
+              쪽을 지웠는데, 두 폭이 다른 문법을 쓰면 <b>같은 카드가 아닌 것</b>처럼 보인다.
             */}
-            <span className="absolute -top-14.5 -right-14 h-50 w-50 rounded-full bg-[rgb(63_193_201/0.14)]" />
-            <span className="absolute -bottom-23 right-6 h-37.5 w-37.5 rounded-full bg-[rgb(252_81_133/0.09)]" />
-          </span>
-          <span className="relative flex flex-col gap-3">
+            <span className="text-[20px] leading-none lg:text-[24px]" aria-hidden="true">
+              🧭
+            </span>
+            <span className="flex min-w-0 flex-col gap-1.5 lg:w-full lg:gap-3">
             {/*
               킥커(PLAN MY TRIP)를 걷어냈다 (2026-08-30).
 
@@ -636,13 +882,28 @@ export function HomePage() {
               그 어긋남보다 크다고 보았다. 대신 <b>본문이 그 구멍을 메워야 한다</b> —
               장소만 정한 사람이 날짜부터 만나도 놀라지 않게.
 
-              <p>⚠️ 오른쪽 본문 "생각지 못했던 여행을 찾아드려요"는 <b>경주를 모르는 사용자의
+              <p>⚠️ 오른쪽 본문 "뜻밖의 여행을 PEAKOFF가 찾아드려요"는 <b>경주를 모르는 사용자의
               문패</b>다. 제목이 그 일을 나눠 맡게 됐지만 지우지 말 것 —
               CLAUDE.md 필수 기능 6번이 이 진입점을 둔 이유가 그 사람이다.
             */}
-            <span className="text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-              가고 싶은 곳이 있어요.
-            </span>
+            {/*
+              ■ 제목 옆의 그림글자 (2026-09-01 · 자리는 2026-09-02에 옮겼다)
+
+              두 문이 <b>한 쌍의 발화</b>라는 것을 글자를 읽기 전에 알린다 — 나침반은
+              방향을 이미 아는 사람, 주사위는 매번 다른 답이 오는 쪽(가중 무작위)이다.
+              둘 다 이 문이 실제로 하는 일을 가리키므로 장식이 아니다.
+
+              <p><b>{@code aria-hidden}이다.</b> 제목 글자가 이미 같은 말을 하고 있어,
+              읽어주면 "나침반 가고 싶은 곳이 있어요"가 된다.
+
+              <p>⚠️ <b>모바일에서만</b> 제목 앞의 인라인 글자가 <b>왼쪽 타일</b>로 간다.
+              크기를 제목에 맞춰 재던 문제(색이 차 있어 같은 크기라도 더 무겁게 보인다)가
+              타일 안에서는 사라진다 — 타일이 제 크기를 갖고 제목은 제 폭을 온전히 쓴다.
+              lg에서는 아래 {@code 0.9em} 그대로 제목 앞에 선다.
+            */}
+              <span className="text-[18px] leading-[1.3] font-bold tracking-[-0.025em] lg:text-[26px]">
+                가고 싶은 곳이 있어요.
+              </span>
             {/*
               "그대로"가 <b>우리가 당신 것을 무르지 않는다</b>는 약속이다. 서비스가 하는 일이
               여행을 대신 정하는 것이 아니라 붐비는 부분만 비껴 주는 것이라,
@@ -656,9 +917,21 @@ export function HomePage() {
               "일정은 그대로, 더 여유로운 날을" · <b>"계획은 그대로</b>, 더 여유로운 여행지를".
               이제 홈·진단이 <b>한 낱말</b>로 이어진다. 예전에는 홈만 다른 말을 썼다.
             */}
-            <span className="max-w-62.5 text-sm leading-[1.6] text-white/60">
-              계획은 그대로, <br/>붐비는 순간만 PEAKOFF가 도와드려요.
-            </span>
+              {/*
+                ■ 본문과 버튼이 <b>한 줄</b>이다 (모바일만)
+
+                버튼이 본문 <b>아래</b>에 서면 카드가 네 켜(제목·본문 두 줄·버튼)만큼 길어지고
+                본문 오른쪽은 통째로 빈다. 옆에 세우면 그 빈 자리가 버튼 자리가 되어
+                <b>같은 내용이 한 켜 낮은 카드</b>에 들어간다.
+
+                <p>2026-09-02에 <b>넓은 화면도 같은 줄</b>로 모았다. lg만 본문 아래 버튼이면
+                같은 카드가 폭에 따라 다른 물건으로 보인다.
+              */}
+              <span className="flex items-end gap-2.5 lg:gap-4">
+                <span className="min-w-0 flex-1 break-keep text-[11.5px] leading-[1.55] text-white/70 md:text-[13px] lg:break-normal lg:text-white/60 lg:text-sm">
+                  계획은 그대로, <br />
+                  붐비는 순간만 PEAKOFF가 도와드려요.
+                </span>
             {/* 이 링크가 유일한 문이다. button+navigate 대신 Link라 새 탭으로도 열린다 */}
             {/*
               보이는 글자는 짧게 두되 <b>접근 이름에는 목적지를 담는다.</b>
@@ -666,15 +939,22 @@ export function HomePage() {
               "시작하기 · 시작하기"로 들려 어느 쪽이 무엇인지 알 수 없었다.
               눈으로 보는 사람은 바로 위 제목이 문맥을 주지만, 링크 목록에는 그 제목이 없다.
             */}
-            <Link
-              to="/plan"
-              aria-label="코스 직접 짜기 시작하기"
-              className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
-            >
-              시작하기
-              {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
-              <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
-            </Link>
+              {/*
+                ⚠️ <b>두 폭 모두 오른쪽 끝이다.</b> 버튼이 글머리에 붙으면 카드 오른쪽 아래가
+                통째로 빈다. 오른쪽 끝에 세우면 읽는 방향(왼쪽 위 → 오른쪽 아래)의
+                끝에 문이 놓인다.
+              */}
+              <Link
+                to="/plan"
+                aria-label="코스 직접 짜기 시작하기"
+                  className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
+                >
+                  시작하기
+                  {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
+                  <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+                </Link>
+              </span>
+            </span>
           </span>
         </div>
 
@@ -702,32 +982,13 @@ export function HomePage() {
         */}
         <div className={`${CELL} lg:col-span-6`}>
           {/* 왼쪽 카드와 같은 규칙 — 카드는 누르는 것이 아니고, hover는 CTA를 가리킨다 */}
-          <div className="group border-brand bg-surface shadow-rest relative w-full overflow-hidden rounded-[24px] border-[1.5px] px-6 pt-6.5 pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
-            {/*
-              글로우 하나. 왼쪽 카드와 <b>같은 장치를 흰 면의 세기로</b> 옮긴 것이다.
-
-              두 문이 짝인데 왼쪽만 오른쪽 절반이 장식으로 차 있고 이쪽은 비어 있어,
-              같은 급의 카드 둘이 아니라 <b>주와 곁다리</b>로 읽혔다. 글자 크기·버튼·
-              여백은 이미 같으니 남은 차이는 면이 비어 있다는 것뿐이었다.
-
-              ⚠️ <b>하나뿐이고, 틸이다.</b> 왼쪽은 틸(한적)과 핑크(붐빔)를 마주 놓아
-              "붐빔에서 한적으로"를 말하지만, 이 문은 붐빔을 진단하는 자리가 아니라
-              한적한 곳을 찾아 주는 자리다 — 핑크를 얹으면 하지 않는 말을 하게 된다.
-
-              ⚠️ <b>면을 통째로 칠하지 않았다.</b> 브랜드 틸을 깔면 로고와 버튼에만 남겨야
-              할 강조색이 화면 절반을 차지하고, 옅은 틸(brand-tint #e1f5f9)은 이 자리에
-              깔린 바탕 wash(#e9f6f7)와 거의 같은 색이라 카드 경계가 녹는다.
-              번지는 원 하나면 면은 흰 채로 두면서 빈 자리만 채운다.
-
-              알파가 왼쪽(0.14)보다 낮다. 흰 면 위에서는 같은 값도 훨씬 진하게 보인다.
-            */}
-            <span
-              className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]"
-              aria-hidden="true"
-            >
-              <span className="absolute -top-16 -right-14 h-52 w-52 rounded-full bg-[rgb(63_193_201/0.08)]" />
-            </span>
-            <span className="relative flex flex-col gap-3">
+          <div className="group border-brand/40 bg-surface shadow-rest relative w-full overflow-hidden rounded-[24px] border-[1.5px] px-4.5 pt-4.5 pb-4.5 md:px-6 md:pt-6.5 md:pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
+            {/* 왼쪽 카드와 같은 규칙 — 모바일은 제목 위 맨 그림글자. 주석은 그쪽에 있다 */}
+            <span className="relative flex flex-col gap-1.5 lg:gap-3">
+              <span className="text-[20px] leading-none lg:text-[24px]" aria-hidden="true">
+                🎲
+              </span>
+              <span className="flex min-w-0 flex-col gap-1.5 lg:w-full lg:gap-3">
               {/* 킥커(DISCOVER A TRIP)를 걷어냈다. 왼쪽 카드와 같은 이유다. */}
               {/*
                 왼쪽과 같은 규칙 — 제목은 <b>사용자가 하는 말</b>이다.
@@ -745,11 +1006,12 @@ export function HomePage() {
                 진짜 "오늘"이 따로 있다(아래 "오늘의 경주"는 오늘의 혼잡을 말한다).
                 한 화면에서 같은 말이 두 뜻으로 쓰이면 어느 쪽도 믿기 어려워진다.
               */}
-              <span className="text-fg text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-                새로운 여행을 발견할래요.
-              </span>
+              {/* 왼쪽 카드와 같은 규칙이다. 그림글자 주석은 그쪽에 있다 */}
+                <span className="text-fg text-[18px] leading-[1.3] font-bold tracking-[-0.025em] lg:text-[26px]">
+                  새로운 여행을 발견할래요.
+                </span>
               {/*
-                ⚠️ "생각지 못했던 여행을 찾아드려요"가 <b>경주를 모르는 사용자를 위한 문패</b>다.
+                ⚠️ "뜻밖의 여행을 PEAKOFF가 찾아드려요"가 <b>경주를 모르는 사용자를 위한 문패</b>다.
                 제목이 행동 이름이라 누구를 위한 문인지 말하지 않으므로, 그 일을 이 문장이
                 혼자 맡는다 — 지우면 그 사람이 왼쪽 문으로 들어가 빈 검색창 앞에서 처음 막힌다.
 
@@ -757,25 +1019,29 @@ export function HomePage() {
                 말해 두어야 "나는 아직 아무것도 못 정했는데"라는 사람이 이쪽을 고른다.
 
                 <p>⚠️ <b>폭 상한(max-w-62.5)을 걷어냈다.</b> 두 줄은 이미 <code>&lt;br/&gt;</code>이
-                직접 가르므로 상한이 하는 일은 <b>의도한 줄을 한 번 더 접는 것</b>뿐인데,
-                "생각지 못했던 여행을 PEAKOFF가 찾아드려요."가 250px를 넘어 세 줄이 된다.
+                직접 가르므로 상한이 하는 일은 <b>의도한 줄을 한 번 더 접는 것</b>뿐이다.
               */}
-              <span className="text-muted text-sm leading-[1.6]">
-                날짜와 취향만 알려주세요. <br/>생각지 못했던 여행을 PEAKOFF가 찾아드려요.
-              </span>
+                {/* 왼쪽 카드와 같은 규칙 — 본문과 버튼이 한 줄이다. 주석은 그쪽에 있다 */}
+                <span className="flex items-end gap-2.5 lg:gap-4">
+                  <span className="text-muted min-w-0 flex-1 break-keep text-[11.5px] leading-[1.55] md:text-[13px] lg:break-normal lg:text-sm">
+                    날짜와 취향만 알려주세요. <br />
+                    뜻밖의 여행을 PEAKOFF가 찾아드려요.
+                  </span>
               {/*
                 왼쪽 카드와 같은 노란 알약이다. 회색 테두리 알약은 "준비 중"의 표현이었다 —
                 눌러도 되는 버튼을 비활성처럼 그려두면 사용자는 없는 기능으로 읽는다.
                 두 문이 같은 모양의 버튼을 갖는 것이 맞다. 둘 다 실제로 열리니까.
               */}
-              <Link
-                to="/recommend"
-                aria-label="새로운 코스 발견하기 시작하기"
-                className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-ui mt-1.5 inline-flex h-11.5 cursor-pointer items-center gap-1.75 self-start px-5 text-[15.5px] font-semibold no-underline transition-colors"
-              >
-                시작하기
-                <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
-              </Link>
+                <Link
+                  to="/recommend"
+                  aria-label="새로운 코스 발견하기 시작하기"
+                    className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
+                  >
+                    시작하기
+                    <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+                  </Link>
+                </span>
+              </span>
             </span>
           </div>
         </div>
@@ -803,7 +1069,7 @@ export function HomePage() {
             높이가 제각각이었는데, 셋이 나란히 선 줄에서는 <b>아랫변이 안 맞는 것</b>이
             더 눈에 띈다. 격자 기본값(stretch)으로 두면 셋이 가장 큰 것에 맞춰 늘어난다.
           */
-          className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:p-5.5`}
+          className={`${CARD_RAISED} flex flex-col gap-3.5 p-4.5 lg:col-span-4 lg:gap-3 lg:p-5.5`}
         >
           <div className="flex flex-col gap-0.75 px-1">
             <div className="flex items-baseline justify-between gap-2">
@@ -828,10 +1094,18 @@ export function HomePage() {
               뼈대를 카드와 <b>같은 높이로</b> 세운다. 낮게 두면 값이 들어오는 순간
               박스가 아래로 늘어나면서 그 아래 내용이 통째로 밀린다.
             */
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: QUIET_SPOT_COUNT }, (_, index) => (
-                <div key={index} className="bg-bg rounded-card h-21 animate-pulse" />
-              ))}
+            <div className="overflow-hidden lg:overflow-visible">
+              <div
+                className={QUIET_STRIP}
+                style={{ '--strip-x': '0px' } as CSSProperties}
+              >
+                {Array.from({ length: QUIET_SPOT_COUNT }, (_, index) => (
+                  <div
+                    key={index}
+                    className="bg-bg lg:rounded-card h-[130px] w-[120px] flex-none animate-pulse rounded-[16px] lg:h-21 lg:w-full"
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -844,14 +1118,109 @@ export function HomePage() {
           )}
 
           {quietSpots.phase === 'loaded' && quietSpots.spots.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {quietSpots.spots.map((spot) => (
-                <QuietSpotCard
-                  key={spot.place.id}
-                  spot={spot}
-                  onOpen={() => setOpenedSpot(spot)}
-                />
-              ))}
+            /*
+              창. 띠는 이 폭보다 넓고, 넘치는 부분은 잘린다 —
+              <b>잘려 보이는 옆 카드</b>가 "더 있다"는 유일한 안내다.
+              lg에서는 창을 풀어 목록이 그대로 보이게 한다.
+            */
+            <div
+              /*
+                ⚠️ 음수 마진 + 같은 크기의 패딩은 <b>그림자가 설 자리</b>다.
+                창이 overflow-hidden이라 카드의 그림자도 함께 잘리는데, 여백 없이
+                딱 맞추면 위아래 그림자가 사라져 카드가 흰 면에 다시 묻힌다.
+                바깥에서 본 크기는 그대로다.
+              */
+              ref={stripWindow}
+              className="-mx-1 -my-2 overflow-hidden px-1 py-2 lg:mx-0 lg:my-0 lg:overflow-visible lg:p-0"
+            >
+              <div
+                className={`${QUIET_STRIP} ${
+                  // 손가락을 따라오는 동안에는 전환을 끈다. 켜두면 손끝보다 늦게 따라온다
+                  stripDrag === 0 ? 'transition-transform duration-300 ease-out' : ''
+                } motion-reduce:transition-none`}
+                /*
+                  ⚠️ 옮기는 값을 <b>인라인 transform으로 주지 않는다.</b> 인라인이 클래스를
+                  이기므로 넓은 화면의 {@code lg:translate-x-0}이 무력해진다.
+                  변수만 넘기고 <b>쓸지 말지는 클래스가 정한다.</b>
+                */
+                style={
+                  {
+                    '--strip-x': `${-stripShift + stripDrag}px`,
+                    '--quiet-card-w': `${QUIET_CARD_W}px`,
+                  } as CSSProperties
+                }
+                onTouchStart={(event) => {
+                  const touch = event.touches[0]
+                  strip.current = { x: touch.clientX, y: touch.clientY, dx: 0, axis: '' }
+                }}
+                onTouchMove={(event) => {
+                  const touch = event.touches[0]
+                  const dx = touch.clientX - strip.current.x
+                  const dy = touch.clientY - strip.current.y
+                  // 6px을 넘어서야 축을 정한다. 그 전에는 어느 쪽인지 모른다
+                  if (strip.current.axis === '' && Math.abs(dx) + Math.abs(dy) > 6) {
+                    strip.current.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+                  }
+                  if (strip.current.axis === 'x') {
+                    /*
+                      ⚠️ ref에도 같은 값을 적어 둔다. 손을 떼는 순간 읽어야 하는데,
+                      state는 다시 그려진 뒤에야 갱신되므로 <b>빠르게 튕기면</b>
+                      touchend가 아직 0인 값을 본다 — 그러면 넘어가지 않는다.
+                    */
+                    strip.current.dx = dx
+                    setStripDrag(dx)
+                  }
+                }}
+                onTouchEnd={() => {
+                  const dx = strip.current.dx
+                  // 40px을 넘게 밀었을 때만 한 장 넘어간다. 그보다 작으면 제자리로
+                  if (Math.abs(dx) > 40) {
+                    setStripIndex((index) =>
+                      Math.min(Math.max(index + (dx < 0 ? 1 : -1), 0), stripLast),
+                    )
+                  }
+                  setStripDrag(0)
+                  strip.current.dx = 0
+                  strip.current.axis = ''
+                }}
+              >
+                {quietSpots.spots.map((spot) => (
+                  <QuietSpotCard
+                    key={spot.place.id}
+                    spot={spot}
+                    onOpen={() => setOpenedSpot(spot)}
+                  />
+                ))}
+              </div>
+
+              {/*
+                ■ 어디쯤 보고 있는지 알리는 막대 (모바일만)
+
+                끌기는 <b>화면에 보이지 않는 조작</b>이라 무엇이든 하나는 눈에 보여야 한다.
+                단추(‹ ›)를 놓아 봤다가 막대로 바꿨다 — 단추는 <b>넘길 수 있다</b>는 것만
+                말하고 <b>지금 어디인지</b>는 말하지 못한다. 막대는 둘 다 한다.
+
+                <p>칸 수는 <b>넘길 수 있는 자리 수</b>다(카드 수가 아니다). 마지막 자리에서는
+                카드 두 장이 함께 보이므로, 카드마다 한 칸씩 주면 끝까지 밀어도 막대가
+                끝에 닿지 않는다.
+
+                <p>누를 수 없다 — 자리를 알리는 표시이지 조작이 아니다.
+                누를 수 있게 생기면 눌러 보게 되고, 4px짜리는 손가락으로 겨눌 수 없다.
+              */}
+              {stripLast > 0 && (
+                <div
+                  className="bg-fill mx-auto mt-3 h-1 w-16 overflow-hidden rounded-full lg:hidden"
+                  aria-hidden="true"
+                >
+                  <div
+                    className="bg-brand-deep h-full rounded-full transition-transform duration-300 ease-out motion-reduce:transition-none"
+                    style={{
+                      width: `${100 / (stripLast + 1)}%`,
+                      transform: `translateX(${stripIndex * 100}%)`,
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -872,8 +1241,8 @@ export function HomePage() {
         {/*
           4. <b>비워 둔 칸.</b>
 
-          아직 무엇을 넣을지 정하지 않았다. 자리를 먼저 잡아 두는 이유는, 나중에 채울 때
-          양옆 박스의 폭을 다시 계산할 일이 없게 하려는 것이다 — 넷·넷·넷이 이미 서 있다.
+          채울 것이 정해져 있고(2026-09-02) 자리를 먼저 잡아 둔다. 나중에 채울 때
+          양옆 박스의 폭을 다시 계산할 일이 없다 — 넷·넷·넷이 이미 서 있다.
 
           ⚠️ <b>좁은 화면에서는 그리지 않는다.</b> 한 줄로 쌓이는 자리에서 빈 흰 카드는
           자리를 맡아둔 것으로 읽히지 않고 <b>내용이 안 뜬 박스</b>로 읽힌다.
@@ -888,7 +1257,8 @@ export function HomePage() {
           {/*
             5. 다른 사람들의 여행.
 
-            옆 칸과 <b>같은 박스</b>에 담는다. 예전에는 이쪽만 테두리 없이 배경 위에 떠 있어,
+            옆 칸과 <b>같은 박스</b>에 담는다. 데이터 줄은 <b>넷 칸씩 셋</b>이고
+            가운데는 채울 것을 기다리는 빈 칸이다. 예전에는 이쪽만 테두리 없이 배경 위에 떠 있어,
             나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 셋이다.
 
             이름이 한 번 "요즘 저장된 여행"으로 갔다가 돌아왔다 (2026-09-01).
@@ -931,7 +1301,7 @@ export function HomePage() {
                 카드째 사라지면 12초마다 화면에 구멍이 뚫린 것으로 읽힌다.
               */
               <div
-                className="region-fade grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-1"
+                className="region-fade grid grid-cols-1 gap-2.5 max-md:[&>*:nth-child(4)]:hidden md:grid-cols-2 lg:grid-cols-1"
                 data-fading={othersFading}
               >
                 {others.map((course) => (

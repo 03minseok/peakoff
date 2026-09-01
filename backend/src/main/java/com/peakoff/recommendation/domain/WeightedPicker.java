@@ -25,6 +25,23 @@ import org.springframework.stereotype.Component;
 @Component
 public class WeightedPicker {
 
+	/**
+	 * 대안 추천 계열이 함께 쓰는 <b>후보군 크기</b>와 <b>쏠림 정도</b>. (2026-08-26 실측)
+	 *
+	 * <p>여기 모아 둔 이유: 같은 값을 쓰는 곳이 셋이다 — 장소 교체(실데이터·목업)와
+	 * 홈의 "이번 주 한적한 곳". 각자 적어 두면 분석 결과로 값이 바뀔 때 한쪽만 고쳐지고,
+	 * 그러면 화면마다 다른 분산이 걸린다.
+	 *
+	 * <p>왜 3과 1.2인지는 {@code KtoRecommendationProvider}에 실측과 함께 적어 두었다.
+	 *
+	 * <p>⚠️ <b>설문 코스 생성은 자기 값을 쓴다</b>({@code CrowdSensitivity}).
+	 * 후보 풀의 성격이 달라(대표 관광지 100곳에서 고른다) 같은 값을 강요할 근거가 없다.
+	 */
+	public static final int DEFAULT_POOL_SIZE = 3;
+
+	/** @see #DEFAULT_POOL_SIZE */
+	public static final double DEFAULT_BIAS = 1.2;
+
 	private final RandomGenerator random;
 
 	public WeightedPicker(RandomGenerator random) {

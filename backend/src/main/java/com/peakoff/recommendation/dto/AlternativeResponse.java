@@ -13,7 +13,10 @@ import com.peakoff.recommendation.domain.ScoreFactor;
  * <p>{@code reason}과 {@code factors}는 화면에 반드시 함께 표시한다. 점수만 내려보내면
  * 서비스가 데이터를 어떻게 활용했는지 화면에서 드러나지 않는다.
  *
- * <p>후보는 <b>추천도가 높은 순</b>으로 담겨 온다. 정렬 기준이 곧 화면에 보이는 값이다.
+ * <p>⚠️ 후보는 <b>추천도 순이 아니다.</b> 상위 후보군에서 가중 무작위로 뽑은 순서 그대로 온다 —
+ * 점수로 다시 줄을 세우면 최고점이 언제나 1등이 되어 분산이 죽는다.
+ * 화면이 정렬해야 하면 <b>구간 단위까지만</b> 한다. 그러면 줄 세운 값이 카드에 적힌 문구
+ * 그 자체라 설명이 서고, 같은 구간 안은 뽑힌 차례가 유지된다.
  */
 public record AlternativeResponse(
 		PlaceResponse place,

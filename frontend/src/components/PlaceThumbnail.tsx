@@ -20,12 +20,25 @@
  * {@code md}는 진단 화면의 코스 목록 — 담은 곳을 알아볼 만큼은 되어야 한다.
  * {@code sm}은 좁은 자리용으로 남겨 둔다.
  */
-type ThumbnailSize = 'sm' | 'md' | 'lg' | 'banner'
+type ThumbnailSize = 'sm' | 'md' | 'lg' | 'card' | 'banner'
 
 const SIZE_CLASS: Record<ThumbnailSize, string> = {
   sm: 'h-10 w-10 rounded-chip text-[15px]',
   md: 'h-16 w-16 rounded-ui text-[19px]',
   lg: 'h-21 w-21 rounded-[14px] text-[22px]',
+  /*
+   * 홈의 "이번 주 한적한 곳". <b>좁은 화면에서는 카드 맨 위를 가로지르는 사진,
+   * lg부터는 왼쪽 썸네일</b>이다 — banner와 같은 수법이고 갈리는 지점만 다르다
+   * (그쪽은 sm, 이쪽은 lg. 홈의 이 박스가 lg에서 세로 목록이 되기 때문이다).
+   *
+   * 모서리를 죽이는 이유도 banner와 같다 — 카드가 overflow-hidden으로 위 모서리를
+   * 대신 잘라 준다. 여기서도 둥글리면 두 겹이 되어 경계가 지저분해진다.
+   *
+   * 높이 76px은 카드 폭(120px)에 3:2로 붙는 값이다. 위의 진입 카드 둘이 납작해지면서
+   * 이 카드만 크면 <b>같은 화면에서 급이 다른 것</b>처럼 보여 함께 내렸다.
+   * lg 값은 md와 같다 — 예전 목록이 쓰던 크기라 <b>넓은 화면은 픽셀이 안 움직인다.</b>
+   */
+  card: 'h-19 w-full rounded-none text-[22px] lg:h-16 lg:w-16 lg:rounded-ui lg:text-[19px]',
   /*
    * 좁은 화면에서는 카드 맨 위를 가로지르는 배너, 넓은 화면에서는 왼쪽 썸네일.
    *
