@@ -837,10 +837,13 @@ export function MyPage() {
           {list.status === 'loading' && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }, (_, index) => (
-                <div key={index} className="bg-surface shadow-rest rounded-[20px] p-4.5">
-                  <div className="skeleton mb-3 h-4.5 w-32" />
-                  <div className="skeleton mb-4 h-3 w-24" />
-                  <div className="skeleton h-14 w-full rounded-[14px]" />
+                <div
+                  key={index}
+                  className="bg-surface shadow-rest rounded-[20px] p-4.5 max-md:rounded-[16px] max-md:p-3.5"
+                >
+                  <div className="skeleton mb-3 h-4.5 w-32 max-md:mb-2.5 max-md:h-4" />
+                  <div className="skeleton mb-4 h-3 w-24 max-md:mb-3" />
+                  <div className="skeleton h-14 w-full rounded-[14px] max-md:h-12 max-md:rounded-[12px]" />
                 </div>
               ))}
             </div>
@@ -998,7 +1001,20 @@ export function MyPage() {
             훨씬 단순한데도(사진·이름·분류·버튼) 코스 카드와 같은 폭을 차지해
             <b>같은 무게의 것</b>으로 보인다. 이 화면의 주인공은 코스다.
           */}
-                <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-4">
+                {/*
+            ■ <b>좁은 화면은 한 줄에 하나, 가로로 눕힌다</b> (2026-09-02)
+
+            두 칸 타일이었다. 사진을 세운 카드가 나란히 서면 <b>보기에는 좋지만
+            이름이 두 줄로 접히고</b>, 찜은 "어디였는지 알아보는" 목록이라 이름이 잘리면
+            카드가 하는 일을 못 한다. 가로로 누우면 사진은 100px 정사각으로 작아지는 대신
+            <b>이름이 한 줄을 통째로</b> 쓴다 — 중고거래 앱들이 같은 이유로 이 모양을 쓴다.
+
+            <p>세로 길이도 줄어든다. 사진 160px + 이름 + 분류 + 버튼이 세로로 쌓이던 것이
+            사진 높이(100px) 안에 다 들어간다.
+
+            <p><b>sm부터는 그대로다</b> — 두 칸 타일, lg는 넉 줄.
+          */}
+                <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0 max-sm:grid-cols-1 max-sm:gap-2.5 lg:grid-cols-4">
                   {lingering.slice(0, favoriteLimit).map((favorite) => {
                     /*
                 하트가 켜져 있는가는 <b>진짜 목록에게 묻는다.</b> 이 카드가 서 있다는 것과
@@ -1009,7 +1025,7 @@ export function MyPage() {
                     return (
                       <li
                         key={favorite.placeId}
-                        className={`${CARD} relative flex flex-col overflow-hidden p-0`}
+                        className={`${CARD} relative flex flex-col overflow-hidden p-0 max-sm:flex-row max-sm:items-stretch`}
                       >
                         <PlaceThumbnail
                           name={favorite.placeName}
@@ -1021,7 +1037,7 @@ export function MyPage() {
                     이 카드는 어느 폭에서나 세로다 — 그대로 두면 넓은 화면에서만
                     사진이 64px 조각으로 쪼그라든다.
                   */
-                          className="sm:h-40 sm:w-full sm:rounded-none sm:text-[30px]"
+                          className="max-sm:h-25 max-sm:w-25 max-sm:flex-none max-sm:text-[22px] sm:h-40 sm:w-full sm:rounded-none sm:text-[30px]"
                         />
 
                         {/*
@@ -1058,15 +1074,20 @@ export function MyPage() {
                     어두운 사진에서 통째로 묻힌다 — 밝은 사진은 그림자가, 어두운 사진은
                     흰색이 받친다.
                   */
-                          className={`press absolute top-2.5 right-2.5 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-0 bg-transparent drop-shadow-[0_1px_3px_rgb(42_62_84/0.55)] ${
-                            liked ? 'text-like' : 'text-white'
+                          /*
+                    ⚠️ 좁은 화면에서는 <b>사진이 아니라 흰 면 위</b>에 선다 — 카드가 가로로
+                    누우면서 오른쪽 끝이 흰 바탕이 됐다. 흰 하트는 거기서 보이지 않으므로
+                    꺼진 하트를 회색으로 돌리고, 사진을 받치던 그림자도 함께 끈다.
+                  */
+                          className={`press absolute top-2.5 right-2.5 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-0 bg-transparent drop-shadow-[0_1px_3px_rgb(42_62_84/0.55)] max-sm:top-1 max-sm:right-1 max-sm:h-8 max-sm:w-8 max-sm:drop-shadow-none ${
+                            liked ? 'text-like' : 'text-white max-sm:text-hint'
                           }`}
                         >
                           <Heart size={18} filled={liked} />
                         </button>
 
-                        <div className="flex min-w-0 flex-col gap-0.5 px-4 pt-3.5">
-                          <p className="text-fg m-0 text-[17px] font-bold tracking-[-0.01em]">
+                        <div className="flex min-w-0 flex-col gap-0.5 px-4 pt-3.5 max-sm:flex-1 max-sm:justify-center max-sm:gap-1 max-sm:px-3.5 max-sm:py-2.5 max-sm:pr-10">
+                          <p className="text-fg m-0 text-[17px] font-bold tracking-[-0.01em] max-sm:line-clamp-2 max-sm:text-[14.5px] max-sm:leading-[1.35]">
                             {favorite.placeName}
                           </p>
                           {/*
@@ -1074,7 +1095,9 @@ export function MyPage() {
                     <b>빈 줄을 세우지 않는다.</b> 자리만 비워두면 "안 불러온 값"으로 읽힌다.
                   */}
                           {favorite.categoryName && (
-                            <p className="text-hint m-0 text-[12.5px]">{favorite.categoryName}</p>
+                            <p className="text-hint m-0 text-[12.5px] max-sm:text-[12px]">
+                              {favorite.categoryName}
+                            </p>
                           )}
                         </div>
 
@@ -1086,12 +1109,16 @@ export function MyPage() {
                   찜 목록에서 할 일은 대안을 찾는 것이 아니라 <b>이곳이 어디였는지 보는 것</b>이라,
                   그 하나가 카드의 주된 행동이면 작은 글자로 둘 이유가 없다.
                 */}
-                        <div className="px-4 pt-3 pb-4">
+                        {/*
+                  가로 카드에서는 이 문이 <b>글 아래 작은 단추</b>다. 카드 폭을 가로지르던
+                  버튼을 그대로 두면 100px 사진 옆에서 폭을 다 먹어 이름이 설 자리를 뺏는다.
+                */}
+                        <div className="px-4 pt-3 pb-4 max-sm:absolute max-sm:right-3 max-sm:bottom-2.5 max-sm:p-0">
                           <button
                             type="button"
                             onClick={() => setOpenedPlace(favorite)}
                             aria-label={`${favorite.placeName} 상세보기`}
-                            className="press border-line bg-surface text-fg hover:bg-bg rounded-ui h-11 w-full cursor-pointer border text-[13.5px] font-semibold transition-colors"
+                            className="press border-line bg-surface text-fg hover:bg-bg rounded-ui h-11 w-full cursor-pointer border text-[13.5px] font-semibold transition-colors max-sm:h-7.5 max-sm:w-auto max-sm:rounded-[9px] max-sm:px-2.5 max-sm:text-[11.5px]"
                           >
                             상세보기
                           </button>
