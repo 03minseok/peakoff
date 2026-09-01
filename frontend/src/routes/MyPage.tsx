@@ -1409,8 +1409,7 @@ export function MyPage() {
 
                       {blocked && (
                         <p className="text-crowded-deep m-0 px-1 pt-2 text-[12px] leading-[1.5]">
-                          날짜가 겹치는 코스가 있어 한 번에 볼 수 없어요. 위의 붉은 표시를 눌러
-                          어디가 겹치는지 확인해 주세요.
+                          날짜가 겹치는 코스가 있어 한 번에 볼 수 없어요.
                         </p>
                       )}
 
