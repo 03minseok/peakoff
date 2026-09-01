@@ -60,23 +60,9 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
           가로질러 한 줄로 이어지기 때문에 배경 장식으로 물러나지만, 여기서는 폭이
           잘려 있어 같은 장치가 <b>내용</b>처럼 보인다.
 
-          정체성은 이 면에 이미 두 겹으로 들어 있다 — 어두운 네이비 면 자체와,
-          아래 틸·핑크 글로우다. 띠까지 얹으면 한 화면에서 같은 말을 세 번 한다.
+          정체성은 이 면 자체(어두운 네이비)와 로고 마크가 맡는다.
+          띠까지 얹으면 한 화면에서 같은 말을 세 번 한다.
         */}
-        {/*
-          글로우 두 개가 서비스의 서사다 — 위는 틸(브랜드이자 한적한 방향), 아래는 핑크(붐빔).
-          어두운 네이비 위에서 두 기운이 마주보게 두어, "붐빔에서 한적으로 옮겨간다"는
-          방향이 장식에도 배어 있게 한다. 핑크 원색이 사는 자리가 여기다.
-        */}
-        <div
-          className="absolute -top-17.5 -right-22.5 h-70 w-70 rounded-full bg-[rgb(63_193_201/0.13)]"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute -bottom-22.5 -left-15 h-55 w-55 rounded-full bg-[rgb(252_81_133/0.09)]"
-          aria-hidden="true"
-        />
-
         <Link to="/" className="relative no-underline">
           {/* tone="dark"가 두 색을 함께 바꾼다 — 봉우리는 흰색, 비껴간 조각은 그린틸.
               까닭은 BrandMark에 적어 두었다. */}

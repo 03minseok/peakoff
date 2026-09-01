@@ -674,16 +674,6 @@ export function ResultPage() {
             같은 얼굴을 하면, 이 화면의 모든 문장이 장식으로 읽힌다.
           */}
           <section className="bg-fg rounded-card relative overflow-hidden px-5 py-6 text-white lg:px-10 lg:py-8">
-            {/*
-              글로우가 틸 하나뿐인 것은 장식이 아니라 결론이다 — 이 카드가 말하는 것이
-              "한적한 쪽으로 옮겨왔다"이고, 틸이 그 방향(브랜드이자 한적)의 색이다.
-              홈 갈림길 카드에는 핑크(붐빔)가 함께 있지만, 여기는 이미 도착한 자리라 핑크가 없다.
-            */}
-            <div
-              className="absolute -top-20 -right-20 h-72 w-72 rounded-full bg-[rgb(63_193_201/0.13)]"
-              aria-hidden="true"
-            />
-
             <div className="relative mx-auto flex max-w-[520px] flex-col items-center gap-3.5 text-center">
               {/*
                 <b>브랜드 마크가 직접 축하한다.</b> 이모지를 쓰지 않은 이유:

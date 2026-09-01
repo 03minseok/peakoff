@@ -25,7 +25,10 @@ import com.peakoff.global.support.Scores;
  * @param originQuietness  원래 장소의 그 날 한적도. 모르면 {@code null}.
  *                         후보의 절대 점수만 보여주면 "이게 지금보다 나은가"를 사용자가
  *                         암산해야 한다 — 비교 대상을 함께 내려보낸다
- * @param picked           추천도 순으로 정렬된 후보. 없으면 빈 목록
+ * @param picked           <b>뽑힌 순서 그대로의</b> 후보. 없으면 빈 목록.
+ *                         ⚠️ 점수순이 아니다 — 뽑은 뒤 다시 정렬하면 최고점이 언제나 1등이 되어
+ *                         가중 무작위가 하는 일이 통째로 덮인다(2026-08-26 실측: 고정률 68~82%).
+ *                         화면은 구간 단위까지만 세운다
  */
 public record Alternatives(
 		PlaceOffStatus status,

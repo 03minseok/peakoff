@@ -10,13 +10,22 @@ interface Props {
 }
 
 /** 지역·기간처럼 짧은 정보를 다는 알약 */
-const META_CHIP = 'rounded-[8px] bg-bg px-2.25 py-1 text-xs font-medium text-muted'
+const META_CHIP =
+  'rounded-[8px] bg-bg px-2.25 py-1 text-xs font-medium text-muted max-md:px-2 max-md:py-0.75 max-md:text-[11px]'
 
 /**
  * 마이페이지 목록의 코스 카드 한 장.
  *
  * <p>모바일과 데스크톱이 같은 컴포넌트를 쓴다. 다른 것은 바깥 격자뿐이라
  * (모바일 1열 · 데스크톱 3열) 카드를 두 벌 만들 이유가 없다.
+ *
+ * <h3>좁은 화면에서만 한 치수 작다</h3>
+ * 홈의 카드가 모두 작아지면서(120px 타일 · 12~14.5px 글자) 이 화면만 큰 글씨로 남아,
+ * 같은 앱의 두 화면이 <b>서로 다른 축척</b>으로 보였다. 여백·모서리·글자를 홈에 맞춰 내렸다.
+ *
+ * <p>⚠️ <b>{@code max-md:}로만 내린다.</b> 기본 클래스를 고치면 넓은 화면까지 함께 움직인다 —
+ * 그쪽은 3열이라 카드 폭이 이미 좁고, 지금 크기가 맞다. 경계값은 마이페이지의
+ * 모바일·데스크톱이 갈리는 자리(탭이 사라지는 {@code md})를 그대로 쓴다.
  *
  * <p><b>지난 여행은 흐리게 둔다.</b> 지우지 않는 이유는 기록이기 때문이고,
  * 흐리게 두는 이유는 지금 계획할 수 있는 코스와 섞여 보이면 목록을 훑기 어려워서다.
@@ -36,7 +45,7 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
   return (
     // relative: 제목 버튼의 ::after가 이 상자를 기준으로 늘어난다
     <div
-      className={`bg-surface shadow-rest relative flex flex-col gap-3 rounded-[20px] border-[1.5px] border-transparent p-4.5 transition-colors ${
+      className={`bg-surface shadow-rest relative flex flex-col gap-3 rounded-[20px] border-[1.5px] border-transparent p-4.5 transition-colors max-md:gap-2 max-md:rounded-[16px] max-md:p-3.5 ${
         past ? 'opacity-65' : ''
       }`}
     >
@@ -55,7 +64,7 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
           <button
             type="button"
             onClick={onOpen}
-            className="text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] after:absolute after:inset-0 after:rounded-[20px] after:content-['']"
+            className="text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] max-md:text-[14.5px] after:absolute after:inset-0 after:rounded-[20px] after:content-[''] max-md:after:rounded-[16px]"
           >
             <span className="block truncate">{course.name}</span>
           </button>
@@ -66,19 +75,19 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
           type="button"
           onClick={onDelete}
           aria-label={`${course.name} 삭제`}
-          className="text-line hover:bg-crowded-tint hover:text-crowded relative z-10 grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-[10px] bg-transparent text-[15px] transition-colors"
+          className="text-line hover:bg-crowded-tint hover:text-crowded relative z-10 grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-[10px] bg-transparent text-[15px] transition-colors max-md:h-7 max-md:w-7 max-md:text-[13px]"
         >
           <Close />
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 max-md:gap-1.5">
         <span className={META_CHIP}>{course.regionName.replace(/^.*\s/, '')}</span>
         <span className={META_CHIP}>{formatNights(course.nights)}</span>
         <span className={META_CHIP}>{course.placeCount}곳</span>
       </div>
 
-      <div className="text-muted flex items-center gap-1.75 font-mono text-[13px]">
+      <div className="text-muted flex items-center gap-1.75 font-mono text-[13px] max-md:text-[12px]">
         <span className="bg-line h-1.5 w-1.5 flex-none rounded-full" aria-hidden="true" />
         {formatDateRange(course.startDate, course.nights)}
       </div>
@@ -91,13 +100,15 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
         재보지도 않은 코스에 "붐빔"이나 "한적"을 붙이게 된다.
       */}
       <div
-        className={`flex items-center justify-between rounded-[14px] px-3.5 py-3 ${
+        className={`flex items-center justify-between rounded-[14px] px-3.5 py-3 max-md:rounded-[12px] max-md:px-3 max-md:py-2 ${
           course.level === null ? 'bg-bg text-hint' : LEVEL_TINT[course.level]
         }`}
       >
         <div className="flex flex-col gap-0.5">
-          <span className="text-[11.5px] opacity-70">예상 한적 지수</span>
-          <span className="text-[12px] font-bold">{course.levelLabel ?? '아직 진단 전'}</span>
+          <span className="text-[11.5px] opacity-70 max-md:text-[10.5px]">예상 한적 지수</span>
+          <span className="text-[12px] font-bold max-md:text-[11.5px]">
+            {course.levelLabel ?? '아직 진단 전'}
+          </span>
           {/*
             그 점수가 <b>몇 곳을 근거로 한 값인지</b> 밝힌다. 카드가 여럿 늘어서는 화면이라
             근거가 얇은 점수와 두꺼운 점수가 같은 크기로 나란히 서면 견줄 수가 없다.
@@ -106,20 +117,25 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
             0으로 채우면 "근거가 하나도 없는 점수"라는 거짓말이 된다.
           */}
           {course.forecastTargetCount !== null && course.diagnosedCount !== null && (
-            <span className="text-[11px] opacity-60">
+            <span className="text-[11px] opacity-60 max-md:text-[10.5px]">
               관광지 {course.forecastTargetCount}곳 중 {course.diagnosedCount}곳 기준
             </span>
           )}
         </div>
-        <span className="font-mono text-[26px] leading-none font-semibold tracking-[-0.02em]">
+        <span className="font-mono text-[26px] leading-none font-semibold tracking-[-0.02em] max-md:text-[20px]">
           {/* 0으로 채우지 않는다. 0은 "매우 붐빔"으로 읽혀 없는 것과 뜻이 정반대다 */}
           {course.totalQuietness ?? '—'}
         </span>
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-hint text-xs">{formatRelativeTime(course.createdAt)} 저장</span>
-        <span className="text-brand-deep text-[13px] font-semibold" aria-hidden="true">
+        <span className="text-hint text-xs max-md:text-[11px]">
+          {formatRelativeTime(course.createdAt)} 저장
+        </span>
+        <span
+          className="text-brand-deep text-[13px] font-semibold max-md:text-[12px]"
+          aria-hidden="true"
+        >
           상세 보기
         </span>
       </div>

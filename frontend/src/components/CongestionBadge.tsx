@@ -14,11 +14,14 @@ const FALLBACK_LABEL: Record<CongestionLevel, string> = {
 const SIZE_CLASS = {
   md: 'gap-1.5 px-3 py-1.5 text-[13px]',
   sm: 'gap-1.5 px-2.5 py-1 text-xs',
+  /* 사진 위에 얹히는 자리(홈의 한적한 곳 카드)용. 카드 폭이 132px이라 sm은 폭을 너무 먹는다 */
+  xs: 'gap-1 px-2 py-0.5 text-[11px]',
 }
 
 const DOT_SIZE = {
   md: 'h-1.75 w-1.75',
   sm: 'h-1.5 w-1.5',
+  xs: 'h-1.25 w-1.25',
 }
 
 interface Props {
@@ -27,7 +30,7 @@ interface Props {
   label?: string
   /** 함께 보여줄 한적도 점수 (0~100). 생략하면 등급만 표시 */
   quietness?: number
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
 }
 
 /**

@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,17 +17,25 @@ import com.peakoff.congestion.mock.MockCongestionProvider;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.mock.GyeongjuMockCatalog;
 import com.peakoff.recommendation.domain.Alternative;
+import com.peakoff.recommendation.domain.AlternativeStandard;
 import com.peakoff.recommendation.domain.Alternatives;
 import com.peakoff.recommendation.domain.PlaceOffStatus;
 import com.peakoff.recommendation.domain.RecommendationScorer;
 import com.peakoff.recommendation.domain.ScoreFactor;
+import com.peakoff.recommendation.domain.ScoreWeights;
+import com.peakoff.recommendation.domain.WeightedPicker;
 
 class MockRecommendationProviderTest {
 
 	private static final MockCongestionProvider CONGESTION = new MockCongestionProvider();
 
-	private final MockRecommendationProvider provider =
-			new MockRecommendationProvider(CONGESTION, new RecommendationScorer(CONGESTION));
+	/**
+	 * 씨앗을 고정한다. 뽑기가 <b>일부러 결과를 흔드는 장치</b>라, 고정하지 않으면
+	 * 시험이 돌 때마다 다른 답을 보게 된다. 고정해도 호출마다 다른 값이 나오므로
+	 * "여러 번 물으면 1등이 돌아간다"는 것은 그대로 확인할 수 있다.
+	 */
+	private final MockRecommendationProvider provider = new MockRecommendationProvider(
+			CONGESTION, new RecommendationScorer(CONGESTION), new WeightedPicker(new Random(42)));
 
 	private static final LocalDate WEDNESDAY = LocalDate.of(2026, 9, 16);
 
@@ -51,16 +61,24 @@ class MockRecommendationProviderTest {
 				.allSatisfy(a -> assertThat(a.place().category().name()).isEqualTo("음식점"));
 	}
 
+	/**
+	 * 예전에는 "맨 위에 온다"로 물었다. 뽑기가 가중 무작위가 되면서 <b>첫 줄이 점수 1등이
+	 * 아니게 됐다</b> — 그래서 첫 줄이 아니라 <b>모든 줄</b>에 물어야 한다.
+	 *
+	 * <p>물음이 약해진 것이 아니라 오히려 세졌다. 개선폭 하한이 목록 전체에 걸리는 보장이라,
+	 * 어느 줄을 골라도 원래 자리보다 뚜렷하게 한적하다는 뜻이다.
+	 */
 	@Test
-	@DisplayName("붐비는 곳을 물으면 더 한적한 대안이 맨 위에 온다")
-	void surfacesQuieterAlternativeFirst() {
+	@DisplayName("대안은 하나도 빠짐없이 원래 자리보다 뚜렷하게 한적하다")
+	void everyAlternativeIsQuieterThanOrigin() {
 		Place crowded = place("mock-hwangnidan");
-		int crowdedQuietness = new MockCongestionProvider().quietnessOf(crowded.id(), WEDNESDAY);
+		int crowdedQuietness = CONGESTION.quietnessOf(crowded.id(), WEDNESDAY);
 
 		List<Alternative> alternatives = provider.findAlternatives(crowded, WEDNESDAY, 3, Set.of()).picked();
 
 		assertThat(alternatives).isNotEmpty();
-		assertThat(alternatives.get(0).quietness()).isGreaterThan(crowdedQuietness);
+		assertThat(alternatives).allSatisfy(alternative -> assertThat(alternative.quietness())
+				.isGreaterThanOrEqualTo(crowdedQuietness + AlternativeStandard.MIN_QUIETNESS_GAIN));
 	}
 
 	@Test
@@ -111,13 +129,32 @@ class MockRecommendationProviderTest {
 		});
 	}
 
+	/**
+	 * ⚠️ <b>이 시험은 예전에 정반대를 물었다</b>("추천도가 높은 순으로 정렬된다").
+	 *
+	 * <p>점수로 다시 줄을 세우면 <b>최고점이 뽑히기만 하면 언제나 1등</b>이 되어, 가중 무작위가
+	 * 정한 순서가 통째로 덮인다. 실데이터 공급자에서 2026-08-26에 확인된 고장이고
+	 * (자격 후보가 20곳인 자리에서도 1등이 68~82% 고정) 목업에는 그 코드가 남아 있었다.
+	 *
+	 * <p>같은 대안이 모든 사용자에게 반복 추천되면 그곳이 새로운 혼잡지가 된다 —
+	 * 붐빔을 피하라는 서비스가 직접 2차 오버투어리즘을 만드는 셈이다.
+	 *
+	 * <p>목업이 기본값이라({@code peakoff.kto.recommendation=mock}) 여기가 고정되면
+	 * <b>시연 화면에서 분산이 없는 서비스를 보여주게 된다.</b>
+	 */
 	@Test
-	@DisplayName("추천도가 높은 순으로 정렬된다 — 정렬 기준이 곧 화면에 보이는 값이다")
-	void sortsByRecommendation() {
-		List<Alternative> alternatives = provider.findAlternatives(place("mock-bulguksa"), WEDNESDAY, 10, Set.of()).picked();
+	@DisplayName("같은 자리를 여러 번 물으면 1등이 돌아간다 — 점수순으로 고정되지 않는다")
+	void spreadsPicksAcrossCalls() {
+		Place origin = place("mock-bulguksa");
 
-		assertThat(alternatives).isSortedAccordingTo(
-				Comparator.comparingInt(Alternative::recommendation).reversed());
+		Set<String> leaders = IntStream.range(0, 40)
+				.mapToObj(i -> provider.findAlternatives(origin, WEDNESDAY, 3, Set.of()).picked())
+				.filter(picked -> !picked.isEmpty())
+				.map(picked -> picked.get(0).place().id())
+				.collect(Collectors.toSet());
+
+		// Pool이 셋이라 1등도 그 안에서 돈다. 하나로 굳으면 분산 장치가 죽은 것이다.
+		assertThat(leaders).hasSizeGreaterThan(1);
 	}
 
 	@Test
@@ -134,16 +171,24 @@ class MockRecommendationProviderTest {
 		assertThat(provider.findAlternatives(place("mock-bulguksa"), WEDNESDAY, 2, Set.of()).picked()).hasSize(2);
 	}
 
+	/**
+	 * 예전에는 <b>목록의 첫 줄</b>로 이것을 물었다("첫 후보의 한적도가 평균 이상이다").
+	 * 뽑기가 가중 무작위가 되면서 그 물음이 성립하지 않는다 — 첫 줄은 점수 1등이 아니다.
+	 *
+	 * <p>그래서 <b>순서가 아니라 규칙에 직접</b> 묻는다. 이쪽이 원래 물으려던 것에 더 가깝다:
+	 * 근접도가 한적도를 넘어서면 "가깝기만 하면 붐벼도 좋다"가 되어 과제와 정면으로 어긋나는데,
+	 * 그 규칙은 {@link ScoreWeights} 생성자가 강제하므로 <b>어기는 값은 아예 만들어지지 않는다.</b>
+	 *
+	 * <p>설문의 "유명한 곳 위주"조차 이 선은 넘지 못한다.
+	 */
 	@Test
-	@DisplayName("한적도 가중치가 더 높아, 조금 멀어도 훨씬 한적한 곳이 위로 올라온다")
+	@DisplayName("한적도의 반영 비율이 근접도보다 높다 — 어기는 값은 만들 수조차 없다")
 	void weighsQuietnessOverProximity() {
-		List<Alternative> alternatives = provider.findAlternatives(place("mock-cheomseongdae"), WEDNESDAY, 10, Set.of()).picked();
+		assertThat(ScoreWeights.DEFAULT.quietness())
+				.isGreaterThan(ScoreWeights.DEFAULT.proximity());
 
-		// 정렬이 근접도만 따랐다면 첫 후보가 가장 가까운 곳이어야 한다.
-		// 한적도 가중치가 더 크므로, 첫 후보의 한적도는 평균 이상이어야 한다.
-		double averageQuietness = alternatives.stream().mapToInt(Alternative::quietness).average().orElseThrow();
-
-		assertThat(alternatives.get(0).quietness()).isGreaterThan((int) averageQuietness);
+		assertThatThrownBy(() -> new ScoreWeights(30, 70))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	/**

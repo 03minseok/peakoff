@@ -73,8 +73,8 @@ public class QuietWeekService {
 	 * "다 가져가라"와 같아 뽑기가 고를 것이 없다 — 화면이 3개를 요청하고
 	 * 지역 대표가 일곱까지 모이는 지금 구조가 그 조건을 지킨다.
 	 */
-	private static final int POOL_SIZE = 3;
-	private static final double PICK_BIAS = 1.2;
+	private static final int POOL_SIZE = WeightedPicker.DEFAULT_POOL_SIZE;
+	private static final double PICK_BIAS = WeightedPicker.DEFAULT_BIAS;
 
 	private final QuietSpotProvider quietSpotProvider;
 	private final WeightedPicker picker;
