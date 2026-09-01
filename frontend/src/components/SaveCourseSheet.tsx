@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { ArrowDownToLine } from './icons'
 import { Link, useLocation } from 'react-router'
 import { useAuth } from '../state/authContext'
+import { addCourseToTrip, fetchTrips } from '../services/api'
 import { PRIMARY_BUTTON, TEXT_INPUT } from './styles'
 import { useScrollLock } from '../hooks/useScrollLock'
+import type { Trip } from '../types/api'
 
 /** 여행 이름 최대 길이. 서버 SavedCourse.NAME_MAX_LENGTH와 같은 값이어야 한다 */
 const NAME_MAX_LENGTH = 30
@@ -22,11 +24,33 @@ interface Props {
   /** 공개 토글의 처음 상태. 고쳐 쓰는 중이면 저장해둔 값이 온다 */
   defaultPublic?: boolean
   onClose: () => void
-  /** 계정 저장. 실패하면 예외를 던진다 */
-  onSave: (name: string, isPublic: boolean) => Promise<void>
+  /**
+   * 계정 저장. 실패하면 예외를 던진다.
+   *
+   * <p>저장된 코스 id를 돌려준다 — 저장 직후 "여행에 담기"를 펴려면 어느 코스인지 알아야 한다.
+   */
+  onSave: (name: string, isPublic: boolean) => Promise<number>
 }
 
 type Phase = 'asking' | 'saved' | 'failed'
+
+/**
+ * 저장 직후 여행에 담는 자리.
+ *
+ * <h3>왜 여기인가</h3>
+ * 여행에 담고 싶은 순간은 <b>저장한 그 순간</b>이다. 이 줄이 없으면 마이페이지로 가서
+ * 여행 탭을 열고 그 여행의 담기 목록에서 방금 그 코스를 다시 찾아야 한다 —
+ * 세 걸음을 더 걷게 하고, 그 사이에 대개 잊는다.
+ *
+ * <p>⚠️ <b>저장을 막지 않는다.</b> 여행은 있으면 좋은 것이지 저장의 조건이 아니다.
+ * 목록을 못 불러와도, 여행이 하나도 없어도 저장은 이미 끝나 있다 —
+ * 이 자리는 저장 결과 화면이지 저장 절차가 아니다.
+ */
+type TripPick =
+  | { status: 'loading' }
+  | { status: 'ready'; trips: Trip[] }
+  | { status: 'done'; tripName: string }
+  | { status: 'hidden' }
 
 const OUTLINE_BUTTON =
   'h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15.5px] font-semibold text-fg transition-colors hover:bg-bg disabled:cursor-not-allowed disabled:text-hint'
@@ -72,6 +96,9 @@ export function SaveCourseSheet({
   */
   const [isPublic, setIsPublic] = useState(defaultPublic)
   const [phase, setPhase] = useState<Phase>('asking')
+  /** 방금 저장한 코스. 여행에 담을 때 쓴다 */
+  const [savedCourseId, setSavedCourseId] = useState<number | null>(null)
+  const [tripPick, setTripPick] = useState<TripPick>({ status: 'loading' })
   const [saving, setSaving] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
 
@@ -101,8 +128,18 @@ export function SaveCourseSheet({
     setFailure(null)
     setSaving(true)
     try {
-      await onSave(trimmedName, isPublic)
+      const courseId = await onSave(trimmedName, isPublic)
       setPhase('saved')
+      setSavedCourseId(courseId)
+
+      /*
+        여행 목록은 저장이 끝난 뒤에 부른다. 미리 불러 두면 저장하지 않고 닫는 사람에게도
+        요청이 나가는데, 이 값은 저장한 다음에만 쓸 데가 있다.
+      */
+      fetchTrips()
+        .then((trips) => setTripPick(trips.length === 0 ? { status: 'hidden' } : { status: 'ready', trips }))
+        // 여행 담기는 덤이다. 못 불러왔다고 저장 성공 화면에 오류를 세우지 않는다.
+        .catch(() => setTripPick({ status: 'hidden' }))
     } catch (error: unknown) {
       // 서버가 이유를 준다(저장 개수 초과 등). 그대로 보여주는 편이 친절하다.
       setFailure(error instanceof Error ? error.message : '저장하지 못했어요.')
@@ -275,6 +312,47 @@ export function SaveCourseSheet({
           <div className="flex flex-col gap-2.25">
             {phase === 'saved' ? (
               <>
+                {/*
+                  ■ 여행에 담기.
+
+                  담고 싶은 순간은 저장한 그 순간이다. 이 줄이 없으면 마이페이지 → 여행 탭 →
+                  그 여행의 담기 목록에서 방금 그 코스를 다시 찾아야 한다.
+
+                  <p>여행이 하나도 없으면 아예 그리지 않는다({@code hidden}). 저장을 막 끝낸
+                  사람에게 "여행을 먼저 만드세요"라고 하면, 하지 않아도 될 일을 시키는 것이다 —
+                  여행은 마이페이지에서 만들면 된다.
+                */}
+                {tripPick.status === 'ready' && savedCourseId !== null && (
+                  <div className="border-line flex flex-col gap-2 rounded-ui border p-3">
+                    <span className="text-hint text-[12.5px] font-semibold">여행에 담기</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {tripPick.trips.map((trip) => (
+                        <button
+                          key={trip.id}
+                          type="button"
+                          className="bg-brand-tint text-brand-deep hover:bg-brand-soft rounded-chip min-h-9 cursor-pointer border-0 px-3.5 text-[13px] font-semibold transition-colors"
+                          onClick={() => {
+                            /*
+                              담기에 실패해도 저장은 이미 끝났다. 실패를 붙잡아 화면에 세우면
+                              "저장했는데 실패했다"로 읽힌다 — 조용히 목록만 닫는다.
+                            */
+                            void addCourseToTrip(trip.id, savedCourseId)
+                              .then(() => setTripPick({ status: 'done', tripName: trip.name }))
+                              .catch(() => setTripPick({ status: 'hidden' }))
+                          }}
+                        >
+                          {trip.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {tripPick.status === 'done' && (
+                  <p className="text-quiet-deep bg-quiet-tint rounded-ui m-0 px-3 py-2.5 text-[13px]">
+                    "{tripPick.tripName}" 여행에 담았어요.
+                  </p>
+                )}
+
                 <Link
                   to="/my"
                   className={`${PRIMARY_BUTTON} grid place-items-center no-underline`}
