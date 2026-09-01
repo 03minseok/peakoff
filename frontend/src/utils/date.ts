@@ -131,3 +131,31 @@ export function formatDateRange(startDate: string, nights: number): string {
   const end = new Date(year, month - 1, day + nights)
   return `${formatCompactDate(startDate)} → ${end.getMonth() + 1}.${end.getDate()}`
 }
+
+/**
+ * 날짜 문자열에 며칠을 더한다. "2026-09-12" + 1 → "2026-09-13"
+ *
+ * <b>{@link toDateInputValue}를 거친다</b> — Date를 만들어 더한 뒤 UTC로 뽑으면
+ * 한국 시간 저녁에 하루가 밀린다. 이 파일 맨 위가 같은 이유로 그 함수를 두었다.
+ */
+export function addDays(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() + days)
+  return toDateInputValue(date)
+}
+
+/**
+ * 두 날짜 사이의 일수. `a`가 앞이면 양수다. ("9-08" → "9-10"이면 2)
+ *
+ * <b>정오로 맞춰 계산한다.</b> 자정 기준으로 빼면 서머타임이 있는 지역에서 23시간이
+ * 나와 하루가 어긋난다 — 한국은 해당 없지만, 이 함수가 그 사실에 기대고 있으면
+ * 나중에 지역이 늘 때 조용히 틀린다.
+ */
+export function daysBetween(from: string, to: string): number {
+  const at = (iso: string) => {
+    const [year, month, day] = iso.split('-').map(Number)
+    return new Date(year, month - 1, day, 12).getTime()
+  }
+  return Math.round((at(to) - at(from)) / 86_400_000)
+}
