@@ -5,11 +5,7 @@ import { formatDateRange, formatNights, formatRelativeTime, isPastDate } from '.
 
 interface Props {
   course: SavedCourseSummary
-  /** 비교할 코스를 고르는 중인가. 이때는 카드를 눌러도 상세로 가지 않는다 */
-  selecting: boolean
-  selected: boolean
   onOpen: () => void
-  onToggleSelect: () => void
   onDelete: () => void
 }
 
@@ -34,24 +30,15 @@ const META_CHIP = 'rounded-[8px] bg-bg px-2.25 py-1 text-xs font-medium text-mut
  * {@code span}으로 흉내 내면 키보드·보조기술 동작을 전부 손으로 재현해야 하고,
  * 그중 하나만 빠뜨려도 그 사람에게는 눌리지 않는 버튼이 된다.
  */
-export function SavedCourseCard({
-  course,
-  selecting,
-  selected,
-  onOpen,
-  onToggleSelect,
-  onDelete,
-}: Props) {
+export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
   const past = isPastDate(course.endDate)
 
   return (
     // relative: 제목 버튼의 ::after가 이 상자를 기준으로 늘어난다
     <div
-      className={`bg-surface relative flex flex-col gap-3 rounded-[20px] p-4.5 transition-colors ${
-        selected
-          ? 'border-brand shadow-raised border-[1.5px]'
-          : 'shadow-rest border-[1.5px] border-transparent'
-      } ${past ? 'opacity-65' : ''}`}
+      className={`bg-surface shadow-rest relative flex flex-col gap-3 rounded-[20px] border-[1.5px] border-transparent p-4.5 transition-colors ${
+        past ? 'opacity-65' : ''
+      }`}
     >
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex min-w-0 flex-col gap-1.25">
@@ -67,34 +54,22 @@ export function SavedCourseCard({
           */}
           <button
             type="button"
-            onClick={selecting ? onToggleSelect : onOpen}
-            aria-pressed={selecting ? selected : undefined}
+            onClick={onOpen}
             className="text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] after:absolute after:inset-0 after:rounded-[20px] after:content-['']"
           >
             <span className="block truncate">{course.name}</span>
           </button>
         </div>
 
-        {selecting ? (
-          <span
-            className={`grid h-6.5 w-6.5 flex-none place-items-center rounded-full text-[13px] font-bold ${
-              selected ? 'bg-brand text-fg' : 'border-line text-line border-[1.5px]'
-            }`}
-            aria-hidden="true"
-          >
-            ✓
-          </span>
-        ) : (
-          /* z-10: 제목 버튼이 늘려둔 클릭 영역 위로 올라와야 삭제가 눌린다 */
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={`${course.name} 삭제`}
-            className="text-line hover:bg-crowded-tint hover:text-crowded relative z-10 grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-[10px] bg-transparent text-[15px] transition-colors"
-          >
-            <Close />
-          </button>
-        )}
+        {/* z-10: 제목 버튼이 늘려둔 클릭 영역 위로 올라와야 삭제가 눌린다 */}
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={`${course.name} 삭제`}
+          className="text-line hover:bg-crowded-tint hover:text-crowded relative z-10 grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-[10px] bg-transparent text-[15px] transition-colors"
+        >
+          <Close />
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -122,9 +97,7 @@ export function SavedCourseCard({
       >
         <div className="flex flex-col gap-0.5">
           <span className="text-[11.5px] opacity-70">예상 한적 지수</span>
-          <span className="text-[12px] font-bold">
-            {course.levelLabel ?? '아직 진단 전'}
-          </span>
+          <span className="text-[12px] font-bold">{course.levelLabel ?? '아직 진단 전'}</span>
           {/*
             그 점수가 <b>몇 곳을 근거로 한 값인지</b> 밝힌다. 카드가 여럿 늘어서는 화면이라
             근거가 얇은 점수와 두꺼운 점수가 같은 크기로 나란히 서면 견줄 수가 없다.
@@ -146,11 +119,9 @@ export function SavedCourseCard({
 
       <div className="flex items-center justify-between">
         <span className="text-hint text-xs">{formatRelativeTime(course.createdAt)} 저장</span>
-        {!selecting && (
-          <span className="text-brand-deep text-[13px] font-semibold" aria-hidden="true">
-            상세 보기
-          </span>
-        )}
+        <span className="text-brand-deep text-[13px] font-semibold" aria-hidden="true">
+          상세 보기
+        </span>
       </div>
     </div>
   )
