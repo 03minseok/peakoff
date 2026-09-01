@@ -267,51 +267,47 @@ export function MyPage() {
   /**
    * 프로필 옆(넓은 화면)과 아래(좁은 화면)가 함께 쓰는 통계.
    *
-   * <h3>둘은 세는 값이자 <b>가는 문</b>이다</h3>
+   * <h3>세는 값이자 <b>가는 문</b>이다</h3>
    * 좁은 화면에서 "저장한 코스"·"찜한 곳" 칸이 그대로 탭이 된다({@code tab} 필드).
    * 아래에 탭 막대를 따로 뒀다가 걷어냈다 — <b>같은 두 낱말이 화면에 두 번</b> 서고,
    * 위의 숫자와 아래의 숫자가 같은 것을 두 번 세는 꼴이었다.
    * 이미 그 수를 말하고 있는 칸이 그 목록으로 가는 문이 되는 편이 짧다.
    *
-   * <p>"평균 한적 지수"에는 {@code tab}이 없다. 갈 목록이 없는 값이라 눌러도 갈 곳이 없다.
+   * <h3>⚠️ "평균 한적 지수"를 걷어냈다 (2026-09-01)</h3>
+   * 세 가지가 겹쳤다.
    *
-   * <p>순서는 <b>저장한 코스 → 찜한 곳 → 나머지</b>다. 앞의 둘이 탭이므로 나란히 붙어야
-   * 하나의 스위치로 읽힌다 — 사이에 누를 수 없는 칸이 끼면 셋 다 버튼처럼 보인다.
+   * <p><b>하나 — 이 화면에서 할 일이 없는 숫자였다.</b> 셋 중 유일하게 {@code tab}이 없어
+   * 눌러도 갈 곳이 없었다. "다녀온 여행"을 같은 이유로 걷어낸 자리에 같은 성격의 값이
+   * 그대로 남아 있었던 셈이다.
+   *
+   * <p><b>둘 — 평균이 뜻을 만들지 못한다.</b> 경주 9월 코스 64와 제주 10월 코스 42를
+   * 평균 낸 53은 무슨 말도 아니다. 지역도 날짜도 다른 값이라 <b>애초에 견줄 수 없는 것</b>을
+   * 평균낸 것이다({@code docs/OPEN_DECISIONS.md} 11-1과 같은 함정).
+   *
+   * <p><b>셋 — 지역이 일곱이 되면서 더 나빠졌다.</b> 전국 실측에서 시도별 한적도 중앙값이
+   * <b>32점</b> 벌어져 있다(서울 37.4 ~ 경남 68.6, {@code analysis/national/RESULTS.md}).
+   * 그러면 이 평균은 "여행을 잘 골랐는가"가 아니라 <b>"어느 지역을 갔는가"</b>를 재게 된다 —
+   * 제주를 자주 가는 사람은 아무 잘못 없이 평균이 낮다. <b>사람에게 매기는 점수</b>로 읽힌다.
+   *
+   * <p>빈 자리를 다른 숫자로 채우지 않는다. 셋을 맞추려고 값을 지어내면 방금 뺀 이유를
+   * 그대로 다시 어긴다. 남은 둘은 <b>전부 탭</b>이라 "누를 수 없는 칸이 끼면 셋 다 버튼처럼
+   * 보인다"는 문제도 함께 사라졌다.
    *
    * <p>list를 의존성으로 둔다. courses를 렌더 중에 만들면(로딩 중에는 새 빈 배열)
    * 매 렌더 참조가 바뀌어 useMemo가 무의미해진다.
    */
   const stats = useMemo(() => {
     const loaded = list.status === 'loaded' ? list.courses : []
-    if (loaded.length === 0) {
-      return [
-        { label: '저장한 코스', value: '0', tab: 'courses' as const },
-        { label: '찜한 곳', value: String(favorites.length), tab: 'favorites' as const },
-        { label: '평균 한적 지수', value: '—', tab: undefined },
-      ]
-    }
-    /*
-     * 평균은 <b>진단된 코스만</b>으로 낸다. 점수 없는 코스를 0으로 세면 아직 재보지도 않은
-     * 코스가 평균을 끌어내리고, 분모에 넣으면 저장만 해도 평균이 떨어진다.
-     * 진단된 코스가 하나도 없으면 평균이라는 값 자체가 성립하지 않는다.
-     */
-    const scored = loaded.filter((course) => course.totalQuietness !== null)
-    const total = scored.reduce((sum, course) => sum + (course.totalQuietness ?? 0), 0)
     return [
       { label: '저장한 코스', value: String(loaded.length), tab: 'courses' as const },
       /*
-       * ⚠️ 이 칸이 <b>"다녀온 여행"에서 "찜한 곳"으로</b> 바뀌었고 자리도 둘째로 왔다.
+       * ⚠️ 이 칸이 <b>"다녀온 여행"에서 "찜한 곳"으로</b> 바뀌었다.
        *
        * 지난 여행 수는 이 화면에서 <b>할 일이 없는 숫자</b>였다 — 늘기만 하고 눌러도
        * 아무 데도 가지 않으며, 여행이 끝났다는 사실은 코스 카드마다 이미 적혀 있다.
        * 찜한 곳은 아래 목록과 짝이 되는 값이고, 이제 그 목록으로 가는 문이기도 하다.
        */
       { label: '찜한 곳', value: String(favorites.length), tab: 'favorites' as const },
-      {
-        label: '평균 한적 지수',
-        value: scored.length === 0 ? '—' : String(Math.round(total / scored.length)),
-        tab: undefined,
-      },
     ]
   }, [list, favorites])
 
@@ -459,23 +455,14 @@ export function MyPage() {
         <p>켜진 칸은 <b>어두운 면</b>이다. 편집 화면의 일차 탭과 같은 신호라
         "지금 이걸 보고 있다"가 화면을 옮겨도 같은 모양으로 읽힌다.
 
-        <p>⚠️ 셋째 칸("평균 한적 지수")은 <b>버튼이 아니다.</b> 갈 목록이 없는 값이라
-        눌러도 갈 곳이 없다. 그래서 {@code div}로 남기고 손가락 커서도 주지 않는다 —
-        앞의 둘 중 하나는 언제나 켜져 있으므로, 셋이 늘어서도 어느 둘이 스위치인지 보인다.
+        <p>⚠️ <b>이제 두 칸 전부가 버튼이다</b> (2026-09-01). 예전에는 셋째 칸
+        ("평균 한적 지수")만 누를 수 없어 {@code div}로 갈라 두었는데, 그 값을 걷어내면서
+        분기가 함께 사라졌다 — <b>줄 전체가 하나의 스위치</b>로 읽힌다.
       */}
-      <div className="grid grid-cols-3 gap-2 md:hidden">
+      <div className="grid grid-cols-2 gap-2 md:hidden">
         {stats.map((stat) => {
-          const active = stat.tab !== undefined && stat.tab === tab
+          const active = stat.tab === tab
           const shell = 'flex flex-col items-center gap-0.75 rounded-[14px] p-3 transition-colors'
-
-          if (stat.tab === undefined) {
-            return (
-              <div key={stat.label} className={`bg-surface shadow-rest ${shell}`}>
-                <span className={STAT_VALUE}>{stat.value}</span>
-                <span className="text-hint text-[11.5px]">{stat.label}</span>
-              </div>
-            )
-          }
 
           return (
             <button
