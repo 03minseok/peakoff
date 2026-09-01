@@ -24,7 +24,10 @@ import com.peakoff.recommendation.domain.PlaceOffStatus;
  * @param minQuietnessGain  대안으로 권하기 위해 필요한 최소 개선폭.
  *                          <b>서버가 내려보낸다.</b> 화면에 숫자를 적어두면 분석 결과로 기준이
  *                          바뀔 때 한쪽만 고쳐져 설명과 실제가 어긋난다
- * @param alternatives      추천도가 높은 순으로 담긴 후보. 정렬 기준이 곧 화면에 보이는 값이다
+ * @param alternatives      <b>뽑힌 순서 그대로의</b> 후보. 점수순이 아니다 —
+ *                          상위 후보군에서 가중 무작위로 뽑고 다시 정렬하지 않는다.
+ *                          같은 대안이 모두에게 반복 추천되면 그곳이 새로운 혼잡지가 되기 때문이다.
+ *                          줄을 세워야 하면 화면이 <b>구간 단위까지만</b> 세운다
  */
 public record AlternativesResponse(
 		PlaceOffStatus status,
