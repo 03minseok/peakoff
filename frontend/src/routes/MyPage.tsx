@@ -6,6 +6,7 @@ import { Link, Navigate, useNavigate } from 'react-router'
 import { AccountSheets } from '../components/AccountSheets'
 import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
+import { CreateTripSheet } from '../components/CreateTripSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
@@ -359,16 +360,13 @@ export function MyPage() {
   }
 
   /**
-   * 새 여행 이름 입력칸. 만들면 비운다.
+   * 여행 이름을 묻는 시트가 열려 있는가.
    *
-   * <p>입력칸은 <b>평소에 없다</b> — "여행 만들기"를 눌러야 열린다. 늘 펴 두면
-   * 여행 목록보다 빈 입력칸이 먼저 눈에 들어와, 이 탭이 "만드는 화면"으로 보인다.
-   * 저장한 코스 쪽이 "새 코스 짜기" 버튼 하나로 끝나는 것과 같은 모양이다.
+   * <p>이름과 만드는 중 표시는 <b>시트가 들고 있다</b>({@code CreateTripSheet}) —
+   * 이 화면이 알아야 할 것은 "열렸나"뿐이다. 입력값까지 여기서 들면
+   * 시트를 닫을 때마다 비워주는 일을 이쪽이 기억해야 한다.
    */
-  const [tripName, setTripName] = useState('')
   const [creatorOpen, setCreatorOpen] = useState(false)
-  const tripNameRef = useRef<HTMLInputElement | null>(null)
-  const [creatingTrip, setCreatingTrip] = useState(false)
   /** 코스 담기 목록이 열려 있는 여행. 한 번에 하나만 연다 — 두 목록이 같이 열리면 어디에 담기는지 흐려진다. */
   const [pickerTripId, setPickerTripId] = useState<number | null>(null)
   const [pendingTripDelete, setPendingTripDelete] = useState<Trip | null>(null)
@@ -392,29 +390,21 @@ export function MyPage() {
     }
   }
 
-  async function handleCreateTrip() {
-    const name = tripName.trim()
-    if (!name || creatingTrip) {
-      return
-    }
-    setCreatingTrip(true)
+  /**
+   * 여행을 만든다. <b>실패를 삼키지 않고 던진다</b> — 시트가 그 자리에서 보여줘야
+   * 사용자가 이름을 고쳐 다시 누를 수 있다. 여기서 잡아 상단 알림으로 보내면
+   * 시트는 닫히고 알림만 남아, 방금 친 이름을 다시 쳐야 한다.
+   */
+  async function handleCreateTrip(name: string) {
     setNotice(null)
-    try {
-      const trip = await createTrip(name)
-      // 새 여행이 맨 위로 — 서버 목록 순서(최근 생성순)와 같다.
-      setTripsState((current) =>
-        current.status === 'loaded'
-          ? { status: 'loaded', trips: [trip, ...current.trips] }
-          : { status: 'loaded', trips: [trip] },
-      )
-      setTripName('')
-      setCreatorOpen(false)
-      setPickerTripId(trip.id)   // 만들자마자 담기 목록을 열어 준다 — 빈 여행에서 다음 할 일이 이것뿐이다
-    } catch (error: unknown) {
-      tripFail('여행을 만들지 못했어요.\n잠시 후 다시 시도해 주세요.')(error)
-    } finally {
-      setCreatingTrip(false)
-    }
+    const trip = await createTrip(name)
+    // 새 여행이 맨 위로 — 서버 목록 순서(최근 생성순)와 같다.
+    setTripsState((current) =>
+      current.status === 'loaded'
+        ? { status: 'loaded', trips: [trip, ...current.trips] }
+        : { status: 'loaded', trips: [trip] },
+    )
+    setPickerTripId(trip.id)   // 만들자마자 담기 목록을 열어 준다 — 빈 여행에서 다음 할 일이 이것뿐이다
   }
 
   async function handleAddToTrip(tripId: number, courseId: number) {
@@ -1037,62 +1027,12 @@ export function MyPage() {
 
           <button
             type="button"
-            aria-expanded={creatorOpen}
             className="bg-brand hover:bg-brand-hover grid h-9.5 cursor-pointer place-items-center rounded-[12px] border-0 px-4 text-[13.5px] font-semibold text-fg transition-colors"
-            onClick={() => {
-              if (creatorOpen) {
-                setCreatorOpen(false)
-                setTripName('')
-                return
-              }
-              setCreatorOpen(true)
-              /*
-                열자마자 입력칸에 초점을 준다. 버튼을 눌렀다는 것은 이미 이름을 지을
-                마음이 섰다는 뜻이라, 칸을 한 번 더 누르게 할 이유가 없다.
-
-                <p>다음 그림이 그려진 뒤에 부른다 — 아직 없는 칸에는 초점이 안 간다.
-              */
-              requestAnimationFrame(() => tripNameRef.current?.focus())
-            }}
+            onClick={() => setCreatorOpen(true)}
           >
-            {creatorOpen ? '취소' : '여행 만들기'}
+            여행 만들기
           </button>
         </div>
-
-        {/* 이름 하나면 여행이 생긴다 — 코스는 만들고 나서 담는다. */}
-        {creatorOpen && (
-          <form
-            className="flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void handleCreateTrip()
-            }}
-          >
-            <input
-              ref={tripNameRef}
-              type="text"
-              value={tripName}
-              onChange={(event) => setTripName(event.target.value)}
-              /* 열려 있는 칸에서 Esc를 누르면 닫는다. 시트가 아니라 인라인이라 닫을 길이 버튼뿐이었다 */
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  setCreatorOpen(false)
-                  setTripName('')
-                }
-              }}
-              placeholder="여행 이름 (예: 가을 제주 한 바퀴)"
-              maxLength={30}
-              className="border-line bg-surface text-fg h-11 min-w-0 flex-1 rounded-[12px] border px-3.5 font-sans text-[14px]"
-            />
-            <button
-              type="submit"
-              disabled={!tripName.trim() || creatingTrip}
-              className="bg-brand hover:bg-brand-hover text-fg disabled:bg-line disabled:text-hint h-11 flex-none cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold transition-colors disabled:cursor-not-allowed"
-            >
-              {creatingTrip ? '만드는 중…' : '만들기'}
-            </button>
-          </form>
-        )}
 
         {tripsState.status === 'error' && (
           <p className="text-hint m-0 text-[13px]">여행 목록을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>
@@ -1117,10 +1057,7 @@ export function MyPage() {
             <button
               type="button"
               className="text-brand-deep mt-1 cursor-pointer border-0 bg-transparent text-[13px] font-semibold hover:underline"
-              onClick={() => {
-                setCreatorOpen(true)
-                requestAnimationFrame(() => tripNameRef.current?.focus())
-              }}
+              onClick={() => setCreatorOpen(true)}
             >
               첫 여행 만들기
             </button>
@@ -1496,6 +1433,13 @@ export function MyPage() {
         onClose={() => setAccountSheet(null)}
         onDone={(text) => setNotice({ tone: 'ok', text })}
       />
+
+      {creatorOpen && (
+        <CreateTripSheet
+          onCreate={handleCreateTrip}
+          onClose={() => setCreatorOpen(false)}
+        />
+      )}
 
       {pendingTripDelete && (
         <ConfirmSheet
