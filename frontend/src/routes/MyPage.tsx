@@ -6,12 +6,13 @@ import { Link, Navigate, useNavigate } from 'react-router'
 import { AccountSheets } from '../components/AccountSheets'
 import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
-import { HintDot } from '../components/HintDot'
+import { HintDot, type HintTone } from '../components/HintDot'
 import { CreateTripSheet } from '../components/CreateTripSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
+import { TripTimelineSheet } from '../components/TripTimelineSheet'
 import { CARD } from '../components/styles'
 import {
   ApiRequestError,
@@ -90,6 +91,56 @@ type MyTab = 'courses' | 'favorites' | 'trips' | 'account'
  * <p><b>셋 — 무엇으로 가는 문인지가 글자에만 있었다.</b> 심볼은 훑을 때 먼저 읽히고,
  * 화면을 옮겨도 같은 그림이라 자리를 기억하게 한다.
  */
+/**
+ * 앞 코스와 이 코스 사이의 <b>이음새</b>.
+ *
+ * <p>{@code gap}은 앞 코스 마지막 날에서 이 코스 첫날까지의 일수다.
+ * 1이면 바로 다음 날이라 딱 이어진다. 2 이상이면 사이가 비고, 0 이하면 겹친다.
+ *
+ * <h3>⚠️ 등급이 둘이다 — 여기서 갈린다</h3>
+ * <b>앰버(알아두면 되는 것)</b>: 사이가 비었거나, 앞 코스가 끝나는 날 다음 코스가
+ * 시작하는 것. 둘 다 <b>있을 수 있는 일정</b>이다 — 이동일이 하루 비는 것도, 마지막 날
+ * 오후에 다음 지역으로 넘어가는 것도 여행에서는 흔하다.
+ *
+ * <p><b>붉은색(고쳐야 하는 것)</b>: 이틀 넘게 겹치는 것. 같은 시간에 두 곳에 있겠다는
+ * 뜻이라 일정으로 성립하지 않는다. 이때만 "한번에 보기"가 잠긴다 — 이어 붙이면 화면이
+ * <b>있을 수 없는 일정</b>을 사실처럼 그리게 된다.
+ *
+ * <p>계산을 화면 안이 아니라 여기 두는 이유: 목록의 표시와 버튼의 잠금이 <b>같은 값</b>을
+ * 봐야 한다. 두 곳에서 따로 세면 붉은 표시가 떴는데 버튼이 열려 있는 날이 온다.
+ */
+function seamBetween(previous: SavedCourseSummary, course: SavedCourseSummary): Seam | null {
+  const gap = daysBetween(previous.endDate, course.startDate)
+  if (gap === 1) {
+    return null
+  }
+  if (gap > 1) {
+    /*
+     * 쪽지 안이라 <b>날짜를 그대로 적는다.</b> 겉으로 보일 때는 "1일 비어 있어요"로
+     * 짧아야 했지만, 열어서 읽는 말이라면 <b>어느 날이 비었는지</b>가 훨씬 쓸모 있다 —
+     * 그 날을 채울지 말지가 다음 판단이다.
+     */
+    const first = formatMonthDay(addDays(previous.endDate, 1))
+    const last = formatMonthDay(addDays(course.startDate, -1))
+    return {
+      tone: 'warn',
+      text: gap === 2 ? `${first}이 비어 있어요` : `${first} ~ ${last}이 비어 있어요`,
+    }
+  }
+  if (gap === 0) {
+    return {
+      tone: 'warn',
+      text: `앞 코스가 끝나는 ${formatMonthDay(course.startDate)}에 시작해요`,
+    }
+  }
+  return { tone: 'danger', text: `앞 코스와 ${1 - gap}일 겹쳐요` }
+}
+
+interface Seam {
+  tone: HintTone
+  text: string
+}
+
 const SECTIONS = [
   {
     tab: 'courses' as const,
@@ -160,6 +211,9 @@ export function MyPage() {
 
   const [list, setList] = useState<ListState>({ status: 'loading' })
   /** 겹창에 펼칠 코스. 비어 있으면 닫힌 상태 */
+  /** 한 장으로 펴 볼 여행 */
+  const [timelineTrip, setTimelineTrip] = useState<Trip | null>(null)
+
   /** 펼쳐 본 코스. 비교가 사라지면서 한 번에 하나가 됐다 */
   const [opened, setOpened] = useState<number | null>(null)
   /** 지울지 묻고 있는 코스. null이면 확인 시트가 닫힌 상태 */
@@ -1125,6 +1179,20 @@ export function MyPage() {
                   const last = ordered[ordered.length - 1]
                   const span = first ? daysBetween(first.startDate, last.endDate) + 1 : 0
                   const regions = [...new Set(ordered.map((course) => regionNameOf(course.region)))]
+                  /*
+                    이음새를 <b>그리기 전에 한 번에</b> 센다. 목록의 표시와 아래
+                    "한번에 보기"의 잠금이 같은 값을 봐야 한다 — 그리면서 세면 버튼이
+                    그 값을 볼 수 없어 같은 계산을 두 번 적게 된다.
+                  */
+                  const seams = ordered.map((course, index) =>
+                    index === 0 ? null : seamBetween(ordered[index - 1], course),
+                  )
+                  /*
+                    붉은 이음새가 하나라도 있으면 이어 붙이지 않는다. 이틀 넘게 겹치는 일정을
+                    날짜 축에 올리면 <b>있을 수 없는 하루</b>가 사실처럼 그려진다.
+                    비어 있는 날과 하루 겹침(앰버)은 그대로 이어 붙인다 — 있을 수 있는 일정이다.
+                  */
+                  const blocked = seams.some((seam) => seam?.tone === 'danger')
                   const inTrip = new Set(trip.courses.map((course) => course.id))
                   const addable = courses.filter((course) => !inTrip.has(course.id))
                   const pickerOpen = pickerTripId === trip.id
@@ -1186,28 +1254,7 @@ export function MyPage() {
                       {ordered.length > 0 && (
                         <ul className="m-0 mt-3.5 flex list-none flex-col p-0">
                           {ordered.map((course, index) => {
-                            const previous = index > 0 ? ordered[index - 1] : null
-                            const gap = previous
-                              ? daysBetween(previous.endDate, course.startDate)
-                              : null
-                            /*
-                          gap = 앞 코스 마지막 날 → 이 코스 첫 날의 일수.
-                          1이면 바로 다음 날이라 딱 이어진다. 2 이상이면 사이가 비고,
-                          0 이하면 겹친다 — 같은 날 끝나고 같은 날 시작하면(gap 0) 하루가 겹친다.
-                        */
-                            /*
-                          쪽지 안이라 <b>날짜를 그대로 적는다.</b> 겉으로 보일 때는 "1일 비어
-                          있어요"로 짧아야 했지만, 열어서 읽는 말이라면 <b>어느 날이 비었는지</b>가
-                          훨씬 쓸모 있다 — 그 날을 채울지 말지가 다음 판단이다.
-                        */
-                            const seam =
-                              previous === null || gap === null || gap === 1
-                                ? null
-                                : gap > 1
-                                  ? gap === 2
-                                    ? `${formatMonthDay(addDays(previous.endDate, 1))}이 비어 있어요`
-                                    : `${formatMonthDay(addDays(previous.endDate, 1))} ~ ${formatMonthDay(addDays(course.startDate, -1))}이 비어 있어요`
-                                  : `앞 코스와 ${1 - gap}일 겹쳐요`
+                            const seam = seams[index]
                             const isLast = index === ordered.length - 1
 
                             return (
@@ -1268,7 +1315,7 @@ export function MyPage() {
                                         >
                                           <span className="block truncate">{course.name}</span>
                                         </button>
-                                        {seam && <HintDot label={seam} />}
+                                        {seam && <HintDot label={seam.text} tone={seam.tone} />}
                                       </span>
                                       <span className="text-hint text-[12px]">
                                         {regionNameOf(course.region)} ·{' '}
@@ -1334,20 +1381,38 @@ export function MyPage() {
                           {pickerOpen ? '담기 닫기' : '코스 담기'}
                         </button>
                         {/*
-                      마지막 코스 <b>다음 날</b>로 코스 짜기에 들어간다. 여행이 소비하는
-                      자리에서 만드는 자리가 된다. 날짜는 라우터 state로 넘긴다 —
-                      홈의 "이 날로 코스 짜기"가 쓰는 길과 같다.
+                      ⚠️ <b>"이어서 짜기"를 걷어낸 자리다</b>(2026-09-01). 마지막 코스
+                      다음 날로 코스 짜기에 들어가는 문이었는데, 여행 탭에서 하는 일은
+                      <b>모아 둔 것을 보는 일</b>이지 새로 만드는 일이 아니다.
+                      만드는 문은 저장 코스 쪽 빈 상태와 아래 이동 막대에 이미 있다.
+
+                      <p>대신 <b>모아 둔 것을 한 장으로 편다.</b> 코스는 지역 하나에
+                      잠겨 있어 카드가 코스별로 끊겨 있는데, 정작 여행하는 사람에게
+                      필요한 답은 "9월 10일에 나는 어디 있나"다.
+
+                      <p><b>붉은 이음새가 있으면 잠근다.</b> 이틀 넘게 겹치는 일정을
+                      날짜 축에 올리면 있을 수 없는 하루가 사실처럼 그려진다.
+                      잠긴 이유는 버튼 아래 한 줄로 말한다 — 잠긴 버튼은 스스로
+                      "왜 안 되는지"를 설명하지 못한다.
                     */}
                         {ordered.length > 0 && (
-                          <Link
-                            to="/plan"
-                            state={{ startDate: addDays(last.endDate, 1) }}
-                            className="border-line bg-surface text-fg hover:bg-bg grid h-10 flex-1 cursor-pointer place-items-center rounded-[12px] border text-[13.5px] font-semibold no-underline transition-colors"
+                          <button
+                            type="button"
+                            disabled={blocked}
+                            onClick={() => setTimelineTrip(trip)}
+                            className="border-line bg-surface text-fg hover:bg-bg disabled:border-line/60 disabled:text-hint h-10 flex-1 cursor-pointer rounded-[12px] border text-[13.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:hover:bg-surface"
                           >
-                            이어서 짜기
-                          </Link>
+                            한번에 보기
+                          </button>
                         )}
                       </div>
+
+                      {blocked && (
+                        <p className="text-crowded-deep m-0 px-1 pt-2 text-[12px] leading-[1.5]">
+                          날짜가 겹치는 코스가 있어 한 번에 볼 수 없어요. 위의 붉은 표시를 눌러
+                          어디가 겹치는지 확인해 주세요.
+                        </p>
+                      )}
 
                       {/*
                     ■ 담을 코스. <b>테두리 상자를 두르지 않는다</b> — 카드 안의 카드가 되어
@@ -1496,6 +1561,10 @@ export function MyPage() {
             </p>
           </section>
         </div>
+
+        {timelineTrip && (
+          <TripTimelineSheet trip={timelineTrip} onClose={() => setTimelineTrip(null)} />
+        )}
 
         {opened !== null && (
           <CourseDetailOverlay

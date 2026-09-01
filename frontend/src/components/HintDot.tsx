@@ -1,6 +1,14 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Alert } from './icons'
 
+/** 알아두면 되는 것(앰버)과 고쳐야 하는 것(붉은색) */
+export type HintTone = 'warn' | 'danger'
+
+const TONE: Record<HintTone, string> = {
+  warn: 'text-moderate-strong hover:text-moderate-deep',
+  danger: 'text-crowded-strong hover:text-crowded-deep',
+}
+
 /**
  * 짚으면 뜨는 쪽지. 동그라미 안의 느낌표를 누르거나 손을 올리면 설명이 나온다.
  *
@@ -11,7 +19,16 @@ import { Alert } from './icons'
  *
  * <p>표시는 자리를 거의 안 쓰면서 "여기 볼 것이 있다"를 말하고, 내용은 원할 때만 편다.
  *
- * <h3>색은 앰버 — 이 서비스의 주의 표시</h3>
+ * <h3>두 단계다 — 앰버와 붉은색</h3>
+ * <b>고쳐야 하는 것</b>과 <b>알아두면 되는 것</b>은 같은 색으로 말할 수 없다.
+ * 코스 사이가 비어 있거나 앞 코스가 끝나는 날 다음 코스가 시작하는 것은 <b>그냥 그런
+ * 일정</b>이지 잘못이 아니다 — 앰버. 이틀 넘게 겹치는 것은 같은 시간에 두 곳에 있겠다는
+ * 뜻이라 <b>고치기 전에는 이어 볼 수 없다</b> — 붉은색.
+ *
+ * <p>이 등급이 화면 아래 "한번에 보기"의 활성 여부를 정한다. 색과 버튼이 <b>한 몸</b>이라,
+ * 붉은 표시가 있으면 버튼이 잠기고 앰버만 있으면 열린다.
+ *
+ * <h3>색은 이 서비스의 주의 표시에서 가져온다</h3>
  * 잉크로 두었다가 앰버로 바꿨다(2026-09-01). 회색 표시는 <b>눌러볼 것이 있다는 사실
  * 자체를 말하지 못했다</b> — 옆의 삭제·닫기 같은 보조 장치와 같은 무게라 그냥 지나친다.
  *
@@ -19,15 +36,15 @@ import { Alert } from './icons'
  * 안내가 {@code moderate-tint} 상자에 {@code moderate-deep} 글자로 선다.
  * 새 경고색을 만들지 않고 <b>있는 것을 쓴다.</b>
  *
- * <p>⚠️ 이 팔레트에서 앰버는 혼잡 "보통"이기도 하다. 같은 줄 오른쪽에 그 배지가 설 수 있어
- * <b>모양으로 갈라 둔다</b> — 배지는 채운 칩에 점과 숫자가 있고 이쪽은 선으로만 그린
- * 동그라미다. 색이 겹쳐도 생김새가 겹치지 않으면 서로 다른 것으로 읽힌다.
+ * <p>⚠️ 이 팔레트에서 앰버는 혼잡 "보통", 붉은색은 "붐빔"이기도 하다. 같은 줄 오른쪽에
+ * 그 배지가 설 수 있어 <b>모양으로 갈라 둔다</b> — 배지는 채운 칩에 점과 숫자가 있고
+ * 이쪽은 선으로만 그린 동그라미다. 색이 겹쳐도 생김새가 겹치지 않으면 서로 다른 것으로 읽힌다.
  *
  * <h3>손가락에도 열린다</h3>
  * hover만으로 만들면 터치 기기에서는 아무 일도 일어나지 않는다. 눌러서도 열리고,
  * 키보드 초점으로도 열리며, 바깥을 누르거나 Esc로 닫힌다.
  */
-export function HintDot({ label }: { label: string }) {
+export function HintDot({ label, tone = 'warn' }: { label: string; tone?: HintTone }) {
   /*
    * ⚠️ <b>"짚었다"와 "눌러 붙였다"를 갈라 둔다.</b> 하나로 두면 마우스에서 고장난다 —
    * 손을 올리는 순간 열리고, 그 상태에서 누르면 토글이 <b>닫아 버린다.</b>
@@ -67,8 +84,8 @@ export function HintDot({ label }: { label: string }) {
     if (!rect) {
       return
     }
-    const EDGE = 12       // 화면 가장자리에서 이만큼은 띄운다
-    const IDEAL = 208     // 평소 폭(13rem). 자리가 되면 이 이상 넓히지 않는다
+    const EDGE = 12 // 화면 가장자리에서 이만큼은 띄운다
+    const IDEAL = 208 // 평소 폭(13rem). 자리가 되면 이 이상 넓히지 않는다
     const toRight = window.innerWidth - EDGE - rect.left
     const toLeft = rect.right - EDGE
     setTip(
@@ -123,7 +140,7 @@ export function HintDot({ label }: { label: string }) {
         }}
         onFocus={() => setHovered(true)}
         onBlur={() => setHovered(false)}
-        className="text-moderate-strong hover:text-moderate-deep -m-1.5 cursor-pointer rounded-full border-0 bg-transparent p-1.5 transition-colors"
+        className={`-m-1.5 cursor-pointer rounded-full border-0 bg-transparent p-1.5 transition-colors ${TONE[tone]}`}
       >
         <Alert size={15} />
       </button>
