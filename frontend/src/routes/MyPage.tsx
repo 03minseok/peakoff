@@ -22,7 +22,7 @@ import {
   removeCourseFromTrip,
 } from '../services/api'
 import { CongestionBadge } from '../components/CongestionBadge'
-import { formatMonthDay } from '../utils/date'
+import { addDays, daysBetween, formatMonthDay } from '../utils/date'
 import { useAuth } from '../state/authContext'
 import { useFavorites } from '../state/favoriteContext'
 import { defaultRegionSlug, regionNameOf } from '../constants/regions'
@@ -1071,15 +1071,24 @@ export function MyPage() {
                 기간·지역은 담긴 코스에서 계산한다. 서버가 요약 문자열을 만들면
                 표기를 바꿀 때마다 서버를 고쳐야 한다.
               */
-              const starts = trip.courses.map((course) => course.startDate).sort()
-              const ends = trip.courses.map((course) => course.endDate).sort()
+              /*
+                ⚠️ <b>담은 순서가 아니라 시작일순으로 세운다</b>(2026-09-01).
+                여행은 폴더가 아니라 시간표다 — 9월 10일 코스가 9월 8일 코스 위에 서 있으면
+                기간 요약("9월 8일 ~ 9월 11일")과 목록이 서로 다른 이야기를 한다.
+                담은 순서는 서버가 그대로 갖고 있으므로 되돌릴 수 있다.
+              */
+              const ordered = [...trip.courses].sort((a, b) =>
+                a.startDate.localeCompare(b.startDate),
+              )
+              const starts = ordered.map((course) => course.startDate).sort()
+              const ends = ordered.map((course) => course.endDate).sort()
               const range =
                 starts.length === 0
                   ? null
                   : starts[0] === ends[ends.length - 1]
                     ? formatMonthDay(starts[0])
                     : `${formatMonthDay(starts[0])} ~ ${formatMonthDay(ends[ends.length - 1])}`
-              const regions = [...new Set(trip.courses.map((course) => regionNameOf(course.region)))]
+              const regions = [...new Set(ordered.map((course) => regionNameOf(course.region)))]
               const inTrip = new Set(trip.courses.map((course) => course.id))
               const addable = courses.filter((course) => !inTrip.has(course.id))
               const pickerOpen = pickerTripId === trip.id
@@ -1110,15 +1119,46 @@ export function MyPage() {
                     </button>
                   </div>
 
-                  {trip.courses.length > 0 && (
+                  {ordered.length > 0 && (
                     <ul className="m-0 flex list-none flex-col p-0">
-                      {trip.courses.map((course, index) => (
+                      {ordered.map((course, index) => {
+                        /*
+                          ■ 이음새 — 앞 코스와 이 코스 사이의 빈 날·겹친 날.
+
+                          여행이 기간을 계산하면서 <b>이미 아는 사실</b>이라 서버를 더 부르지
+                          않는다. 이 한 줄이 여행을 폴더에서 일정표로 바꾼다 —
+                          "9월 9일이 비어 있어요"는 다음에 할 일을 가리키는 말이다.
+
+                          <p>⚠️ <b>고치라고 하지 않는다.</b> 빈 날은 잘못이 아니라 쉬는 날일 수
+                          있고, 겹친 날은 오전·오후로 나눠 다닐 수도 있다. 사실만 적고
+                          판단은 사용자에게 둔다 — 예측 창 밖 날짜를 막지 않는 것과 같은 태도다.
+                        */
+                        const previous = index > 0 ? ordered[index - 1] : null
+                        const gap = previous ? daysBetween(previous.endDate, course.startDate) : null
+                        /*
+                          gap = 앞 코스 마지막 날 → 이 코스 첫 날의 일수.
+                          1이면 바로 다음 날이라 딱 이어진다.
+                          2 이상이면 사이가 비고, 0 이하면 겹친다 —
+                          같은 날 끝나고 같은 날 시작하면(gap 0) 하루가 겹치는 것이다.
+                        */
+                        const seam =
+                          gap === null || gap === 1
+                            ? null
+                            : gap > 1
+                              ? `${gap - 1}일 비어 있어요`
+                              : `앞 코스와 ${1 - gap}일 겹쳐요`
+
+                        return (
                         <li
                           key={course.id}
-                          className={`flex items-center gap-2.5 py-2.5 ${
-                            index > 0 ? 'border-line border-t' : ''
-                          }`}
+                          className={`flex flex-col ${index > 0 ? 'border-line border-t' : ''}`}
                         >
+                        {seam && (
+                          <span className="text-moderate-deep bg-moderate-tint mt-2.5 w-fit rounded-chip px-2 py-0.5 text-[11.5px] font-medium">
+                            {seam}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2.5 py-2.5">
                           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                             <span className="text-fg truncate text-[14px] font-semibold">
                               {course.name}
@@ -1146,20 +1186,45 @@ export function MyPage() {
                           >
                             <Close size={14} />
                           </button>
+                        </div>
                         </li>
-                      ))}
+                        )
+                      })}
                     </ul>
                   )}
 
                   {/* 담기 목록. 열고 닫는 것만 화면 상태고 담는 것은 서버가 답한다. */}
-                  <button
-                    type="button"
-                    className={ROW_ACTION}
-                    aria-expanded={pickerOpen}
-                    onClick={() => setPickerTripId(pickerOpen ? null : trip.id)}
-                  >
-                    {pickerOpen ? '담기 닫기' : '코스 담기'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className={`${ROW_ACTION} flex-1`}
+                      aria-expanded={pickerOpen}
+                      onClick={() => setPickerTripId(pickerOpen ? null : trip.id)}
+                    >
+                      {pickerOpen ? '담기 닫기' : '코스 담기'}
+                    </button>
+                    {/*
+                      ■ 이어서 짜기 — 마지막 코스 <b>다음 날</b>로 코스 짜기에 들어간다.
+
+                      여행이 소비하는 자리에서 <b>만드는 자리</b>가 된다. "제주시 이틀 다음에
+                      서귀포를 이어 붙인다"가 이 화면 안에서 시작된다.
+
+                      <p>날짜는 라우터 state로 넘긴다 — 홈의 "이 날로 코스 짜기"가 쓰는 길과
+                      같다. 전역 상태에 미리 써두지 않는 이유도 같다: 되돌아 나가면
+                      흔적이 남지 않아야 한다.
+
+                      <p>담긴 코스가 없으면 이을 날이 없으므로 그리지 않는다.
+                    */}
+                    {ordered.length > 0 && (
+                      <Link
+                        to="/plan"
+                        state={{ startDate: addDays(ordered[ordered.length - 1].endDate, 1) }}
+                        className={`${ROW_ACTION} grid flex-1 place-items-center no-underline`}
+                      >
+                        이어서 짜기
+                      </Link>
+                    )}
+                  </div>
                   {pickerOpen &&
                     (addable.length === 0 ? (
                       <p className="text-hint m-0 text-[12.5px]">
