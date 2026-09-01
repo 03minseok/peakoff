@@ -641,6 +641,16 @@ export function MyPage() {
                   헤더에도 같은 버튼을 두면 어느 것을 눌러야 하는지 갈린다. */}
             </>
           ) : (
+            /*
+              ⚠️ <b>"새 코스 짜기"를 걷어냈다</b>(2026-09-01).
+
+              아래 이동 막대에 "코스 짜기"가 늘 서 있어 <b>같은 곳으로 가는 문이 한 화면에
+              둘</b>이었다. 게다가 이 자리는 "내가 저장한 코스"의 머리글이라 <b>가진 것을
+              다루는 자리</b>인데, 새로 만드는 문이 그중 가장 눈에 띄는 버튼이었다.
+
+              <p>비어 있을 때 갈 곳은 그대로 있다 — 빈 상태 카드의 "코스 짜러 가기".
+              그 자리에서는 만드는 것이 유일하게 할 수 있는 일이라 문이 있어야 한다.
+            */
             <>
               {/* 하나뿐이면 비교할 상대가 없다 */}
               {courses.length >= COMPARE_COUNT && (
@@ -652,12 +662,6 @@ export function MyPage() {
                   코스 비교
                 </button>
               )}
-              <Link
-                to="/plan"
-                className="bg-brand hover:bg-brand-hover grid h-9.5 cursor-pointer place-items-center rounded-[12px] px-4 text-[13.5px] font-semibold text-fg no-underline transition-colors"
-              >
-                새 코스 짜기
-              </Link>
             </>
           )}
         </div>
