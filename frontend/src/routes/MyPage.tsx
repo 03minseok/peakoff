@@ -1487,9 +1487,16 @@ export function MyPage() {
                               코스 짜기·발견에서 지역을 칩 묶음에서 검색으로 바꾼 것과
                               같은 문제이고 같은 해법이다.
 
-                              <p><b>목록을 늘 펴 두는 대신 걸러낸다.</b> 여기서 고르는 것은
-                              지역이 아니라 코스라, 지역 목록을 띄우면 고를 것이 두 층이 된다.
-                              친 글자에 맞는 지역의 코스만 남기고 나머지는 그대로 둔다.
+                              <p><b>지역 목록을 띄우지 않는다.</b> 여기서 고르는 것은 지역이
+                              아니라 코스라, 목록을 띄우면 고를 것이 두 층이 된다.
+                              친 글자에 맞는 코스만 남긴다.
+
+                              <p>⚠️ <b>치기 전에는 아무것도 세우지 않는다</b>(2026-09-01).
+                              열자마자 저장한 코스가 전부 쏟아지면, 담을 코스를 찾으려고 연
+                              자리에서 <b>목록을 훑는 일이 먼저</b>가 된다 — 코스가 쌓일수록
+                              카드가 그만큼 길어지기도 한다. 찾을 것을 아는 사람만 여는
+                              자리라, 칸 하나만 세우고 기다린다. 무엇으로 찾는지는
+                              {@code placeholder}가 말한다.
 
                               <p>칸은 카드 안에 들어가므로 <b>{@code TEXT_INPUT}보다 낮다.</b>
                               폼 화면의 기본 높이(52px)를 그대로 쓰면 아래 코스 줄보다 칸이
@@ -1505,7 +1512,7 @@ export function MyPage() {
                               className="border-line bg-surface text-fg rounded-ui h-10 w-full border px-3 font-sans text-[13.5px] transition-colors"
                             />
 
-                            {pickable.length === 0 ? (
+                            {!needle ? null : pickable.length === 0 ? (
                               <p className="text-hint m-0 py-1.5 text-[12.5px]">
                                 "{pickerQuery.trim()}"에 해당하는 코스가 없어요.
                               </p>
