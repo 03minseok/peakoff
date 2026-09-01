@@ -1068,82 +1068,94 @@ export function MyPage() {
           </div>
         )}
 
+        {/*
+          넓은 화면에서 <b>두 열</b>로 눕힌다. 한 열로 두면 카드가 1180px를 다 써서
+          이름과 "삭제"가 화면 양 끝으로 갈라지고, 코스 이름과 배지 사이도 그만큼 벌어진다 —
+          읽을 것은 두세 줄인데 눈이 가로로 먼 길을 간다.
+          위의 저장한 코스가 이미 격자라 리듬도 이어진다.
+        */}
         {tripsState.status === 'loaded' && tripsState.trips.length > 0 && (
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
+          <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 md:grid-cols-2">
             {tripsState.trips.map((trip) => {
               /*
-                기간·지역은 담긴 코스에서 계산한다. 서버가 요약 문자열을 만들면
-                표기를 바꿀 때마다 서버를 고쳐야 한다.
-              */
-              /*
-                ⚠️ <b>담은 순서가 아니라 시작일순으로 세운다</b>(2026-09-01).
-                여행은 폴더가 아니라 시간표다 — 9월 10일 코스가 9월 8일 코스 위에 서 있으면
-                기간 요약("9월 8일 ~ 9월 11일")과 목록이 서로 다른 이야기를 한다.
-                담은 순서는 서버가 그대로 갖고 있으므로 되돌릴 수 있다.
+                담은 순서가 아니라 <b>시작일순</b>으로 세운다. 여행은 폴더가 아니라 시간표다 —
+                9월 10일 코스가 9월 8일 코스 위에 서 있으면 머리글의 기간과 목록이 서로 다른
+                이야기를 한다. 담은 순서는 서버가 그대로 갖고 있어 되돌릴 수 있다.
               */
               const ordered = [...trip.courses].sort((a, b) =>
                 a.startDate.localeCompare(b.startDate),
               )
-              const starts = ordered.map((course) => course.startDate).sort()
-              const ends = ordered.map((course) => course.endDate).sort()
-              const range =
-                starts.length === 0
-                  ? null
-                  : starts[0] === ends[ends.length - 1]
-                    ? formatMonthDay(starts[0])
-                    : `${formatMonthDay(starts[0])} ~ ${formatMonthDay(ends[ends.length - 1])}`
+              const first = ordered[0]
+              const last = ordered[ordered.length - 1]
+              const span = first ? daysBetween(first.startDate, last.endDate) + 1 : 0
               const regions = [...new Set(ordered.map((course) => regionNameOf(course.region)))]
               const inTrip = new Set(trip.courses.map((course) => course.id))
               const addable = courses.filter((course) => !inTrip.has(course.id))
               const pickerOpen = pickerTripId === trip.id
 
               return (
-                <li key={trip.id} className={`${CARD} flex flex-col gap-3 p-4`}>
+                <li key={trip.id} className={`${CARD} flex flex-col p-4.5`}>
+                  {/*
+                    ■ 머리글 — 이름이 이끌고 나머지는 물러난다.
+
+                    예전에는 이름과 "삭제"가 같은 줄에서 같은 무게로 맞섰고, 그 아래 한 줄에
+                    기간·지역·코스 수가 가운뎃점으로 이어져 <b>성격이 다른 넷이 한 무게</b>였다.
+                    지금은 기간이 한 줄을 갖고(여행의 뼈대다) 지역이 그 아래 작게 선다.
+                    코스 수는 적지 않는다 — 바로 아래 목록이 그 수를 이미 보여준다.
+                  */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <p className="text-fg m-0 text-[16px] font-bold tracking-[-0.01em]">{trip.name}</p>
-                      <p className="text-hint m-0 text-[12.5px]">
-                        {trip.courses.length === 0
-                          ? '아직 담은 코스가 없어요'
-                          : [range, regions.join(' · '), `코스 ${trip.courses.length}개`]
-                              .filter(Boolean)
-                              .join(' · ')}
-                      </p>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <h3 className="text-fg m-0 text-[17.5px] leading-tight font-bold tracking-[-0.02em]">
+                        {trip.name}
+                      </h3>
+                      {first ? (
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span className="text-muted text-[13px] font-medium">
+                            {formatMonthDay(first.startDate)} – {formatMonthDay(last.endDate)}
+                          </span>
+                          <span className="text-hint text-[12.5px]">{span}일간</span>
+                        </div>
+                      ) : (
+                        <span className="text-hint text-[13px]">아직 담은 코스가 없어요</span>
+                      )}
+                      {regions.length > 0 && (
+                        <span className="text-hint text-[12.5px]">{regions.join(' · ')}</span>
+                      )}
                     </div>
+
                     {/*
-                      삭제는 글자만. 코스가 사라지는 일이 아니라(묶음만 사라진다)
-                      코스 삭제만큼 무겁게 그리지 않는다 — 그래도 확인 시트는 거친다.
+                      되돌릴 수 없는 일이라 <b>제목과 무게를 맞추지 않는다.</b> 확인 시트를
+                      한 번 더 거치므로 바로 사라지지는 않지만, 자리부터 조용해야 한다.
                     */}
                     <button
                       type="button"
-                      className="text-hint hover:text-crowded-deep flex-none cursor-pointer border-0 bg-transparent p-1 text-[12.5px] font-medium transition-colors"
+                      className="text-hint hover:text-crowded-deep -mt-0.5 -mr-1 flex-none cursor-pointer border-0 bg-transparent p-1 text-[12px] font-medium transition-colors"
                       onClick={() => setPendingTripDelete(trip)}
                     >
                       삭제
                     </button>
                   </div>
 
+                  {/*
+                    ■ 날짜 축 — 여행이 시간표라는 것을 구조가 말한다.
+
+                    예전에는 코스가 그냥 목록이었고 날짜는 각 줄 밑에 "9월 8일부터 2일"로
+                    묻혀 있었다. 점과 선으로 축을 세우면 <b>훑는 것만으로 순서와 사이가</b>
+                    읽힌다.
+
+                    <p>⚠️ 점에 혼잡 색을 칠하지 않는다. 축이 말하는 것은 <b>시간</b>이고
+                    점수는 오른쪽 배지가 맡는다 — 한 신호를 두 곳에서 말하면 어느 쪽을
+                    믿어야 할지 흐려진다.
+                  */}
                   {ordered.length > 0 && (
-                    <ul className="m-0 flex list-none flex-col p-0">
+                    <ul className="m-0 mt-4 flex list-none flex-col p-0">
                       {ordered.map((course, index) => {
-                        /*
-                          ■ 이음새 — 앞 코스와 이 코스 사이의 빈 날·겹친 날.
-
-                          여행이 기간을 계산하면서 <b>이미 아는 사실</b>이라 서버를 더 부르지
-                          않는다. 이 한 줄이 여행을 폴더에서 일정표로 바꾼다 —
-                          "9월 9일이 비어 있어요"는 다음에 할 일을 가리키는 말이다.
-
-                          <p>⚠️ <b>고치라고 하지 않는다.</b> 빈 날은 잘못이 아니라 쉬는 날일 수
-                          있고, 겹친 날은 오전·오후로 나눠 다닐 수도 있다. 사실만 적고
-                          판단은 사용자에게 둔다 — 예측 창 밖 날짜를 막지 않는 것과 같은 태도다.
-                        */
                         const previous = index > 0 ? ordered[index - 1] : null
                         const gap = previous ? daysBetween(previous.endDate, course.startDate) : null
                         /*
                           gap = 앞 코스 마지막 날 → 이 코스 첫 날의 일수.
-                          1이면 바로 다음 날이라 딱 이어진다.
-                          2 이상이면 사이가 비고, 0 이하면 겹친다 —
-                          같은 날 끝나고 같은 날 시작하면(gap 0) 하루가 겹치는 것이다.
+                          1이면 바로 다음 날이라 딱 이어진다. 2 이상이면 사이가 비고,
+                          0 이하면 겹친다 — 같은 날 끝나고 같은 날 시작하면(gap 0) 하루가 겹친다.
                         */
                         const seam =
                           gap === null || gap === 1
@@ -1151,118 +1163,164 @@ export function MyPage() {
                             : gap > 1
                               ? `${gap - 1}일 비어 있어요`
                               : `앞 코스와 ${1 - gap}일 겹쳐요`
+                        const isLast = index === ordered.length - 1
 
                         return (
-                        <li
-                          key={course.id}
-                          className={`flex flex-col ${index > 0 ? 'border-line border-t' : ''}`}
-                        >
-                        {seam && (
-                          <span className="text-moderate-deep bg-moderate-tint mt-2.5 w-fit rounded-chip px-2 py-0.5 text-[11.5px] font-medium">
-                            {seam}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-2.5 py-2.5">
-                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <span className="text-fg truncate text-[14px] font-semibold">
-                              {course.name}
-                            </span>
-                            <span className="text-hint text-[12px]">
-                              {regionNameOf(course.region)} · {formatMonthDay(course.startDate)}부터 {course.days}일
-                            </span>
-                          </div>
-                          {/* 점수는 코스가 자기 것을 갖는다. 진단 전이면 그렇게 말한다 */}
-                          {course.level !== null && course.totalQuietness !== null ? (
-                            <CongestionBadge
-                              level={course.level}
-                              label={course.levelLabel ?? undefined}
-                              quietness={course.totalQuietness}
-                              size="sm"
-                            />
-                          ) : (
-                            <span className="text-hint flex-none text-[11.5px]">진단 전</span>
-                          )}
-                          <button
-                            type="button"
-                            aria-label={`${course.name} 여행에서 빼기`}
-                            className="text-hint hover:text-fg flex-none cursor-pointer border-0 bg-transparent p-1 transition-colors"
-                            onClick={() => void handleRemoveFromTrip(trip.id, course.id)}
-                          >
-                            <Close size={14} />
-                          </button>
-                        </div>
-                        </li>
+                          <li key={course.id} className="flex flex-col">
+                            {/*
+                              이음새. <b>앰버를 쓰지 않는다</b> — 이 팔레트에서 앰버는
+                              혼잡 "보통"이고, 바로 옆에 그 배지가 선다. 같은 색이 40px 안에서
+                              두 뜻을 가지면 어느 쪽도 신호가 아니게 된다.
+
+                              <p>축의 <b>점선 구간</b>으로 말한다. 이어지지 않는다는 사실을
+                              선의 모양이 이미 말하므로 글자는 조용해도 된다.
+                            */}
+                            {seam && (
+                              <div className="flex gap-3">
+                                <div className="flex w-2 flex-none justify-center">
+                                  <span
+                                    className="border-line h-full border-l border-dashed"
+                                    aria-hidden="true"
+                                  />
+                                </div>
+                                <span className="text-hint py-1.5 text-[11.5px]">{seam}</span>
+                              </div>
+                            )}
+
+                            <div className="flex gap-3">
+                              {/* 축. 점 하나와 다음 점까지 잇는 선 */}
+                              <div className="flex w-2 flex-none flex-col items-center">
+                                <span
+                                  className="border-brand bg-surface mt-1.5 h-2 w-2 flex-none rounded-full border-2"
+                                  aria-hidden="true"
+                                />
+                                {!isLast && (
+                                  <span className="bg-line mt-0.5 w-px flex-1" aria-hidden="true" />
+                                )}
+                              </div>
+
+                              <div className="flex min-w-0 flex-1 items-start justify-between gap-2 pb-4">
+                                <div className="flex min-w-0 flex-col gap-0.5">
+                                  <span className="text-fg truncate text-[15px] font-semibold">
+                                    {course.name}
+                                  </span>
+                                  <span className="text-hint text-[12px]">
+                                    {regionNameOf(course.region)} ·{' '}
+                                    {formatMonthDay(course.startDate)} – {formatMonthDay(course.endDate)}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-none items-center gap-0.5">
+                                  {/* 점수는 코스가 자기 것을 갖는다. 진단 전이면 그렇게 말한다 */}
+                                  {course.level !== null && course.totalQuietness !== null ? (
+                                    <CongestionBadge
+                                      level={course.level}
+                                      label={course.levelLabel ?? undefined}
+                                      quietness={course.totalQuietness}
+                                      size="sm"
+                                    />
+                                  ) : (
+                                    <span className="text-hint text-[11.5px]">진단 전</span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    aria-label={`${course.name} 여행에서 빼기`}
+                                    className="text-hint hover:text-fg hover:bg-fill flex-none cursor-pointer rounded-full border-0 bg-transparent p-1.5 transition-colors"
+                                    onClick={() => void handleRemoveFromTrip(trip.id, course.id)}
+                                  >
+                                    <Close size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </li>
                         )
                       })}
                     </ul>
                   )}
 
-                  {/* 담기 목록. 열고 닫는 것만 화면 상태고 담는 것은 서버가 답한다. */}
-                  <div className="flex gap-2">
+                  {/*
+                    ■ 행동. <b>하나가 이끈다.</b> 둘 다 테두리 버튼이면 무엇을 먼저 할지
+                    화면이 말하지 않는다. 이 탭에서 자주 하는 일은 <b>담기</b>이고
+                    ("이어서 짜기"는 화면을 떠나는 큰 걸음이다), 그래서 담기가 채운 버튼이다.
+                  */}
+                  {/*
+                    ⚠️ <b>코스가 없으면 버튼이 폭을 다 쓰지 않는다.</b> 빈 여행이 채워진 여행보다
+                    크게 외치는 것을 막는다 — 목록에서 가장 눈에 띄는 것이 "아직 비었다"가
+                    되어서는 안 된다. 코스가 있으면 둘이 반씩 나눠 쓴다.
+                  */}
+                  <div className={`flex gap-2 ${ordered.length > 0 ? '' : 'mt-4'}`}>
                     <button
                       type="button"
-                      className={`${ROW_ACTION} flex-1`}
                       aria-expanded={pickerOpen}
+                      className={`h-10 cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold transition-colors ${
+                        ordered.length > 0 ? 'flex-1' : 'w-fit'
+                      } ${
+                        pickerOpen
+                          ? 'border-line bg-surface text-fg hover:bg-bg border'
+                          : 'bg-brand hover:bg-brand-hover text-fg'
+                      }`}
                       onClick={() => setPickerTripId(pickerOpen ? null : trip.id)}
                     >
                       {pickerOpen ? '담기 닫기' : '코스 담기'}
                     </button>
                     {/*
-                      ■ 이어서 짜기 — 마지막 코스 <b>다음 날</b>로 코스 짜기에 들어간다.
-
-                      여행이 소비하는 자리에서 <b>만드는 자리</b>가 된다. "제주시 이틀 다음에
-                      서귀포를 이어 붙인다"가 이 화면 안에서 시작된다.
-
-                      <p>날짜는 라우터 state로 넘긴다 — 홈의 "이 날로 코스 짜기"가 쓰는 길과
-                      같다. 전역 상태에 미리 써두지 않는 이유도 같다: 되돌아 나가면
-                      흔적이 남지 않아야 한다.
-
-                      <p>담긴 코스가 없으면 이을 날이 없으므로 그리지 않는다.
+                      마지막 코스 <b>다음 날</b>로 코스 짜기에 들어간다. 여행이 소비하는
+                      자리에서 만드는 자리가 된다. 날짜는 라우터 state로 넘긴다 —
+                      홈의 "이 날로 코스 짜기"가 쓰는 길과 같다.
                     */}
                     {ordered.length > 0 && (
                       <Link
                         to="/plan"
-                        state={{ startDate: addDays(ordered[ordered.length - 1].endDate, 1) }}
-                        className={`${ROW_ACTION} grid flex-1 place-items-center no-underline`}
+                        state={{ startDate: addDays(last.endDate, 1) }}
+                        className="border-line bg-surface text-fg hover:bg-bg grid h-10 flex-1 cursor-pointer place-items-center rounded-[12px] border text-[13.5px] font-semibold no-underline transition-colors"
                       >
                         이어서 짜기
                       </Link>
                     )}
                   </div>
+
+                  {/*
+                    ■ 담을 코스. <b>테두리 상자를 두르지 않는다</b> — 카드 안의 카드가 되어
+                    어느 것이 내용이고 어느 것이 그릇인지 흐려진다. 카드 면 위에 줄로만 눕히고
+                    위쪽 실선 하나로 앞의 것과 가른다.
+                  */}
                   {pickerOpen &&
                     (addable.length === 0 ? (
-                      <p className="text-hint m-0 text-[12.5px]">
+                      <p className="border-line text-hint m-0 mt-3.5 border-t pt-3.5 text-[12.5px]">
                         {courses.length === 0
                           ? '저장한 코스가 아직 없어요. 코스를 먼저 저장해 주세요.'
                           : '저장한 코스가 모두 이 여행에 담겨 있어요.'}
                       </p>
                     ) : (
-                      <ul className="border-line m-0 flex list-none flex-col rounded-[12px] border p-0">
-                        {addable.map((course, index) => (
-                          <li
-                            key={course.id}
-                            className={`flex items-center gap-2.5 px-3 py-2.5 ${
-                              index > 0 ? 'border-line border-t' : ''
-                            }`}
-                          >
-                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                              <span className="text-fg truncate text-[13.5px] font-semibold">
-                                {course.name}
-                              </span>
-                              <span className="text-hint text-[11.5px]">
-                                {regionNameOf(course.region)} · {formatMonthDay(course.startDate)}부터 {course.days}일
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              className="bg-brand-tint text-brand-deep hover:bg-brand-soft h-8 flex-none cursor-pointer rounded-chip border-0 px-3 text-[12.5px] font-semibold transition-colors"
-                              onClick={() => void handleAddToTrip(trip.id, course.id)}
+                      <div className="border-line mt-3.5 flex flex-col gap-1 border-t pt-3.5">
+                        <span className="text-hint text-[11.5px] font-semibold">담을 코스</span>
+                        <ul className="m-0 flex list-none flex-col p-0">
+                          {addable.map((course) => (
+                            <li
+                              key={course.id}
+                              className="flex items-center gap-2.5 py-1.5"
                             >
-                              담기
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
+                              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                <span className="text-fg truncate text-[13.5px] font-semibold">
+                                  {course.name}
+                                </span>
+                                <span className="text-hint text-[11.5px]">
+                                  {regionNameOf(course.region)} · {formatMonthDay(course.startDate)}부터{' '}
+                                  {course.days}일
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="bg-brand-tint text-brand-deep hover:bg-brand-soft rounded-chip h-8 flex-none cursor-pointer border-0 px-3.5 text-[12.5px] font-semibold transition-colors"
+                                onClick={() => void handleAddToTrip(trip.id, course.id)}
+                              >
+                                담기
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ))}
                 </li>
               )
