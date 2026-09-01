@@ -760,6 +760,50 @@ export function MyPage() {
           })}
         </div>
 
+        {/*
+        일회성 알림. 창을 띄우는 대신 띠로 두어 화면 흐름을 끊지 않는다.
+
+        role이 tone에 따라 다르다. 실패는 alert(하던 일을 끊고 읽어야 한다),
+        성공은 status(방해하지 않고 알린다). 성공에까지 alert를 쓰면 화면 낭독기가
+        매번 사용자를 멈춰 세운다.
+
+        <p>⚠️ <b>탭 바깥에 둔다</b>(2026-09-01). 저장한 코스 pane 안에 있었는데,
+        좁은 화면에서 그 pane은 <b>다른 탭을 보고 있으면 통째로 숨는다</b> —
+        여행을 지우다 실패해도 사용자는 아무 말도 듣지 못했다. 화면에서는 그냥
+        아무 일도 안 일어난 것처럼 보인다.
+
+        <p>알림을 만드는 곳은 코스·찜·여행 셋 다인데 알림이 서는 곳은 하나뿐이었다.
+        어느 탭에서 생겼든 보이는 자리는 탭 위다.
+      */}
+        {notice && (
+          <div
+            className={`rounded-card flex items-center justify-between gap-3 p-3.5 ${
+              notice.tone === 'error' ? 'bg-crowded-tint' : 'bg-quiet-tint'
+            }`}
+            role={notice.tone === 'error' ? 'alert' : 'status'}
+          >
+            <span
+              className={`text-[13px] whitespace-pre-line ${
+                notice.tone === 'error' ? 'text-crowded-deep' : 'text-brand-deep'
+              }`}
+            >
+              {notice.text}
+            </span>
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              aria-label="알림 닫기"
+              className={`grid h-7 w-7 flex-none cursor-pointer place-items-center rounded-full bg-transparent text-sm ${
+                notice.tone === 'error'
+                  ? 'text-crowded-deep/70 hover:text-crowded-deep'
+                  : 'text-brand-deep/70 hover:text-brand-deep'
+              }`}
+            >
+              <Close />
+            </button>
+          </div>
+        )}
+
         <div className={paneClass('courses')}>
           {/* 섹션 헤더. id는 넓은 화면 이동 버튼이 찾아오는 닻이다 */}
           <section
@@ -782,42 +826,6 @@ export function MyPage() {
               <br />
               잠시 후 다시 시도해 주세요.
             </p>
-          )}
-
-          {/*
-        일회성 알림. 창을 띄우는 대신 띠로 두어 화면 흐름을 끊지 않는다.
-
-        role이 tone에 따라 다르다. 실패는 alert(하던 일을 끊고 읽어야 한다),
-        성공은 status(방해하지 않고 알린다). 성공에까지 alert를 쓰면 화면 낭독기가
-        매번 사용자를 멈춰 세운다.
-      */}
-          {notice && (
-            <div
-              className={`rounded-card flex items-center justify-between gap-3 p-3.5 ${
-                notice.tone === 'error' ? 'bg-crowded-tint' : 'bg-quiet-tint'
-              }`}
-              role={notice.tone === 'error' ? 'alert' : 'status'}
-            >
-              <span
-                className={`text-[13px] whitespace-pre-line ${
-                  notice.tone === 'error' ? 'text-crowded-deep' : 'text-brand-deep'
-                }`}
-              >
-                {notice.text}
-              </span>
-              <button
-                type="button"
-                onClick={() => setNotice(null)}
-                aria-label="알림 닫기"
-                className={`grid h-7 w-7 flex-none cursor-pointer place-items-center rounded-full bg-transparent text-sm ${
-                  notice.tone === 'error'
-                    ? 'text-crowded-deep/70 hover:text-crowded-deep'
-                    : 'text-brand-deep/70 hover:text-brand-deep'
-                }`}
-              >
-                <Close />
-              </button>
-            </div>
           )}
 
           {list.status === 'loading' && (
