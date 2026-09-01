@@ -28,7 +28,7 @@ import { CongestionBadge } from '../components/CongestionBadge'
 import { addDays, daysBetween, formatMonthDay } from '../utils/date'
 import { useAuth } from '../state/authContext'
 import { useFavorites } from '../state/favoriteContext'
-import { defaultRegionSlug, regionNameOf } from '../constants/regions'
+import { defaultRegionSlug, regionNameOf, searchRegions } from '../constants/regions'
 import { useTrip } from '../state/tripContext'
 import type { FavoritePlace, SavedCourseDetail, SavedCourseSummary, Trip } from '../types/api'
 
@@ -466,6 +466,18 @@ export function MyPage() {
   const [creatorOpen, setCreatorOpen] = useState(false)
   /** 코스 담기 목록이 열려 있는 여행. 한 번에 하나만 연다 — 두 목록이 같이 열리면 어디에 담기는지 흐려진다. */
   const [pickerTripId, setPickerTripId] = useState<number | null>(null)
+  /*
+   * 담을 코스를 <b>지역으로</b> 좁히는 검색어. 여는 여행이 바뀔 때마다 비운다 —
+   * 남겨 두면 다음에 열 때 지난번 글자가 목록을 이미 걸러 놓아, 담을 수 있는 코스가
+   * 줄어 있는 것처럼 보인다({@code RegionPicker}가 목록을 닫을 때 검색어를 비우는 것과
+   * 같은 이유).
+   */
+  const [pickerQuery, setPickerQuery] = useState('')
+
+  function togglePicker(tripId: number) {
+    setPickerQuery('')
+    setPickerTripId((current) => (current === tripId ? null : tripId))
+  }
   const [pendingTripDelete, setPendingTripDelete] = useState<Trip | null>(null)
   const [deletingTrip, setDeletingTrip] = useState(false)
 
@@ -1195,6 +1207,16 @@ export function MyPage() {
                   const blocked = seams.some((seam) => seam?.tone === 'danger')
                   const inTrip = new Set(trip.courses.map((course) => course.id))
                   const addable = courses.filter((course) => !inTrip.has(course.id))
+                  /*
+                    <b>무엇으로 검색되는지는 지역 목록이 정한다.</b> "강원"이라 치면 속초와
+                    춘천 코스가 남아야 하는데 짧은 이름에는 그 글자가 없다 —
+                    {@code searchRegions}가 짧은 이름·정식 이름·시도·슬러그를 함께 본다.
+                    여기서 따로 맞춰보면 코스 짜기 화면의 검색과 다르게 동작한다.
+                  */
+                  const matchedRegions = new Set(
+                    searchRegions(pickerQuery).map((option) => option.slug),
+                  )
+                  const pickable = addable.filter((course) => matchedRegions.has(course.region))
                   const pickerOpen = pickerTripId === trip.id
 
                   return (
@@ -1366,6 +1388,14 @@ export function MyPage() {
                     되어서는 안 된다. 코스가 있으면 둘이 반씩 나눠 쓴다.
                   */}
                       <div className={`flex gap-2 ${ordered.length > 0 ? '' : 'mt-4'}`}>
+                        {/*
+                          ⚠️ 열렸을 때를 <b>테두리가 아니라 옅은 채움</b>으로 말한다.
+                          {@code border-line … border}로 두었더니 <b>테두리가 아예 안 그려져</b>
+                          버튼이 맨 글자로 떴다 — 앞에 붙은 {@code border-0}과 다투는데,
+                          이길 쪽은 class에 적은 순서가 아니라 Tailwind가 CSS를 뽑아낸 순서로
+                          정해진다(로그아웃 버튼이 같은 함정에 빠졌던 자리다). 채움은 그 다툼이
+                          없고, 뜻 없는 옅은 바탕에는 {@code --c-fill}을 쓴다.
+                        */}
                         <button
                           type="button"
                           aria-expanded={pickerOpen}
@@ -1373,12 +1403,12 @@ export function MyPage() {
                             ordered.length > 0 ? 'flex-1' : 'w-fit'
                           } ${
                             pickerOpen
-                              ? 'border-line bg-surface text-fg hover:bg-bg border'
+                              ? 'bg-fill text-fg hover:bg-line/45'
                               : 'bg-brand hover:bg-brand-hover text-fg'
                           }`}
-                          onClick={() => setPickerTripId(pickerOpen ? null : trip.id)}
+                          onClick={() => togglePicker(trip.id)}
                         >
-                          {pickerOpen ? '담기 닫기' : '코스 담기'}
+                          {pickerOpen ? '닫기' : '코스 담기'}
                         </button>
                         {/*
                       ⚠️ <b>"이어서 짜기"를 걷어낸 자리다</b>(2026-09-01). 마지막 코스
@@ -1426,30 +1456,63 @@ export function MyPage() {
                               : '저장한 코스가 모두 이 여행에 담겨 있어요.'}
                           </p>
                         ) : (
-                          <div className="border-line mt-3.5 flex flex-col gap-1 border-t pt-3.5">
+                          <div className="border-line mt-3.5 flex flex-col gap-2 border-t pt-3.5">
                             <span className="text-hint text-[11.5px] font-semibold">담을 코스</span>
-                            <ul className="m-0 flex list-none flex-col p-0">
-                              {addable.map((course) => (
-                                <li key={course.id} className="flex items-center gap-2.5 py-1.5">
-                                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                    <span className="text-fg truncate text-[13.5px] font-semibold">
-                                      {course.name}
-                                    </span>
-                                    <span className="text-hint text-[11.5px]">
-                                      {regionNameOf(course.region)} ·{' '}
-                                      {formatMonthDay(course.startDate)}부터 {course.days}일
-                                    </span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="bg-brand-tint text-brand-deep hover:bg-brand-soft rounded-chip h-8 flex-none cursor-pointer border-0 px-3.5 text-[12.5px] font-semibold transition-colors"
-                                    onClick={() => void handleAddToTrip(trip.id, course.id)}
-                                  >
-                                    담기
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
+
+                            {/*
+                              ■ 지역으로 좁히기.
+
+                              여행은 <b>지역이 다른 코스를 묶으려고</b> 만든 것이라, 이 목록에는
+                              저장한 코스가 지역 구분 없이 전부 올라온다 — 코스가 쌓일수록
+                              "제주 것만 먼저 담자"가 어려워진다. 코스 짜기·발견에서 지역을
+                              칩 묶음에서 검색으로 바꾼 것과 같은 문제이고 같은 해법이다.
+
+                              <p><b>목록을 늘 펴 두는 대신 걸러낸다.</b> 여기서 고르는 것은
+                              지역이 아니라 코스라, 지역 목록을 띄우면 고를 것이 두 층이 된다.
+                              친 글자에 맞는 지역의 코스만 남기고 나머지는 그대로 둔다.
+
+                              <p>칸은 카드 안에 들어가므로 <b>{@code TEXT_INPUT}보다 낮다.</b>
+                              폼 화면의 기본 높이(52px)를 그대로 쓰면 아래 코스 줄보다 칸이
+                              커서, 담는 일보다 찾는 일이 커 보인다.
+                            */}
+                            <input
+                              type="search"
+                              value={pickerQuery}
+                              onChange={(event) => setPickerQuery(event.target.value)}
+                              placeholder="지역으로 찾기 (예: 제주, 강원)"
+                              aria-label="담을 코스를 지역으로 찾기"
+                              autoComplete="off"
+                              className="border-line bg-surface text-fg rounded-ui h-10 w-full border px-3 font-sans text-[13.5px] transition-colors"
+                            />
+
+                            {pickable.length === 0 ? (
+                              <p className="text-hint m-0 py-1.5 text-[12.5px]">
+                                "{pickerQuery.trim()}"에 해당하는 지역의 코스가 없어요.
+                              </p>
+                            ) : (
+                              <ul className="m-0 flex list-none flex-col p-0">
+                                {pickable.map((course) => (
+                                  <li key={course.id} className="flex items-center gap-2.5 py-1.5">
+                                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                      <span className="text-fg truncate text-[13.5px] font-semibold">
+                                        {course.name}
+                                      </span>
+                                      <span className="text-hint text-[11.5px]">
+                                        {regionNameOf(course.region)} ·{' '}
+                                        {formatMonthDay(course.startDate)}부터 {course.days}일
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      className="bg-brand-tint text-brand-deep hover:bg-brand-soft rounded-chip h-8 flex-none cursor-pointer border-0 px-3.5 text-[12.5px] font-semibold transition-colors"
+                                      onClick={() => void handleAddToTrip(trip.id, course.id)}
+                                    >
+                                      담기
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </div>
                         ))}
                     </li>
