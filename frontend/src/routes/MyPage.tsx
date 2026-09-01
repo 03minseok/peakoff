@@ -1204,9 +1204,30 @@ export function MyPage() {
                                     조용히 따라붙는 편이 짧고, 어느 코스의 사정인지도 분명하다.
                                   */}
                                   <span className="flex min-w-0 items-center gap-1.5">
-                                    <span className="text-fg truncate text-[15px] font-semibold">
-                                      {course.name}
-                                    </span>
+                                    {/*
+                                      이름을 누르면 <b>코스 상세</b>가 열린다. 저장 목록의
+                                      카드와 <b>같은 {@code CourseDetailOverlay}</b>다 —
+                                      여행에서 누른 코스가 다른 화면을 보여줄 이유가 없고,
+                                      여행 카드는 이름·기간·점수만 요약하고 있어 안에
+                                      어느 장소가 담겼는지는 여기서만 볼 수 있다.
+
+                                      <p>클릭 영역을 줄 전체로 늘리지 <b>않는다.</b> 같은
+                                      줄에 이음새 표시와 빼기 버튼이 서 있어, 겹쳐 깔면
+                                      그 둘을 누르려다 상세가 열린다. 저장 카드가
+                                      {@code after:inset-0}로 카드 전체를 받는 것과
+                                      사정이 다르다.
+
+                                      <p>{@code truncate}는 <b>안쪽 span</b>이 맡는다.
+                                      버튼에 걸면 초점 링까지 잘린다.
+                                    */}
+                                    <button
+                                      type="button"
+                                      title={course.name}
+                                      className="text-fg hover:text-brand-deep min-w-0 cursor-pointer border-0 bg-transparent p-0 text-left text-[15px] font-semibold transition-colors"
+                                      onClick={() => setOpened([course.id])}
+                                    >
+                                      <span className="block truncate">{course.name}</span>
+                                    </button>
                                     {seam && <HintDot label={seam} />}
                                   </span>
                                   <span className="text-hint text-[12px]">
