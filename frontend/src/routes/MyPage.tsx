@@ -1208,15 +1208,34 @@ export function MyPage() {
                   const inTrip = new Set(trip.courses.map((course) => course.id))
                   const addable = courses.filter((course) => !inTrip.has(course.id))
                   /*
-                    <b>무엇으로 검색되는지는 지역 목록이 정한다.</b> "강원"이라 치면 속초와
-                    춘천 코스가 남아야 하는데 짧은 이름에는 그 글자가 없다 —
-                    {@code searchRegions}가 짧은 이름·정식 이름·시도·슬러그를 함께 본다.
-                    여기서 따로 맞춰보면 코스 짜기 화면의 검색과 다르게 동작한다.
+                    ■ 담을 코스를 <b>이름으로도, 지역으로도</b> 찾는다.
+
+                    <p>지역만으로 걸렀더니 <b>이름을 아는 코스를 찾는 길이 없었다</b> —
+                    "제주 가족여행"을 찾으려면 그 코스가 제주였는지 서귀포였는지를 먼저
+                    떠올려야 했다. 이름은 사용자가 직접 붙인 것이라 지역보다 잘 기억된다.
+
+                    <p>둘을 <b>OR로 본다.</b> 어느 쪽이든 걸리면 남긴다 — 한 칸에 두 가지를
+                    받으면서 "지금 무엇으로 찾는 중인가"를 사용자가 고르게 하면,
+                    찾기 전에 분류부터 하라는 말이 된다.
+
+                    <p><b>지역 쪽은 {@code searchRegions}가 정한다.</b> "강원"이라 치면 속초와
+                    춘천 코스가 남아야 하는데 짧은 이름에는 그 글자가 없다 — 짧은 이름·정식
+                    이름·시도·슬러그를 함께 본다. 여기서 따로 맞춰보면 코스 짜기 화면의
+                    검색과 다르게 동작한다.
+
+                    <p>공백을 지우고 견준다. "제주 코스"를 "제주코스"로 쳐도 찾아야 한다.
                   */
+                  const needle = pickerQuery.replace(/\s+/g, '').toLowerCase()
                   const matchedRegions = new Set(
                     searchRegions(pickerQuery).map((option) => option.slug),
                   )
-                  const pickable = addable.filter((course) => matchedRegions.has(course.region))
+                  const pickable = needle
+                    ? addable.filter(
+                        (course) =>
+                          matchedRegions.has(course.region) ||
+                          course.name.replace(/\s+/g, '').toLowerCase().includes(needle),
+                      )
+                    : addable
                   const pickerOpen = pickerTripId === trip.id
 
                   return (
@@ -1460,12 +1479,13 @@ export function MyPage() {
                             <span className="text-hint text-[11.5px] font-semibold">담을 코스</span>
 
                             {/*
-                              ■ 지역으로 좁히기.
+                              ■ 이름·지역으로 좁히기.
 
                               여행은 <b>지역이 다른 코스를 묶으려고</b> 만든 것이라, 이 목록에는
                               저장한 코스가 지역 구분 없이 전부 올라온다 — 코스가 쌓일수록
-                              "제주 것만 먼저 담자"가 어려워진다. 코스 짜기·발견에서 지역을
-                              칩 묶음에서 검색으로 바꾼 것과 같은 문제이고 같은 해법이다.
+                              "제주 것만 먼저 담자"도, "그 가족여행 코스 어디 갔지"도 어려워진다.
+                              코스 짜기·발견에서 지역을 칩 묶음에서 검색으로 바꾼 것과
+                              같은 문제이고 같은 해법이다.
 
                               <p><b>목록을 늘 펴 두는 대신 걸러낸다.</b> 여기서 고르는 것은
                               지역이 아니라 코스라, 지역 목록을 띄우면 고를 것이 두 층이 된다.
@@ -1479,15 +1499,15 @@ export function MyPage() {
                               type="search"
                               value={pickerQuery}
                               onChange={(event) => setPickerQuery(event.target.value)}
-                              placeholder="지역으로 찾기 (예: 제주, 강원)"
-                              aria-label="담을 코스를 지역으로 찾기"
+                              placeholder="코스 이름이나 지역으로 찾기"
+                              aria-label="담을 코스를 이름이나 지역으로 찾기"
                               autoComplete="off"
                               className="border-line bg-surface text-fg rounded-ui h-10 w-full border px-3 font-sans text-[13.5px] transition-colors"
                             />
 
                             {pickable.length === 0 ? (
                               <p className="text-hint m-0 py-1.5 text-[12.5px]">
-                                "{pickerQuery.trim()}"에 해당하는 지역의 코스가 없어요.
+                                "{pickerQuery.trim()}"에 해당하는 코스가 없어요.
                               </p>
                             ) : (
                               <ul className="m-0 flex list-none flex-col p-0">
