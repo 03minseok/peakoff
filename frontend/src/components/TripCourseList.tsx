@@ -89,6 +89,7 @@ export function TripCourseList({
   limit,
   onOpenCourse,
   onRemove,
+  onShowAll,
 }: {
   /** 이미 {@link orderCourses}로 세운 목록 */
   ordered: SavedCourseSummary[]
@@ -97,6 +98,8 @@ export function TripCourseList({
   limit?: number
   onOpenCourse: (courseId: number) => void
   onRemove: (courseId: number) => void
+  /** 잘린 줄을 눌렀을 때. {@code limit}을 줄 때만 쓴다 */
+  onShowAll?: () => void
 }) {
   const shown = limit === undefined ? ordered : ordered.slice(0, limit)
   const hidden = ordered.length - shown.length
@@ -123,7 +126,12 @@ export function TripCourseList({
                 {!isLast && <span className="bg-line mt-0.5 w-px flex-1" aria-hidden="true" />}
               </div>
 
-              <div className="flex min-w-0 flex-1 items-start justify-between gap-2 pb-3">
+              {/*
+                {@code gap-3}이다. 2였을 때 <b>이름이 잘리면서 이음새 표시가 배지에 붙어</b>
+                붉은 동그라미와 "진단 전"이 한 덩어리로 보였다 — 뜻이 다른 둘이 붙으면
+                어느 것이 무엇에 딸린 표시인지 읽히지 않는다.
+              */}
+              <div className="flex min-w-0 flex-1 items-start justify-between gap-3 pb-3">
                 <div className="flex min-w-0 flex-col gap-0.5">
                   {/*
                     이음새 표시가 <b>이름 옆</b>에 붙는다. 축에 따로 한 줄을 두었더니
@@ -169,7 +177,15 @@ export function TripCourseList({
                       size="sm"
                     />
                   ) : (
-                    <span className="text-hint text-[11.5px]">진단 전</span>
+                    /*
+                      ⚠️ 배지와 <b>같은 알약</b>으로 세운다. 맨 글자로 두었더니 이 줄만
+                      오른쪽 열의 폭·높이가 달라 <b>배지 열이 어긋나 보였다</b> — 카드 한 장에
+                      칩 셋과 글자 하나가 섞이면 그 하나가 고장으로 읽힌다.
+                      색은 중립({@code --c-fill})이다. 진단 전은 등급이 아니라 등급이 없는 것이다.
+                    */
+                    <span className="bg-fill text-hint rounded-chip inline-flex h-6.5 flex-none items-center px-2.5 text-[11.5px] font-semibold">
+                      진단 전
+                    </span>
                   )}
                   <button
                     type="button"
@@ -189,13 +205,23 @@ export function TripCourseList({
       {/*
         잘린 만큼을 <b>축 위에서</b> 말한다. 목록 밖에 따로 적으면 그 줄이 어디에
         딸린 말인지 흐려진다 — 점 대신 선이 이어져 내려오다 문장 하나로 끝난다.
+
+        <p>⚠️ <b>누를 수 있다.</b> 죽은 글자로 두었더니 "더 있다"는 사실만 알려주고
+        가는 길은 아래 버튼에서 따로 찾아야 했다 — 없는 것을 가리키는 줄이 정작
+        그리로 데려가지 않았다. 이 줄이 곧 상세보기다.
       */}
       {hidden > 0 && (
         <li className="flex gap-3">
           <div className="flex w-2 flex-none justify-center">
-            <span className="bg-line h-3 w-px" aria-hidden="true" />
+            <span className="bg-line h-3.5 w-px" aria-hidden="true" />
           </div>
-          <span className="text-hint pb-1 text-[12.5px]">코스 {hidden}개가 더 있어요</span>
+          <button
+            type="button"
+            onClick={onShowAll}
+            className="text-hint hover:text-brand-deep -my-0.5 -ml-1 cursor-pointer rounded-[8px] border-0 bg-transparent px-1 py-0.5 text-left text-[12.5px] transition-colors"
+          >
+            코스 {hidden}개가 더 있어요
+          </button>
         </li>
       )}
     </ul>

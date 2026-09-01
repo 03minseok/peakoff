@@ -1186,7 +1186,11 @@ export function MyPage() {
           위의 저장한 코스가 이미 격자라 리듬도 이어진다.
         */}
             {tripsState.status === 'loaded' && tripsState.trips.length > 0 && (
-              <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 md:grid-cols-2">
+              /*
+                카드 사이를 <b>카드 안쪽 여백(18px)보다 넓게</b> 둔다. 14px였을 때
+                카드 안 코스 줄 간격과 비슷해서 어디까지가 한 여행인지가 흐렸다.
+              */
+              <ul className="m-0 grid list-none grid-cols-1 items-stretch gap-5 p-0 md:grid-cols-2">
                 {pagedTrips.map((trip) => {
                   /*
                 담은 순서가 아니라 <b>시작일순</b>으로 세운다. 여행은 폴더가 아니라 시간표다 —
@@ -1238,7 +1242,14 @@ export function MyPage() {
                   const pickerOpen = pickerTripId === trip.id
 
                   return (
-                    <li key={trip.id} className={`${CARD} flex flex-col p-4.5`}>
+                    /*
+                      ⚠️ {@code h-full}이다. 넓은 화면의 두 열 격자는 <b>같은 줄의 카드
+                      높이를 맞추는데</b>, 카드가 제 내용만큼만 차지하면 짧은 카드 아래
+                      회색 바탕이 드러나 격자가 깨져 보인다. 대신 높이를 채우고
+                      <b>버튼을 바닥으로 밀어</b>(아래 {@code mt-auto}) 버튼 열을 가지런히 세운다 —
+                      남는 자리는 목록과 버튼 사이의 여백이 되어 "더 담을 수 있다"로 읽힌다.
+                    */
+                    <li key={trip.id} className={`${CARD} flex h-full flex-col p-4.5`}>
                       {/*
                     ■ 머리글 — 이름이 이끌고 나머지는 물러난다.
 
@@ -1312,6 +1323,7 @@ export function MyPage() {
                             limit={TRIP_CARD_COURSES}
                             onOpenCourse={(courseId) => setOpened(courseId)}
                             onRemove={(courseId) => void handleRemoveFromTrip(trip.id, courseId)}
+                            onShowAll={() => setDetailTripId(trip.id)}
                           />
                         </div>
                       )}
@@ -1326,8 +1338,23 @@ export function MyPage() {
                     크게 외치는 것을 막는다 — 목록에서 가장 눈에 띄는 것이 "아직 비었다"가
                     되어서는 안 된다. 코스가 있으면 둘이 반씩 나눠 쓴다.
                   */}
-                      <div className={`flex gap-2 ${ordered.length > 0 ? '' : 'mt-4'}`}>
+                      {/*
+                        {@code mt-auto} — 카드가 늘어나면 남는 자리를 이 줄 <b>위</b>가 받는다.
+                        아래에 붙이면 버튼이 카드 바닥에 가라앉아 다음 카드의 머리글과
+                        가까워진다.
+                      */}
+                      <div className="mt-auto flex gap-2 pt-4">
                         {/*
+                          ⚠️ <b>채운 브랜드색이 아니라 옅은 브랜드색</b>이다(2026-09-01).
+                          카드마다 채운 틸 버튼이 서니 <b>한 화면에 여섯 개</b>가 되어,
+                          가장 강한 색이 반복되면서 강조가 아니라 배경 무늬가 됐다 —
+                          머리글의 "여행 만들기"와도 무게가 겹쳤다. 이 탭에서 채운 틸은
+                          <b>만들기 하나</b>가 갖고, 카드 안에서는 담기가 옅은 브랜드색으로
+                          앞서고 상세보기가 테두리로 따라온다.
+
+                          <p>빈 여행에서도 <b>같은 폭</b>이다. {@code w-fit}으로 줄여 두었더니
+                          같은 버튼이 카드마다 크기가 달라 서로 다른 것으로 보였다.
+
                           ⚠️ 열렸을 때를 <b>테두리가 아니라 옅은 채움</b>으로 말한다.
                           {@code border-line … border}로 두었더니 <b>테두리가 아예 안 그려져</b>
                           버튼이 맨 글자로 떴다 — 앞에 붙은 {@code border-0}과 다투는데,
@@ -1338,12 +1365,10 @@ export function MyPage() {
                         <button
                           type="button"
                           aria-expanded={pickerOpen}
-                          className={`h-10 cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold transition-colors ${
-                            ordered.length > 0 ? 'flex-1' : 'w-fit'
-                          } ${
+                          className={`h-10 flex-1 cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold transition-colors ${
                             pickerOpen
                               ? 'bg-fill text-fg hover:bg-line/45'
-                              : 'bg-brand hover:bg-brand-hover text-fg'
+                              : 'bg-brand-soft text-brand-deep hover:bg-brand hover:text-fg'
                           }`}
                           onClick={() => togglePicker(trip.id)}
                         >
@@ -1434,19 +1459,26 @@ export function MyPage() {
                             ) : (
                               <ul className="m-0 flex list-none flex-col p-0">
                                 {pickable.map((course) => (
-                                  <li key={course.id} className="flex items-center gap-2.5 py-1.5">
+                                  <li key={course.id} className="flex items-center gap-3 py-2">
                                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                                       <span className="text-fg truncate text-[13.5px] font-semibold">
                                         {course.name}
                                       </span>
+                                      {/*
+                                        날짜 표기를 <b>위 목록과 같게</b> 둔다. 여기만
+                                        "10월 2일부터 2일"이었는데, 바로 위 코스 줄은
+                                        "10월 2일 – 10월 3일"이라 <b>한 카드 안에서 같은 것을
+                                        두 말로</b> 적고 있었다.
+                                      */}
                                       <span className="text-hint text-[11.5px]">
                                         {regionNameOf(course.region)} ·{' '}
-                                        {formatMonthDay(course.startDate)}부터 {course.days}일
+                                        {formatMonthDay(course.startDate)} –{' '}
+                                        {formatMonthDay(course.endDate)}
                                       </span>
                                     </div>
                                     <button
                                       type="button"
-                                      className="bg-brand-tint text-brand-deep hover:bg-brand-soft rounded-chip h-8 flex-none cursor-pointer border-0 px-3.5 text-[12.5px] font-semibold transition-colors"
+                                      className="bg-brand-soft text-brand-deep hover:bg-brand hover:text-fg rounded-chip h-8 flex-none cursor-pointer border-0 px-3.5 text-[12.5px] font-semibold transition-colors"
                                       onClick={() => void handleAddToTrip(trip.id, course.id)}
                                     >
                                       담기
@@ -1484,7 +1516,7 @@ export function MyPage() {
                   aria-label="이전 쪽"
                   disabled={currentTripPage === 0}
                   onClick={() => setTripPage(currentTripPage - 1)}
-                  className="text-muted hover:bg-fill disabled:text-line grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  className="text-muted hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
                 >
                   <ChevronLeft />
                 </button>
@@ -1512,7 +1544,7 @@ export function MyPage() {
                   aria-label="다음 쪽"
                   disabled={currentTripPage === tripPageCount - 1}
                   onClick={() => setTripPage(currentTripPage + 1)}
-                  className="text-muted hover:bg-fill disabled:text-line grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  className="text-muted hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
                 >
                   <ChevronRight />
                 </button>
