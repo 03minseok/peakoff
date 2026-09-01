@@ -157,6 +157,15 @@ export interface Alternatives {
   source: CandidateSource | null
   /** 화면에 그대로 띄우는 문구. 추천이 있으면 null이다 — 목록 자체가 답이다 */
   statusMessage: string | null
+  /**
+   * 후보를 어떻게 골랐는지 한 문장. 목록이 비었으면 null.
+   *
+   * 점수 항목(`factors`)은 한적도와 근접도 둘뿐인데 명세는 연관성도 든다 —
+   * 이 문장이 **연관 관광지를 점수가 아니라 후보 선정에 썼다**는 사실을 화면에서 말한다.
+   * 문장은 서버가 만든다. 화면이 `source`를 보고 조립하면 출처가 늘 때 양쪽을 고쳐야 하고,
+   * 한쪽을 놓치면 계산하지 않은 것을 근거로 말하게 된다.
+   */
+  candidateNote: string | null
   /** 원래 장소의 그 날 한적도. 모르면 null */
   originQuietness: number | null
   /** 대안으로 권하려면 필요한 최소 개선폭. 서버가 정한다 */
