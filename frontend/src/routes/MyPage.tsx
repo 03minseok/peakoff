@@ -11,13 +11,24 @@ import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
 import { CARD } from '../components/styles'
-import { ApiRequestError, deleteSavedCourse, fetchSavedCourses } from '../services/api'
+import {
+  ApiRequestError,
+  addCourseToTrip,
+  createTrip,
+  deleteSavedCourse,
+  deleteTrip,
+  fetchSavedCourses,
+  fetchTrips,
+  removeCourseFromTrip,
+} from '../services/api'
+import { CongestionBadge } from '../components/CongestionBadge'
+import { formatMonthDay } from '../utils/date'
 import { useAuth } from '../state/authContext'
 import { useFavorites } from '../state/favoriteContext'
 import { defaultRegionSlug, regionNameOf } from '../constants/regions'
 import { useBrowserChromeInset } from '../hooks/useBrowserChromeInset'
 import { useTrip } from '../state/tripContext'
-import type { FavoritePlace, SavedCourseDetail, SavedCourseSummary } from '../types/api'
+import type { FavoritePlace, SavedCourseDetail, SavedCourseSummary, Trip } from '../types/api'
 
 type ListState =
   | { status: 'loading' }
@@ -67,7 +78,7 @@ function MoreButton({ remaining, onClick }: { remaining: number; onClick: () => 
  * <p>라벨을 따로 두지 않는다. 탭 노릇을 하는 것이 <b>통계 카드</b>이고 그 글자는
  * {@code stats}가 이미 들고 있다 — 여기 또 적으면 한쪽만 고쳐지는 날이 온다.
  */
-type MyTab = 'courses' | 'favorites'
+type MyTab = 'courses' | 'favorites' | 'trips'
 
 /** 계정 정보 줄의 오른쪽에 서는 작은 버튼 */
 const ROW_ACTION =
@@ -236,6 +247,16 @@ export function MyPage() {
    *               삭제 직후처럼 이미 목록이 그려져 있을 때 쓴다 — 카드 하나를 지웠는데
    *               화면 전체가 스켈레톤으로 깜빡이면 뭐가 일어났는지 알 수 없다.
    */
+  /**
+   * 여행 목록. 코스 목록과 따로 든다 — 한쪽이 실패해도 다른 쪽은 서야 한다.
+   *
+   * <p>⚠️ 실패해도 빈 목록으로 뭉개지 않고 상태를 갈라 둔다. "여행이 없다"와
+   * "못 불러왔다"는 정반대의 소식이다.
+   */
+  const [tripsState, setTripsState] = useState<
+    { status: 'loading' } | { status: 'loaded'; trips: Trip[] } | { status: 'error' }
+  >({ status: 'loading' })
+
   const load = useCallback((signal?: AbortSignal, silent = false) => {
     if (!silent) {
       setList({ status: 'loading' })
@@ -247,6 +268,14 @@ export function MyPage() {
           return
         }
         setList({ status: 'error' })
+      })
+    fetchTrips(signal)
+      .then((trips) => setTripsState({ status: 'loaded', trips }))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
+        setTripsState({ status: 'error' })
       })
   }, [])
 
@@ -289,9 +318,9 @@ export function MyPage() {
    * 그러면 이 평균은 "여행을 잘 골랐는가"가 아니라 <b>"어느 지역을 갔는가"</b>를 재게 된다 —
    * 제주를 자주 가는 사람은 아무 잘못 없이 평균이 낮다. <b>사람에게 매기는 점수</b>로 읽힌다.
    *
-   * <p>빈 자리를 다른 숫자로 채우지 않는다. 셋을 맞추려고 값을 지어내면 방금 뺀 이유를
-   * 그대로 다시 어긴다. 남은 둘은 <b>전부 탭</b>이라 "누를 수 없는 칸이 끼면 셋 다 버튼처럼
-   * 보인다"는 문제도 함께 사라졌다.
+   * <p>빈 자리는 하루 뒤 <b>여행</b>이 받았다(2026-09-01). 지어낸 숫자가 아니라
+   * 아래 목록으로 가는 문이다 — 이 줄의 기준("세는 값이자 가는 문")에 정확히 맞는 유일한
+   * 후보였다. 세 칸이 전부 탭이라 줄 전체가 하나의 스위치로 읽힌다.
    *
    * <p>list를 의존성으로 둔다. courses를 렌더 중에 만들면(로딩 중에는 새 빈 배열)
    * 매 렌더 참조가 바뀌어 useMemo가 무의미해진다.
@@ -308,8 +337,13 @@ export function MyPage() {
        * 찜한 곳은 아래 목록과 짝이 되는 값이고, 이제 그 목록으로 가는 문이기도 하다.
        */
       { label: '찜한 곳', value: String(favorites.length), tab: 'favorites' as const },
+      {
+        label: '여행',
+        value: tripsState.status === 'loaded' ? String(tripsState.trips.length) : '—',
+        tab: 'trips' as const,
+      },
     ]
-  }, [list, favorites])
+  }, [list, favorites, tripsState])
 
   const courses = list.status === 'loaded' ? list.courses : []
 
@@ -322,6 +356,96 @@ export function MyPage() {
       // "먼저 지우고 다시 고르세요"라고 막는 것보다 손이 덜 간다.
       return current.length < COMPARE_COUNT ? [...current, id] : [current[1], id]
     })
+  }
+
+  /** 새 여행 이름 입력칸. 만들면 비운다. */
+  const [tripName, setTripName] = useState('')
+  const [creatingTrip, setCreatingTrip] = useState(false)
+  /** 코스 담기 목록이 열려 있는 여행. 한 번에 하나만 연다 — 두 목록이 같이 열리면 어디에 담기는지 흐려진다. */
+  const [pickerTripId, setPickerTripId] = useState<number | null>(null)
+  const [pendingTripDelete, setPendingTripDelete] = useState<Trip | null>(null)
+  const [deletingTrip, setDeletingTrip] = useState(false)
+
+  /** 서버가 돌려준 여행으로 목록의 그 자리만 갈아끼운다. 전체 재조회가 필요 없다. */
+  function replaceTrip(updated: Trip) {
+    setTripsState((current) =>
+      current.status === 'loaded'
+        ? { status: 'loaded', trips: current.trips.map((trip) => (trip.id === updated.id ? updated : trip)) }
+        : current,
+    )
+  }
+
+  function tripFail(fallback: string) {
+    return (error: unknown) => {
+      setNotice({
+        tone: 'error',
+        text: error instanceof ApiRequestError ? error.message : fallback,
+      })
+    }
+  }
+
+  async function handleCreateTrip() {
+    const name = tripName.trim()
+    if (!name || creatingTrip) {
+      return
+    }
+    setCreatingTrip(true)
+    setNotice(null)
+    try {
+      const trip = await createTrip(name)
+      // 새 여행이 맨 위로 — 서버 목록 순서(최근 생성순)와 같다.
+      setTripsState((current) =>
+        current.status === 'loaded'
+          ? { status: 'loaded', trips: [trip, ...current.trips] }
+          : { status: 'loaded', trips: [trip] },
+      )
+      setTripName('')
+      setPickerTripId(trip.id)   // 만들자마자 담기 목록을 열어 준다 — 빈 여행에서 다음 할 일이 이것뿐이다
+    } catch (error: unknown) {
+      tripFail('여행을 만들지 못했어요.\n잠시 후 다시 시도해 주세요.')(error)
+    } finally {
+      setCreatingTrip(false)
+    }
+  }
+
+  async function handleAddToTrip(tripId: number, courseId: number) {
+    setNotice(null)
+    try {
+      replaceTrip(await addCourseToTrip(tripId, courseId))
+    } catch (error: unknown) {
+      tripFail('코스를 담지 못했어요.\n잠시 후 다시 시도해 주세요.')(error)
+    }
+  }
+
+  async function handleRemoveFromTrip(tripId: number, courseId: number) {
+    setNotice(null)
+    try {
+      replaceTrip(await removeCourseFromTrip(tripId, courseId))
+    } catch (error: unknown) {
+      tripFail('코스를 빼지 못했어요.\n잠시 후 다시 시도해 주세요.')(error)
+    }
+  }
+
+  async function handleDeleteTrip() {
+    if (!pendingTripDelete) {
+      return
+    }
+    setDeletingTrip(true)
+    setNotice(null)
+    try {
+      await deleteTrip(pendingTripDelete.id)
+      setTripsState((current) =>
+        current.status === 'loaded'
+          ? { status: 'loaded', trips: current.trips.filter((trip) => trip.id !== pendingTripDelete.id) }
+          : current,
+      )
+      setPendingTripDelete(null)
+    } catch (error: unknown) {
+      setPendingTripDelete(null)
+      tripFail('여행을 지우지 못했어요.\n잠시 후 다시 시도해 주세요.')(error)
+    } finally {
+      setDeletingTrip(false)
+    }
   }
 
   async function handleDelete() {
@@ -459,7 +583,7 @@ export function MyPage() {
         ("평균 한적 지수")만 누를 수 없어 {@code div}로 갈라 두었는데, 그 값을 걷어내면서
         분기가 함께 사라졌다 — <b>줄 전체가 하나의 스위치</b>로 읽힌다.
       */}
-      <div className="grid grid-cols-2 gap-2 md:hidden">
+      <div className="grid grid-cols-3 gap-2 md:hidden">
         {stats.map((stat) => {
           const active = stat.tab === tab
           const shell = 'flex flex-col items-center gap-0.75 rounded-[14px] p-3 transition-colors'
@@ -874,6 +998,212 @@ export function MyPage() {
 
       </div>
 
+      <div className={paneClass('trips')}>
+
+      {/*
+        ■ 여행 — 저장한 코스의 묶음.
+
+        코스는 지역 하나에 잠겨 있어 한라산(제주시)과 성산일출봉(서귀포시)을 한 코스에
+        담을 수 없다. 여행이 그 제약을 코스 위 한 층에서 푼다 — 지역이 달라도 묶인다.
+
+        <p>⚠️ <b>여행 총점을 만들지 않는다.</b> 코스 총점의 평균은 이 화면에서 걷어낸
+        "평균 한적 지수"와 같은 물건이다. 여행 카드는 기간·지역·코스 수 같은
+        <b>묶음의 사실만</b> 말하고, 점수는 각 코스가 자기 배지로 갖고 있다.
+      */}
+      <section className="border-line flex flex-col gap-4 border-t pt-5">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
+            여행
+          </h2>
+          {tripsState.status === 'loaded' && tripsState.trips.length > 0 && (
+            <span className="text-hint text-[12.5px]">{tripsState.trips.length}개</span>
+          )}
+        </div>
+
+        {/* 만들기 줄. 이름 하나면 여행이 생긴다 — 코스는 만들고 나서 담는다. */}
+        <form
+          className="flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleCreateTrip()
+          }}
+        >
+          <input
+            type="text"
+            value={tripName}
+            onChange={(event) => setTripName(event.target.value)}
+            placeholder="새 여행 이름 (예: 가을 제주 한 바퀴)"
+            maxLength={30}
+            className="border-line bg-surface text-fg h-11 min-w-0 flex-1 rounded-[12px] border px-3.5 font-sans text-[14px]"
+          />
+          <button
+            type="submit"
+            disabled={!tripName.trim() || creatingTrip}
+            className="bg-brand hover:bg-brand-hover text-fg disabled:bg-line disabled:text-hint h-11 flex-none cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold transition-colors disabled:cursor-not-allowed"
+          >
+            여행 만들기
+          </button>
+        </form>
+
+        {tripsState.status === 'error' && (
+          <p className="text-hint m-0 text-[13px]">여행 목록을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>
+        )}
+
+        {tripsState.status === 'loaded' && tripsState.trips.length === 0 && (
+          /*
+            빈 상태가 이 기능의 존재 이유를 말한다 — 지역이 달라도 묶인다.
+            "여행이 없다"만 적으면 왜 만들어야 하는지가 화면에 없다.
+          */
+          <div className="border-line rounded-card flex flex-col items-center gap-1.5 border border-dashed px-5 py-8 text-center">
+            <p className="text-fg m-0 text-[14.5px] font-semibold">아직 만든 여행이 없어요</p>
+            <p className="text-hint m-0 text-[13px] leading-relaxed">
+              지역이 달라도 한 여행으로 묶을 수 있어요.
+              <br />
+              제주시 코스와 서귀포 코스를 묶어 "제주 한 바퀴"를 만들어 보세요.
+            </p>
+          </div>
+        )}
+
+        {tripsState.status === 'loaded' && tripsState.trips.length > 0 && (
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
+            {tripsState.trips.map((trip) => {
+              /*
+                기간·지역은 담긴 코스에서 계산한다. 서버가 요약 문자열을 만들면
+                표기를 바꿀 때마다 서버를 고쳐야 한다.
+              */
+              const starts = trip.courses.map((course) => course.startDate).sort()
+              const ends = trip.courses.map((course) => course.endDate).sort()
+              const range =
+                starts.length === 0
+                  ? null
+                  : starts[0] === ends[ends.length - 1]
+                    ? formatMonthDay(starts[0])
+                    : `${formatMonthDay(starts[0])} ~ ${formatMonthDay(ends[ends.length - 1])}`
+              const regions = [...new Set(trip.courses.map((course) => regionNameOf(course.region)))]
+              const inTrip = new Set(trip.courses.map((course) => course.id))
+              const addable = courses.filter((course) => !inTrip.has(course.id))
+              const pickerOpen = pickerTripId === trip.id
+
+              return (
+                <li key={trip.id} className={`${CARD} flex flex-col gap-3 p-4`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <p className="text-fg m-0 text-[16px] font-bold tracking-[-0.01em]">{trip.name}</p>
+                      <p className="text-hint m-0 text-[12.5px]">
+                        {trip.courses.length === 0
+                          ? '아직 담은 코스가 없어요'
+                          : [range, regions.join(' · '), `코스 ${trip.courses.length}개`]
+                              .filter(Boolean)
+                              .join(' · ')}
+                      </p>
+                    </div>
+                    {/*
+                      삭제는 글자만. 코스가 사라지는 일이 아니라(묶음만 사라진다)
+                      코스 삭제만큼 무겁게 그리지 않는다 — 그래도 확인 시트는 거친다.
+                    */}
+                    <button
+                      type="button"
+                      className="text-hint hover:text-crowded-deep flex-none cursor-pointer border-0 bg-transparent p-1 text-[12.5px] font-medium transition-colors"
+                      onClick={() => setPendingTripDelete(trip)}
+                    >
+                      삭제
+                    </button>
+                  </div>
+
+                  {trip.courses.length > 0 && (
+                    <ul className="m-0 flex list-none flex-col p-0">
+                      {trip.courses.map((course, index) => (
+                        <li
+                          key={course.id}
+                          className={`flex items-center gap-2.5 py-2.5 ${
+                            index > 0 ? 'border-line border-t' : ''
+                          }`}
+                        >
+                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="text-fg truncate text-[14px] font-semibold">
+                              {course.name}
+                            </span>
+                            <span className="text-hint text-[12px]">
+                              {regionNameOf(course.region)} · {formatMonthDay(course.startDate)}부터 {course.days}일
+                            </span>
+                          </div>
+                          {/* 점수는 코스가 자기 것을 갖는다. 진단 전이면 그렇게 말한다 */}
+                          {course.level !== null && course.totalQuietness !== null ? (
+                            <CongestionBadge
+                              level={course.level}
+                              label={course.levelLabel ?? undefined}
+                              quietness={course.totalQuietness}
+                              size="sm"
+                            />
+                          ) : (
+                            <span className="text-hint flex-none text-[11.5px]">진단 전</span>
+                          )}
+                          <button
+                            type="button"
+                            aria-label={`${course.name} 여행에서 빼기`}
+                            className="text-hint hover:text-fg flex-none cursor-pointer border-0 bg-transparent p-1 transition-colors"
+                            onClick={() => void handleRemoveFromTrip(trip.id, course.id)}
+                          >
+                            <Close size={14} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* 담기 목록. 열고 닫는 것만 화면 상태고 담는 것은 서버가 답한다. */}
+                  <button
+                    type="button"
+                    className={ROW_ACTION}
+                    aria-expanded={pickerOpen}
+                    onClick={() => setPickerTripId(pickerOpen ? null : trip.id)}
+                  >
+                    {pickerOpen ? '담기 닫기' : '코스 담기'}
+                  </button>
+                  {pickerOpen &&
+                    (addable.length === 0 ? (
+                      <p className="text-hint m-0 text-[12.5px]">
+                        {courses.length === 0
+                          ? '저장한 코스가 아직 없어요. 코스를 먼저 저장해 주세요.'
+                          : '저장한 코스가 모두 이 여행에 담겨 있어요.'}
+                      </p>
+                    ) : (
+                      <ul className="border-line m-0 flex list-none flex-col rounded-[12px] border p-0">
+                        {addable.map((course, index) => (
+                          <li
+                            key={course.id}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 ${
+                              index > 0 ? 'border-line border-t' : ''
+                            }`}
+                          >
+                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                              <span className="text-fg truncate text-[13.5px] font-semibold">
+                                {course.name}
+                              </span>
+                              <span className="text-hint text-[11.5px]">
+                                {regionNameOf(course.region)} · {formatMonthDay(course.startDate)}부터 {course.days}일
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="bg-brand-tint text-brand-deep hover:bg-brand-soft h-8 flex-none cursor-pointer rounded-chip border-0 px-3 text-[12.5px] font-semibold transition-colors"
+                              onClick={() => void handleAddToTrip(trip.id, course.id)}
+                            >
+                              담기
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ))}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
+      </div>
+
       {/*
         계정.
 
@@ -1038,6 +1368,19 @@ export function MyPage() {
         onClose={() => setAccountSheet(null)}
         onDone={(text) => setNotice({ tone: 'ok', text })}
       />
+
+      {pendingTripDelete && (
+        <ConfirmSheet
+          title={`"${pendingTripDelete.name}" 여행을 지울까요?`}
+          description={'묶음만 사라져요.\n담겨 있던 코스는 저장 목록에 그대로 남아요.'}
+          confirmLabel="지우기"
+          cancelLabel="그대로 두기"
+          danger
+          busy={deletingTrip}
+          onConfirm={() => void handleDeleteTrip()}
+          onCancel={() => setPendingTripDelete(null)}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmSheet

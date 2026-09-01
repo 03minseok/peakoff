@@ -65,6 +65,8 @@ public class AuthService {
 	 * 지금 그렇게 하면 삭제 순서가 코드에서 사라져 추적하기 어려워진다. 대상이 늘면 그때 옮긴다.
 	 */
 	private final SavedCourseRepository savedCourseRepository;
+	private final com.peakoff.trip.domain.TripRepository tripRepository;
+	private final com.peakoff.trip.domain.TripCourseRepository tripCourseRepository;
 	/* 탈퇴할 때 연결된 소셜 수단도 함께 지운다. 남겨두면 사라진 회원을 가리키는 행이 된다. */
 	private final SocialAccountRepository socialAccountRepository;
 	private final PasswordEncoder passwordEncoder;
@@ -183,6 +185,13 @@ public class AuthService {
 		Member member = getMember(memberId);
 		verifyPassword(member, request.password());
 
+		/*
+		 * 순서가 규칙이다: 연결 → 여행 → 코스. 연결이 여행과 코스를 둘 다 가리키므로
+		 * 연결이 먼저 사라져야 나머지가 외래키에 걸리지 않는다.
+		 * 벌크 삭제는 엔티티 cascade를 타지 않아 손으로 순서를 지킨다.
+		 */
+		tripCourseRepository.deleteByTripMemberId(memberId);
+		tripRepository.deleteByMemberId(memberId);
 		savedCourseRepository.deleteByMemberId(memberId);
 		/*
 		 * 연결된 소셜 수단도 함께 지운다. 남겨두면 사라진 회원을 가리키는 행이 되어

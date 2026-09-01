@@ -19,6 +19,7 @@ import type {
   FavoritePlace,
   PublicCourse,
   Place,
+  Trip,
   QuietSpot,
   RegionOption,
   SaveCourseRequest,
@@ -504,6 +505,35 @@ export function fetchRecentCourses(limit = 4, signal?: AbortSignal): Promise<Pub
 }
 
 /** GET /api/courses — 내가 저장한 코스 목록. 최근 저장한 것이 먼저 온다 */
+
+/** GET /api/trips — 내 여행 전부. 최근 만든 것이 위로 온다 */
+export function fetchTrips(signal?: AbortSignal): Promise<Trip[]> {
+  return apiRequest<Trip[]>('/trips', { signal })
+}
+
+/** POST /api/trips — 이름만으로 만든다. 코스는 만들고 나서 담는다 */
+export function createTrip(name: string): Promise<Trip> {
+  return apiRequest<Trip>('/trips', { method: 'POST', body: { name } })
+}
+
+/**
+ * POST /api/trips/{id}/courses — 여행 맨 뒤에 담는다.
+ * 담고 난 여행 전체가 돌아오므로 목록을 다시 조회하지 않아도 된다.
+ */
+export function addCourseToTrip(tripId: number, courseId: number): Promise<Trip> {
+  return apiRequest<Trip>(`/trips/${tripId}/courses`, { method: 'POST', body: { courseId } })
+}
+
+/** DELETE /api/trips/{id}/courses/{courseId} — 여행에서만 뺀다. 저장 목록에는 남는다 */
+export function removeCourseFromTrip(tripId: number, courseId: number): Promise<Trip> {
+  return apiRequest<Trip>(`/trips/${tripId}/courses/${courseId}`, { method: 'DELETE' })
+}
+
+/** DELETE /api/trips/{id} — 묶음만 지운다. 담겨 있던 코스는 그대로 남는다 */
+export function deleteTrip(tripId: number): Promise<void> {
+  return apiRequest<void>(`/trips/${tripId}`, { method: 'DELETE' })
+}
+
 export function fetchSavedCourses(signal?: AbortSignal): Promise<SavedCourseSummary[]> {
   return apiRequest<SavedCourseSummary[]>('/courses', { signal })
 }

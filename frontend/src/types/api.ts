@@ -169,6 +169,22 @@ export interface Alternatives {
   alternatives: Alternative[]
 }
 
+
+/**
+ * 여행 — 저장한 코스의 묶음. 서버 TripResponse와 짝을 이룬다.
+ *
+ * ⚠️ **여행 총점이 없다.** 코스 총점의 평균은 마이페이지에서 걷어낸 "평균 한적 지수"와
+ * 같은 물건이다 — 지역도 날짜도 다른 값의 평균은 아무 말도 아니다.
+ * 날짜 범위·지역 나열은 화면이 `courses`에서 직접 계산한다.
+ */
+export interface Trip {
+  id: number
+  name: string
+  createdAt: string
+  /** 담은 순서 그대로. 점수·등급은 코스가 각자 자기 것을 갖고 온다 */
+  courses: SavedCourseSummary[]
+}
+
 /**
  * 서버 ForecastWindowResponse. 예측이 닿는 기간.
  *
