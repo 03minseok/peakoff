@@ -98,6 +98,11 @@ export function SaveCourseSheet({
   const [phase, setPhase] = useState<Phase>('asking')
   /** 방금 저장한 코스. 여행에 담을 때 쓴다 */
   const [savedCourseId, setSavedCourseId] = useState<number | null>(null)
+  /**
+   * 방금 한 저장이 <b>덮어쓰기였는가.</b> 누른 순간의 {@code editing}을 담아 둔다 —
+   * 저장이 끝나면 {@code editing}이 곧바로 켜지므로 그 값으로는 성공 화면을 그릴 수 없다.
+   */
+  const [savedAsEdit, setSavedAsEdit] = useState(false)
   const [tripPick, setTripPick] = useState<TripPick>({ status: 'loading' })
   const [saving, setSaving] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
@@ -128,7 +133,20 @@ export function SaveCourseSheet({
     setFailure(null)
     setSaving(true)
     try {
+      /*
+        ⚠️ <b>지금의 editing을 붙잡아 둔다.</b>
+
+        {@code onSave}가 끝나면 부르는 쪽이 "이제 이 코스를 고쳐 쓰는 중"으로 표시하는데
+        ({@code markSaved}), 그 값이 곧 이 시트의 {@code editing}이다. 그래서 새 코스를
+        저장하고 나면 성공 화면이 그려질 때는 이미 {@code editing}이 켜져 있어
+        <b>"수정한 내용을 저장했어요"</b>가 떴다 — 방금 처음 만든 코스인데.
+
+        <p>지금 화면이 답할 것은 "이 저장이 무엇이었나"이지 "지금 상태가 무엇인가"가
+        아니다. 누른 순간의 값을 남겨 그것으로 말한다.
+      */
+      const wasEdit = editing
       const courseId = await onSave(trimmedName, isPublic)
+      setSavedAsEdit(wasEdit)
       setPhase('saved')
       setSavedCourseId(courseId)
 
@@ -165,7 +183,7 @@ export function SaveCourseSheet({
   */
   const title =
     phase === 'saved'
-      ? editing
+      ? savedAsEdit
         ? '수정한 내용을 저장했어요'
         : '계정에 저장했어요'
       : phase === 'failed'
@@ -178,7 +196,7 @@ export function SaveCourseSheet({
 
   const description =
     phase === 'saved'
-      ? editing
+      ? savedAsEdit
         ? '원래 코스가 방금 고친 내용으로 바뀌었어요.'
         : '어느 기기에서 로그인해도 이 코스를 다시 열어볼 수 있어요.'
       : phase === 'failed'
