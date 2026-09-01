@@ -1225,6 +1225,12 @@ export function ResultPage() {
                 */
                 markSaved({ courseId: saved.id, name: saved.name, isPublic: saved.isPublic })
                 setSavedName(saved.name)
+
+                /*
+                  저장한 코스의 id를 시트에 돌려준다. 시트가 곧바로 "여행에 담기"를 펴는데,
+                  담으려면 어느 코스인지 알아야 한다.
+                */
+                return saved.id
               }}
             />
           )}
