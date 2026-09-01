@@ -18,9 +18,10 @@ import com.peakoff.global.support.Scores;
  * 화면이 같은 방식으로 말할 수 있다.
  *
  * @param status           왜 이런 목록이 나왔는가
- * @param source           후보를 어디서 가져왔는가. 목록이 비었으면 {@code null}.
- *                         <b>목록 하나에는 출처가 하나다</b> — 두 출처를 섞으면 같은 목록에서
- *                         어떤 줄은 "함께 많이 찾는 곳"이고 어떤 줄은 아니게 된다
+ * <p>⚠️ <b>목록 단위 출처를 들고 있지 않다</b>(2026-09-01에 걷어냈다). 한 목록에 두 출처가
+ * 섞이게 되면서 값 하나로는 답할 수 없게 됐고, 애초에 화면이 쓰지 않던 값이다 —
+ * 출처는 <b>후보마다 자기 문장</b>이 말한다({@code Alternative.reason}).
+ *
  * @param originQuietness  원래 장소의 그 날 한적도. 모르면 {@code null}.
  *                         후보의 절대 점수만 보여주면 "이게 지금보다 나은가"를 사용자가
  *                         암산해야 한다 — 비교 대상을 함께 내려보낸다
@@ -28,7 +29,6 @@ import com.peakoff.global.support.Scores;
  */
 public record Alternatives(
 		PlaceOffStatus status,
-		CandidateSource source,
 		Integer originQuietness,
 		List<Alternative> picked) {
 
@@ -58,7 +58,7 @@ public record Alternatives(
 	 * <p>음식점·숙박처럼 공사가 예측하지 않는 분류가 여기 온다.
 	 */
 	public static Alternatives originNotForecasted() {
-		return new Alternatives(PlaceOffStatus.ORIGIN_NOT_FORECASTED, null, null, List.of());
+		return new Alternatives(PlaceOffStatus.ORIGIN_NOT_FORECASTED, null, List.of());
 	}
 
 	/**
@@ -73,17 +73,13 @@ public record Alternatives(
 	 *                        이 값이 0인 것과 0이 아닌데 아무도 못 넘은 것은 다른 상황이다
 	 * @param inCourseCount   개선폭까지 <b>통과했지만 이미 코스에 담겨 있어</b> 뽑을 수 없던 후보 수.
 	 *                        이 값이 있는데 뽑힌 것이 없으면 "못 찾았다"가 아니라 "이미 갖고 있다"이다
-	 * @param source          후보를 어디서 가져왔는가. 뽑힌 것이 없으면 무시된다 —
-	 *                        빈 목록에 출처를 달면 화면이 "어디서 온 무엇"인지 말할 수 없는데도
-	 *                        말하려 들게 된다
 	 * @param picked          최종적으로 뽑힌 후보
 	 */
 	public static Alternatives of(int originQuietness, int consideredCount, int inCourseCount,
-			CandidateSource source, List<Alternative> picked) {
+			List<Alternative> picked) {
 
 		return new Alternatives(
 				decide(originQuietness, consideredCount, inCourseCount, picked),
-				picked.isEmpty() ? null : source,
 				originQuietness,
 				picked);
 	}
