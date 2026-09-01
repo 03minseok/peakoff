@@ -70,7 +70,7 @@ class MockRecommendationProviderTest {
 
 		// "함께 많이 찾는 곳"은 연관 관광지 데이터가 있어야 할 수 있는 말이다.
 		// 목업은 같은 분류·가까운 거리로 뽑으므로 그렇게만 말한다.
-		assertThat(alternatives.get(0).reason()).isEqualTo("불국사 근처의 비슷한 곳");
+		assertThat(alternatives.get(0).reason()).isEqualTo("불국사 근처의 비슷한 곳 중에서 골랐어요.");
 
 		/*
 		 * 혼잡 문구는 이 문장에 붙지 않는다. 화면에서 바로 윗줄에 한적도 배지가 이미 서 있어
