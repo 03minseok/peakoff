@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { CARD_RAISED, PRIMARY_BUTTON, TEXT_INPUT } from '../components/styles'
+import { CARD_RAISED, PRIMARY_BUTTON } from '../components/styles'
+import { DatePicker } from '../components/DatePicker'
 import { RegionPicker } from '../components/RegionPicker'
 import { regionNameOf } from '../constants/regions'
 import { fetchForecastWindow } from '../services/api'
@@ -45,7 +46,7 @@ const CARD_TITLE = 'text-fg text-sm font-semibold'
 export function PlanPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { state, setPlan } = useTrip()
+  const { setPlan } = useTrip()
 
   /*
    * 홈이 실어 보낸 것.
@@ -279,13 +280,16 @@ export function PlanPage() {
           <div>
             <legend className={`${CARD_TITLE} p-0`}>언제 떠나요</legend>
           </div>
-          <input
-            type="date"
-            className={TEXT_INPUT}
+          {/*
+            네이티브 달력을 걷어내고 직접 그린다(2026-09-01). 이유는 DatePicker 주석에.
+            <b>예측 창을 함께 넘긴다</b> — 아래 안내문이 하는 말을 달력이 날짜 위에서
+            미리 한다. 고르고 나서 듣는 것과 고르기 전에 보이는 것은 다르다.
+          */}
+          <DatePicker
             value={startDate}
-            min={today()}
-            onChange={(event) => setStartDate(event.target.value)}
-            required
+            onChange={setStartDate}
+            forecastEnd={forecastEnd}
+            ariaLabel="여행 시작일"
           />
           {/*
             고른 날짜를 요일까지 되읽어주던 회색 줄을 걷어냈다 (2026-08-31).

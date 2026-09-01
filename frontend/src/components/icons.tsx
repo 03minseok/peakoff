@@ -75,6 +75,35 @@ export function ChevronRight({ size = 16, className = '' }: Props) {
   )
 }
 
+/**
+ * 아래 꺾쇠. <b>펼쳐지는 것</b>에만 붙인다 — 오른쪽 꺾쇠(이어서 간다)와 뜻이 갈린다.
+ *
+ * <p>열렸을 때 180도 돌려 쓴다. 위·아래 두 그림을 갈아끼우면 두 경로의 여백이 달라
+ * 꺾쇠가 미세하게 튄다.
+ */
+export function ChevronDown({ size = 16, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <path d="M5.5 8 10 12.5 14.5 8" />
+    </svg>
+  )
+}
+
+/**
+ * 달력. 날짜를 고르는 칸 앞에 선다.
+ *
+ * <p>고리 두 개를 위로 세워 그린다. 상자만 그리면 창문·카드와 구별되지 않는다 —
+ * 달력을 달력으로 읽히게 하는 것은 이 두 획이다.
+ */
+export function Calendar({ size = 18, className = '' }: Props) {
+  return (
+    <svg {...ICON} width={size} height={size} className={className}>
+      <rect x="3" y="4.5" width="14" height="12.5" rx="2.5" />
+      <path d="M3 8.5h14M7 2.8v3.2M13 2.8v3.2" />
+    </svg>
+  )
+}
+
 /** 왼쪽 꺾쇠. 되돌아가는 링크 앞에 붙는다 */
 export function ChevronLeft({ size = 16, className = '' }: Props) {
   return (

@@ -5,7 +5,8 @@ import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { ListEdgeJump } from '../components/ListEdgeJump'
 import { LEVEL_SOLID } from '../components/levelStyles'
-import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_INPUT } from '../components/styles'
+import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
+import { DatePicker } from '../components/DatePicker'
 import { RegionPicker } from '../components/RegionPicker'
 import { regionNameOf } from '../constants/regions'
 import { ApiRequestError, recommendCourse } from '../services/api'
@@ -501,14 +502,8 @@ export function RecommendPage() {
           <div>
             <legend className={`${CARD_TITLE} p-0`}>언제 며칠 가세요</legend>
           </div>
-          <input
-            type="date"
-            className={TEXT_INPUT}
-            value={startDate}
-            min={today()}
-            onChange={(event) => setStartDate(event.target.value)}
-            required
-          />
+          {/* 코스 짜기와 같은 컴포넌트다. DatePicker 주석 참고 */}
+          <DatePicker value={startDate} onChange={setStartDate} ariaLabel="여행 시작일" />
           <div className="grid grid-cols-4 gap-2">
             {DURATIONS.map((option) => (
               <label key={option.nights}>

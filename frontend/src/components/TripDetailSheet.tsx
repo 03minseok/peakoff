@@ -14,7 +14,20 @@ interface Day {
   date: string
   /** 여행 첫날부터 몇 번째 날인가 */
   nth: number
-  blocks: { courseId: number; courseName: string; region: string; places: string[] }[]
+  blocks: {
+    courseId: number
+    courseName: string
+    region: string
+    places: string[]
+    /**
+     * 코스 이름을 적을지. <b>직전 블록과 코스가 다를 때만</b> 적는다.
+     *
+     * <p>이틀짜리 코스는 이틀 내내 같은 이름을 이고 있었다 — "제주시 · 제주 오름 이틀"이
+     * 1일차와 2일차에 똑같이. 코스가 바뀌는 자리에서만 이름이 서면 그 줄이
+     * <b>"여기서 코스가 넘어간다"</b>는 뜻을 갖는다.
+     */
+    showLabel: boolean
+  }[]
 }
 
 type Phase =
@@ -68,6 +81,7 @@ export function TripDetailSheet({
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
 
   const ordered = orderCourses(trip.courses)
+  const regions = [...new Set(ordered.map((course) => regionNameOf(course.region)))]
   const seams = seamsOf(ordered)
   const blocked = seams.some((seam) => seam?.tone === 'danger')
 
@@ -122,10 +136,6 @@ export function TripDetailSheet({
   }, [onClose])
 
   const days = phase.status === 'loaded' ? phase.days : []
-  const placeCount = days.reduce(
-    (sum, day) => sum + day.blocks.reduce((inner, block) => inner + block.places.length, 0),
-    0,
-  )
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
@@ -136,7 +146,7 @@ export function TripDetailSheet({
       />
 
       <div
-        className="sheet-panel dialog-panel bg-bg relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-h-[82svh] lg:max-w-[560px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
+        className="sheet-panel dialog-panel bg-surface relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-h-[82svh] lg:max-w-[560px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="trip-timeline-title"
@@ -145,72 +155,91 @@ export function TripDetailSheet({
           <span className="bg-line h-1 w-9.5 rounded-[2px]" aria-hidden="true" />
         </div>
 
-        <div className="border-line bg-surface flex flex-none items-start justify-between gap-3 border-b px-4.5 py-3.5 lg:px-6 lg:py-5">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <h2
-              id="trip-timeline-title"
-              className="text-fg m-0 truncate text-[17px] font-bold tracking-[-0.015em] lg:text-[18px]"
+        {/*
+          머리는 <b>한 덩어리</b>다. 제목 줄과 탭 줄이 각각 흰 면에 경계선을 갖고 있었더니
+          껍데기가 두 층으로 두꺼워져, 390px에서 상단 150px이 내용이 아니었다.
+        */}
+        <div className="border-line bg-surface flex flex-none flex-col gap-3 border-b px-4.5 pt-3.5 pb-3 lg:px-6 lg:pt-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <h2
+                id="trip-timeline-title"
+                className="text-fg m-0 truncate text-[17px] font-bold tracking-[-0.015em] lg:text-[18px]"
+              >
+                {trip.name}
+              </h2>
+              {/*
+                ⚠️ <b>불러오기에 기대지 않는 요약</b>이다. 예전에는 "코스 4개"로 떴다가
+                일정을 받은 뒤 "· 8일 · 장소 12곳"이 붙어 <b>글자가 늘어났고</b>,
+                그 "8일"이 카드의 "11일간"과 어긋나 하나가 틀린 것처럼 읽혔다
+                (하나는 일정 있는 날, 하나는 여행 폭이다). 지역은 {@code trip}이 이미
+                들고 있어 늘어나지 않고, 이 여행이 어디를 도는지도 함께 말한다.
+              */}
+              <span className="text-hint truncate text-[12.5px]">
+                코스 {trip.courses.length}개{regions.length > 0 && ` · ${regions.join(' · ')}`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="닫기"
+              className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 flex-none cursor-pointer place-items-center rounded-[11px] bg-transparent text-base transition-colors"
             >
-              {trip.name}
-            </h2>
-            {/* 모수를 적는다. 무엇을 모아 놓은 화면인지 한 줄로 말한다 */}
-            <span className="text-hint text-[12.5px]">
-              코스 {trip.courses.length}개
-              {phase.status === 'loaded' && ` · ${days.length}일 · 장소 ${placeCount}곳`}
-            </span>
+              <Close />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="닫기"
-            className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 flex-none cursor-pointer place-items-center rounded-[11px] bg-transparent text-base transition-colors"
-          >
-            <Close />
-          </button>
+
+          {/*
+            ■ 두 갈래를 <b>같은 자리에서 갈아끼운다.</b>
+
+            코스 목록과 날짜별 일정은 같은 여행을 두 가지로 본 것이다 — 위아래로 쌓으면
+            맞대어 보라고 만든 화면에서 스크롤로 기억해 비교하게 된다.
+
+            <p>⚠️ <b>한 덩어리 스위치로 묶는다</b>(2026-09-01). 켜진 쪽만 어두운 알약이고
+            꺼진 쪽은 배경 없는 글자였더니, 하나는 버튼이고 하나는 링크처럼 보여
+            <b>둘이 한 쌍이라는 것이 읽히지 않았다.</b> 홈통을 깔면 "여기서 둘 중 하나를
+            고른다"가 모양으로 드러난다.
+          */}
+          <div className="bg-fill inline-flex w-fit gap-0.5 rounded-[12px] p-1">
+            {[
+              { key: 'courses' as const, label: '코스 목록' },
+              { key: 'days' as const, label: '날짜별 일정' },
+            ].map((option) => {
+              const active = pane === option.key
+              /*
+                ⚠️ 붉은 이음새가 있으면 <b>일정 쪽을 잠근다.</b> 이틀 넘게 겹치는 일정을
+                날짜 축에 올리면 있을 수 없는 하루가 사실처럼 그려진다.
+              */
+              const locked = option.key === 'days' && blocked
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  aria-current={active}
+                  disabled={locked}
+                  onClick={() => setPane(option.key)}
+                  className={`h-8 cursor-pointer rounded-[9px] border-0 px-3.5 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed ${
+                    active
+                      ? 'bg-surface text-fg shadow-rest'
+                      : 'text-muted hover:text-fg disabled:text-hint bg-transparent'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/*
-          ■ 두 갈래를 <b>같은 자리에서 갈아끼운다.</b>
+          ■ 본문은 <b>흰 면 그대로</b>다.
 
-          코스 목록과 날짜별 일정은 같은 여행을 두 가지로 본 것이다 — 위아래로 쌓으면
-          맞대어 보라고 만든 화면에서 스크롤로 기억해 비교하게 된다.
-          CLAUDE.md가 홈의 "붐빌 것/한적할 것", 최종 비교의 "원안/개선안"에 쓴 장치다.
-
-          <p><b>코스 목록이 먼저다.</b> 여행 카드에서 보던 것과 같은 목록이라, 열었을 때
-          이어지는 화면이 낯설지 않다. 날짜로 이어 붙인 쪽은 한 걸음 더 들어간 것이다.
+          회색 바탕 위에 흰 카드를 얹고 있었는데, 창 자체가 이미 그릇이라
+          <b>그릇 안의 그릇</b>이 됐다. 특히 날짜별 일정은 <b>하루에 카드 한 장</b>이라
+          장소 한둘을 담은 카드가 세로로 끝없이 이어졌다 — 그릇이 내용보다 컸다.
+          한 면에 눕히고 <b>가는 선</b>으로만 날을 가른다.
         */}
-        <div className="border-line bg-surface flex flex-none gap-1 border-b px-4.5 pb-3 lg:px-6">
-          {[
-            { key: 'courses' as const, label: '코스 목록' },
-            { key: 'days' as const, label: '날짜별 일정' },
-          ].map((option) => {
-            const active = pane === option.key
-            /*
-              ⚠️ 붉은 이음새가 있으면 <b>일정 쪽을 잠근다.</b> 이틀 넘게 겹치는 일정을
-              날짜 축에 올리면 있을 수 없는 하루가 사실처럼 그려진다.
-              잠긴 이유는 그 자리에서 말한다 — 잠긴 버튼은 스스로 설명하지 못한다.
-            */
-            const locked = option.key === 'days' && blocked
-            return (
-              <button
-                key={option.key}
-                type="button"
-                aria-current={active}
-                disabled={locked}
-                onClick={() => setPane(option.key)}
-                className={`h-9 cursor-pointer rounded-[11px] border-0 px-3.5 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed ${
-                  active
-                    ? 'bg-fg text-white'
-                    : 'text-muted hover:bg-fill disabled:text-hint bg-transparent disabled:hover:bg-transparent'
-                }`}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <div className="bg-surface flex-1 overflow-y-auto px-4.5 py-4 lg:px-6 lg:py-5">
           {pane === 'courses' ? (
             ordered.length === 0 ? (
               <p className="text-hint m-0 py-8 text-center text-[13px] leading-[1.6]">
@@ -219,7 +248,7 @@ export function TripDetailSheet({
                 코스를 담으면 여기에 순서대로 모여요.
               </p>
             ) : (
-              <div className="bg-surface shadow-rest rounded-[18px] p-4">
+              <>
                 <TripCourseList
                   ordered={ordered}
                   seams={seams}
@@ -231,16 +260,16 @@ export function TripDetailSheet({
                     날짜가 겹치는 코스가 있어 날짜별 일정은 볼 수 없어요.
                   </p>
                 )}
-              </div>
+              </>
             )
           ) : (
             <>
               {phase.status === 'loading' && (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-5">
                   {[0, 1, 2].map((row) => (
-                    <div key={row} className="bg-surface shadow-rest rounded-[18px] p-4.5">
-                      <div className="skeleton mb-3 h-3.5 w-28" />
-                      <div className="skeleton h-4 w-40" />
+                    <div key={row}>
+                      <div className="skeleton mb-3 h-3.5 w-32" />
+                      <div className="skeleton h-4 w-44" />
                     </div>
                   ))}
                 </div>
@@ -254,92 +283,119 @@ export function TripDetailSheet({
                 </p>
               )}
 
-              {phase.status === 'loaded' && (
-                <div className="flex flex-col gap-2.5">
-                  {phase.missing > 0 && (
-                    <p
-                      className="bg-crowded-tint text-crowded-deep rounded-ui m-0 px-3.5 py-2.5 text-[12.5px]"
-                      role="alert"
-                    >
-                      코스 {phase.missing}개를 불러오지 못해 빠져 있어요.
-                    </p>
-                  )}
+              {phase.status === 'loaded' &&
+                (days.length === 0 ? (
+                  <p className="text-hint m-0 py-8 text-center text-[13px] leading-[1.6]">
+                    담긴 코스에 아직 장소가 없어요.
+                  </p>
+                ) : (
+                  <div className="flex flex-col">
+                    {phase.missing > 0 && (
+                      <p
+                        className="bg-crowded-tint text-crowded-deep rounded-ui m-0 mb-4 px-3.5 py-2.5 text-[12.5px]"
+                        role="alert"
+                      >
+                        코스 {phase.missing}개를 불러오지 못해 빠져 있어요.
+                      </p>
+                    )}
 
-                  {days.map((day, index) => {
-                    const previous = index > 0 ? days[index - 1] : null
-                    const empty = previous ? daysBetween(previous.date, day.date) - 1 : 0
+                    {days.map((day, index) => {
+                      const previous = index > 0 ? days[index - 1] : null
+                      const gapFrom = previous ? addDays(previous.date, 1) : null
+                      const gapTo = addDays(day.date, -1)
+                      const empty = previous ? daysBetween(previous.date, day.date) - 1 : 0
 
-                    return (
-                      <div key={day.date} className="flex flex-col gap-2.5">
-                        {/*
-                      비어 있는 날은 한 줄로 접는다. 빈 칸을 날짜 수만큼 세우면
-                      일정보다 공백이 커진다.
-                    */}
-                        {empty > 0 && (
-                          /*
-                            <b>선이 끊김을 말한다.</b> 글자만 왼쪽에 떨어뜨려 두었더니 위 카드에도
-                            아래 카드에도 딸리지 않은 회색 줄이 되어, 카드 사이 여백과 구분되지
-                            않았다 — 비어 있다는 사실이 <b>리듬으로는 전혀 보이지 않았다.</b>
-                            점선이 양쪽으로 뻗으면 그 자리에서 일정이 끊겼다는 것이
-                            훑기만 해도 읽힌다.
-                          */
-                          <div className="flex items-center gap-3 py-0.5" role="separator">
-                            <span
-                              className="border-line flex-1 border-t border-dashed"
-                              aria-hidden="true"
-                            />
-                            <span className="text-hint text-[12px]">{empty}일 비어 있어요</span>
-                            <span
-                              className="border-line flex-1 border-t border-dashed"
-                              aria-hidden="true"
-                            />
-                          </div>
-                        )}
-
-                        <section className="bg-surface shadow-rest flex flex-col gap-3 rounded-[18px] p-4">
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-fg text-[14.5px] font-bold">{day.nth}일차</span>
-                            <span className="text-muted text-[13px]">
-                              {formatMonthDay(day.date)} ({formatWeekday(day.date)})
-                            </span>
-                          </div>
-
-                          {day.blocks.map((block) => (
-                            <div key={block.courseId} className="flex flex-col gap-1.5">
-                              {/*
-                            어느 코스에서 온 줄인지 적는다. 날짜로 이어 붙이면 코스 경계가
-                            사라지는데, <b>앞 코스가 끝나는 날 다음 코스가 시작하면</b>
-                            한 날짜 아래 두 코스가 선다 — 그때 이 줄이 유일한 구분이다.
+                      return (
+                        <div key={day.date}>
+                          {/*
+                            비어 있는 날은 <b>날짜를 그대로 적는다.</b> "1일 비어 있어요"로는
+                            일차가 왜 건너뛰는지가 설명되지 않았다 — 3일차가 사라진 것처럼
+                            보인다. 비는 날을 이름 대면 그 자리가 왜 비었는지를 스스로 말한다.
                           */}
-                              <span className="text-hint text-[11.5px] font-semibold">
-                                {regionNameOf(block.region)} · {block.courseName}
+                          {empty > 0 && gapFrom && (
+                            <div className="flex items-center gap-3 py-3" role="separator">
+                              <span
+                                className="border-line flex-1 border-t border-dashed"
+                                aria-hidden="true"
+                              />
+                              <span className="text-hint flex-none text-[12px]">
+                                {empty === 1
+                                  ? formatMonthDay(gapFrom) + ' 비어 있어요'
+                                  : formatMonthDay(gapFrom) +
+                                    ' ~ ' +
+                                    formatMonthDay(gapTo) +
+                                    ' 비어 있어요'}
                               </span>
-                              <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
-                                {block.places.map((place, order) => (
-                                  <li
-                                    key={`${place}-${order}`}
-                                    className="flex items-center gap-2.5"
-                                  >
-                                    <span
-                                      className="bg-fill text-muted grid h-5.5 w-5.5 flex-none place-items-center rounded-full text-[11px] font-bold"
-                                      aria-hidden="true"
-                                    >
-                                      {order + 1}
-                                    </span>
-                                    <span className="text-fg min-w-0 flex-1 truncate text-[14px]">
-                                      {place}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ol>
+                              <span
+                                className="border-line flex-1 border-t border-dashed"
+                                aria-hidden="true"
+                              />
                             </div>
-                          ))}
-                        </section>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+                          )}
+
+                          {/* 첫 날이 아니고 비지도 않았으면 가는 선 하나로 가른다 */}
+                          {index > 0 && empty === 0 && (
+                            <span className="border-line block border-t" aria-hidden="true" />
+                          )}
+
+                          <section className="flex flex-col gap-2 py-3.5">
+                            {/*
+                              <b>날짜가 앞서고 일차가 따라온다</b>(2026-09-01). 일차가 앞에
+                              섰을 때 "2일차 다음이 4일차"가 <b>3일차를 잃어버린 것</b>처럼
+                              읽혔다 — 사람들은 "일차"를 일정 있는 날의 순번으로 읽는데,
+                              여기서는 여행 첫날부터의 달력 일수다. 달력이 앞에 서면
+                              건너뜀이 자연스럽고, 일차는 거드는 값이 된다.
+                            */}
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-fg text-[14px] font-bold">
+                                {formatMonthDay(day.date)}
+                              </span>
+                              <span className="text-muted text-[12.5px]">
+                                {formatWeekday(day.date)}
+                              </span>
+                              <span className="text-hint ml-auto flex-none text-[12px]">
+                                {day.nth}일차
+                              </span>
+                            </div>
+
+                            {day.blocks.map((block) => (
+                              <div key={block.courseId} className="flex flex-col gap-1.5">
+                                {/*
+                                  코스 이름은 <b>바뀔 때만</b> 적는다. 이틀짜리 코스가 이틀
+                                  내내 같은 이름을 이고 있으면 그 줄은 소음이고, 바뀌는
+                                  자리에서만 서면 "여기서 코스가 넘어간다"는 뜻을 갖는다.
+                                */}
+                                {block.showLabel && (
+                                  <span className="text-brand-deep text-[11.5px] font-semibold">
+                                    {regionNameOf(block.region)} · {block.courseName}
+                                  </span>
+                                )}
+                                <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
+                                  {block.places.map((place, order) => (
+                                    <li
+                                      key={place + '-' + order}
+                                      className="flex items-center gap-2.5"
+                                    >
+                                      <span
+                                        className="bg-fill text-muted grid h-5.5 w-5.5 flex-none place-items-center rounded-full text-[11px] font-bold"
+                                        aria-hidden="true"
+                                      >
+                                        {order + 1}
+                                      </span>
+                                      <span className="text-fg min-w-0 flex-1 truncate text-[14.5px]">
+                                        {place}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ol>
+                              </div>
+                            ))}
+                          </section>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
             </>
           )}
         </div>
@@ -378,6 +434,7 @@ function buildDays(courses: SavedCourseDetail[]): Day[] {
         courseName: course.name,
         region: course.region,
         places,
+        showLabel: true,
       })
       byDate.set(date, blocks)
     }
@@ -389,9 +446,19 @@ function buildDays(courses: SavedCourseDetail[]): Day[] {
    * 사흘 비고 나면 다음이 4일차가 아니라 7일차다 — 달력과 어긋나지 않게 한다.
    */
   const first = dates[0]
-  return dates.map((date) => ({
+  const built = dates.map((date) => ({
     date,
     nth: daysBetween(first, date) + 1,
     blocks: byDate.get(date) ?? [],
   }))
+
+  // 코스가 <b>바뀌는 자리</b>에서만 이름을 적는다. 날짜를 건너뛰며 한 번에 훑는다.
+  let previousCourseId: number | null = null
+  for (const day of built) {
+    for (const block of day.blocks) {
+      block.showLabel = block.courseId !== previousCourseId
+      previousCourseId = block.courseId
+    }
+  }
+  return built
 }
