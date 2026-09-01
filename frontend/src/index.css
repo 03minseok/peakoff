@@ -460,6 +460,17 @@
   }
 
   /*
+   * 아래가 좁아 <b>위로</b> 펼친 달력 (DatePicker의 Placement).
+   *
+   * 축과 방향만 뒤집는다. 자라나는 변이 언제나 <b>칸에 붙은 쪽</b>이어야
+   * "누른 칸에서 자라났다"가 유지된다 — 아래로 열 때와 같은 말을 반대편에서 한다.
+   */
+  .calendar-pop-up {
+    transform-origin: bottom center;
+    animation-name: pk-pop-up;
+  }
+
+  /*
    * 눌림 — 손끝에 돌려주는 반응.
    *
    * 지금까지 버튼은 hover에서 색만 변했다. hover가 없는 모바일이 주 사용 환경인데,
@@ -594,6 +605,13 @@
   }
 }
 
+@keyframes pk-pop-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+}
+
 @keyframes pk-shimmer {
   0% {
     background-position: -320px 0;
@@ -640,6 +658,7 @@
   .sheet-panel,
   .dialog-panel,
   .calendar-pop,
+  .calendar-pop-up,
   .skeleton {
     animation: none;
   }
