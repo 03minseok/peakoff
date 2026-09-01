@@ -169,60 +169,76 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 		 */
 		Region region = regionOf(origin).orElse(null);
 		if (region == null) {
-			return Alternatives.of(originQuietness, 0, 0, null, List.of());
+			return Alternatives.of(originQuietness, 0, 0, List.of());
 		}
 
 		/*
-		 * 연관 관광지가 먼저다. 그 장소 방문객이 실제로 함께 간 곳이라 추천의 맥락이 남는다.
+		 * <b>두 출처를 함께 본다</b>(2026-09-01). 예전에는 연관 후보가 하나라도 있으면
+		 * 지역 카탈로그를 아예 보지 않았다 — 근처에 훨씬 한적한 곳이 있어도 못 보여줬다.
 		 *
-		 * 다만 자주 빈다 — 연관 이름이 우리 카탈로그로 이어지고, 분류가 맞고, 15km 안이고,
-		 * 혼잡 자료가 있고, 5점 이상 한적해야 남기 때문이다. 실측에서 관광지 넷 중 셋은
-		 * 이 경로만으로는 대안을 얻지 못했다(경주 25.6% / 제주시 30.9% / 서귀포 33.7%).
+		 * <p>섞지 않던 이유는 <b>"어떤 줄이 어느 출처인지 사용자가 읽어낼 방법이 없다"</b>였다.
+		 * 그 전제가 사라졌다 — 이제 후보마다 자기 문장을 달고 나간다
+		 * ("OO에 다녀간 사람들이 함께 찾은 곳 중에서 골랐어요" / "OO 근처의 비슷한 곳 중에서").
+		 * 규칙이 막으려던 문제가 없어졌으므로 규칙도 함께 바꾼다.
+		 *
+		 * <p>⚠️ 지역 카탈로그를 <b>매번</b> 훑게 됐다. 공사 호출은 늘지 않는다(카탈로그는
+		 * 6시간 캐시라 메모리에 있다). 대신 분류·거리로 먼저 자르는 순서가 더 중요해졌다 —
+		 * 그 순서를 뒤집으면 제주시 1,271곳 전부에 이름 매칭이 돈다.
 		 */
-		Candidates candidates = scoreCandidates(origin, date, region, originQuietness);
-		CandidateSource source = CandidateSource.RELATED;
-
-		if (candidates.qualified().isEmpty()) {
-			/*
-			 * 연관 후보가 하나도 남지 않았을 때만 같은 지역 카탈로그로 넘어간다.
-			 *
-			 * <b>둘을 한 Pool에 섞지 않는 이유</b>: 섞으면 같은 목록 안에서 어떤 줄은
-			 * "함께 많이 찾는 곳"이고 어떤 줄은 아니게 되는데, 사용자가 그 차이를 읽어낼
-			 * 방법이 없다. 근거 문구는 목록 전체가 한 출처일 때만 정직해진다.
-			 *
-			 * 맥락은 약해지지만 나머지 조건은 똑같이 지킨다. 이 경로를 열면서 대안이 있는
-			 * 자리가 경주 20→58곳, 제주시 68→192곳, 서귀포 61→159곳이 됐다.
-			 */
-			Candidates regional = scoreRegional(origin, date, region, originQuietness);
-			if (!regional.qualified().isEmpty()) {
-				candidates = regional;
-				source = CandidateSource.REGIONAL_FALLBACK;
-			}
-		}
+		Candidates related = scoreCandidates(origin, date, region, originQuietness);
+		Candidates regional = scoreRegional(origin, date, region, originQuietness);
 
 		/*
-		 * 이미 코스에 담긴 곳을 뺀다. <b>자격을 따진 뒤, 뽑기 앞이다.</b>
-		 *
-		 * 뽑기 뒤로 미루면 고를 수 없는 곳이 Pool 자리를 차지해 목록이 이유 없이 짧아진다.
-		 * 반대로 자격 심사보다 앞에 두면 "이미 담긴 후보"가 몇이었는지 알 수 없어져,
-		 * 더 한적한 곳을 찾고도 "찾지 못했다"고 말하게 된다.
-		 *
-		 * <p>화면도 같은 것을 걸러내지만 역할이 다르다. 여기는 뽑을 때의 낭비를 줄이고,
-		 * 화면은 <b>이미 뽑아 둔 목록</b>을 최신 코스에 맞춘다 — 다른 자리에서 교체가
-		 * 일어나면 이 자리의 목록은 그대로인 채로 코스만 달라지기 때문이다.
+		 * 같은 장소가 양쪽에 들어 있으면 <b>연관 쪽을 남긴다.</b> "함께 찾는 곳"이 더 두꺼운
+		 * 사실이라 그 문장을 쓰는 편이 맞고, 무엇보다 한 곳이 두 줄로 서면 안 된다.
 		 */
-		List<ScoredPlace> available = candidates.qualified().stream()
-				.filter(scored -> !skip.contains(scored.place().id()))
+		Set<String> relatedIds = related.qualified().stream()
+				.map(scored -> scored.place().id())
+				.collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+		// 중복을 먼저 걷어낸 뒤에 센다. 안 그러면 양쪽에 든 장소가 두 번 세어진다.
+		List<ScoredPlace> qualified = new ArrayList<>(related.qualified());
+		regional.qualified().stream()
+				.filter(scored -> !relatedIds.contains(scored.place().id()))
+				.forEach(qualified::add);
+
+		List<ScoredPlace> relatedAvailable = notInCourse(related.qualified(), skip);
+		List<ScoredPlace> regionalAvailable = notInCourse(regional.qualified(), skip).stream()
+				.filter(scored -> !relatedIds.contains(scored.place().id()))
 				.toList();
-		int inCourseCount = candidates.qualified().size() - available.size();
 
-		if (available.isEmpty()) {
-			return Alternatives.of(
-					originQuietness, candidates.consideredCount(), inCourseCount, null, List.of());
+		int consideredCount = related.consideredCount() + regional.consideredCount();
+		int inCourseCount = qualified.size() - relatedAvailable.size() - regionalAvailable.size();
+
+		if (relatedAvailable.isEmpty() && regionalAvailable.isEmpty()) {
+			return Alternatives.of(originQuietness, consideredCount, inCourseCount, List.of());
 		}
 
-		// 위에서 fallback으로 갈아탔을 수 있어 람다가 그대로 쓸 수 없다.
-		final CandidateSource chosen = source;
+		/*
+		 * <b>출처마다 한 자리씩 보장하고, 남은 자리는 합쳐서 겨룬다.</b>
+		 *
+		 * <p>그냥 섞어 추천도로 자르면 <b>수가 많은 쪽이 상위권을 쓸어간다.</b> 실측에서
+		 * 지역 후보가 연관 후보보다 5~6배 많았고(제주시 698 vs 125), 그 결과 연관이
+		 * 상위 3에 하나도 못 드는 자리가 제주시 57%·서귀포 37%였다.
+		 *
+		 * <p>⚠️ <b>품질이 밀려서가 아니다.</b> 같은 실측에서 추천도 중앙값은 같거나 연관이
+		 * 오히려 높았다(경주 53.5 vs 52.0 · 제주시 55 vs 55 · 서귀포 62 vs 57).
+		 * 순전히 표본 크기 문제라, 크기와 무관한 장치로 풀어야 한다 —
+		 * 가중치로 보정하면 배율이 지역마다 달라(4.9~6.4배) 값의 근거가 없어지고,
+		 * 무엇보다 인기도를 점수에 넣는 것이 되어 과제와 어긋난다.
+		 *
+		 * <p>자리 보장은 <b>인기도 하한도 지킨다.</b> 지역 카탈로그에는 하한이 없어
+		 * 아무도 가지 않는 곳이 올라올 수 있는데, 한 자리는 언제나 연관(=함께 가는 곳)이다.
+		 */
+		List<ScoredPlace> drawn = new ArrayList<>();
+		reserveOne(drawn, relatedAvailable, limit);
+		reserveOne(drawn, regionalAvailable, limit);
+
+		List<ScoredPlace> rest = new ArrayList<>(relatedAvailable);
+		rest.addAll(regionalAvailable);
+		rest.removeAll(drawn);
+		drawn.addAll(drawWithoutRepeat(rest, limit - drawn.size()));
+
 		/*
 		 * <b>뽑힌 순서를 그대로 내보낸다. 다시 정렬하지 않는다.</b>
 		 *
@@ -231,24 +247,46 @@ public class KtoRecommendationProvider implements RecommendationProvider {
 		 * 자격 후보가 20곳이나 되는 자리에서도 1등이 68~82% 고정이었다 —
 		 * 데이터가 모자라서가 아니라 이 정렬 때문이었다.
 		 *
-		 * <p>CLAUDE.md의 <i>"대안 후보는 추천도 순으로 정렬한다. 정렬 기준이 곧 화면에
-		 * 보이는 값이어야 한다"</i>와 부딪히는 자리다. 두 규칙 중 <b>분산을 택했다</b>:
-		 * <ul>
-		 *   <li>그 규칙의 목적은 "설명 가능해야 한다"인데, 뽑기 순서도 설명된다 —
-		 *       화면이 "추천도 상위 후보에서 매번 새로 뽑아요"라고 말한다</li>
-		 *   <li>보이는 것은 상위 Pool에서 뽑은 소수라 점수 차가 작다. 순위표가 아니라 후보 묶음이다</li>
-		 *   <li>분산은 과제(2차 오버투어리즘) 직결이고, 정렬은 표현 규칙이다</li>
-		 * </ul>
+		 * <p>화면은 <b>구간 단위까지만</b> 세운다(AlternativeSheet.tierRank). 점수로 줄
+		 * 세우지 않으므로 분산이 살아 있고, 카드에 적힌 문구와 순서가 어긋나지도 않는다.
 		 *
 		 * <p>⚠️ 화면 문구와 <b>한 몸이다.</b> "추천도가 높은 순"이라고 적어 두면
 		 * 82점 아래 79점이 선 목록이 거짓말이 된다.
 		 */
-		List<Alternative> picked = drawWithoutRepeat(available, limit).stream()
-				.map(candidate -> candidate.withReason(reasonFor(origin, chosen)))
+		List<Alternative> picked = drawn.stream()
+				.map(candidate -> candidate.withReason(reasonFor(origin,
+						relatedIds.contains(candidate.place().id())
+								? CandidateSource.RELATED
+								: CandidateSource.REGIONAL_FALLBACK)))
 				.toList();
 
-		return Alternatives.of(
-				originQuietness, candidates.consideredCount(), inCourseCount, source, picked);
+		return Alternatives.of(originQuietness, consideredCount, inCourseCount, picked);
+	}
+
+	/**
+	 * 이미 코스에 담긴 곳을 뺀다. <b>자격을 따진 뒤, 뽑기 앞이다.</b>
+	 *
+	 * <p>뽑기 뒤로 미루면 고를 수 없는 곳이 Pool 자리를 차지해 목록이 이유 없이 짧아진다.
+	 * 반대로 자격 심사보다 앞에 두면 "이미 담긴 후보"가 몇이었는지 알 수 없어져,
+	 * 더 한적한 곳을 찾고도 "찾지 못했다"고 말하게 된다.
+	 */
+	private static List<ScoredPlace> notInCourse(List<ScoredPlace> qualified, Set<String> skip) {
+		return qualified.stream()
+				.filter(scored -> !skip.contains(scored.place().id()))
+				.toList();
+	}
+
+	/**
+	 * 한 출처의 몫으로 한 자리를 뽑아 담는다. 후보가 없거나 자리가 다 찼으면 아무 일도 안 한다.
+	 *
+	 * <p>뽑기는 여기서도 <b>가중 무작위</b>다 — 그 출처의 1등을 늘 세우면 자리 보장이
+	 * "출처별 1등 고정"이 되어, 분산을 지키려고 만든 장치가 분산을 죽인다.
+	 */
+	private void reserveOne(List<ScoredPlace> drawn, List<ScoredPlace> pool, int limit) {
+		if (drawn.size() >= limit || pool.isEmpty()) {
+			return;
+		}
+		picker.pick(pool, ScoredPlace::recommendation, PICK_BIAS, POOL_SIZE).ifPresent(drawn::add);
 	}
 
 	/**

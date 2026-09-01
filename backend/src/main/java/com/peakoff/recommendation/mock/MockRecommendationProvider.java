@@ -111,7 +111,7 @@ public class MockRecommendationProvider implements RecommendationProvider {
 		 * 근거 문구도 "함께 많이 찾는 곳"이라고 말하지 않는다.
 		 */
 		return Alternatives.of(originQuietness, considered.size(),
-				qualified.size() - available.size(), CandidateSource.REGIONAL_FALLBACK, picked);
+				qualified.size() - available.size(), picked);
 	}
 
 	private static boolean sameCategory(Place candidate, Place origin) {
