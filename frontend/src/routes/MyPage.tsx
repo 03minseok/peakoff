@@ -1,18 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDownToLine, Bag, Close, Heart, Route, User } from '../components/icons'
+import {
+  ArrowDownToLine,
+  Bag,
+  ChevronLeft,
+  ChevronRight,
+  Close,
+  Heart,
+  Route,
+  User,
+} from '../components/icons'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import type { ReactNode } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { AccountSheets } from '../components/AccountSheets'
 import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
-import { HintDot, type HintTone } from '../components/HintDot'
 import { CreateTripSheet } from '../components/CreateTripSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
-import { TripTimelineSheet } from '../components/TripTimelineSheet'
+import { TripDetailSheet } from '../components/TripDetailSheet'
+import { orderCourses, seamsOf, TripCourseList } from '../components/TripCourseList'
 import { CARD } from '../components/styles'
 import {
   ApiRequestError,
@@ -24,8 +33,7 @@ import {
   fetchTrips,
   removeCourseFromTrip,
 } from '../services/api'
-import { CongestionBadge } from '../components/CongestionBadge'
-import { addDays, daysBetween, formatMonthDay } from '../utils/date'
+import { daysBetween, formatMonthDay } from '../utils/date'
 import { useAuth } from '../state/authContext'
 import { useFavorites } from '../state/favoriteContext'
 import { defaultRegionSlug, regionNameOf, searchRegions } from '../constants/regions'
@@ -48,6 +56,27 @@ type ListState =
  */
 const COURSE_PAGE = 3
 const FAVORITE_PAGE = 4
+
+/**
+ * 여행 카드에 세우는 코스 수.
+ *
+ * <p>전부 세웠더니 <b>코스 수만큼 카드 높이가 달라져</b> 목록이 들쭉날쭉했다.
+ * 카드는 훑는 자리라 높이가 고르게 서야 한다 — 나머지는 "상세보기"가 받는다.
+ *
+ * <p>셋인 이유: 하나·둘짜리 여행이 대부분이라 그 경우 잘림 표시가 아예 안 뜨고,
+ * 셋이면 <b>이음새가 둘</b>이라 "코스 사이가 벌어졌다"는 이 화면의 신호가 카드에서도
+ * 보인다. 둘로 줄이면 이음새 하나만 남아 그 신호가 절반이 된다.
+ */
+const TRIP_CARD_COURSES = 3
+
+/**
+ * 한 쪽에 세우는 여행 수. 넓은 화면의 두 열로 <b>두 줄</b>이다.
+ *
+ * <p>코스·찜과 달리 "더보기"를 쓰지 않는다. 더보기는 목록을 <b>늘리기만</b> 해서
+ * 스무 개를 담아 둔 사람이 아래쪽 여행을 보려면 카드 스무 장을 지나쳐야 한다 —
+ * 여행은 코스와 달리 하나가 여러 줄을 쓴다. 쪽을 넘기면 지나칠 것이 없다.
+ */
+const TRIP_PAGE = 4
 
 /**
  * 더 불러오는 버튼. <b>남은 수를 적는다.</b>
@@ -91,56 +120,6 @@ type MyTab = 'courses' | 'favorites' | 'trips' | 'account'
  * <p><b>셋 — 무엇으로 가는 문인지가 글자에만 있었다.</b> 심볼은 훑을 때 먼저 읽히고,
  * 화면을 옮겨도 같은 그림이라 자리를 기억하게 한다.
  */
-/**
- * 앞 코스와 이 코스 사이의 <b>이음새</b>.
- *
- * <p>{@code gap}은 앞 코스 마지막 날에서 이 코스 첫날까지의 일수다.
- * 1이면 바로 다음 날이라 딱 이어진다. 2 이상이면 사이가 비고, 0 이하면 겹친다.
- *
- * <h3>⚠️ 등급이 둘이다 — 여기서 갈린다</h3>
- * <b>앰버(알아두면 되는 것)</b>: 사이가 비었거나, 앞 코스가 끝나는 날 다음 코스가
- * 시작하는 것. 둘 다 <b>있을 수 있는 일정</b>이다 — 이동일이 하루 비는 것도, 마지막 날
- * 오후에 다음 지역으로 넘어가는 것도 여행에서는 흔하다.
- *
- * <p><b>붉은색(고쳐야 하는 것)</b>: 이틀 넘게 겹치는 것. 같은 시간에 두 곳에 있겠다는
- * 뜻이라 일정으로 성립하지 않는다. 이때만 "한번에 보기"가 잠긴다 — 이어 붙이면 화면이
- * <b>있을 수 없는 일정</b>을 사실처럼 그리게 된다.
- *
- * <p>계산을 화면 안이 아니라 여기 두는 이유: 목록의 표시와 버튼의 잠금이 <b>같은 값</b>을
- * 봐야 한다. 두 곳에서 따로 세면 붉은 표시가 떴는데 버튼이 열려 있는 날이 온다.
- */
-function seamBetween(previous: SavedCourseSummary, course: SavedCourseSummary): Seam | null {
-  const gap = daysBetween(previous.endDate, course.startDate)
-  if (gap === 1) {
-    return null
-  }
-  if (gap > 1) {
-    /*
-     * 쪽지 안이라 <b>날짜를 그대로 적는다.</b> 겉으로 보일 때는 "1일 비어 있어요"로
-     * 짧아야 했지만, 열어서 읽는 말이라면 <b>어느 날이 비었는지</b>가 훨씬 쓸모 있다 —
-     * 그 날을 채울지 말지가 다음 판단이다.
-     */
-    const first = formatMonthDay(addDays(previous.endDate, 1))
-    const last = formatMonthDay(addDays(course.startDate, -1))
-    return {
-      tone: 'warn',
-      text: gap === 2 ? `${first}이 비어 있어요` : `${first} ~ ${last}이 비어 있어요`,
-    }
-  }
-  if (gap === 0) {
-    return {
-      tone: 'warn',
-      text: `앞 코스가 끝나는 ${formatMonthDay(course.startDate)}에 시작해요`,
-    }
-  }
-  return { tone: 'danger', text: `앞 코스와 ${1 - gap}일 겹쳐요` }
-}
-
-interface Seam {
-  tone: HintTone
-  text: string
-}
-
 const SECTIONS = [
   {
     tab: 'courses' as const,
@@ -211,8 +190,14 @@ export function MyPage() {
 
   const [list, setList] = useState<ListState>({ status: 'loading' })
   /** 겹창에 펼칠 코스. 비어 있으면 닫힌 상태 */
-  /** 한 장으로 펴 볼 여행 */
-  const [timelineTrip, setTimelineTrip] = useState<Trip | null>(null)
+  /*
+   * 펼쳐 본 여행. <b>객체가 아니라 id로 들고 있다.</b> 스냅샷을 쥐고 있으면 창 안에서
+   * 코스를 빼도 그 창은 옛 목록을 계속 그린다 — 같은 화면에서 지운 것이 그대로 남는다.
+   * id만 두고 목록에서 다시 찾으면 늘 지금 값이다.
+   */
+  const [detailTripId, setDetailTripId] = useState<number | null>(null)
+  /** 지금 보고 있는 여행 쪽. 0부터 센다 */
+  const [tripPage, setTripPage] = useState(0)
 
   /** 펼쳐 본 코스. 비교가 사라지면서 한 번에 하나가 됐다 */
   const [opened, setOpened] = useState<number | null>(null)
@@ -455,6 +440,17 @@ export function MyPage() {
   }, [authLoading, member, load])
 
   const courses = list.status === 'loaded' ? list.courses : []
+  const trips = tripsState.status === 'loaded' ? tripsState.trips : []
+  const detailTrip = trips.find((trip) => trip.id === detailTripId) ?? null
+
+  /*
+   * 쪽 수와 <b>지금 쪽을 가둔다.</b> 마지막 쪽의 마지막 여행을 지우면 그 쪽이 통째로
+   * 사라지는데, 가두지 않으면 화면이 <b>빈 쪽</b>에 서서 아무것도 없는 것처럼 보인다.
+   * 렌더 중에 맞춰 두면 상태를 되돌리는 왕복 없이 그 프레임에 바로 옳은 쪽이 그려진다.
+   */
+  const tripPageCount = Math.max(1, Math.ceil(trips.length / TRIP_PAGE))
+  const currentTripPage = Math.min(tripPage, tripPageCount - 1)
+  const pagedTrips = trips.slice(currentTripPage * TRIP_PAGE, (currentTripPage + 1) * TRIP_PAGE)
 
   /**
    * 여행 이름을 묻는 시트가 열려 있는가.
@@ -516,7 +512,12 @@ export function MyPage() {
         ? { status: 'loaded', trips: [trip, ...current.trips] }
         : { status: 'loaded', trips: [trip] },
     )
-    setPickerTripId(trip.id) // 만들자마자 담기 목록을 열어 준다 — 빈 여행에서 다음 할 일이 이것뿐이다
+    /*
+     * ⚠️ <b>담기 목록을 자동으로 열지 않는다</b>(2026-09-01). 만들자마자 열어 주었는데,
+     * 여행을 이름만 먼저 만들어 두는 사람에게는 <b>묻지 않은 것을 펼친 것</b>이었다 —
+     * 게다가 그 목록은 이제 검색해야 뜨므로, 열려 있어도 빈 칸 하나가 서 있을 뿐이다.
+     * 빈 여행에서 다음 할 일은 카드 안의 문장이 말한다.
+     */
   }
 
   async function handleAddToTrip(tripId: number, courseId: number) {
@@ -1186,33 +1187,23 @@ export function MyPage() {
         */}
             {tripsState.status === 'loaded' && tripsState.trips.length > 0 && (
               <ul className="m-0 grid list-none grid-cols-1 gap-3.5 p-0 md:grid-cols-2">
-                {tripsState.trips.map((trip) => {
+                {pagedTrips.map((trip) => {
                   /*
                 담은 순서가 아니라 <b>시작일순</b>으로 세운다. 여행은 폴더가 아니라 시간표다 —
                 9월 10일 코스가 9월 8일 코스 위에 서 있으면 머리글의 기간과 목록이 서로 다른
                 이야기를 한다. 담은 순서는 서버가 그대로 갖고 있어 되돌릴 수 있다.
               */
-                  const ordered = [...trip.courses].sort((a, b) =>
-                    a.startDate.localeCompare(b.startDate),
-                  )
+                  const ordered = orderCourses(trip.courses)
                   const first = ordered[0]
                   const last = ordered[ordered.length - 1]
                   const span = first ? daysBetween(first.startDate, last.endDate) + 1 : 0
                   const regions = [...new Set(ordered.map((course) => regionNameOf(course.region)))]
                   /*
-                    이음새를 <b>그리기 전에 한 번에</b> 센다. 목록의 표시와 아래
-                    "한번에 보기"의 잠금이 같은 값을 봐야 한다 — 그리면서 세면 버튼이
-                    그 값을 볼 수 없어 같은 계산을 두 번 적게 된다.
+                    이음새를 <b>그리기 전에</b> 센다. 잠금 판단(붉은 이음새가 있는가)은
+                    상세 창이 <b>제 손으로</b> 다시 센다 — 창은 카드 없이도 열릴 수 있어야
+                    하고, 같은 부품({@code seamsOf})을 쓰므로 두 곳의 답이 갈리지 않는다.
                   */
-                  const seams = ordered.map((course, index) =>
-                    index === 0 ? null : seamBetween(ordered[index - 1], course),
-                  )
-                  /*
-                    붉은 이음새가 하나라도 있으면 이어 붙이지 않는다. 이틀 넘게 겹치는 일정을
-                    날짜 축에 올리면 <b>있을 수 없는 하루</b>가 사실처럼 그려진다.
-                    비어 있는 날과 하루 겹침(앰버)은 그대로 이어 붙인다 — 있을 수 있는 일정이다.
-                  */
-                  const blocked = seams.some((seam) => seam?.tone === 'danger')
+                  const seams = seamsOf(ordered)
                   const inTrip = new Set(trip.courses.map((course) => course.id))
                   const addable = courses.filter((course) => !inTrip.has(course.id))
                   /*
@@ -1255,6 +1246,10 @@ export function MyPage() {
                     기간·지역·코스 수가 가운뎃점으로 이어져 <b>성격이 다른 넷이 한 무게</b>였다.
                     지금은 기간이 한 줄을 갖고(여행의 뼈대다) 지역이 그 아래 작게 선다.
                     코스 수는 적지 않는다 — 바로 아래 목록이 그 수를 이미 보여준다.
+
+                    <p>담은 코스가 없으면 이 줄은 <b>비운다.</b> 여기에도 "아직 담은 코스가
+                    없어요"를 적었더니 아래 안내와 <b>같은 말이 두 번</b> 섰다. 날짜가 설
+                    자리이므로 날짜가 없으면 그냥 없는 것이 맞다.
                   */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex min-w-0 flex-col gap-1">
@@ -1268,9 +1263,7 @@ export function MyPage() {
                               </span>
                               <span className="text-hint text-[12.5px]">{span}일간</span>
                             </div>
-                          ) : (
-                            <span className="text-hint text-[13px]">아직 담은 코스가 없어요</span>
-                          )}
+                          ) : null}
                           {regions.length > 0 && (
                             <span className="text-hint text-[12.5px]">{regions.join(' · ')}</span>
                           )}
@@ -1290,118 +1283,37 @@ export function MyPage() {
                       </div>
 
                       {/*
-                    ■ 날짜 축 — 여행이 시간표라는 것을 구조가 말한다.
+                    ■ 담긴 코스. <b>앞의 셋만</b> 세운다.
 
-                    예전에는 코스가 그냥 목록이었고 날짜는 각 줄 밑에 "9월 8일부터 2일"로
-                    묻혀 있었다. 점과 선으로 축을 세우면 <b>훑는 것만으로 순서와 사이가</b>
-                    읽힌다.
+                    전부 세웠더니 코스 수만큼 카드 높이가 달라져 목록이 들쭉날쭉했다 —
+                    카드는 <b>훑는 자리</b>라 높이가 고르게 서야 한다.
+                    나머지는 "상세보기"가 받는다.
 
-                    <p>⚠️ 점에 혼잡 색을 칠하지 않는다. 축이 말하는 것은 <b>시간</b>이고
-                    점수는 오른쪽 배지가 맡는다 — 한 신호를 두 곳에서 말하면 어느 쪽을
-                    믿어야 할지 흐려진다.
+                    <p>목록 자체는 상세 창과 <b>같은 부품</b>이다. 카드에서 보던 것과
+                    펼쳐 본 것이 다르게 생기면 같은 여행으로 읽히지 않는다.
                   */}
-                      {ordered.length > 0 && (
-                        <ul className="m-0 mt-3.5 flex list-none flex-col p-0">
-                          {ordered.map((course, index) => {
-                            const seam = seams[index]
-                            const isLast = index === ordered.length - 1
-
-                            return (
-                              <li key={course.id} className="flex flex-col">
-                                {/*
-                              이음새. <b>앰버를 쓰지 않는다</b> — 이 팔레트에서 앰버는
-                              혼잡 "보통"이고, 바로 옆에 그 배지가 선다. 같은 색이 40px 안에서
-                              두 뜻을 가지면 어느 쪽도 신호가 아니게 된다.
-
-                              <p>축의 <b>점선 구간</b>으로 말한다. 이어지지 않는다는 사실을
-                              선의 모양이 이미 말하므로 글자는 조용해도 된다.
-                            */}
-                                <div className="flex gap-3">
-                                  {/* 축. 점 하나와 다음 점까지 잇는 선 */}
-                                  <div className="flex w-2 flex-none flex-col items-center">
-                                    <span
-                                      className="border-brand bg-surface mt-1.5 h-2 w-2 flex-none rounded-full border-2"
-                                      aria-hidden="true"
-                                    />
-                                    {!isLast && (
-                                      <span
-                                        className="bg-line mt-0.5 w-px flex-1"
-                                        aria-hidden="true"
-                                      />
-                                    )}
-                                  </div>
-
-                                  <div className="flex min-w-0 flex-1 items-start justify-between gap-2 pb-3">
-                                    <div className="flex min-w-0 flex-col gap-0.5">
-                                      {/*
-                                    이음새 표시가 <b>이름 옆</b>에 붙는다. 축에 따로 한 줄을
-                                    두었더니 코스마다 줄이 하나씩 늘어 카드가 그만큼 길어졌고,
-                                    정작 그 줄은 대부분의 여행에 없다 — 있을 때만 이름 뒤에
-                                    조용히 따라붙는 편이 짧고, 어느 코스의 사정인지도 분명하다.
-                                  */}
-                                      <span className="flex min-w-0 items-center gap-1.5">
-                                        {/*
-                                      이름을 누르면 <b>코스 상세</b>가 열린다. 저장 목록의
-                                      카드와 <b>같은 {@code CourseDetailOverlay}</b>다 —
-                                      여행에서 누른 코스가 다른 화면을 보여줄 이유가 없고,
-                                      여행 카드는 이름·기간·점수만 요약하고 있어 안에
-                                      어느 장소가 담겼는지는 여기서만 볼 수 있다.
-
-                                      <p>클릭 영역을 줄 전체로 늘리지 <b>않는다.</b> 같은
-                                      줄에 이음새 표시와 빼기 버튼이 서 있어, 겹쳐 깔면
-                                      그 둘을 누르려다 상세가 열린다. 저장 카드가
-                                      {@code after:inset-0}로 카드 전체를 받는 것과
-                                      사정이 다르다.
-
-                                      <p>{@code truncate}는 <b>안쪽 span</b>이 맡는다.
-                                      버튼에 걸면 초점 링까지 잘린다.
-                                    */}
-                                        <button
-                                          type="button"
-                                          title={course.name}
-                                          className="text-fg hover:text-brand-deep min-w-0 cursor-pointer border-0 bg-transparent p-0 text-left text-[15px] font-semibold transition-colors"
-                                          onClick={() => setOpened(course.id)}
-                                        >
-                                          <span className="block truncate">{course.name}</span>
-                                        </button>
-                                        {seam && <HintDot label={seam.text} tone={seam.tone} />}
-                                      </span>
-                                      <span className="text-hint text-[12px]">
-                                        {regionNameOf(course.region)} ·{' '}
-                                        {formatMonthDay(course.startDate)} –{' '}
-                                        {formatMonthDay(course.endDate)}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex flex-none items-center gap-0.5">
-                                      {/* 점수는 코스가 자기 것을 갖는다. 진단 전이면 그렇게 말한다 */}
-                                      {course.level !== null && course.totalQuietness !== null ? (
-                                        <CongestionBadge
-                                          level={course.level}
-                                          label={course.levelLabel ?? undefined}
-                                          quietness={course.totalQuietness}
-                                          size="sm"
-                                        />
-                                      ) : (
-                                        <span className="text-hint text-[11.5px]">진단 전</span>
-                                      )}
-                                      <button
-                                        type="button"
-                                        aria-label={`${course.name} 여행에서 빼기`}
-                                        className="text-hint hover:text-fg hover:bg-fill flex-none cursor-pointer rounded-full border-0 bg-transparent p-1.5 transition-colors"
-                                        onClick={() =>
-                                          void handleRemoveFromTrip(trip.id, course.id)
-                                        }
-                                      >
-                                        <Close size={13} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </li>
-                            )
-                          })}
-                        </ul>
+                      {ordered.length === 0 ? (
+                        /*
+                          빈 여행이 <b>다음 할 일을 말한다.</b> 예전에는 만들자마자 담기
+                          목록이 저절로 열려 그 자리를 대신했는데, 이제 열지 않으므로
+                          비어 있다는 사실과 무엇을 하면 되는지를 카드가 직접 말해야 한다.
+                        */
+                        <p className="text-hint m-0 mt-3.5 text-[13px] leading-[1.6]">
+                          아직 여행에 아무 코스도 없어요.
+                          <br />
+                          아래 <span className="text-muted font-semibold">코스 담기</span>로 코스를
+                          추가해 보세요.
+                        </p>
+                      ) : (
+                        <div className="mt-3.5">
+                          <TripCourseList
+                            ordered={ordered}
+                            seams={seams}
+                            limit={TRIP_CARD_COURSES}
+                            onOpenCourse={(courseId) => setOpened(courseId)}
+                            onRemove={(courseId) => void handleRemoveFromTrip(trip.id, courseId)}
+                          />
+                        </div>
                       )}
 
                       {/*
@@ -1443,32 +1355,27 @@ export function MyPage() {
                       <b>모아 둔 것을 보는 일</b>이지 새로 만드는 일이 아니다.
                       만드는 문은 저장 코스 쪽 빈 상태와 아래 이동 막대에 이미 있다.
 
-                      <p>대신 <b>모아 둔 것을 한 장으로 편다.</b> 코스는 지역 하나에
-                      잠겨 있어 카드가 코스별로 끊겨 있는데, 정작 여행하는 사람에게
-                      필요한 답은 "9월 10일에 나는 어디 있나"다.
+                      <p>대신 <b>펼쳐 본다.</b> 카드는 앞의 셋만 세우므로 나머지 코스를
+                      보는 길이 여기다. 창 안에서 <b>날짜로 이어 붙인 일정</b>으로도
+                      갈아끼울 수 있다 — 코스는 지역 하나에 잠겨 있어 카드가 코스별로
+                      끊겨 있는데, 정작 여행하는 사람에게 필요한 답은
+                      "9월 10일에 나는 어디 있나"다.
 
-                      <p><b>붉은 이음새가 있으면 잠근다.</b> 이틀 넘게 겹치는 일정을
-                      날짜 축에 올리면 있을 수 없는 하루가 사실처럼 그려진다.
-                      잠긴 이유는 버튼 아래 한 줄로 말한다 — 잠긴 버튼은 스스로
-                      "왜 안 되는지"를 설명하지 못한다.
+                      <p>⚠️ 이 버튼 자체는 <b>잠기지 않는다</b>(2026-09-01). "한번에 보기"였을
+                      때는 날짜가 겹치면 통째로 잠갔는데, 이제 이 문이 <b>코스 목록으로 가는
+                      유일한 길</b>이기도 하다 — 겹쳤다는 이유로 목록까지 막으면 겹친 것을
+                      고치러 들어갈 수조차 없다. 잠기는 것은 창 안의 일정 탭 하나다.
                     */}
                         {ordered.length > 0 && (
                           <button
                             type="button"
-                            disabled={blocked}
-                            onClick={() => setTimelineTrip(trip)}
-                            className="border-line bg-surface text-fg hover:bg-bg disabled:border-line/60 disabled:text-hint h-10 flex-1 cursor-pointer rounded-[12px] border text-[13.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:hover:bg-surface"
+                            onClick={() => setDetailTripId(trip.id)}
+                            className="border-line bg-surface text-fg hover:bg-bg h-10 flex-1 cursor-pointer rounded-[12px] border text-[13.5px] font-semibold transition-colors"
                           >
-                            한번에 보기
+                            상세보기
                           </button>
                         )}
                       </div>
-
-                      {blocked && (
-                        <p className="text-crowded-deep m-0 px-1 pt-2 text-center text-[12px] leading-[1.5]">
-                          날짜가 겹치는 코스가 있어 한 번에 볼 수 없어요.
-                        </p>
-                      )}
 
                       {/*
                     ■ 담을 코스. <b>테두리 상자를 두르지 않는다</b> — 카드 안의 카드가 되어
@@ -1554,6 +1461,62 @@ export function MyPage() {
                   )
                 })}
               </ul>
+            )}
+
+            {/*
+              ■ 쪽 넘기기.
+
+              "더보기"를 쓰지 않는다. 더보기는 목록을 <b>늘리기만</b> 해서, 스무 개를
+              담아 둔 사람이 아래쪽 여행을 보려면 카드 스무 장을 지나쳐야 한다 —
+              여행은 코스와 달리 하나가 여러 줄을 쓴다. 쪽을 넘기면 지나칠 것이 없다.
+
+              <p>⚠️ <b>가로로 미는 상자를 만들지 않는다.</b> 끝까지 민 제스처가 페이지로
+              이어져 화면 전체가 옆으로 밀린다(CLAUDE.md). 옆으로 <b>넘기는</b> 것이지
+              옆으로 <b>미는</b> 것이 아니다 — 버튼을 눌러 쪽을 갈아끼운다.
+
+              <p>쪽 번호를 전부 세운다. 지금 몇 쪽인지, 몇 쪽이 있는지가 함께 보이고,
+              여행 쪽수는 많아야 서넛이라 번호가 줄을 넘길 일이 없다.
+            */}
+            {tripPageCount > 1 && (
+              <nav aria-label="여행 쪽 넘기기" className="flex items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label="이전 쪽"
+                  disabled={currentTripPage === 0}
+                  onClick={() => setTripPage(currentTripPage - 1)}
+                  className="text-muted hover:bg-fill disabled:text-line grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft />
+                </button>
+
+                {Array.from({ length: tripPageCount }, (_, page) => {
+                  const active = page === currentTripPage
+                  return (
+                    <button
+                      key={page}
+                      type="button"
+                      aria-label={`${page + 1}쪽`}
+                      aria-current={active ? 'page' : undefined}
+                      onClick={() => setTripPage(page)}
+                      className={`h-9 min-w-9 cursor-pointer rounded-[11px] border-0 px-2 font-mono text-[13px] font-semibold transition-colors ${
+                        active ? 'bg-fg text-white' : 'text-muted hover:bg-fill bg-transparent'
+                      }`}
+                    >
+                      {page + 1}
+                    </button>
+                  )
+                })}
+
+                <button
+                  type="button"
+                  aria-label="다음 쪽"
+                  disabled={currentTripPage === tripPageCount - 1}
+                  onClick={() => setTripPage(currentTripPage + 1)}
+                  className="text-muted hover:bg-fill disabled:text-line grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  <ChevronRight />
+                </button>
+              </nav>
             )}
           </section>
         </div>
@@ -1659,8 +1622,20 @@ export function MyPage() {
           </section>
         </div>
 
-        {timelineTrip && (
-          <TripTimelineSheet trip={timelineTrip} onClose={() => setTimelineTrip(null)} />
+        {detailTrip && (
+          <TripDetailSheet
+            trip={detailTrip}
+            onClose={() => setDetailTripId(null)}
+            /*
+              코스 상세는 <b>겹창을 갈아끼워</b> 연다. 시트 위에 시트를 또 띄우면
+              닫기가 두 번이 되고, 뒤 화면 잠금도 두 겹이 된다.
+            */
+            onOpenCourse={(courseId) => {
+              setDetailTripId(null)
+              setOpened(courseId)
+            }}
+            onRemoveCourse={(courseId) => void handleRemoveFromTrip(detailTrip.id, courseId)}
+          />
         )}
 
         {opened !== null && (
