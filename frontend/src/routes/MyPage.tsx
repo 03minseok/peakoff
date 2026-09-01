@@ -358,8 +358,16 @@ export function MyPage() {
     })
   }
 
-  /** 새 여행 이름 입력칸. 만들면 비운다. */
+  /**
+   * 새 여행 이름 입력칸. 만들면 비운다.
+   *
+   * <p>입력칸은 <b>평소에 없다</b> — "여행 만들기"를 눌러야 열린다. 늘 펴 두면
+   * 여행 목록보다 빈 입력칸이 먼저 눈에 들어와, 이 탭이 "만드는 화면"으로 보인다.
+   * 저장한 코스 쪽이 "새 코스 짜기" 버튼 하나로 끝나는 것과 같은 모양이다.
+   */
   const [tripName, setTripName] = useState('')
+  const [creatorOpen, setCreatorOpen] = useState(false)
+  const tripNameRef = useRef<HTMLInputElement | null>(null)
   const [creatingTrip, setCreatingTrip] = useState(false)
   /** 코스 담기 목록이 열려 있는 여행. 한 번에 하나만 연다 — 두 목록이 같이 열리면 어디에 담기는지 흐려진다. */
   const [pickerTripId, setPickerTripId] = useState<number | null>(null)
@@ -400,6 +408,7 @@ export function MyPage() {
           : { status: 'loaded', trips: [trip] },
       )
       setTripName('')
+      setCreatorOpen(false)
       setPickerTripId(trip.id)   // 만들자마자 담기 목록을 열어 준다 — 빈 여행에서 다음 할 일이 이것뿐이다
     } catch (error: unknown) {
       tripFail('여행을 만들지 못했어요.\n잠시 후 다시 시도해 주세요.')(error)
@@ -1011,39 +1020,79 @@ export function MyPage() {
         <b>묶음의 사실만</b> 말하고, 점수는 각 코스가 자기 배지로 갖고 있다.
       */}
       <section className="border-line flex flex-col gap-4 border-t pt-5">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
-            여행
-          </h2>
-          {tripsState.status === 'loaded' && tripsState.trips.length > 0 && (
-            <span className="text-hint text-[12.5px]">{tripsState.trips.length}개</span>
-          )}
+        {/*
+          제목 줄. <b>저장한 코스 쪽과 같은 모양이다</b> — 왼쪽에 제목과 개수,
+          오른쪽에 만드는 버튼. 두 탭이 같은 자리에서 같은 일을 하면
+          탭을 옮겨도 손이 다시 자리를 찾지 않는다.
+        */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
+              여행
+            </h2>
+            {tripsState.status === 'loaded' && tripsState.trips.length > 0 && (
+              <span className="text-hint text-[12.5px]">{tripsState.trips.length}개</span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            aria-expanded={creatorOpen}
+            className="bg-brand hover:bg-brand-hover grid h-9.5 cursor-pointer place-items-center rounded-[12px] border-0 px-4 text-[13.5px] font-semibold text-fg transition-colors"
+            onClick={() => {
+              if (creatorOpen) {
+                setCreatorOpen(false)
+                setTripName('')
+                return
+              }
+              setCreatorOpen(true)
+              /*
+                열자마자 입력칸에 초점을 준다. 버튼을 눌렀다는 것은 이미 이름을 지을
+                마음이 섰다는 뜻이라, 칸을 한 번 더 누르게 할 이유가 없다.
+
+                <p>다음 그림이 그려진 뒤에 부른다 — 아직 없는 칸에는 초점이 안 간다.
+              */
+              requestAnimationFrame(() => tripNameRef.current?.focus())
+            }}
+          >
+            {creatorOpen ? '취소' : '여행 만들기'}
+          </button>
         </div>
 
-        {/* 만들기 줄. 이름 하나면 여행이 생긴다 — 코스는 만들고 나서 담는다. */}
-        <form
-          className="flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void handleCreateTrip()
-          }}
-        >
-          <input
-            type="text"
-            value={tripName}
-            onChange={(event) => setTripName(event.target.value)}
-            placeholder="새 여행 이름 (예: 가을 제주 한 바퀴)"
-            maxLength={30}
-            className="border-line bg-surface text-fg h-11 min-w-0 flex-1 rounded-[12px] border px-3.5 font-sans text-[14px]"
-          />
-          <button
-            type="submit"
-            disabled={!tripName.trim() || creatingTrip}
-            className="bg-brand hover:bg-brand-hover text-fg disabled:bg-line disabled:text-hint h-11 flex-none cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold transition-colors disabled:cursor-not-allowed"
+        {/* 이름 하나면 여행이 생긴다 — 코스는 만들고 나서 담는다. */}
+        {creatorOpen && (
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handleCreateTrip()
+            }}
           >
-            여행 만들기
-          </button>
-        </form>
+            <input
+              ref={tripNameRef}
+              type="text"
+              value={tripName}
+              onChange={(event) => setTripName(event.target.value)}
+              /* 열려 있는 칸에서 Esc를 누르면 닫는다. 시트가 아니라 인라인이라 닫을 길이 버튼뿐이었다 */
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  setCreatorOpen(false)
+                  setTripName('')
+                }
+              }}
+              placeholder="여행 이름 (예: 가을 제주 한 바퀴)"
+              maxLength={30}
+              className="border-line bg-surface text-fg h-11 min-w-0 flex-1 rounded-[12px] border px-3.5 font-sans text-[14px]"
+            />
+            <button
+              type="submit"
+              disabled={!tripName.trim() || creatingTrip}
+              className="bg-brand hover:bg-brand-hover text-fg disabled:bg-line disabled:text-hint h-11 flex-none cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold transition-colors disabled:cursor-not-allowed"
+            >
+              {creatingTrip ? '만드는 중…' : '만들기'}
+            </button>
+          </form>
+        )}
 
         {tripsState.status === 'error' && (
           <p className="text-hint m-0 text-[13px]">여행 목록을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</p>
@@ -1061,6 +1110,20 @@ export function MyPage() {
               <br />
               제주시 코스와 서귀포 코스를 묶어 "제주 한 바퀴"를 만들어 보세요.
             </p>
+            {/*
+              빈 화면에서 다음 할 일을 가리킨다. 만들기 버튼이 제목 줄 오른쪽으로 올라가면서
+              <b>여기서 눈이 멈추면 갈 곳이 안 보인다</b> — 위를 다시 훑게 하지 않는다.
+            */}
+            <button
+              type="button"
+              className="text-brand-deep mt-1 cursor-pointer border-0 bg-transparent text-[13px] font-semibold hover:underline"
+              onClick={() => {
+                setCreatorOpen(true)
+                requestAnimationFrame(() => tripNameRef.current?.focus())
+              }}
+            >
+              첫 여행 만들기
+            </button>
           </div>
         )}
 
