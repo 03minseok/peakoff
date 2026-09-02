@@ -840,6 +840,39 @@ export function HomePage() {
             제목 안의 것이 되살아난다(제목 속 {@code hidden lg:inline}).
             시안은 모바일 화면이고 데스크톱은 손대지 않는다.
           */}
+          {/*
+            ■ 카드 오른쪽의 <b>겹친 동그라미 사진</b> (2026-09-02)
+
+            어두운 면에 글자만 있던 카드에 이 문이 데려갈 곳을 한 장 얹는다.
+            <b>홈의 다른 박스는 이미 사진으로 말하고 있어</b>(이번 주 한적한 곳 ·
+            다른 사람들의 여행) 진입 카드 둘만 글자뿐이면 같은 화면에서 문법이 갈린다.
+
+            <p>네모난 썸네일로 넣었다가 바꿨다 — 카드 안에 <b>프로필 사진</b>이 하나
+            들어앉은 꼴이었고, 사진이 글의 폭까지 가져가 본문이 넉 줄로 접혔다.
+            모양과 자리는 {@code .entry-photo}에 있다(index.css) —
+            <b>걷어냈던 글로우 서사의 원</b>이 있던 자리를 그대로 쓴다.
+
+            <p>⚠️ <b>두 폭 모두 적용한다.</b> 넓은 화면에서는 원을 함께 키운다 —
+            같은 반지름을 두면 큰 카드 위에서 사진이 조각으로 보인다.
+
+            <p>색은 바깥에서 넘긴다. 어두운 면과 흰 면이 서로 다른 색으로 스며들어야 해서다.
+          */}
+          <span
+            aria-hidden="true"
+            className="entry-base"
+            style={{ '--echo': 'rgb(255 255 255 / 0.055)' } as CSSProperties}
+          />
+          <span
+            aria-hidden="true"
+            className="entry-photo"
+            style={
+              {
+                '--photo-src': "url('/images/card-plan.jpg')",
+                '--photo-fade': 'var(--c-fg)',
+              } as CSSProperties
+            }
+          />
+
           <span className="relative flex flex-col gap-1.5 lg:gap-3">
             {/*
               배경 없는 맨 그림글자. 제목이 같은 말을 하므로 읽어주지 않는다.
@@ -944,10 +977,32 @@ export function HomePage() {
                 통째로 빈다. 오른쪽 끝에 세우면 읽는 방향(왼쪽 위 → 오른쪽 아래)의
                 끝에 문이 놓인다.
               */}
+              {/*
+                ■ 이 카드의 문만 <b>유리 알약</b>이다 (2026-09-02)
+
+                사진 위에 얹히는 유일한 버튼이라서다. 채운 틸은 사진의 색과 부딪혀
+                <b>사진에서 오려낸 스티커</b>처럼 떠 보였다. 시안도 이 자리만 테두리형이다.
+
+                <p>⚠️ <b>투명하되 충분히 어둡다({@code bg-fg/80}).</b> 알약 바탕을 실제로
+                재보면 흰 글자가 <b>9.0:1(390px) · 9.3:1(1280px)</b>이다 — 12.5px 글자라
+                4.5:1을 넘겨야 하는 자리다. <b>더 비치게 두지 말 것.</b> 뒤가 비치는 느낌은
+                {@code backdrop-blur}가 낸다.
+
+                <p>사진이 바뀌면 이 값도 바뀐다. 밝은 사진을 넣을 때는 다시 재고,
+                모자라면 알약을 더 어둡게 하지 말고 <b>사진 쪽을 가라앉힌다</b>
+                ({@code .entry-photo}의 opacity) — 버튼만 어두워지면 유리가 아니라 검은 딱지가 된다.
+
+                <p>⚠️ 잴 때는 <b>흰 테두리와 둥근 끝을 피해서</b> 알약 바탕만 본다.
+                가장자리를 포함해 재면 테두리의 안티에일리어싱이 섞여 2.8:1 같은 값이 나온다 —
+                글자가 실제로 얹히는 면이 아니다.
+
+                <p>오른쪽 카드는 그대로 채운 틸이다. 그쪽 버튼은 흰 면 위에 서므로
+                같은 문제가 없고, 두 문 중 <b>어느 쪽도 곁다리가 아니어야</b> 한다.
+              */}
               <Link
                 to="/plan"
                 aria-label="코스 직접 짜기 시작하기"
-                  className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
+                  className="bg-fg/80 group-hover:bg-fg/95 hover:bg-fg/95 border border-white/45 text-white backdrop-blur-[3px] rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
                 >
                   시작하기
                   {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
@@ -982,7 +1037,26 @@ export function HomePage() {
         */}
         <div className={`${CELL} lg:col-span-6`}>
           {/* 왼쪽 카드와 같은 규칙 — 카드는 누르는 것이 아니고, hover는 CTA를 가리킨다 */}
-          <div className="group border-brand/40 bg-surface shadow-rest relative w-full overflow-hidden rounded-[24px] border-[1.5px] px-4.5 pt-4.5 pb-4.5 md:px-6 md:pt-6.5 md:pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
+          <div className="group border-brand/40 from-brand-tint to-surface shadow-rest relative w-full overflow-hidden rounded-[24px] bg-linear-to-br border-[1.5px] px-4.5 pt-4.5 pb-4.5 md:px-6 md:pt-6.5 md:pb-6 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-raised motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
+            {/*
+              왼쪽 카드와 <b>같은 장치, 다른 선</b>이다. 곡선까지 같으면 두 문이 한 장을
+              복사해 붙인 것으로 보인다 — 모양은 {@code -alt}가 바꾼다(index.css).
+
+              <p>⚠️ <b>이 카드에는 아래 결(회색 물결)이 없다.</b> 대신 바탕 자체가 옅은 틸에서
+              흰색으로 흐른다 — 결을 한 겹 더 얹는 것보다 면 전체가 물드는 편이 조용하고,
+              테두리·버튼의 틸과 한 기운으로 묶인다.
+            */}
+            <span
+              aria-hidden="true"
+              className="entry-photo entry-photo-alt"
+              style={
+                {
+                  '--photo-src': "url('/images/card-discover.jpg')",
+                  '--photo-fade': 'var(--c-surface)',
+                } as CSSProperties
+              }
+            />
+
             {/* 왼쪽 카드와 같은 규칙 — 모바일은 제목 위 맨 그림글자. 주석은 그쪽에 있다 */}
             <span className="relative flex flex-col gap-1.5 lg:gap-3">
               <span className="text-[20px] leading-none lg:text-[24px]" aria-hidden="true">
@@ -1032,10 +1106,27 @@ export function HomePage() {
                 눌러도 되는 버튼을 비활성처럼 그려두면 사용자는 없는 기능으로 읽는다.
                 두 문이 같은 모양의 버튼을 갖는 것이 맞다. 둘 다 실제로 열리니까.
               */}
+              {/*
+                ■ 이 문도 <b>비치는 알약</b>이다 (2026-09-02)
+
+                채운 틸이 사진 위에서 오려 붙인 스티커처럼 뜨는 것은 왼쪽 카드와 같다.
+                다만 이쪽은 <b>밝은 면</b>이라 어둡게 깔 수 없어, 브랜드 틸을 그대로 두고
+                <b>불투명도만 내렸다.</b> 테두리는 카드 바탕과 같은 색({@code brand-tint})이라
+                알약이 카드에서 오려낸 조각처럼 보인다.
+
+                <p>⚠️ <b>86%보다 더 비치게 두지 말 것.</b> 이 알약의 글자는 잉크색인데,
+                뒤의 사진이 어두운 자리(파도 그늘)에서 함께 어두워져 대비가 무너진다 —
+                재보면 70%에서 <b>3.0:1</b>, 80%에서 4.1:1, 86%에서 <b>4.6:1</b>이다.
+                12.5px 글자라 4.5:1이 하한이다.
+
+                <p>{@code backdrop-blur}와 {@code backdrop-brightness}가 그 4.6:1을 만든다 —
+                흐리면 사진의 명암이 알약 뒤에서 <b>평평해지고</b>, 한 단계 밝히면 가장
+                어두운 자리가 올라온다. 둘 다 없으면 같은 86%에서 4.0:1로 떨어진다.
+              */}
                 <Link
                   to="/recommend"
                   aria-label="새로운 코스 발견하기 시작하기"
-                    className="bg-brand group-hover:bg-brand-hover hover:bg-brand-hover text-fg rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
+                    className="bg-brand/86 group-hover:bg-brand hover:bg-brand border border-brand-tint text-fg backdrop-blur-[10px] backdrop-brightness-125 rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
                   >
                     시작하기
                     <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
