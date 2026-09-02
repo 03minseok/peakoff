@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
@@ -9,7 +9,7 @@ import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../componen
 import { DatePicker } from '../components/DatePicker'
 import { RegionPicker } from '../components/RegionPicker'
 import { regionNameOf } from '../constants/regions'
-import { ApiRequestError, recommendCourse } from '../services/api'
+import { ApiRequestError, fetchForecastWindow, recommendCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type {
   CourseDraft,
@@ -20,6 +20,7 @@ import type {
 import {
   formatCompactDate,
   formatDateRange,
+  formatKoreanDate,
   formatWeekday,
   today,
 } from '../utils/date'
@@ -163,6 +164,29 @@ export function RecommendPage() {
   const [region, setRegion] = useState('')
   const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
+
+  /*
+   * 예측이 닿는 마지막 날. 코스 짜기와 <b>같은 규칙</b>이다 (2026-09-02에 맞췄다).
+   *
+   * <p>이 화면에 더 필요한 값이다 — 코스 짜기는 짜 두고 나중에 진단하면 되지만,
+   * 여기는 <b>누르는 즉시 초안이 만들어지고</b> 그 초안의 한적도가 예측에서 나온다.
+   * 창 밖 날짜를 고르면 점수가 통째로 빈 코스를 받아 들고 "왜 아무 값도 없지"가 된다.
+   *
+   * <p>실패하거나 목업으로 도는 동안에는 null이고, 그때는 안내를 그리지 않는다.
+   * 없는 제약을 설명하는 것보다 조용한 편이 낫다.
+   */
+  const [forecastEnd, setForecastEnd] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchForecastWindow(controller.signal)
+      .then((window) => setForecastEnd(window.lastDate))
+      .catch(() => setForecastEnd(null))
+    return () => controller.abort()
+  }, [])
+
+  /** 고른 날짜가 예측 창 밖인가. <b>막지 않는다</b> — 알리기만 한다 */
+  const beyondForecast = forecastEnd !== null && !isPastDate && startDate > forecastEnd
   /*
    * <b>다 골라야 넘어간다.</b> 예전에는 두 문항에 기본값이 있어 지역만 고르면 됐다.
    *
@@ -503,7 +527,12 @@ export function RecommendPage() {
             <legend className={`${CARD_TITLE} p-0`}>언제 며칠 가세요</legend>
           </div>
           {/* 코스 짜기와 같은 컴포넌트다. DatePicker 주석 참고 */}
-          <DatePicker value={startDate} onChange={setStartDate} ariaLabel="여행 시작일" />
+          <DatePicker
+            value={startDate}
+            onChange={setStartDate}
+            forecastEnd={forecastEnd}
+            ariaLabel="여행 시작일"
+          />
           <div className="grid grid-cols-4 gap-2">
             {DURATIONS.map((option) => (
               <label key={option.nights}>
@@ -520,6 +549,28 @@ export function RecommendPage() {
           </div>
           {isPastDate && (
             <p className="text-crowded-deep m-0 text-[12.5px]">오늘 이후 날짜를 골라주세요.</p>
+          )}
+
+          {/*
+            예측 창 밖이라고 <b>막지 않는다.</b> 색도 경고(붐빔)가 아니라 보통(앰버)이다 —
+            무언가 잘못됐다는 뜻이 아니라 "지금은 아직"이라는 뜻이라서다.
+            코스 짜기의 같은 안내와 문장까지 맞춘다.
+          */}
+          {beyondForecast && (
+            <div className="bg-moderate-tint rounded-ui flex items-start gap-2.5 px-3.5 py-3">
+              <span
+                className="bg-moderate mt-1.5 h-2 w-2 flex-none rounded-full"
+                aria-hidden="true"
+              />
+              <p className="text-moderate-deep m-0 text-[12.5px] leading-[1.6]">
+                예상 혼잡은{' '}
+                <strong className="font-semibold">{formatKoreanDate(forecastEnd!)}</strong>까지만
+                나와 있어요.
+                <br />
+                이 날짜로도 코스를 받을 수 있지만 한적도는 비어 나와요 — 여행이 가까워지면
+                다시 진단할 수 있어요.
+              </p>
+            </div>
           )}
         </fieldset>
 
