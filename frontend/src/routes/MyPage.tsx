@@ -17,6 +17,8 @@ import type { AccountSheet } from '../components/AccountSheets'
 import { ConfirmSheet } from '../components/ConfirmSheet'
 import { CreateTripSheet } from '../components/CreateTripSheet'
 import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
+import { LegalSheet } from '../components/LegalSheet'
+import type { LegalDocId } from '../content/legal'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
@@ -134,7 +136,7 @@ const SECTIONS = [
   },
   {
     tab: 'favorites' as const,
-    label: '찜한 곳',
+    label: '찜한 장소',
     anchor: 'my-favorites',
     Icon: Heart,
   },
@@ -223,6 +225,17 @@ export function MyPage() {
 
   /** 열려 있는 계정 시트. 입력값과 처리 상태는 AccountSheets가 들고 있다 */
   const [accountSheet, setAccountSheet] = useState<AccountSheet | null>(null)
+  /**
+   * 펼쳐 놓은 약관. null이면 시트가 닫혀 있다.
+   *
+   * <p>가입 화면과 <b>같은 시트를 그대로 쓴다</b>({@code LegalSheet}). 문서는 한 곳
+   * ({@code content/legal.ts})에만 있고, 동의를 받는 자리와 나중에 다시 읽는 자리가
+   * 같은 글을 보여준다 — 두 벌로 두면 한쪽만 고쳐지는 날이 온다.
+   *
+   * <p>⚠️ 여기에는 <b>동의 버튼이 없다.</b> 동의는 가입 때 이미 받았고,
+   * 같은 동의를 두 곳에서 받으면 어느 쪽이 진짜인지 갈린다.
+   */
+  const [openedDoc, setOpenedDoc] = useState<LegalDocId | null>(null)
 
   /**
    * 펼쳐 보고 있는 찜한 곳. <b>id가 아니라 줄 전체를 들고 있다.</b>
@@ -930,7 +943,7 @@ export function MyPage() {
 
         <div className={paneClass('favorites')}>
           {/*
-        ■ 찜한 곳.
+        ■ 찜한 장소.
 
         넓은 화면에서는 저장한 코스 <b>아래</b>에 이어 선다. 이 화면의 주인공은 코스이고
         찜은 그 재료다 — 언젠가 갈 곳을 모아 둔 것이지 완성된 여행이 아니다.
@@ -942,11 +955,11 @@ export function MyPage() {
       */}
           <section
             id="my-favorites"
-            className="border-line flex scroll-mt-24 flex-col gap-3 border-t pt-5 max-md:border-t-0 max-md:pt-0"
+            className="border-line flex scroll-mt-24 flex-col gap-3 border-t pt-5"
           >
             <div className="flex items-baseline gap-2">
               <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
-                찜한 곳
+                찜한 장소
               </h2>
               {favorites.length > 0 && (
                 <span className="text-hint text-[12.5px]">{favorites.length}곳</span>
@@ -956,7 +969,7 @@ export function MyPage() {
             {/*
           ⚠️ 빈 화면인지는 <b>lingering</b>으로 가른다. 마지막 하나의 하트를 껐을 때
           favorites는 곧바로 0이 되는데, 그것으로 가르면 방금 끈 카드가 사라지고
-          "아직 찜한 곳이 없어요"가 서 버린다 — 자리를 지키려던 것이 무의미해진다.
+          "아직 찜한 장소가 없어요"가 서 버린다 — 자리를 지키려던 것이 무의미해진다.
         */}
             {lingering.length === 0 ? (
               /*
@@ -968,7 +981,7 @@ export function MyPage() {
                 <span className="text-hint" aria-hidden="true">
                   <Heart size={26} />
                 </span>
-                <span className="text-fg text-[14.5px] font-semibold">아직 찜한 곳이 없어요</span>
+                <span className="text-fg text-[14.5px] font-semibold">아직 찜한 장소가 없어요</span>
                 <span className="text-muted text-[12.5px] leading-[1.6]">
                   장소를 열고 하트를 누르면 여기에 모여요.
                 </span>
@@ -1647,6 +1660,44 @@ export function MyPage() {
             </div>
 
             {/*
+          ■ 약관·처리방침 (2026-09-02)
+
+          가입할 때 동의하고 지나간 글을 <b>다시 읽을 자리</b>가 어디에도 없었다.
+          동의를 받았으면 그 내용을 언제든 다시 볼 수 있어야 한다.
+
+          <p>계정 카드와 <b>같은 모양의 줄</b>이다 — 이메일·닉네임 옆의 "변경"과 같은
+          자리에 "보기"가 선다. 다른 모양으로 두면 계정 화면 안에 문법이 둘이 된다.
+
+          <p>⚠️ 새 화면으로 보내지 않고 <b>시트로 덮는다.</b> 가입 화면이 같은 이유로
+          시트를 쓴다 — 읽고 돌아왔을 때 있던 자리가 그대로여야 한다.
+        */}
+            <div className={`${CARD} flex flex-col px-4`}>
+              <AccountRow
+                label="약관"
+                value="서비스 이용약관"
+                action={
+                  <button type="button" className={ROW_ACTION} onClick={() => setOpenedDoc('tos')}>
+                    보기
+                  </button>
+                }
+              />
+              <AccountRow
+                label="정책"
+                value="개인정보 처리방침"
+                last
+                action={
+                  <button
+                    type="button"
+                    className={ROW_ACTION}
+                    onClick={() => setOpenedDoc('privacy')}
+                  >
+                    보기
+                  </button>
+                }
+              />
+            </div>
+
+            {/*
           붉은 기를 <b>테두리와 글자에만</b> 준다. 채워버리면 탈퇴 같은 되돌릴 수 없는 일과
           같은 무게가 되는데, 로그아웃은 다시 들어오면 그만인 일이다.
 
@@ -1692,6 +1743,8 @@ export function MyPage() {
           </section>
         </div>
 
+        {openedDoc && <LegalSheet docId={openedDoc} onClose={() => setOpenedDoc(null)} />}
+
         {detailTrip && (
           <TripDetailSheet
             trip={detailTrip}
@@ -1717,7 +1770,7 @@ export function MyPage() {
         )}
 
         {/*
-        찜한 곳 펼쳐 보기. 한적도는 넘기지 않는다 — 찜은 날짜가 없는 표시라
+        찜한 장소 펼쳐 보기. 한적도는 넘기지 않는다 — 찜은 날짜가 없는 표시라
         어느 날 기준으로 재야 할지 정해지지 않는다. 시트는 값이 없으면 배지를 그리지 않는다.
 
         <p>"이 장소로 여행가기"({@code onPlanTrip})도 넘기지 않는다. 그 버튼은 <b>지역과
