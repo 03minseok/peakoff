@@ -136,7 +136,7 @@ const SECTIONS = [
   },
   {
     tab: 'favorites' as const,
-    label: '찜한 곳',
+    label: '찜한 장소',
     anchor: 'my-favorites',
     Icon: Heart,
   },
@@ -943,7 +943,7 @@ export function MyPage() {
 
         <div className={paneClass('favorites')}>
           {/*
-        ■ 찜한 곳.
+        ■ 찜한 장소.
 
         넓은 화면에서는 저장한 코스 <b>아래</b>에 이어 선다. 이 화면의 주인공은 코스이고
         찜은 그 재료다 — 언젠가 갈 곳을 모아 둔 것이지 완성된 여행이 아니다.
@@ -955,11 +955,11 @@ export function MyPage() {
       */}
           <section
             id="my-favorites"
-            className="border-line flex scroll-mt-24 flex-col gap-3 border-t pt-5 max-md:border-t-0 max-md:pt-0"
+            className="border-line flex scroll-mt-24 flex-col gap-3 border-t pt-5"
           >
             <div className="flex items-baseline gap-2">
               <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
-                찜한 곳
+                찜한 장소
               </h2>
               {favorites.length > 0 && (
                 <span className="text-hint text-[12.5px]">{favorites.length}곳</span>
@@ -969,7 +969,7 @@ export function MyPage() {
             {/*
           ⚠️ 빈 화면인지는 <b>lingering</b>으로 가른다. 마지막 하나의 하트를 껐을 때
           favorites는 곧바로 0이 되는데, 그것으로 가르면 방금 끈 카드가 사라지고
-          "아직 찜한 곳이 없어요"가 서 버린다 — 자리를 지키려던 것이 무의미해진다.
+          "아직 찜한 장소가 없어요"가 서 버린다 — 자리를 지키려던 것이 무의미해진다.
         */}
             {lingering.length === 0 ? (
               /*
@@ -981,7 +981,7 @@ export function MyPage() {
                 <span className="text-hint" aria-hidden="true">
                   <Heart size={26} />
                 </span>
-                <span className="text-fg text-[14.5px] font-semibold">아직 찜한 곳이 없어요</span>
+                <span className="text-fg text-[14.5px] font-semibold">아직 찜한 장소가 없어요</span>
                 <span className="text-muted text-[12.5px] leading-[1.6]">
                   장소를 열고 하트를 누르면 여기에 모여요.
                 </span>
@@ -1770,7 +1770,7 @@ export function MyPage() {
         )}
 
         {/*
-        찜한 곳 펼쳐 보기. 한적도는 넘기지 않는다 — 찜은 날짜가 없는 표시라
+        찜한 장소 펼쳐 보기. 한적도는 넘기지 않는다 — 찜은 날짜가 없는 표시라
         어느 날 기준으로 재야 할지 정해지지 않는다. 시트는 값이 없으면 배지를 그리지 않는다.
 
         <p>"이 장소로 여행가기"({@code onPlanTrip})도 넘기지 않는다. 그 버튼은 <b>지역과
