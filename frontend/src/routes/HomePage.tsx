@@ -1045,16 +1045,16 @@ export function HomePage() {
               <p>⚠️ <b>이 카드에는 아래 결(회색 물결)이 없다.</b> 대신 바탕 자체가 옅은 틸에서
               흰색으로 흐른다 — 결을 한 겹 더 얹는 것보다 면 전체가 물드는 편이 조용하고,
               테두리·버튼의 틸과 한 기운으로 묶인다.
+
+              <p>⚠️ <b>왼쪽 카드와 달리 {@code --photo-fade}를 넘기지 않는다.</b> 그 값은
+              사진 위에 <b>카드 색을 덧칠하는</b> 데 쓰는데, 이 카드는 바탕이 한 색이 아니라
+              그라디언트라 덧칠할 색이 없다. 여기서는 사진 쪽을 투명하게 만들어 뒤의 바탕이
+              그대로 비치게 한다 — 사유는 {@code .entry-photo-alt}(index.css)에 있다.
             */}
             <span
               aria-hidden="true"
               className="entry-photo entry-photo-alt"
-              style={
-                {
-                  '--photo-src': "url('/images/card-discover.jpg')",
-                  '--photo-fade': 'var(--c-surface)',
-                } as CSSProperties
-              }
+              style={{ '--photo-src': "url('/images/card-discover.jpg')" } as CSSProperties}
             />
 
             {/* 왼쪽 카드와 같은 규칙 — 모바일은 제목 위 맨 그림글자. 주석은 그쪽에 있다 */}
