@@ -483,6 +483,59 @@
    * 각자 갖는다 — 한동안 모양까지 함께 썼는데, 같은 윤곽이 색만 달리해 겹쳐 서니
    * 사진이 두 번 그려진 것처럼 보였다.
    */
+  /*
+   * 결과 히어로가 <b>딛고 선 수평선</b> (2026-09-03).
+   *
+   * <h3>왜 카드 바닥인가</h3>
+   * 어두운 잉크 한 색이라 카드가 덜 그린 면으로 보였다. 그런데 이 카드의 글은
+   * <b>가운데 정렬</b>이라 사진을 뒤에 깔면 갈 곳이 없다 — 실제로 전면에 깔아 봤더니
+   * 하늘 위에 흰 글자가 얹혀 대비가 무너지고, 사진이 카드를 통째로 먹었다.
+   *
+   * <p>그래서 <b>글자가 앉지 않는 유일한 자리</b>인 바닥에 띠로 눕힌다. 대비를 걱정할
+   * 일이 없으므로 사진을 <b>또렷하게</b> 둘 수 있다 — 옅게 깔아 텍스처로 만드는 것보다
+   * 이쪽이 "꾸몄다"고 말한다.
+   *
+   * <h3>윗변은 곡선이다</h3>
+   * 곧은 가로줄로 끊으면 카드가 <b>둘로 갈라진</b>다. 홈 진입 카드의 물결과 같은 문법이되
+   * (S 명령이 앞 곡선의 접선을 물려받아 꺾이는 곳이 없다) <b>다른 선</b>이다 —
+   * 그쪽은 위에서 흘러내리고 이쪽은 아래에 눕는다.
+   *
+   * <p>거기에 세로 그라디언트를 겹쳐 <b>잉크에서 사진이 배어 나오게</b> 한다.
+   * 곡선만으로 자르면 그 선이 오려 붙인 자국으로 보인다.
+   *
+   * <p>⚠️ 색은 토큰이다. 여기에 hex를 박으면 잉크색을 바꿀 때 이 띠만 옛 색으로 남는다.
+   */
+  .result-horizon {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 84px;
+    pointer-events: none;
+    background-image: var(--photo-src);
+    background-position: center 62%;
+    background-size: cover;
+    background-repeat: no-repeat;
+
+    --horizon-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,34%20C18,10%2040,4%2058,16%20S86,44%20100,26%20L100,100%20L0,100%20Z' fill='%23000'/%3E%3C/svg%3E");
+    --horizon-fade: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.55) 42%, #000 100%);
+
+    mask-image: var(--horizon-shape), var(--horizon-fade);
+    mask-size: 100% 100%, 100% 100%;
+    mask-repeat: no-repeat, no-repeat;
+    mask-composite: intersect;
+    -webkit-mask-image: var(--horizon-shape), var(--horizon-fade);
+    -webkit-mask-size: 100% 100%, 100% 100%;
+    -webkit-mask-repeat: no-repeat, no-repeat;
+    -webkit-mask-composite: source-in;
+  }
+
+  @media (min-width: 64rem) {
+    .result-horizon {
+      height: 116px;
+    }
+  }
+
   .entry-photo,
   .entry-base {
     position: absolute;
