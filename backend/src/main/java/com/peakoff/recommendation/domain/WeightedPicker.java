@@ -28,9 +28,13 @@ public class WeightedPicker {
 	/**
 	 * 대안 추천 계열이 함께 쓰는 <b>후보군 크기</b>와 <b>쏠림 정도</b>. (2026-08-26 실측)
 	 *
-	 * <p>여기 모아 둔 이유: 같은 값을 쓰는 곳이 셋이다 — 장소 교체(실데이터·목업)와
-	 * 홈의 "이번 주 한적한 곳". 각자 적어 두면 분석 결과로 값이 바뀔 때 한쪽만 고쳐지고,
+	 * <p>여기 모아 둔 이유: 같은 값을 쓰는 곳이 둘이다 — 장소 교체의 실데이터와 목업.
+	 * 각자 적어 두면 분석 결과로 값이 바뀔 때 한쪽만 고쳐지고,
 	 * 그러면 화면마다 다른 분산이 걸린다.
+	 *
+	 * <p>⚠️ 홈의 "이번 주 한적한 곳"은 <b>2026-09-03에 여기서 빠졌다.</b> 후보를
+	 * "지역 상위 35%"로 먼저 자르고 나면 그 안은 전부 충분히 한적해서, 점수로 다시
+	 * 쏠림을 줄 근거가 없다 — 그쪽은 {@link #pickEvenly}를 쓴다.
 	 *
 	 * <p>왜 3과 1.2인지는 {@code KtoRecommendationProvider}에 실측과 함께 적어 두었다.
 	 *
@@ -46,6 +50,27 @@ public class WeightedPicker {
 
 	public WeightedPicker(RandomGenerator random) {
 		this.random = random;
+	}
+
+	/**
+	 * 후보군 안에서 <b>점수를 보지 않고</b> 하나를 고른다.
+	 *
+	 * <h3>언제 가중이 아니라 균등인가</h3>
+	 * {@link #pick}은 "좋은 후보에 더 많이"라는 규칙이고, 그러려면 <b>후보들 사이에
+	 * 우열이 있어야</b> 한다. 그런데 부르는 쪽이 이미 자격선으로 후보를 잘라 놓았다면
+	 * 남은 것들 사이의 점수 차는 우열이 아니라 <b>같은 등급 안의 잔차</b>다.
+	 * 그 잔차로 확률을 기울이면, 넓혀 놓은 후보군에서 결국 위쪽 몇만 뽑힌다.
+	 *
+	 * <p>홈의 "이번 주 한적한 곳"이 그 자리다 — 지역 상위 35%(한적도 70~80 이상)로
+	 * 자른 뒤라 그 안은 전부 한적 등급이다. 76점과 79점 사이에 순위를 매길 이유가 없다.
+	 *
+	 * @param candidates 이미 자격선을 통과한 후보들. 비어 있으면 빈 값
+	 */
+	public <T> Optional<T> pickEvenly(List<T> candidates) {
+		if (candidates.isEmpty()) {
+			return Optional.empty();
+		}
+		return Optional.of(candidates.get(random.nextInt(candidates.size())));
 	}
 
 	/**

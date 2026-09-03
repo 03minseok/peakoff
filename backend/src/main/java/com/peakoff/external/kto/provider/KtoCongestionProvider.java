@@ -13,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import com.peakoff.congestion.domain.CongestionProvider;
+import com.peakoff.congestion.domain.QuietCandidate;
 import com.peakoff.congestion.domain.QuietSpot;
 import com.peakoff.congestion.domain.QuietSpotProvider;
 import com.peakoff.external.kto.client.KtoCongestionClient;
@@ -273,36 +274,31 @@ public class KtoCongestionProvider implements CongestionProvider, QuietSpotProvi
 	}
 
 	/**
-	 * 이름을 우리 장소로 잇기 <b>전에</b> 몇 배수까지 훑을지.
-	 *
-	 * <p>예측 이름 중에는 우리 카탈로그에 없는 것이 섞여 있고(공사가 부르는 이름이
-	 * 달라서 못 잇는 경우도 있다), 이어지더라도 분류 게이트에서 빠질 수 있다.
-	 * 딱 {@code limit}개만 훑으면 그만큼 빈손으로 끝난다.
-	 *
-	 * <p>거꾸로 배수를 키우면 <b>이름 잇기가 그만큼 늘어난다</b> — 이 인터페이스를 만든
-	 * 이유가 그 비용이었다. 4는 "웬만하면 채우되 헛일은 적게"의 절충이다.
-	 */
-	private static final int NAME_LINK_OVERSCAN = 4;
-
-	/**
-	 * 지역 하나에서 기간 안에 가장 한적한 곳들.
+	 * 지역 하나에서 기간 안에 한적한 곳들 — <b>이름 상태의 후보</b>까지만.
 	 *
 	 * <h3>왜 예측에서 장소로 가는가 (그 반대가 아니라)</h3>
 	 * 장소부터 시작하면 장소마다 {@code locate}가 돌아 <b>일곱 지역을 훑고 이름을 잇는다.</b>
 	 * 지역 전체를 보려면 그 일을 (장소 수 × 날짜 수)만큼 되풀이하게 된다.
 	 *
 	 * <p>예측 자료는 이미 지역 한 덩어리로 캐시돼 있으므로, 여기서는
-	 * <b>숫자만 보고 순위를 먼저 낸 뒤</b> 상위 몇 개만 장소로 잇는다.
-	 * 비싼 일(이름 잇기)이 수백 번에서 수십 번으로 줄어든다.
+	 * <b>숫자만 보고 순위를 내는 데서 멈춘다.</b> 비싼 일(이름 잇기)은 부르는 쪽이
+	 * 뽑기를 끝낸 뒤 {@link #resolve}로 한 번만 시킨다.
 	 *
 	 * <h3>기간 안에서 가장 한적한 <b>하루</b>를 고른다</h3>
 	 * 평균을 내지 않는다. 화면이 하려는 말은 "이번 주 언젠가 좀 한가해요"가 아니라
 	 * <b>"9월 3일 수요일에 가면 한적해요"</b>이고, 그러려면 그 하루가 값에 붙어 있어야 한다.
 	 * 평균은 요일 차이를 뭉개기도 한다 — 같은 곳의 토요일과 수요일이 40점 벌어지는 지역이 있다.
+	 *
+	 * <h3>⚠️ 비율은 <b>예측 대상 전체</b> 위에서 잰다</h3>
+	 * "우리 장소로 이을 수 있는 것들 중 상위 35%"가 아니다. 그렇게 재려면 자르기 전에
+	 * 전부 이어 봐야 하고, 그러면 이 메서드를 값싸게 만든 이유가 사라진다.
+	 * 이을 수 있느냐는 <b>우리 카탈로그 사정</b>이지 그 장소가 한적하냐와 무관하므로,
+	 * 한적한 순위는 공사가 예측한 목록 위에서 매기는 편이 오히려 곧다.
 	 */
 	@Override
-	public List<QuietSpot> quietestWithin(Region region, LocalDate from, int days, int limit) {
-		if (days < 1 || limit < 1) {
+	public List<QuietCandidate> quietCandidatesWithin(
+			Region region, LocalDate from, int days, double topShare, int minCandidates) {
+		if (days < 1 || topShare <= 0) {
 			return List.of();
 		}
 		RegionForecast forecast = client.forecastOf(region);
@@ -312,12 +308,10 @@ public class KtoCongestionProvider implements CongestionProvider, QuietSpotProvi
 		}
 
 		/*
-		 * 1단계 — 이름별로 기간 안 가장 한적한 날을 찾는다. 아직 우리 장소를 모른다.
-		 * 여기까지는 캐시된 Map 조회뿐이라 지역 전체를 훑어도 값이 싸다.
+		 * 이름별로 기간 안 가장 한적한 날을 찾는다. 여기까지는 캐시된 Map 조회뿐이라
+		 * 지역 전체를 훑어도 값이 싸다 — 넓게 보는 일이 공짜인 층이 여기다.
 		 */
-		record Ranked(String apiName, LocalDate date, int quietness) {
-		}
-		List<Ranked> ranked = new ArrayList<>();
+		List<QuietCandidate> ranked = new ArrayList<>();
 		for (String apiName : forecast.placeNames()) {
 			LocalDate bestDate = null;
 			int best = Integer.MIN_VALUE;
@@ -334,29 +328,29 @@ public class KtoCongestionProvider implements CongestionProvider, QuietSpotProvi
 				}
 			}
 			if (bestDate != null) {
-				ranked.add(new Ranked(apiName, bestDate, best));
+				ranked.add(new QuietCandidate(apiName, bestDate, best));
 			}
 		}
-		ranked.sort(Comparator.comparingInt(Ranked::quietness).reversed());
+		ranked.sort(Comparator.comparingInt(QuietCandidate::quietness).reversed());
 
-		/*
-		 * 2단계 — 위에서부터 우리 장소로 이어 본다. limit을 채우면 멈춘다.
-		 *
-		 * ⚠️ 여기서 거르는 것은 <b>이 서비스가 코스에 담을 만한 분류</b>다. 예측 자료에는
-		 * 시장(쇼핑)도 들어 있는데, 그것까지 "이번 주 한적한 곳"으로 내밀면
-		 * 화면이 여행지로 소개한 자리에 재래시장이 선다.
-		 */
-		List<QuietSpot> spots = new ArrayList<>();
-		int scanned = 0;
-		for (Ranked candidate : ranked) {
-			if (spots.size() >= limit || scanned >= limit * NAME_LINK_OVERSCAN) {
-				break;
-			}
-			scanned++;
-			Optional<Place> place = placeNamed(candidate.apiName(), region)
-					.filter(found -> PlaceCategories.isCourseCandidate(found.category()));
-			place.ifPresent(found -> spots.add(new QuietSpot(found, candidate.date(), candidate.quietness())));
-		}
-		return List.copyOf(spots);
+		int cut = Math.min(
+				ranked.size(),
+				Math.max(minCandidates, (int) Math.ceil(ranked.size() * topShare)));
+		return List.copyOf(ranked.subList(0, cut));
+	}
+
+	/**
+	 * 뽑힌 후보 하나를 우리 장소로 잇는다. <b>이 클래스에서 비싼 쪽이다</b> —
+	 * 지역 카탈로그를 훑어 이름이 같은 하나를 찾는다.
+	 *
+	 * <p>⚠️ 거르는 것은 <b>이 서비스가 코스에 담을 만한 분류</b>다. 예측 자료에는
+	 * 시장(쇼핑)도 들어 있는데, 그것까지 "이번 주 한적한 곳"으로 내밀면
+	 * 화면이 여행지로 소개한 자리에 재래시장이 선다.
+	 */
+	@Override
+	public Optional<QuietSpot> resolve(Region region, QuietCandidate candidate) {
+		return placeNamed(candidate.forecastName(), region)
+				.filter(found -> PlaceCategories.isCourseCandidate(found.category()))
+				.map(found -> new QuietSpot(found, candidate.date(), candidate.quietness()));
 	}
 }
