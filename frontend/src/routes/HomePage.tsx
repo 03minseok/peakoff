@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { BrandLockup } from '../components/BrandMark'
 import { CongestionBadge } from '../components/CongestionBadge'
-import { ChevronRight } from '../components/icons'
+import { ChevronRight, Heart } from '../components/icons'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
@@ -12,6 +12,8 @@ import { PublicCourseSheet } from '../components/PublicCourseSheet'
 import { CARD_RAISED } from '../components/styles'
 import { ApiRequestError, fetchQuietSpots, fetchRecentCourses } from '../services/api'
 import type { PublicCourse, QuietSpot } from '../types/api'
+import { useAuth } from '../state/authContext'
+import { useFavorites } from '../state/favoriteContext'
 import { useTrip } from '../state/tripContext'
 import { formatKoreanDate, formatNights, today } from '../utils/date'
 
@@ -175,13 +177,29 @@ const PREVIEW_PLACES = 3
  * 이 카드가 흰 박스 안에 들어간다. 흰 면 위에 흰 카드를 얹으면 그림자로만 갈려
  * 층이 흐릿해진다 — 옆 칸의 남의 코스 카드와 같은 규칙이다.
  */
-function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }) {
+function QuietSpotCard({
+  spot,
+  onOpen,
+  favorite,
+  onFavorite,
+}: {
+  spot: QuietSpot
+  onOpen: () => void
+  favorite: boolean
+  onFavorite: () => void
+}) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="press bg-surface border-line shadow-rest hover:bg-fill lg:bg-bg lg:border-0 lg:shadow-none lg:hover:bg-line/40 lg:rounded-card relative flex w-[var(--quiet-card-w)] flex-none cursor-pointer flex-col overflow-hidden rounded-[16px] border p-0 text-left transition-colors lg:w-full lg:flex-auto lg:flex-row lg:items-center lg:gap-3 lg:p-2.5"
-    >
+    /*
+      ⚠️ <b>카드가 통째로 버튼이던 것을 감싼 칸으로 바꿨다</b> (2026-09-03).
+      하트가 생기면서다 — 버튼 안에 버튼을 넣을 수 없다(브라우저가 마크업을 고쳐
+      하트를 카드 밖으로 끌어낸다). 누르는 면은 그대로 하나이고, 하트만 형제로 선다.
+    */
+    <div className="relative flex w-[var(--quiet-card-w)] flex-none lg:w-full">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="press bg-surface border-line shadow-rest hover:bg-fill lg:bg-bg lg:border-0 lg:shadow-none lg:hover:bg-line/40 lg:rounded-card relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[16px] border p-0 text-left transition-colors lg:flex-row lg:items-center lg:gap-3 lg:p-2.5 lg:pr-11"
+      >
       {/*
         ■ 모바일은 사진이 위, <b>lg는 예전 그대로</b> 왼쪽 썸네일이다 (2026-09-02)
 
@@ -199,81 +217,137 @@ function QuietSpotCard({ spot, onOpen }: { spot: QuietSpot; onOpen: () => void }
         끝까지 민 제스처가 페이지로 이어져 화면 전체가 밀린다
         (CLAUDE.md — 주간 예보에서 이미 한 번 걷어낸 자리다).
       */}
-      <PlaceThumbnail name={spot.place.name} imageUrl={spot.place.imageUrl} size="card" />
+        <PlaceThumbnail name={spot.place.name} imageUrl={spot.place.imageUrl} size="card" />
+
+        {/*
+          ⚠️ <b>이름이 한 줄을 통째로 쓴다.</b> 공사 이름은 원래 길다
+          (강원특별자치도산림박물관 · 여수 낭도리 공룡발자국화석 산지) — 옆에 무엇이든 세우면
+          <b>"여수 낭도리 공…"</b>으로 잘리고, 무엇인지 알아볼 수 없는 이름은
+          카드가 하는 일을 못 한다. 두 줄까지 간다.
+
+          <h3>격자(grid)로 세우는 이유 — 화면마다 자리가 다르다</h3>
+          세 줄의 <b>순서는 같고 자리만 갈린다</b>. 그래서 DOM은 하나로 두고 lg에서
+          칸·줄만 지정한다. flex로는 이게 안 된다 — 세로로 쌓으면 lg에서 이름과 배지를
+          한 줄에 놓을 수 없고, 화면마다 마크업을 나누면 한쪽만 고쳐지는 자리가 생긴다.
+
+          <pre>
+            모바일                 lg (예전 그대로)
+            이름                   이름            배지
+            지역 · 분류            지역 · 분류
+          </pre>
+        */}
+        <span className="grid min-w-0 gap-0.75 px-2 pt-2 pb-2.5 lg:flex-1 lg:grid-cols-[1fr_auto] lg:gap-1 lg:p-0">
+          <span className="text-fg line-clamp-2 min-w-0 text-[12px] leading-[1.35] font-semibold tracking-[-0.01em] lg:col-start-1 lg:row-start-1 lg:text-[15px]">
+            {spot.place.name}
+          </span>
+          {/*
+            ■ 지역과 분류가 <b>한 줄에 나란히</b> 선다 (2026-09-03)
+
+            분류(문화·명소 · 자연·풍경)는 그동안 상세 시트를 열어야 보였다. 그런데 이 목록은
+            <b>어디로 갈지 안 정한 사람</b>에게 말을 거는 자리라, "어떤 곳인지"를 열어 봐야
+            아는 것은 한 걸음 늦다. 사진이 절반쯤 말해 주지만 사진만으로는
+            절이 박물관인지 전망대가 공원인지 갈리지 않는다.
+
+            ⚠️ <b>가운뎃점으로 잇지 않는다.</b> 분류 이름 안에 이미 점이 들어 있어
+            ("서귀포시 · 문화·명소") 셋으로 읽힌다. 지역만 알약을 두르고 분류는 맨 글자로
+            두면 <b>테두리가 구분선 노릇</b>을 하므로 점이 필요 없다.
+
+            <p>지역은 줄지 않고 분류가 먼저 줄어든다 — 지역은 이 카드가 어디인지를 말하는
+            이름표라 잘리면 쓸모가 없고(제주시/서귀포시), 분류는 잘려도 어림이 선다.
+          */}
+          <span className="flex min-w-0 items-center gap-1 lg:col-start-1 lg:row-start-2">
+            {/*
+              지역. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
+              지역은 신호가 아니라 이름표다.
+
+              <p>모바일에서는 알약을 벗고 맨 글자로 선다. 카드 폭이 절반이라
+              알약의 좌우 여백이 이름 폭을 갉아먹는다. lg는 예전의 흰 알약 그대로.
+            */}
+            <span className="text-hint bg-fill rounded-chip w-fit flex-none px-1.5 py-0.5 text-[10px] font-semibold lg:bg-surface lg:text-[11px]">
+              {spot.regionName}
+            </span>
+            <span className="text-hint min-w-0 truncate text-[10px] lg:text-[11px]">
+              {spot.place.categoryName}
+            </span>
+          </span>
+          {/*
+            ■ 모바일에서는 배지가 <b>사진 왼쪽 위</b>에 얹힌다
+
+            글 아래에 있을 때는 카드마다 이름이 한 줄이냐 두 줄이냐에 따라 배지의 높이가
+            달라져, 나란한 카드끼리 점수를 눈으로 훑을 수 없었다. 사진 모서리에 얹으면
+            <b>네 장의 배지가 언제나 같은 자리</b>에 선다.
+
+            <p>오른쪽 위에 있던 것을 <b>왼쪽으로 옮겼다</b>(2026-09-03). 그 모서리를 하트에
+            내주었다 — 하트는 어느 서비스에서나 오른쪽 위라, 우리만 반대로 두면
+            찾는 곳에 없다. 배지는 어느 모서리든 <b>모든 카드에서 같은 자리</b>이기만 하면 된다.
+
+            <p>사진 위에 글자가 얹히지만 배지는 <b>불투명한 tint 바탕</b>을 가지고 있어
+            어떤 사진 위에서도 대비가 유지된다 — 반투명하게 두면 밝은 하늘 사진에서 묻힌다.
+
+            <p>lg는 예전 그대로다 — 그쪽은 사진이 왼쪽 썸네일이라 얹을 자리가 없고,
+            이름과 같은 줄에 서는 것이 이미 같은 일을 한다.
+          */}
+          <span className="absolute top-1.5 left-1.5 flex lg:static lg:col-start-2 lg:row-start-1 lg:mt-0 lg:items-start lg:justify-self-end">
+            {/*
+              같은 배지를 화면마다 다른 크기로 그린다 — 좁은 화면에서는 카드가 132px이라
+              sm이 카드 폭의 절반을 먹는다. lg의 세로 목록은 폭이 넉넉해 예전 크기 그대로.
+            */}
+            <span className="lg:hidden">
+              <CongestionBadge
+                level={spot.level}
+                label={spot.levelLabel}
+                quietness={spot.quietness}
+                size="xs"
+              />
+            </span>
+            <span className="hidden lg:inline-flex">
+              <CongestionBadge
+                level={spot.level}
+                label={spot.levelLabel}
+                quietness={spot.quietness}
+                size="sm"
+              />
+            </span>
+          </span>
+        </span>
+      </button>
 
       {/*
-        ⚠️ <b>이름이 한 줄을 통째로 쓴다.</b> 공사 이름은 원래 길다
-        (강원특별자치도산림박물관 · 여수 낭도리 공룡발자국화석 산지) — 옆에 무엇이든 세우면
-        <b>"여수 낭도리 공…"</b>으로 잘리고, 무엇인지 알아볼 수 없는 이름은
-        카드가 하는 일을 못 한다. 두 줄까지 간다.
+        ■ 찜 하트 — <b>목록에서 바로 누른다</b> (2026-09-03)
 
-        <h3>격자(grid)로 세우는 이유 — 화면마다 자리가 다르다</h3>
-        세 줄의 <b>순서는 같고 자리만 갈린다</b>. 그래서 DOM은 하나로 두고 lg에서
-        칸·줄만 지정한다. flex로는 이게 안 된다 — 세로로 쌓으면 lg에서 이름과 배지를
-        한 줄에 놓을 수 없고, 화면마다 마크업을 나누면 한쪽만 고쳐지는 자리가 생긴다.
+        그동안 하트는 상세 시트 안에만 있었다. 홈에서 마음에 드는 곳을 봐도
+        <b>열고 → 누르고 → 닫는</b> 세 걸음이라, 곁들이는 기능치고 값이 비쌌다.
 
-        <pre>
-          모바일            lg (예전 그대로)
-          이름              이름        배지
-          지역              지역
-          배지
-        </pre>
+        <h3>모바일은 사진 위 흰 원, lg는 맨 하트</h3>
+        사진 위에서는 무엇이 깔리든 읽혀야 하므로 <b>흰 원</b>을 깔고 그 위에 그린다.
+        어두운 유리(반투명 잉크)로도 해 봤지만, 켜진 하트의 빨강({@code --c-like})이
+        어두운 바탕에서 3:1을 못 넘긴다 — 흰 바탕이면 4.4:1이다.
+        lg에서는 하트가 사진이 아니라 카드 바탕 위에 서므로 원을 벗는다(상세 시트와 같은 모양).
 
-        <p>모바일에서 배지가 마지막 줄에 혼자 서므로 나란한 카드들의 점수가
-        <b>같은 높이</b>에 맞는다 — 배지를 오른쪽 위로 올렸던 이유(이름 길이에 따라
-        제각기 다른 자리에 서던 것)를 격자가 다른 방법으로 푼다.
+        <p>⚠️ <b>카드를 여는 버튼과 형제다.</b> 안에 넣으면 버튼 안의 버튼이 된다.
+        {@code stopPropagation}으로 막을 일도 없어진다 — 애초에 겹치지 않는다.
+
+        <p>게스트에게도 <b>감추지 않는다.</b> 감추면 이 기능이 있는 줄도 모르고
+        로그인할 이유도 하나 줄어든다. 누르면 왜 안 되는지를 목록 아래에서 말한다
+        (상세 시트가 쓰는 방법과 같다).
       */}
-      <span className="grid min-w-0 gap-0.75 px-2 pt-2 pb-2.5 lg:flex-1 lg:grid-cols-[1fr_auto] lg:gap-1 lg:p-0">
-        <span className="text-fg line-clamp-2 min-w-0 text-[12px] leading-[1.35] font-semibold tracking-[-0.01em] lg:col-start-1 lg:row-start-1 lg:text-[15px]">
-          {spot.place.name}
+      <button
+        type="button"
+        onClick={onFavorite}
+        aria-pressed={favorite}
+        aria-label={favorite ? `${spot.place.name} 찜 취소` : `${spot.place.name} 찜하기`}
+        className={`press touch-hitbox absolute top-1.5 right-1.5 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-white/90 shadow-rest transition-colors lg:top-1/2 lg:right-2 lg:h-9 lg:w-9 lg:-translate-y-1/2 lg:bg-transparent lg:shadow-none ${
+          favorite ? 'text-like' : 'text-hint hover:text-fg'
+        }`}
+      >
+        <span className="lg:hidden">
+          <Heart size={15} filled={favorite} />
         </span>
-        {/*
-          지역. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
-          지역은 신호가 아니라 이름표다.
-
-          <p>모바일에서는 알약을 벗고 맨 글자로 선다. 카드 폭이 절반이라
-          알약의 좌우 여백이 이름 폭을 갉아먹는다. lg는 예전의 흰 알약 그대로.
-        */}
-        <span className="text-hint bg-fill rounded-chip w-fit min-w-0 truncate px-1.5 py-0.5 text-[10px] font-semibold lg:bg-surface lg:col-start-1 lg:row-start-2 lg:text-[11px]">
-          {spot.regionName}
+        <span className="hidden lg:block">
+          <Heart size={20} filled={favorite} />
         </span>
-        {/*
-          ■ 모바일에서는 배지가 <b>사진 오른쪽 위</b>에 얹힌다 (2026-09-02)
-
-          글 아래에 있을 때는 카드마다 이름이 한 줄이냐 두 줄이냐에 따라 배지의 높이가
-          달라져, 나란한 카드끼리 점수를 눈으로 훑을 수 없었다. 사진 모서리에 얹으면
-          <b>네 장의 배지가 언제나 같은 자리</b>에 선다.
-
-          <p>사진 위에 글자가 얹히지만 배지는 <b>불투명한 tint 바탕</b>을 가지고 있어
-          어떤 사진 위에서도 대비가 유지된다 — 반투명하게 두면 밝은 하늘 사진에서 묻힌다.
-
-          <p>lg는 예전 그대로다 — 그쪽은 사진이 왼쪽 썸네일이라 얹을 자리가 없고,
-          이름과 같은 줄에 서는 것이 이미 같은 일을 한다.
-        */}
-        <span className="absolute top-1.5 right-1.5 flex lg:static lg:col-start-2 lg:row-start-1 lg:mt-0 lg:items-start lg:justify-self-end">
-          {/*
-            같은 배지를 화면마다 다른 크기로 그린다 — 좁은 화면에서는 카드가 132px이라
-            sm이 카드 폭의 절반을 먹는다. lg의 세로 목록은 폭이 넉넉해 예전 크기 그대로.
-          */}
-          <span className="lg:hidden">
-            <CongestionBadge
-              level={spot.level}
-              label={spot.levelLabel}
-              quietness={spot.quietness}
-              size="xs"
-            />
-          </span>
-          <span className="hidden lg:inline-flex">
-            <CongestionBadge
-              level={spot.level}
-              label={spot.levelLabel}
-              quietness={spot.quietness}
-              size="sm"
-            />
-          </span>
-        </span>
-      </span>
-    </button>
+      </button>
+    </div>
   )
 }
 
@@ -391,6 +465,8 @@ export function HomePage() {
   const navigate = useNavigate()
   // 남의 코스를 내 편집 흐름에 담을 때만 쓴다.
   const { restore } = useTrip()
+  const { member } = useAuth()
+  const { isFavorite, toggle } = useFavorites()
   /**
    * 다른 사람들이 저장한 코스 후보. <b>이 화면에 머무는 동안의 캐시다.</b>
    *
@@ -567,6 +643,28 @@ export function HomePage() {
    * 제멋대로 바뀐다. 이 화면에 머무는 동안은 처음 받은 셋이 그대로 선다.
    */
   const [quietSpots, setQuietSpots] = useState<QuietSpotState>({ phase: 'loading' })
+
+  /**
+   * 게스트가 하트를 눌렀는가. <b>상세 시트가 쓰는 방법과 같다.</b>
+   *
+   * <p>하트를 감추지 않고 세워 두되, 눌렀을 때 <b>왜 안 되는지</b>를 그 자리에서 말한다.
+   * 로그인 화면으로 튕겨내지 않는 이유는 보고 있던 목록을 잃기 때문이다 —
+   * 돌아오면 뽑기가 다시 돌아 <b>그 곳이 목록에 없을 수도</b> 있다.
+   */
+  const [favoriteNeedsLogin, setFavoriteNeedsLogin] = useState(false)
+
+  function toggleFavorite(spot: QuietSpot) {
+    if (!member) {
+      setFavoriteNeedsLogin(true)
+      return
+    }
+    toggle({
+      id: spot.place.id,
+      name: spot.place.name,
+      categoryName: spot.place.categoryName,
+      imageUrl: spot.place.imageUrl,
+    })
+  }
 
   /**
    * 띠가 보이는 창의 폭. <b>끝까지 밀었을 때 오른쪽이 비지 않게</b> 하는 데 쓴다.
@@ -1283,6 +1381,8 @@ export function HomePage() {
                     key={spot.place.id}
                     spot={spot}
                     onOpen={() => setOpenedSpot(spot)}
+                    favorite={isFavorite(spot.place.id)}
+                    onFavorite={() => toggleFavorite(spot)}
                   />
                 ))}
               </div>
@@ -1316,6 +1416,21 @@ export function HomePage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/*
+            게스트가 하트를 눌렀을 때만 선다. 자리를 미리 비워두지 않는 이유는,
+            누르기 전에는 아무 문제도 없는데 안내가 서 있으면 <b>못 쓰는 기능</b>처럼
+            보이기 때문이다. 카드가 120px이라 카드 안에는 이 말이 들어갈 자리가 없다 —
+            <b>목록 아래 한 줄</b>이 그 자리를 대신한다.
+          */}
+          {favoriteNeedsLogin && (
+            <p className="bg-bg text-muted rounded-ui m-0 px-3 py-2 text-[12.5px] leading-[1.6]">
+              로그인하면 찜할 수 있어요.{' '}
+              <Link to="/login" className="text-brand-deep font-semibold">
+                로그인하기
+              </Link>
+            </p>
           )}
 
           {quietSpots.phase === 'loaded' && quietSpots.spots.length === 0 && (
