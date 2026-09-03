@@ -735,7 +735,39 @@ export function ResultPage() {
             {@code gain > 0}에서만 선다. 총점이 내려갔거나 견주지 못한 코스에까지
             같은 얼굴을 하면, 이 화면의 모든 문장이 장식으로 읽힌다.
           */}
-          <section className="bg-fg rounded-card relative overflow-hidden px-5 py-6 text-white lg:px-10 lg:py-8">
+          <section className="bg-fg rounded-card relative overflow-hidden px-5 pt-6 pb-22 text-white lg:px-10 lg:pt-8 lg:pb-28">
+            {/*
+              ■ 히어로가 딛고 선 <b>수평선</b> (2026-09-03)
+
+              여행이 끝나는 화면인데 <b>평평한 잉크 한 색</b>이었다. 축하 갈래에는 칩과
+              ✨ 줄이 자리를 채우지만 "원안 그대로입니다" 갈래는 제목 한 줄과 회색 한 줄뿐이라
+              카드가 <b>덜 그린 면</b>으로 보였다.
+
+              <p>사진을 <b>전면에 깔아 봤다가 물렀다.</b> 이 카드의 글은 가운데 정렬이라
+              사진이 갈 곳이 없다 — 하늘 위에 흰 글자가 얹혀 대비가 무너지고, 카드가
+              통째로 사진 카드가 됐다. 그래서 <b>글자가 앉지 않는 유일한 자리</b>인
+              바닥에 눕힌다. 대비를 걱정할 일이 없으니 사진을 또렷하게 둘 수 있다.
+
+              <p>사진은 <b>홈 첫 화면과 같은 바다</b>다 — 여행을 고르는 화면과 끝내는 화면이
+              같은 장면으로 닫힌다. 파일이 두 벌인 것도 홈과 같은 이유다: 모바일 판을 넓은
+              화면에서 늘리면 흐려지고, 넓은 판(190KB)은 휴대폰이 받을 무게가 아니다.
+
+              <p>⚠️ <b>글로우를 되살린 것이 아니다.</b> 걷어낸 그것은 색이 뜻을 지고 있었고
+              (틸=한적 · 핑크=붐빔) 이것은 <b>색이 없는 사진</b>이다. 뜻은 여전히 글과
+              배지·타일만 진다.
+
+              <p>모양(곡선·번져 나오는 그라디언트)은 {@code .result-horizon}에 있다(index.css).
+            */}
+            <span
+              aria-hidden="true"
+              className="result-horizon lg:hidden"
+              style={{ '--photo-src': "url('/images/hero-sea.jpg')" } as CSSProperties}
+            />
+            <span
+              aria-hidden="true"
+              className="result-horizon hidden lg:block"
+              style={{ '--photo-src': "url('/images/hero-sea-wide.jpg')" } as CSSProperties}
+            />
             <div className="relative mx-auto flex max-w-[520px] flex-col items-center gap-3.5 text-center">
               {/*
                 <b>브랜드 마크가 직접 축하한다.</b> 이모지를 쓰지 않은 이유:
