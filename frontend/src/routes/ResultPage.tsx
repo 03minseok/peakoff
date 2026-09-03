@@ -628,8 +628,22 @@ export function ResultPage() {
           },
         ]
       : []),
-    { label: '교체한 장소', value: `${changes.length}곳` },
-    { label: '붐비는 곳', value: `${crowdedBefore} → ${crowdedAfter}` },
+    /*
+      ⚠️ <b>바꾼 것이 없으면 화살표를 쓰지 않는다</b> (2026-09-03).
+
+      {@code 0 → 0}은 <b>맞대어 본 결과</b>의 모양인데, 아래 비교 열이 사라진 화면에서
+      혼자 남으면 없는 비교를 가리키게 된다. 무엇보다 두 수가 같을 수밖에 없는 자리라
+      화살표가 "무언가 바뀌었다"고 말해 놓고 같은 수를 두 번 보여준다.
+
+      <p>"교체한 장소"도 함께 뺀다. 그 칸이 말할 수 있는 값은 {@code 0곳} 하나뿐이고,
+      제목이 이미 "원안 그대로입니다"라고 더 크게 말했다 — 같은 사실의 세 번째 문장이다.
+    */
+    ...(summary.length === 0
+      ? [{ label: '붐비는 곳', value: `${crowdedAfter}곳` }]
+      : [
+          { label: '교체한 장소', value: `${changes.length}곳` },
+          { label: '붐비는 곳', value: `${crowdedBefore} → ${crowdedAfter}` },
+        ]),
   ]
 
   return (
@@ -783,188 +797,208 @@ export function ResultPage() {
           </section>
 
           {/*
-            두 코스를 맞대는 자리.
+            ■ <b>바꾼 것이 없으면 이 자리를 통째로 비운다</b> (2026-09-03)
 
-            <b>넓은 화면은 나란히, 좁은 화면은 번갈아.</b> 위아래로 쌓으면 두 코스가
-            한 화면에 함께 서지 못해, 맞대어 보라고 만든 화면에서 <b>스크롤로 기억해
-            비교</b>하게 된다. 스위치로 갈아끼우면 두 열이 <b>같은 자리</b>에 뜨므로
-            바뀐 줄이 눈에 그대로 남는다.
+            원안과 개선안이 <b>글자 하나 다르지 않은</b> 코스일 때, 두 열을 세우면
+            같은 목록을 두 번 그려 놓고 이름만 다르게 부르는 화면이 된다. 스위치를 눌러도
+            아무것도 바뀌지 않으니 <b>조작이 고장으로 읽히고</b>, 넓은 화면에서는 나란한
+            두 열이 "무엇이 다른지 찾아보라"고 말하는데 다른 곳이 없다.
 
-            <p>⚠️ <b>가로로 미는 "상자"로 만들지 않는다.</b> 한때 스냅 캐러셀이었다 —
-            {@code overflow-x-auto} + {@code overscroll-x-contain}으로. 규칙이 허용하는
-            예외 처리라고 보았지만, <b>실물 아이폰에서 페이지가 통째로 옆으로 밀렸다.</b>
-            끝까지 민 제스처가 페이지로 이어지는 그 문제이고, {@code overscroll-behavior-x}는
-            iOS 사파리에서 그것을 막아주지 못했다. body의 {@code overflow-x: clip}도
-            소용없었다 — 넘쳐서가 아니라 <b>밀어서</b> 생기는 일이라 그렇다.
+            <p>히어로가 이미 "원안 그대로입니다"라고 말한 뒤다. 그 말 다음에 올 것은
+            <b>맞대어 보기가 아니라 내가 짠 코스</b>다 — 요약 바로 아래에서 최종 동선이 뜬다.
 
-            <p>그래서 조작을 둘로 갈랐다. <b>스위치</b>가 어디를 보고 있는지 말하고 눌러서도
-            넘기게 하며, <b>끌기</b>는 아래 띠가 직접 받는다 — 스크롤 상자를 만드는 대신
-            손가락 이동량을 {@code translate}로 옮긴다. 브라우저가 맡는 가로 스크롤이
-            아예 없으므로 페이지로 넘어갈 제스처도 없다.
-
-            <p>스위치를 남겨 둔 이유: 끌기는 <b>화면에 보이지 않는 조작</b>이다.
-            홈의 "붐빌 것 / 한적할 것"과 같은 모양이라, 이 서비스에서
-            "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
-
-            <p>원안이 먼저다. 스위치 순서도, 넓은 화면의 왼쪽 자리도 —
-            "무엇이 어떻게 바뀌었는지"는 앞뒤가 있어야 읽힌다.
+            <p>⚠️ 조건을 {@code changes.length}가 아니라 <b>{@code summary}</b>로 잡는다.
+            날짜만 옮긴 코스는 장소가 하나도 안 바뀌었지만 <b>점수가 달라진다</b> —
+            그때는 맞대어 볼 것이 있다. 히어로의 "원안 그대로입니다"가 서는 조건과
+            같은 자를 쓴다(둘이 갈리면 화면이 스스로 모순된다).
           */}
-          <div className="flex flex-col gap-3">
+          {summary.length > 0 && (
+            <>
             {/*
-              스위치. 고른 쪽이 흰 면으로 떠오른다. 홈과 같은 모양이라
-              이 서비스에서 "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
+              두 코스를 맞대는 자리.
 
-              고른 쪽에 등급색을 칠하지 않는다. 아래 줄마다 이미 배지가 서 있는데
-              스위치까지 같은 색을 쓰면 "지금 고른 것"과 "얼마나 붐비는지"가 겹친다.
+              <b>넓은 화면은 나란히, 좁은 화면은 번갈아.</b> 위아래로 쌓으면 두 코스가
+              한 화면에 함께 서지 못해, 맞대어 보라고 만든 화면에서 <b>스크롤로 기억해
+              비교</b>하게 된다. 스위치로 갈아끼우면 두 열이 <b>같은 자리</b>에 뜨므로
+              바뀐 줄이 눈에 그대로 남는다.
+
+              <p>⚠️ <b>가로로 미는 "상자"로 만들지 않는다.</b> 한때 스냅 캐러셀이었다 —
+              {@code overflow-x-auto} + {@code overscroll-x-contain}으로. 규칙이 허용하는
+              예외 처리라고 보았지만, <b>실물 아이폰에서 페이지가 통째로 옆으로 밀렸다.</b>
+              끝까지 민 제스처가 페이지로 이어지는 그 문제이고, {@code overscroll-behavior-x}는
+              iOS 사파리에서 그것을 막아주지 못했다. body의 {@code overflow-x: clip}도
+              소용없었다 — 넘쳐서가 아니라 <b>밀어서</b> 생기는 일이라 그렇다.
+
+              <p>그래서 조작을 둘로 갈랐다. <b>스위치</b>가 어디를 보고 있는지 말하고 눌러서도
+              넘기게 하며, <b>끌기</b>는 아래 띠가 직접 받는다 — 스크롤 상자를 만드는 대신
+              손가락 이동량을 {@code translate}로 옮긴다. 브라우저가 맡는 가로 스크롤이
+              아예 없으므로 페이지로 넘어갈 제스처도 없다.
+
+              <p>스위치를 남겨 둔 이유: 끌기는 <b>화면에 보이지 않는 조작</b>이다.
+              홈의 "붐빌 것 / 한적할 것"과 같은 모양이라, 이 서비스에서
+              "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
+
+              <p>원안이 먼저다. 스위치 순서도, 넓은 화면의 왼쪽 자리도 —
+              "무엇이 어떻게 바뀌었는지"는 앞뒤가 있어야 읽힌다.
             */}
-            <div className="bg-fill flex gap-1 rounded-[12px] p-1 lg:hidden">
-              {['원안', '개선안'].map((label, index) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => setComparePage(index)}
-                  aria-pressed={comparePage === index}
-                  className={`flex-1 cursor-pointer rounded-[9px] py-1.75 text-[12.5px] font-semibold transition-colors ${
-                    comparePage === index ? 'bg-surface text-fg shadow-rest' : 'text-hint bg-transparent'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-col gap-3">
+              {/*
+                스위치. 고른 쪽이 흰 면으로 떠오른다. 홈과 같은 모양이라
+                이 서비스에서 "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
 
-            {/*
-              두 열을 <b>가로로 이어 붙인 띠</b>를 놓고, 창만큼만 보여준다.
-              좁은 화면에서는 고른 쪽이 그 창에 들어와 서고, 넓은 화면에서는 띠를 풀어
-              둘을 나란히 세운다.
+                고른 쪽에 등급색을 칠하지 않는다. 아래 줄마다 이미 배지가 서 있는데
+                스위치까지 같은 색을 쓰면 "지금 고른 것"과 "얼마나 붐비는지"가 겹친다.
+              */}
+              <div className="bg-fill flex gap-1 rounded-[12px] p-1 lg:hidden">
+                {['원안', '개선안'].map((label, index) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setComparePage(index)}
+                    aria-pressed={comparePage === index}
+                    className={`flex-1 cursor-pointer rounded-[9px] py-1.75 text-[12.5px] font-semibold transition-colors ${
+                      comparePage === index ? 'bg-surface text-fg shadow-rest' : 'text-hint bg-transparent'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
 
-              <p>⚠️ <b>스크롤 상자가 아니라 {@code transform}이다.</b> 이 구분이 이 코드의
-              전부다. {@code overflow-x-auto}로 만들면 브라우저가 가로 스크롤을 맡고,
-              끝까지 민 제스처가 페이지로 이어져 <b>아이폰에서 화면이 통째로 밀렸다</b> —
-              {@code overscroll-behavior-x}로도 막히지 않던 그 문제다. 여기서는 스크롤이
-              아예 없다. 손가락 이동량을 우리가 받아 {@code translate}로 옮길 뿐이라
-              페이지에 넘겨줄 스크롤 자체가 생기지 않는다.
+              {/*
+                두 열을 <b>가로로 이어 붙인 띠</b>를 놓고, 창만큼만 보여준다.
+                좁은 화면에서는 고른 쪽이 그 창에 들어와 서고, 넓은 화면에서는 띠를 풀어
+                둘을 나란히 세운다.
 
-              <p>{@code touch-pan-y}가 짝이다. 세로는 브라우저에게 그대로 맡기고
-              <b>가로 제스처만</b> 우리가 가져온다 — 브라우저가 가로로 밀 일이 없어진다.
+                <p>⚠️ <b>스크롤 상자가 아니라 {@code transform}이다.</b> 이 구분이 이 코드의
+                전부다. {@code overflow-x-auto}로 만들면 브라우저가 가로 스크롤을 맡고,
+                끝까지 민 제스처가 페이지로 이어져 <b>아이폰에서 화면이 통째로 밀렸다</b> —
+                {@code overscroll-behavior-x}로도 막히지 않던 그 문제다. 여기서는 스크롤이
+                아예 없다. 손가락 이동량을 우리가 받아 {@code translate}로 옮길 뿐이라
+                페이지에 넘겨줄 스크롤 자체가 생기지 않는다.
 
-              <p>감추는 쪽을 {@code hidden}으로 지우지 않는 이유: 창 밖에 서 있어야
-              끌어당길 때 <b>따라 들어온다.</b> 넘길 것이 옆에 있다는 사실 자체가
-              이 조작의 유일한 안내다.
-            */}
-            <div className="overflow-hidden lg:overflow-visible">
-              <div
-                className={`flex touch-pan-y items-start gap-0 select-none translate-x-[var(--pane-x)] lg:select-auto lg:grid lg:translate-x-0 lg:grid-cols-2 lg:gap-4 ${
-                  // 손가락을 따라오는 동안에는 전환을 끈다. 켜두면 손끝보다 늦게 따라온다
-                  dragOffset === 0 ? 'transition-transform duration-300 ease-out' : ''
-                } motion-reduce:transition-none`}
-                /*
-                  ⚠️ 옮기는 값을 <b>인라인 style의 transform으로 직접 주지 않는다.</b>
-                  인라인이 클래스를 이기므로 넓은 화면의 {@code lg:translate-x-0}이
-                  무력해져, 두 열이 나란히 서야 할 자리에서 한 열이 밖으로 밀려난다.
-                  변수만 인라인으로 넘기고 <b>쓸지 말지는 클래스가 정한다.</b>
+                <p>{@code touch-pan-y}가 짝이다. 세로는 브라우저에게 그대로 맡기고
+                <b>가로 제스처만</b> 우리가 가져온다 — 브라우저가 가로로 밀 일이 없어진다.
 
-                  <p>모바일에서 열 사이 간격이 0인 것도 같은 이유다 — 간격이 있으면
-                  100%만 옮겨서는 다음 열이 그 폭만큼 어긋나 선다.
-                */
-                style={
-                  { '--pane-x': `calc(${-comparePage * 100}% + ${dragOffset}px)` } as CSSProperties
-                }
-                onPointerDown={(event) => {
-                  // 마우스 오른쪽 버튼·보조 포인터는 제스처가 아니다
-                  if (!event.isPrimary) {
-                    return
+                <p>감추는 쪽을 {@code hidden}으로 지우지 않는 이유: 창 밖에 서 있어야
+                끌어당길 때 <b>따라 들어온다.</b> 넘길 것이 옆에 있다는 사실 자체가
+                이 조작의 유일한 안내다.
+              */}
+              <div className="overflow-hidden lg:overflow-visible">
+                <div
+                  className={`flex touch-pan-y items-start gap-0 select-none translate-x-[var(--pane-x)] lg:select-auto lg:grid lg:translate-x-0 lg:grid-cols-2 lg:gap-4 ${
+                    // 손가락을 따라오는 동안에는 전환을 끈다. 켜두면 손끝보다 늦게 따라온다
+                    dragOffset === 0 ? 'transition-transform duration-300 ease-out' : ''
+                  } motion-reduce:transition-none`}
+                  /*
+                    ⚠️ 옮기는 값을 <b>인라인 style의 transform으로 직접 주지 않는다.</b>
+                    인라인이 클래스를 이기므로 넓은 화면의 {@code lg:translate-x-0}이
+                    무력해져, 두 열이 나란히 서야 할 자리에서 한 열이 밖으로 밀려난다.
+                    변수만 인라인으로 넘기고 <b>쓸지 말지는 클래스가 정한다.</b>
+
+                    <p>모바일에서 열 사이 간격이 0인 것도 같은 이유다 — 간격이 있으면
+                    100%만 옮겨서는 다음 열이 그 폭만큼 어긋나 선다.
+                  */
+                  style={
+                    { '--pane-x': `calc(${-comparePage * 100}% + ${dragOffset}px)` } as CSSProperties
                   }
-                  dragRef.current = { x: event.clientX, y: event.clientY, axis: 'none' }
-                }}
-                onPointerMove={(event) => {
-                  const drag = dragRef.current
-                  if (drag === null) {
-                    return
-                  }
-                  const dx = event.clientX - drag.x
-                  const dy = event.clientY - drag.y
-                  if (drag.axis === 'none') {
-                    // 8px을 넘어선 쪽으로 축을 정한다. 그 전에는 아무 일도 하지 않는다
-                    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+                  onPointerDown={(event) => {
+                    // 마우스 오른쪽 버튼·보조 포인터는 제스처가 아니다
+                    if (!event.isPrimary) {
                       return
                     }
-                    drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
-                    if (drag.axis === 'y') {
-                      // 세로로 정해졌으면 이 제스처는 끝까지 브라우저 것이다
-                      dragRef.current = null
+                    dragRef.current = { x: event.clientX, y: event.clientY, axis: 'none' }
+                  }}
+                  onPointerMove={(event) => {
+                    const drag = dragRef.current
+                    if (drag === null) {
                       return
                     }
-                    // 손가락이 카드 밖으로 나가도 계속 받는다
-                    event.currentTarget.setPointerCapture(event.pointerId)
-                  }
-                  /*
-                    끝 장에서 더 끌면 <b>1/4만 따라온다.</b> 아예 안 움직이면 고장으로,
-                    그대로 따라오면 뒤에 한 장 더 있는 것으로 읽힌다. 저항이 "여기가 끝"을 말한다.
-                  */
-                  const atEdge = (comparePage === 0 && dx > 0) || (comparePage === 1 && dx < 0)
-                  setDragOffset(atEdge ? dx / 4 : dx)
-                }}
-                onPointerUp={(event) => {
-                  const drag = dragRef.current
-                  dragRef.current = null
-                  if (drag === null || drag.axis !== 'x') {
-                    return
-                  }
-                  /*
-                    창 너비의 1/5을 넘겨야 장이 넘어간다. 절반을 요구하면 한 손으로는
-                    닿지 않고, 더 짧게 잡으면 세로로 훑다 스친 손가락에도 넘어간다.
-                  */
-                  const width = event.currentTarget.clientWidth
-                  const moved = event.clientX - drag.x
-                  if (Math.abs(moved) > width / 5) {
-                    setComparePage(moved < 0 ? 1 : 0)
-                  }
-                  setDragOffset(0)
-                }}
-                onPointerCancel={() => {
-                  dragRef.current = null
-                  setDragOffset(0)
-                }}
-              >
-                <div className="w-full shrink-0">
-                  <CourseColumn
-                    title="원안"
-                    subtitle="내가 처음 짠 코스"
-                    score={showBefore ? beforeDiagnosis.totalQuietness : null}
-                    scoreLevel={beforeDiagnosis.totalLevel}
-                    diagnosis={beforeDiagnosis}
-                  />
-                </div>
-                <div className="w-full shrink-0">
-                  <CourseColumn
-                    title="개선안"
-                    subtitle={
-                      /*
-                        ⚠️ 아무것도 안 바꾸면 이 열은 <b>원안과 글자 하나 다르지 않다.</b>
-                        그런데 부제가 "더 한적한 코스"라고 말하고 있었다 — 같은 코스를 두 번
-                        그려 놓고 한쪽만 더 한적하다고 부른 셈이다. 잰 것만 말한다.
-                      */
-                      changes.length > 0
-                        ? `다른 곳 ${changes.length}곳 발견`
-                        : movedDate
-                          ? '날짜를 옮긴 코스'
-                          : '원안과 같아요'
+                    const dx = event.clientX - drag.x
+                    const dy = event.clientY - drag.y
+                    if (drag.axis === 'none') {
+                      // 8px을 넘어선 쪽으로 축을 정한다. 그 전에는 아무 일도 하지 않는다
+                      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+                        return
+                      }
+                      drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+                      if (drag.axis === 'y') {
+                        // 세로로 정해졌으면 이 제스처는 끝까지 브라우저 것이다
+                        dragRef.current = null
+                        return
+                      }
+                      // 손가락이 카드 밖으로 나가도 계속 받는다
+                      event.currentTarget.setPointerCapture(event.pointerId)
                     }
-                    score={showAfter ? afterDiagnosis.totalQuietness : null}
-                    scoreLevel={afterDiagnosis.totalLevel}
-                    diagnosis={afterDiagnosis}
-                    changes={changes}
                     /*
-                      바꾼 것이 하나도 없으면 두 열이 같은 코스다. 그때 한쪽에만 "추천" 배지를
-                      달면 <b>같은 것 둘 중 하나를 고르라</b>는 말이 된다. 권할 것이 있을 때만 선다.
+                      끝 장에서 더 끌면 <b>1/4만 따라온다.</b> 아예 안 움직이면 고장으로,
+                      그대로 따라오면 뒤에 한 장 더 있는 것으로 읽힌다. 저항이 "여기가 끝"을 말한다.
                     */
-                    highlighted={summary.length > 0}
-                  />
+                    const atEdge = (comparePage === 0 && dx > 0) || (comparePage === 1 && dx < 0)
+                    setDragOffset(atEdge ? dx / 4 : dx)
+                  }}
+                  onPointerUp={(event) => {
+                    const drag = dragRef.current
+                    dragRef.current = null
+                    if (drag === null || drag.axis !== 'x') {
+                      return
+                    }
+                    /*
+                      창 너비의 1/5을 넘겨야 장이 넘어간다. 절반을 요구하면 한 손으로는
+                      닿지 않고, 더 짧게 잡으면 세로로 훑다 스친 손가락에도 넘어간다.
+                    */
+                    const width = event.currentTarget.clientWidth
+                    const moved = event.clientX - drag.x
+                    if (Math.abs(moved) > width / 5) {
+                      setComparePage(moved < 0 ? 1 : 0)
+                    }
+                    setDragOffset(0)
+                  }}
+                  onPointerCancel={() => {
+                    dragRef.current = null
+                    setDragOffset(0)
+                  }}
+                >
+                  <div className="w-full shrink-0">
+                    <CourseColumn
+                      title="원안"
+                      subtitle="내가 처음 짠 코스"
+                      score={showBefore ? beforeDiagnosis.totalQuietness : null}
+                      scoreLevel={beforeDiagnosis.totalLevel}
+                      diagnosis={beforeDiagnosis}
+                    />
+                  </div>
+                  <div className="w-full shrink-0">
+                    <CourseColumn
+                      title="개선안"
+                      subtitle={
+                        /*
+                          ⚠️ 아무것도 안 바꾸면 이 열은 <b>원안과 글자 하나 다르지 않다.</b>
+                          그런데 부제가 "더 한적한 코스"라고 말하고 있었다 — 같은 코스를 두 번
+                          그려 놓고 한쪽만 더 한적하다고 부른 셈이다. 잰 것만 말한다.
+                        */
+                        changes.length > 0
+                          ? `다른 곳 ${changes.length}곳 발견`
+                          : movedDate
+                            ? '날짜를 옮긴 코스'
+                            : '원안과 같아요'
+                      }
+                      score={showAfter ? afterDiagnosis.totalQuietness : null}
+                      scoreLevel={afterDiagnosis.totalLevel}
+                      diagnosis={afterDiagnosis}
+                      changes={changes}
+                      /*
+                        바꾼 것이 하나도 없으면 두 열이 같은 코스다. 그때 한쪽에만 "추천" 배지를
+                        달면 <b>같은 것 둘 중 하나를 고르라</b>는 말이 된다. 권할 것이 있을 때만 선다.
+                      */
+                      highlighted={summary.length > 0}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+            </>
+          )}
 
           {/*
             지도가 이 자리를 <b>혼자 다 쓴다.</b>
