@@ -418,6 +418,18 @@ export function ResultPage() {
     ? afterDiagnosis.slots.filter((slot) => slot.level === 'CROWDED').length
     : 0
 
+  /**
+   * 붐비는 곳이 몇 개 <b>움직였는가</b>. 견줄 원안이 없으면 {@code null}이다.
+   *
+   * <p>양쪽 진단이 다 있어야 성립한다 — 원안 없이 {@code crowdedAfter - 0}을 쓰면
+   * 처음부터 둘이던 코스가 <b>둘이 늘어난 코스</b>로 읽힌다.
+   *
+   * <p>총점과 달리 {@code totalPresentable}을 보지 않는다. 평균은 근거가 얇으면
+   * 말할 수 없지만 <b>붐비는 칸이 몇 개인지는 세면 나오는 사실</b>이다.
+   */
+  const crowdedShift =
+    beforeDiagnosis !== null && afterDiagnosis !== null ? crowdedAfter - crowdedBefore : null
+
   /*
     무엇을 해서 나아졌는지 요약한다.
 
@@ -628,22 +640,32 @@ export function ResultPage() {
           },
         ]
       : []),
+    { label: '교체한 장소', value: `${changes.length}곳` },
     /*
-      ⚠️ <b>바꾼 것이 없으면 화살표를 쓰지 않는다</b> (2026-09-03).
+      ⚠️ <b>화살표를 버리고 한적 지수와 같은 모양으로 세운다</b> (2026-09-03).
 
-      {@code 0 → 0}은 <b>맞대어 본 결과</b>의 모양인데, 아래 비교 열이 사라진 화면에서
-      혼자 남으면 없는 비교를 가리키게 된다. 무엇보다 두 수가 같을 수밖에 없는 자리라
-      화살표가 "무언가 바뀌었다"고 말해 놓고 같은 수를 두 번 보여준다.
+      {@code 0 → 0}은 맞대어 본 결과의 모양인데, 바꾼 것이 없으면 두 수가 같을 수밖에 없어
+      화살표가 "무언가 바뀌었다"고 말해 놓고 같은 수를 두 번 보여준다. 무엇보다 옆 칸
+      ({@code 62 (+8)})과 <b>같은 것을 다른 문법으로</b> 적고 있었다 — 도착점과 이동폭이라는
+      같은 한 쌍인데 한 칸은 화살표로, 한 칸은 괄호로 말했다.
 
-      <p>"교체한 장소"도 함께 뺀다. 그 칸이 말할 수 있는 값은 {@code 0곳} 하나뿐이고,
-      제목이 이미 "원안 그대로입니다"라고 더 크게 말했다 — 같은 사실의 세 번째 문장이다.
+      <p>⚠️ <b>색은 반대다.</b> 붐비는 곳은 <b>줄어야</b> 좋으므로 음수일 때 한적 색을 준다.
+      한적 지수의 규칙(오른 값에만 한적 색)을 그대로 베끼면 붐비는 곳이 늘어난 코스에서
+      {@code (+2)}가 한적 색으로 칠해진다.
+
+      <p>견줄 짝이 없으면({@code crowdedShift === null}) 이동폭을 적지 않는다.
+      원안이 없는데 {@code (+2)}라고 쓰면 늘지도 않은 수가 늘었다고 말하는 셈이다.
     */
-    ...(summary.length === 0
-      ? [{ label: '붐비는 곳', value: `${crowdedAfter}곳` }]
-      : [
-          { label: '교체한 장소', value: `${changes.length}곳` },
-          { label: '붐비는 곳', value: `${crowdedBefore} → ${crowdedAfter}` },
-        ]),
+    {
+      label: '붐비는 곳',
+      value: `${crowdedAfter}곳`,
+      // 변화가 0이면 적지 않는다 — 한적 지수 칸과 같은 규칙이다
+      delta:
+        crowdedShift === null || crowdedShift === 0
+          ? undefined
+          : `(${crowdedShift > 0 ? '+' : ''}${crowdedShift})`,
+      deltaTone: crowdedShift !== null && crowdedShift < 0 ? 'text-quiet-soft' : 'text-white/70',
+    },
   ]
 
   return (
