@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { BrandLockup } from '../components/BrandMark'
-import { CongestionBadge } from '../components/CongestionBadge'
 import { ChevronRight, Heart } from '../components/icons'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
@@ -220,94 +219,44 @@ function QuietSpotCard({
         <PlaceThumbnail name={spot.place.name} imageUrl={spot.place.imageUrl} size="card" />
 
         {/*
-          ⚠️ <b>이름이 한 줄을 통째로 쓴다.</b> 공사 이름은 원래 길다
+          ■ 세 줄이 <b>같은 순서로</b> 선다 — 이름 · 분류 · 지역 (2026-09-03)
+
+          <p>⚠️ <b>이름이 한 줄을 통째로 쓴다.</b> 공사 이름은 원래 길다
           (강원특별자치도산림박물관 · 여수 낭도리 공룡발자국화석 산지) — 옆에 무엇이든 세우면
           <b>"여수 낭도리 공…"</b>으로 잘리고, 무엇인지 알아볼 수 없는 이름은
           카드가 하는 일을 못 한다. 두 줄까지 간다.
 
-          <h3>격자(grid)로 세우는 이유 — 화면마다 자리가 다르다</h3>
-          세 줄의 <b>순서는 같고 자리만 갈린다</b>. 그래서 DOM은 하나로 두고 lg에서
-          칸·줄만 지정한다. flex로는 이게 안 된다 — 세로로 쌓으면 lg에서 이름과 배지를
-          한 줄에 놓을 수 없고, 화면마다 마크업을 나누면 한쪽만 고쳐지는 자리가 생긴다.
+          <h3>한적 배지를 걷어냈다</h3>
+          이 목록은 <b>한적 등급인 곳만</b> 담는다(수를 채우려고 보통인 곳을 섞지 않는다).
+          그래서 다섯 장의 배지가 언제나 "한적"이었다 — <b>모든 카드에 같은 말이 적혀 있으면
+          그것은 신호가 아니다.</b> 박스 이름("이번 주 한적한 곳")이 이미 하는 말이기도 하다.
 
-          <pre>
-            모바일                 lg (예전 그대로)
-            이름                   이름            배지
-            지역 · 분류            지역 · 분류
-          </pre>
+          <p>숫자를 버리는 것은 아니다. 카드를 누르면 상세 시트가 배지와 지수를 그대로 편다 —
+          <b>목록은 고르는 자리</b>이고, 값을 견주는 일은 그다음 화면이 맡는다.
+
+          <h3>분류가 지역보다 먼저다</h3>
+          분류는 <b>무엇인지</b>를, 지역은 <b>어디인지</b>를 말한다. 목록을 훑는 사람이
+          먼저 가리는 것은 "박물관이냐 바다냐"이지 "속초냐 여수냐"가 아니다 —
+          지역은 이미 정한 사람에게만 걸리는 조건이고, 이 목록은 <b>안 정한 사람</b>의 자리다.
+
+          <p>화면 폭이 갈려도 <b>순서는 하나</b>다. lg에서는 사진이 왼쪽 썸네일로 서고
+          글이 오른쪽에 오지만, 세 줄의 차례는 그대로다.
         */}
-        <span className="grid min-w-0 gap-0.75 px-2 pt-2 pb-2.5 lg:flex-1 lg:grid-cols-[1fr_auto] lg:gap-1 lg:p-0">
-          <span className="text-fg line-clamp-2 min-w-0 text-[12px] leading-[1.35] font-semibold tracking-[-0.01em] lg:col-start-1 lg:row-start-1 lg:text-[15px]">
+        <span className="flex min-w-0 flex-col gap-0.75 px-2 pt-2 pb-2.5 lg:flex-1 lg:gap-1 lg:p-0">
+          <span className="text-fg line-clamp-2 min-w-0 text-[12px] leading-[1.35] font-semibold tracking-[-0.01em] lg:text-[15px]">
             {spot.place.name}
           </span>
-          {/*
-            ■ 지역과 분류가 <b>한 줄에 나란히</b> 선다 (2026-09-03)
-
-            분류(문화·명소 · 자연·풍경)는 그동안 상세 시트를 열어야 보였다. 그런데 이 목록은
-            <b>어디로 갈지 안 정한 사람</b>에게 말을 거는 자리라, "어떤 곳인지"를 열어 봐야
-            아는 것은 한 걸음 늦다. 사진이 절반쯤 말해 주지만 사진만으로는
-            절이 박물관인지 전망대가 공원인지 갈리지 않는다.
-
-            ⚠️ <b>가운뎃점으로 잇지 않는다.</b> 분류 이름 안에 이미 점이 들어 있어
-            ("서귀포시 · 문화·명소") 셋으로 읽힌다. 지역만 알약을 두르고 분류는 맨 글자로
-            두면 <b>테두리가 구분선 노릇</b>을 하므로 점이 필요 없다.
-
-            <p>지역은 줄지 않고 분류가 먼저 줄어든다 — 지역은 이 카드가 어디인지를 말하는
-            이름표라 잘리면 쓸모가 없고(제주시/서귀포시), 분류는 잘려도 어림이 선다.
-          */}
-          <span className="flex min-w-0 items-center gap-1 lg:col-start-1 lg:row-start-2">
-            {/*
-              지역. <b>등급색을 쓰지 않는다</b> — 이 카드에서 색은 한적도 신호이고,
-              지역은 신호가 아니라 이름표다.
-
-              <p>모바일에서는 알약을 벗고 맨 글자로 선다. 카드 폭이 절반이라
-              알약의 좌우 여백이 이름 폭을 갉아먹는다. lg는 예전의 흰 알약 그대로.
-            */}
-            <span className="text-hint bg-fill rounded-chip w-fit flex-none px-1.5 py-0.5 text-[10px] font-semibold lg:bg-surface lg:text-[11px]">
-              {spot.regionName}
-            </span>
-            <span className="text-hint min-w-0 truncate text-[10px] lg:text-[11px]">
-              {spot.place.categoryName}
-            </span>
+          <span className="text-hint min-w-0 truncate text-[10px] lg:text-[11.5px]">
+            {spot.place.categoryName}
           </span>
           {/*
-            ■ 모바일에서는 배지가 <b>사진 왼쪽 위</b>에 얹힌다
+            지역. <b>등급색을 쓰지 않는다</b> — 색은 한적도 신호이고 지역은 이름표다.
 
-            글 아래에 있을 때는 카드마다 이름이 한 줄이냐 두 줄이냐에 따라 배지의 높이가
-            달라져, 나란한 카드끼리 점수를 눈으로 훑을 수 없었다. 사진 모서리에 얹으면
-            <b>네 장의 배지가 언제나 같은 자리</b>에 선다.
-
-            <p>오른쪽 위에 있던 것을 <b>왼쪽으로 옮겼다</b>(2026-09-03). 그 모서리를 하트에
-            내주었다 — 하트는 어느 서비스에서나 오른쪽 위라, 우리만 반대로 두면
-            찾는 곳에 없다. 배지는 어느 모서리든 <b>모든 카드에서 같은 자리</b>이기만 하면 된다.
-
-            <p>사진 위에 글자가 얹히지만 배지는 <b>불투명한 tint 바탕</b>을 가지고 있어
-            어떤 사진 위에서도 대비가 유지된다 — 반투명하게 두면 밝은 하늘 사진에서 묻힌다.
-
-            <p>lg는 예전 그대로다 — 그쪽은 사진이 왼쪽 썸네일이라 얹을 자리가 없고,
-            이름과 같은 줄에 서는 것이 이미 같은 일을 한다.
+            <p>알약을 두르는 이유: 위의 분류와 <b>같은 크기·같은 색의 글자</b>라
+            맨 글자로 두면 두 줄이 한 덩어리로 뭉쳐 보인다. 테두리가 층을 가른다.
           */}
-          <span className="absolute top-1.5 left-1.5 flex lg:static lg:col-start-2 lg:row-start-1 lg:mt-0 lg:items-start lg:justify-self-end">
-            {/*
-              같은 배지를 화면마다 다른 크기로 그린다 — 좁은 화면에서는 카드가 132px이라
-              sm이 카드 폭의 절반을 먹는다. lg의 세로 목록은 폭이 넉넉해 예전 크기 그대로.
-            */}
-            <span className="lg:hidden">
-              <CongestionBadge
-                level={spot.level}
-                label={spot.levelLabel}
-                quietness={spot.quietness}
-                size="xs"
-              />
-            </span>
-            <span className="hidden lg:inline-flex">
-              <CongestionBadge
-                level={spot.level}
-                label={spot.levelLabel}
-                quietness={spot.quietness}
-                size="sm"
-              />
-            </span>
+          <span className="text-hint bg-fill rounded-chip w-fit max-w-full flex-none truncate px-1.5 py-0.5 text-[10px] font-semibold lg:bg-surface lg:text-[11px]">
+            {spot.regionName}
           </span>
         </span>
       </button>
