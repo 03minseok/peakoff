@@ -735,38 +735,56 @@ export function ResultPage() {
             {@code gain > 0}에서만 선다. 총점이 내려갔거나 견주지 못한 코스에까지
             같은 얼굴을 하면, 이 화면의 모든 문장이 장식으로 읽힌다.
           */}
-          <section className="bg-fg rounded-card relative overflow-hidden px-5 pt-6 pb-22 text-white lg:px-10 lg:pt-8 lg:pb-28">
+          <section className="bg-fg rounded-card relative overflow-hidden px-5 py-6 text-white lg:px-10 lg:py-8">
             {/*
-              ■ 히어로가 딛고 선 <b>수평선</b> (2026-09-03)
+              ■ <b>동그라미 둘을 되살린다</b> (2026-09-03)
 
-              여행이 끝나는 화면인데 <b>평평한 잉크 한 색</b>이었다. 축하 갈래에는 칩과
+              여행이 끝나는 화면인데 <b>평평한 잉크 한 색</b>이었다. 축하 갈래는 칩과
               ✨ 줄이 자리를 채우지만 "원안 그대로입니다" 갈래는 제목 한 줄과 회색 한 줄뿐이라
-              카드가 <b>덜 그린 면</b>으로 보였다.
+              카드가 덜 그린 면으로 보였다.
 
-              <p>사진을 <b>전면에 깔아 봤다가 물렀다.</b> 이 카드의 글은 가운데 정렬이라
-              사진이 갈 곳이 없다 — 하늘 위에 흰 글자가 얹혀 대비가 무너지고, 카드가
-              통째로 사진 카드가 됐다. 그래서 <b>글자가 앉지 않는 유일한 자리</b>인
-              바닥에 눕힌다. 대비를 걱정할 일이 없으니 사진을 또렷하게 둘 수 있다.
+              <p>사진으로 두 번 풀어 보고 물렸다 — 전면에 깔면 가운데 정렬한 글자의 대비가
+              무너지고, 바닥에 눕히거나 진입 카드의 물결을 빌려 오면 <b>글을 왼쪽으로 밀어야</b>
+              한다. 이 카드의 글은 가운데 서는 것이 맞다: 제목 하나를 가운데 두고 그 아래
+              타일 셋이 나란한 짜임이라, 왼쪽으로 몰면 오른쪽이 통째로 빈다.
 
-              <p>사진은 <b>홈 첫 화면과 같은 바다</b>다 — 여행을 고르는 화면과 끝내는 화면이
-              같은 장면으로 닫힌다. 파일이 두 벌인 것도 홈과 같은 이유다: 모바일 판을 넓은
-              화면에서 늘리면 흐려지고, 넓은 판(190KB)은 휴대폰이 받을 무게가 아니다.
+              <p><b>모서리에서 비어져 들어오는 원</b>은 그 문제가 없다. 글이 앉는 가운데를
+              비우고 <b>네 모서리에서만</b> 카드를 물들이기 때문이다. 2026-09-02에
+              걷어냈던 그 장치이고, 걷어낸 이유는 <b>사진이 화면의 색을 맡게 되면서</b>
+              둘이 섞여 탁해져서였다 — <b>여기에는 사진이 없다.</b>
 
-              <p>⚠️ <b>글로우를 되살린 것이 아니다.</b> 걷어낸 그것은 색이 뜻을 지고 있었고
-              (틸=한적 · 핑크=붐빔) 이것은 <b>색이 없는 사진</b>이다. 뜻은 여전히 글과
-              배지·타일만 진다.
+              <h3>왜 틸 둘인가 (핑크가 없다)</h3>
+              홈의 갈림길 카드에는 틸(한적)과 핑크(붐빔)가 함께 있었다. 서사가 "붐빔에서
+              한적으로"라서다. <b>여기는 이미 도착한 자리</b>라 핑크가 없다 —
+              장식이 아니라 결론이다.
 
-              <p>모양(곡선·번져 나오는 그라디언트)은 {@code .result-horizon}에 있다(index.css).
+              <p>⚠️ <b>색은 토큰이다</b>({@code bg-brand/…}). 예전에는 {@code rgb(63 193 201/…)}을
+              박아 두었는데, 팔레트를 고치면 이 원만 옛 틸로 남는다.
+
+              <p>⚠️ 원이 카드 밖으로 나가야 <b>동그라미가 아니라 빛</b>으로 읽힌다.
+              안쪽에 통째로 들어오면 "카드 위에 놓인 공"이 된다. 자르는 것은 카드의
+              {@code overflow-hidden}이다.
+            */}
+            {/*
+              ⚠️ <b>원이 카드 폭의 절반을 넘으면 원이 아니라 호(弧)가 된다.</b>
+              예전 값(288px)을 358px 카드에 그대로 두었더니 가장자리가 <b>카드를 가로지르는
+              사선</b>으로 보였다 — 모서리에서 비어져 들어오는 것이 아니라 카드가 두 색으로
+              갈린 것처럼. 모서리에 물릴 만큼만 키운다.
+
+              <p>셋을 <b>대각선으로</b> 흩는다. 한쪽에 몰면 카드가 그쪽으로 기운다.
+              크기와 옅기를 조금씩 달리해야 <b>같은 원을 복사한 것</b>으로 보이지 않는다.
             */}
             <span
               aria-hidden="true"
-              className="result-horizon lg:hidden"
-              style={{ '--photo-src': "url('/images/hero-sea.jpg')" } as CSSProperties}
+              className="bg-brand/16 pointer-events-none absolute -top-12 -right-10 h-40 w-40 rounded-full lg:h-52 lg:w-52"
             />
             <span
               aria-hidden="true"
-              className="result-horizon hidden lg:block"
-              style={{ '--photo-src': "url('/images/hero-sea-wide.jpg')" } as CSSProperties}
+              className="bg-brand/8 pointer-events-none absolute -bottom-14 -left-10 h-36 w-36 rounded-full lg:h-48 lg:w-48"
+            />
+            <span
+              aria-hidden="true"
+              className="bg-brand/6 pointer-events-none absolute -top-16 left-1/4 h-24 w-24 rounded-full lg:h-32 lg:w-32"
             />
             <div className="relative mx-auto flex max-w-[520px] flex-col items-center gap-3.5 text-center">
               {/*
