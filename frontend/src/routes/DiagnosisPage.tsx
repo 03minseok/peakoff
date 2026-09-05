@@ -452,15 +452,29 @@ export function DiagnosisPage() {
                     : 'var(--c-line)',
               }}
             >
-              <div className="bg-surface grid h-22 w-22 place-items-center rounded-full lg:h-28 lg:w-28">
+              {/*
+                ⚠️ <b>격자가 아니라 세로 flex다</b> (2026-09-03). {@code grid place-items-center}로
+                두었더니 두 줄이 <b>원 높이만큼 늘어나</b>(암묵 행이 stretch된다) 숫자는 위쪽 절반의
+                가운데, 라벨은 아래쪽 절반의 가운데에 섰다 — 112px 원에서 둘 사이가 30px 벌어지고
+                숫자의 중심이 원 중심보다 24px 위에 놓였다. 가운데가 빈 채 숫자만 떠 보인다.
+
+                <p>세로 flex는 <b>둘을 한 덩어리로 묶어</b> 그 덩어리를 가운데 세운다.
+                시트·마이페이지의 게이지가 이미 이 방법이다({@code PublicCourseSheet}) —
+                같은 값이 화면마다 다른 모양으로 나오면 같은 값으로 읽히지 않는다.
+
+                <p>숫자는 넓은 화면에서 한 칸 키운다. 원이 88 → 112px로 커지는데 글자가 그대로면
+                <b>원만 커지고 숫자는 그대로</b>라 헐거워 보인다. 시트가 76px 원에 26px을 쓰므로
+                (0.34) 112px에는 40px이 같은 비율이다.
+              */}
+              <div className="bg-surface flex h-22 w-22 flex-col items-center justify-center gap-0.5 rounded-full lg:h-28 lg:w-28">
                 <span
-                  className={`font-mono text-[34px] leading-none font-semibold tracking-[-0.02em] ${
+                  className={`font-mono text-[34px] leading-none font-semibold tracking-[-0.02em] lg:text-[40px] ${
                     showTotal ? 'text-fg' : 'text-hint'
                   }`}
                 >
                   {showTotal ? diagnosis.totalQuietness : '·'}
                 </span>
-                <span className="text-hint text-[11.5px]">한적 지수</span>
+                <span className="text-hint text-[11.5px] leading-none">한적 지수</span>
               </div>
             </div>
 

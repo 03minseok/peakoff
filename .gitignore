@@ -130,6 +130,8 @@ backend/data/kto-calls/
 # 공사 예측은 같은 날짜라도 갱신되며 바뀌므로 다시 받아도 같은 값이 아니다.
 # 판단의 근거로 남겨야 하는 것은 원자료가 아니라 집계 결과다 → analysis/national/RESULTS.md
 analysis/national/snapshots/
+analysis/region-candidates/snapshots/
+analysis/region-candidates/today/
 analysis/quietness-scale/*.json
 # 예측 흔들림 측정은 날마다 쌓여 하루 300KB다. 결과만 DRIFT-LOG.md에 남긴다.
 analysis/forecast-drift/*.json

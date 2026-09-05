@@ -387,9 +387,6 @@ export function PlanPage() {
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit}>
             코스 짜러 가기
           </button>
-          <p className="text-hint mt-3 text-center text-xs">
-            로그인은 코스를 저장할 때만 필요해요
-          </p>
         </div>
       </form>
     </div>
