@@ -1620,7 +1620,18 @@ export function MyPage() {
             id="my-account"
             className="border-line flex scroll-mt-24 flex-col gap-3 border-t pt-5"
           >
-            <span className="text-hint text-[12.5px] font-semibold">계정</span>
+            {/*
+          다른 세 구역과 <b>같은 머리글</b>이다. 한동안 이 자리만 작은 회색 라벨
+          (12.5px hint)이었다 — 계정이 <b>맨 아래 딸린 꼬리</b>이던 시절의 흔적이다.
+          2026-09-01에 넷째 탭이 되면서 나머지 셋과 같은 급이 됐는데 머리글만 남아 있었다.
+
+          <p>{@code h2}인 것도 그래서다. 왼쪽 목록이 {@code #my-account}로 데려오는데
+          도착한 자리에 제목이 없으면, 화면을 훑는 사람에게도 보조기술에게도
+          여기가 어느 구역인지 말해주는 것이 없다.
+        */}
+            <h2 className="text-fg m-0 text-[16.5px] font-bold tracking-[-0.015em] md:text-[18px]">
+              계정
+            </h2>
 
             {/*
           이메일에는 변경 버튼이 없다. 이메일이 곧 로그인 아이디라 바꾸려면

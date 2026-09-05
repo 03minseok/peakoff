@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.peakoff.congestion.domain.CongestionProvider;
+import com.peakoff.congestion.domain.QuietCandidate;
 import com.peakoff.congestion.domain.QuietSpot;
 import com.peakoff.congestion.domain.QuietSpotProvider;
 import com.peakoff.global.config.DataSourceProfiles;
@@ -90,24 +91,35 @@ public class MockCongestionProvider implements CongestionProvider, QuietSpotProv
 	}
 
 	/**
-	 * 목업 카탈로그에서 기간 안 가장 한적한 곳들.
+	 * 목업 카탈로그에서 기간 안 한적한 곳들 — <b>이름 상태의 후보</b>까지만.
 	 *
 	 * <p>⚠️ <b>경주가 아니면 빈 목록이다.</b> 목업 카탈로그가 경주 한 곳뿐이라
 	 * 다른 지역을 물으면 지어낼 것이 없다. 없는 지역에 가짜 장소를 만들어 주면
 	 * 실데이터로 넘어갈 때 "목업에서는 되던 것"이 사라져 고장으로 읽힌다.
 	 *
 	 * <p>부르는 쪽이 지역을 여럿 도는 자리라, 빈 목록은 정상적인 답이다.
+	 *
+	 * <p>후보의 이름은 <b>장소 이름 그대로</b>다. 실연동은 공사가 부르는 이름 원문을 담고
+	 * {@link #resolve}에서 우리 장소로 잇는데, 목업에는 이을 것이 애초에 하나뿐이라
+	 * 그 단계가 이름 조회로 줄어든다. <b>단계를 없애지는 않는다</b> —
+	 * 부르는 쪽이 두 구현에서 같은 순서로 돌아야 목업에서 본 화면을 믿을 수 있다.
 	 */
 	@Override
-	public List<QuietSpot> quietestWithin(Region region, LocalDate from, int days, int limit) {
-		if (days < 1 || limit < 1 || !GyeongjuMockCatalog.GYEONGJU.equals(region)) {
+	public List<QuietCandidate> quietCandidatesWithin(
+			Region region, LocalDate from, int days, double topShare, int minCandidates) {
+		if (days < 1 || topShare <= 0 || !GyeongjuMockCatalog.GYEONGJU.equals(region)) {
 			return List.of();
 		}
 
-		List<QuietSpot> spots = new ArrayList<>();
+		List<QuietCandidate> ranked = new ArrayList<>();
 		for (GyeongjuMockCatalog.Entry entry : GyeongjuMockCatalog.entries()) {
-			// 실연동과 같은 게이트다. 목업에서만 밥집이 "한적한 여행지"로 서면 안 된다.
-			if (!PlaceCategories.isCourseCandidate(entry.place().category())) {
+			/*
+			 * 실연동의 예측 목록에는 애초에 관광지와 시장만 들어 있다. 목업 카탈로그는
+			 * 밥집·카페·숙소까지 한 곳에 담고 있으므로, 여기서 예측 대상 분류만 남겨
+			 * <b>순위의 모수를 실연동과 같은 성격으로</b> 맞춘다. 코스에 담을 분류인지는
+			 * resolve가 다시 본다(시장이 그 사이에서 걸린다).
+			 */
+			if (!PlaceCategories.isForecastTarget(entry.place().category())) {
 				continue;
 			}
 			LocalDate bestDate = from;
@@ -120,10 +132,28 @@ public class MockCongestionProvider implements CongestionProvider, QuietSpotProv
 					bestDate = date;
 				}
 			}
-			spots.add(new QuietSpot(entry.place(), bestDate, best));
+			ranked.add(new QuietCandidate(entry.place().name(), bestDate, best));
 		}
-		spots.sort(Comparator.comparingInt(QuietSpot::quietness).reversed());
-		return List.copyOf(spots.size() > limit ? spots.subList(0, limit) : spots);
+		ranked.sort(Comparator.comparingInt(QuietCandidate::quietness).reversed());
+
+		int cut = Math.min(
+				ranked.size(),
+				Math.max(minCandidates, (int) Math.ceil(ranked.size() * topShare)));
+		return List.copyOf(ranked.subList(0, cut));
+	}
+
+	/** 목업에서는 이름이 곧 장소다. 분류 게이트는 실연동과 같은 자리에 둔다. */
+	@Override
+	public Optional<QuietSpot> resolve(Region region, QuietCandidate candidate) {
+		if (!GyeongjuMockCatalog.GYEONGJU.equals(region)) {
+			return Optional.empty();
+		}
+		return GyeongjuMockCatalog.entries().stream()
+				.map(GyeongjuMockCatalog.Entry::place)
+				.filter(place -> place.name().equals(candidate.forecastName()))
+				.filter(place -> PlaceCategories.isCourseCandidate(place.category()))
+				.findFirst()
+				.map(place -> new QuietSpot(place, candidate.date(), candidate.quietness()));
 	}
 
 	private static double factorFor(DayOfWeek dayOfWeek) {
