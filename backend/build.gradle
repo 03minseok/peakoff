@@ -43,6 +43,17 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	/*
+	 * 여행지 추천 챗봇이 쓰는 LLM(Google Gemini). 하는 일은 둘뿐이다 —
+	 * 질문에서 관심사를 고르고, 우리가 넘긴 값을 문장으로 옮긴다.
+	 *
+	 * ⚠️ 어느 지역을 추천할지는 <b>서버가 정한다.</b> 모델이 자기 지식으로 말하면
+	 * 계산하지 않은 것을 근거로 말하는 것이 된다(CLAUDE.md 필수 기능 4).
+	 *
+	 * 인증키가 없으면 챗봇만 꺼지고 나머지는 그대로 돈다.
+	 */
+	implementation 'com.google.genai:google-genai:1.70.0'
+
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
