@@ -1,0 +1,39 @@
+package com.peakoff.chat.domain;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 의도의 불변식.
+ *
+ * <p>특히 <b>"관련 없음"과 "관심사 없음"이 다르다</b>는 것을 잠근다. 둘을 뭉치면
+ * "이번 주 어디가 한산해요?"가 거절당하는데, 하필 이 서비스가 가장 잘 답할 수 있는 질문이다.
+ */
+class QuestionIntentTest {
+
+	@Test
+	@DisplayName("관심사 없는 여행 질문은 답할 수 있는 질문이다")
+	void noInterestIsStillAnswerable() {
+		QuestionIntent intent = new QuestionIntent(true, Interest.NONE);
+
+		assertThat(intent.relevant()).isTrue();
+		assertThat(intent.interest()).isEqualTo(Interest.NONE);
+	}
+
+	@Test
+	@DisplayName("관련 없는 질문에는 관심사가 남지 않는다 — 남기면 뒷단이 그걸 보고 움직인다")
+	void offTopicCarriesNoInterest() {
+		QuestionIntent intent = new QuestionIntent(false, Interest.FOOD);
+
+		assertThat(intent.interest()).isEqualTo(Interest.NONE);
+		assertThat(QuestionIntent.OFF_TOPIC.relevant()).isFalse();
+	}
+
+	@Test
+	@DisplayName("관심사가 비어 오면 관심사 없음으로 읽는다 — 모델이 칸을 비울 수 있다")
+	void nullInterestBecomesNone() {
+		assertThat(new QuestionIntent(true, null).interest()).isEqualTo(Interest.NONE);
+	}
+}
