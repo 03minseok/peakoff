@@ -8,6 +8,7 @@ import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from '../components/levelStyles'
 import { PublicCourseSheet } from '../components/PublicCourseSheet'
+import { RegionChat } from '../components/RegionChat'
 import { CARD_RAISED } from '../components/styles'
 import { ApiRequestError, fetchQuietSpots, fetchRecentCourses } from '../services/api'
 import type { PublicCourse, QuietSpot } from '../types/api'
@@ -1397,20 +1398,19 @@ export function HomePage() {
         </section>
 
         {/*
-          4. <b>비워 둔 칸.</b>
+          4. <b>어디로 갈지 물어보기</b> (2026-09-06).
 
-          채울 것이 정해져 있고(2026-09-02) 자리를 먼저 잡아 둔다. 나중에 채울 때
-          양옆 박스의 폭을 다시 계산할 일이 없다 — 넷·넷·넷이 이미 서 있다.
+          비워 두었던 칸이다. 채우는 것은 <b>지역을 아직 안 정한 사람</b>을 위한 진입점 —
+          왼쪽 위 두 카드가 "가고 싶은 곳이 있어요 / 없어요"를 묻는다면, 여기는
+          말로 물어볼 수 있는 자리다.
 
-          ⚠️ <b>좁은 화면에서는 그리지 않는다.</b> 한 줄로 쌓이는 자리에서 빈 흰 카드는
-          자리를 맡아둔 것으로 읽히지 않고 <b>내용이 안 뜬 박스</b>로 읽힌다.
-          넓은 화면에서는 옆에 형제가 있어 "세 칸 중 하나"로 보이지만, 위아래로 쌓이면
-          그 문맥이 사라진다.
+          ⚠️ <b>좁은 화면에서도 그린다.</b> 비워 둘 때는 숨겼지만(빈 흰 카드는 고장으로
+          읽힌다) 이제는 내용이 있다. 위아래로 쌓여도 "이번 주 한적한 곳" 다음에
+          질문 상자가 서는 것이 자연스럽다.
         */}
-        <section
-          className={`${CARD_RAISED} hidden p-4.5 lg:col-span-4 lg:block lg:p-5.5`}
-          aria-hidden="true"
-        />
+        <section className={`${CARD_RAISED} p-4.5 lg:col-span-4 lg:p-5.5`}>
+          <RegionChat />
+        </section>
 
           {/*
             5. 다른 사람들의 여행.
