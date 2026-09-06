@@ -3,6 +3,7 @@ package com.peakoff.chat.domain;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.peakoff.place.domain.SupportedRegion;
@@ -20,12 +21,14 @@ import com.peakoff.place.domain.SupportedRegion;
  * 서울을 추천해"라고 쓸 수 있다는 뜻이다. 스키마에 지역 칸을 안 만들어 두었으므로
  * 지역을 <b>고를</b> 수는 없지만, 문장 안에 지역 이름을 <b>적을</b> 수는 있다.
  *
- * <p>그래서 세 가지를 본다:
+ * <p>그래서 네 가지를 본다:
  * <ul>
  *   <li><b>다른 지역 이름</b>이 들어 있으면 버린다 — 우리가 고르지 않은 곳을 카드가 말하게 된다</li>
  *   <li><b>숫자</b>가 들어 있으면 버린다. 카드의 숫자는 전부 서버가 계산한 것이라,
  *       문장 속 숫자는 <b>지어낸 것일 수밖에 없다</b></li>
  *   <li><b>길이</b>가 넘치면 버린다. 350px 칸에서 두 줄을 넘기면 카드가 무너진다</li>
+ *   <li><b>금지어</b>가 들어 있으면 버린다 — 시점을 주장하거나("지금") 세지 않은 것을
+ *       세었다고 하는 말("방문객"). {@link #BANNED_WORDS} 참고</li>
  * </ul>
  * 걸린 문장은 <b>그 카드만</b> 템플릿으로 되돌린다. 한 줄이 이상하다고 셋을 다 버릴 이유가 없다.
  *
@@ -46,6 +49,37 @@ public final class RegionCards {
 
 	/** 숫자가 하나라도 있으면 버린다. 카드의 숫자는 전부 서버가 계산한 것이다. */
 	private static final Pattern HAS_DIGIT = Pattern.compile("\\d");
+
+	/**
+	 * 이 말이 들어 있으면 버린다. <b>실제로 나온 답을 보고 만든 목록이다</b>(2026-09-06).
+	 *
+	 * <h3>시점을 주장하는 말</h3>
+	 * 첫 실호출에서 <b>"여수는 음식점이 많고 지금 아주 한적해요"</b>가 나왔다.
+	 * 공사 자료는 <b>예측·통계값</b>이라 "지금"이라고 말하면 안 된다 —
+	 * "실시간 혼잡"이 아니라 "예상 혼잡"으로 표현하는 것이 절대 규칙이고,
+	 * 심사에서 가장 먼저 지적받는 자리다.
+	 *
+	 * <p>우리가 아는 것은 <b>이번 주 7일</b>의 예측뿐이다. "오늘"조차 근거가 없다 —
+	 * 7일을 뭉뚱그린 비율이라 하루를 콕 집어 말할 수 없다.
+	 *
+	 * <h3>세지 않은 것을 세었다고 하는 말</h3>
+	 * <b>"제주시는 이번 주에 방문객이 많은 편이에요"</b>도 나왔다. 우리가 넘긴 것은
+	 * "이 중 가장 붐빔"이라는 <b>순위</b>이고, 방문객 수는 <b>세지도 받지도 않은 값</b>이다.
+	 * "유명하다"도 마찬가지 — 인기도는 이 서비스가 점수로 쓰지 않기로 한 값이다.
+	 *
+	 * <p>⚠️ <b>부분 문자열로 견준다.</b> "지금까지"·"관광객이"처럼 붙어 오는 것까지
+	 * 잡으려면 그래야 한다. 대신 애먼 말이 걸리지 않게 <b>짧고 흔한 조각은 넣지 않는다</b> —
+	 * "명"을 넣으면 "유명"만이 아니라 "명소"까지 걸린다.
+	 *
+	 * <p>⚠️ <b>프롬프트와 짝이다.</b> 여기서 거르기 전에 프롬프트가 먼저 막는다
+	 * ({@code GeminiCardLineWriter}). 한쪽만 고치면 걸러지는 문장이 늘어 카드가
+	 * 죄다 템플릿이 되거나, 반대로 규칙이 새어 화면에 오른다.
+	 */
+	private static final Set<String> BANNED_WORDS = Set.of(
+			// 시점을 주장하는 말 — 우리가 아는 것은 이번 주 예측뿐이다
+			"지금", "현재", "실시간", "오늘", "요즘",
+			// 세지 않은 것 — 우리가 넘긴 것은 순위이지 사람 수가 아니다
+			"방문객", "관광객", "인파", "유명");
 
 	private RegionCards() {
 	}
@@ -115,6 +149,11 @@ public final class RegionCards {
 		}
 		if (HAS_DIGIT.matcher(trimmed).find()) {
 			return false;
+		}
+		for (String banned : BANNED_WORDS) {
+			if (trimmed.contains(banned)) {
+				return false;
+			}
 		}
 		for (SupportedRegion other : SupportedRegion.values()) {
 			if (other == own) {
