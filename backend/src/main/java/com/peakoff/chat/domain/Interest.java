@@ -29,7 +29,7 @@ import com.peakoff.place.domain.PlaceCategory;
 public enum Interest {
 
 	/** 음식. 카탈로그에서 가장 큰 분류라(경주 33.9% · 여수 44.9%) 지역 간 차이가 잘 보인다. */
-	FOOD("음식", "FD"),
+	FOOD("음식", "음식점", "FD"),
 
 	/**
 	 * 바다. <b>대분류가 아니라 중분류로 가른다.</b>
@@ -44,25 +44,25 @@ public enum Interest {
 	 * <b>"바다"를 물었을 때 내륙이 올라오지는 않는다.</b> 반대로 "호수"만 콕 집어 물으면
 	 * 이 문으로는 답하지 못하므로, 그 질문은 {@link #NATURE}로 간다
 	 */
-	WATER("바다", "NA", "NA02"),
+	WATER("바다", "바닷가·물가 명소", "NA", "NA02"),
 
 	/** 자연. 산·숲·공원까지 포함한 넓은 문. 호수만 묻는 질문도 여기로 온다. */
-	NATURE("자연", "NA"),
+	NATURE("자연", "자연 명소", "NA"),
 
 	/** 역사·유적. 경주 17.5% · 충주 26.6% · 남원 25.0%로 갈리는 분류다. */
-	HISTORY("역사", "HS"),
+	HISTORY("역사", "역사 유적", "HS"),
 
 	/** 문화·명소. 박물관·전망대·거리. */
-	CULTURE("문화", "VE"),
+	CULTURE("문화", "문화 명소", "VE"),
 
 	/** 레저·스포츠. */
-	LEISURE("레저", "LS"),
+	LEISURE("레저", "레저 시설", "LS"),
 
 	/** 체험. 공방·체험관. */
-	EXPERIENCE("체험", "EX"),
+	EXPERIENCE("체험", "체험 시설", "EX"),
 
 	/** 쇼핑. 공사가 예측하는 쇼핑은 사실상 시장이다. */
-	SHOPPING("쇼핑", "SH"),
+	SHOPPING("쇼핑", "시장·상점", "SH"),
 
 	/**
 	 * 관심사가 없는 질문. <b>"이번 주 어디가 제일 한산해요?"가 여기다.</b>
@@ -70,25 +70,38 @@ public enum Interest {
 	 * <p>거를 것이 없다는 뜻이지 답할 수 없다는 뜻이 아니다 — 전 지역이 후보가 되고
 	 * 한적한 정도만으로 고른다. 무관한 질문은 이 값이 아니라 <b>관련 없음</b>으로 갈린다.
 	 */
-	NONE("", null);
+	NONE("", "", null);
 
 	private final String label;
+	private final String noun;
 	private final String largeCode;
 	private final Set<String> subCodes;
 
-	Interest(String label, String largeCode) {
-		this(label, largeCode, null);
+	Interest(String label, String noun, String largeCode) {
+		this(label, noun, largeCode, null);
 	}
 
-	Interest(String label, String largeCode, String subCode) {
+	Interest(String label, String noun, String largeCode, String subCode) {
 		this.label = label;
+		this.noun = noun;
 		this.largeCode = largeCode;
 		this.subCodes = subCode == null ? Set.of() : Set.of(subCode);
 	}
 
-	/** 화면과 프롬프트가 함께 쓰는 이름. {@link #NONE}은 빈 문자열이다. */
+	/** 프롬프트와 화면의 짧은 이름. {@link #NONE}은 빈 문자열이다. */
 	public String label() {
 		return label;
+	}
+
+	/**
+	 * 카드 문장에서 부르는 이름. <b>짧은 이름과 갈라 둔다.</b>
+	 *
+	 * <p>"음식 비중이 높아요"는 어색하고 "바다 비중"은 무엇의 비중인지 모호하다.
+	 * 문장에 들어갈 때는 세는 대상의 이름이라야 한다 — 우리가 실제로 센 것은
+	 * <b>그 분류의 장소 수</b>이므로 "음식점" · "바닷가·물가 명소"라고 부른다.
+	 */
+	public String noun() {
+		return noun;
 	}
 
 	/** 거를 것이 있는 관심사인가. {@code false}면 전 지역이 후보다. */

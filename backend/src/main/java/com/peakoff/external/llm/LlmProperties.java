@@ -21,6 +21,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param perKeyLimit  한 사람이 {@code window} 안에 부를 수 있는 횟수
  * @param window       위 횟수를 세는 구간
  * @param timeout      한 번의 호출을 기다리는 최대 시간. 넘으면 폴백한다
+ * @param cardLines    카드 문장을 LLM에게 쓰게 할지. 끄면 서버 템플릿만 쓴다 —
+ *                     <b>질문당 크레딧이 절반이 된다</b>
  */
 @ConfigurationProperties(prefix = "peakoff.chat")
 public record LlmProperties(
@@ -29,7 +31,8 @@ public record LlmProperties(
 		Integer dailyLimit,
 		Integer perKeyLimit,
 		Duration window,
-		Duration timeout) {
+		Duration timeout,
+		Boolean cardLines) {
 
 	/**
 	 * 기본 모델.
@@ -61,6 +64,19 @@ public record LlmProperties(
 	 */
 	public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(8);
 
+	/**
+	 * 카드 문장을 LLM에게 맡길지의 기본값.
+	 *
+	 * <p>켜 둔다. 다만 <b>끌 수 있다는 것이 설계의 일부</b>다 — 이 호출로 얻는 것은
+	 * "사용자가 물은 말투에 맞춘 문장"뿐이고, 같은 사실은 서버 템플릿도 말할 수 있다
+	 * ({@code CardLineTemplate}). 질문당 크레딧의 절반이 여기 들어가므로,
+	 * 실제 문장이 템플릿과 별로 다르지 않다면 끄는 편이 낫다.
+	 *
+	 * <p>판단 근거는 {@code CardLineSource}가 준다 — LLM 문장이 검증을 통과해
+	 * 실제로 쓰인 비율이다.
+	 */
+	public static final boolean DEFAULT_CARD_LINES = true;
+
 	public LlmProperties {
 		if (model == null || model.isBlank()) {
 			model = DEFAULT_MODEL;
@@ -76,6 +92,9 @@ public record LlmProperties(
 		}
 		if (timeout == null || timeout.isZero() || timeout.isNegative()) {
 			timeout = DEFAULT_TIMEOUT;
+		}
+		if (cardLines == null) {
+			cardLines = DEFAULT_CARD_LINES;
 		}
 	}
 

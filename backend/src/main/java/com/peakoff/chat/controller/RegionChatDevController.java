@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peakoff.chat.domain.Interest;
+import com.peakoff.chat.domain.RegionCard;
+import com.peakoff.chat.domain.RegionCards;
 import com.peakoff.chat.domain.RegionChatPicker;
 import com.peakoff.chat.domain.RegionProfile;
 import com.peakoff.chat.domain.RegionProfileProvider;
@@ -83,10 +85,24 @@ public class RegionChatDevController {
 		body.put("candidates", picker.filter(profiles, read).stream()
 				.map(profile -> profile.region().shortName())
 				.toList());
-		body.put("picked", picker.pick(profiles, read).stream()
-				.map(profile -> row(profile, read))
-				.toList());
+		/*
+		 * 카드까지 만들어 보여준다. LLM은 부르지 않으므로 여기 보이는 문장은 전부
+		 * <b>서버 템플릿</b>이다 — 인증키가 없거나 상한에 닿았을 때 화면에 서는 그 문장이다.
+		 */
+		List<RegionCard> cards = RegionCards.of(read, picker.pick(profiles, read), Map.of());
+		body.put("picked", cards.stream().map(RegionChatDevController::cardRow).toList());
 		return ApiResponse.ok(body);
+	}
+
+	private static Map<String, Object> cardRow(RegionCard card) {
+		Map<String, Object> row = new LinkedHashMap<>();
+		row.put("region", card.region().slug());
+		row.put("name", card.region().shortName());
+		row.put("quietShare", card.quietShare());
+		row.put("forecastSize", card.forecastSize());
+		row.put("line", card.line());
+		row.put("lineSource", card.lineSource().name());
+		return row;
 	}
 
 	private static Map<String, Object> row(RegionProfile profile, Interest interest) {
