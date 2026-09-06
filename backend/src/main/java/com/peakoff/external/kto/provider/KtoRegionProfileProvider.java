@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +22,7 @@ import com.peakoff.external.kto.client.KtoCongestionClient;
 import com.peakoff.external.kto.client.KtoPlaceClient;
 import com.peakoff.external.kto.client.RegionCatalog;
 import com.peakoff.external.kto.client.RegionForecast;
+import com.peakoff.external.kto.support.KtoApiException;
 import com.peakoff.external.kto.support.RegionCache;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.Region;
@@ -51,6 +54,8 @@ import com.peakoff.place.domain.SupportedRegion;
 		havingValue = "real")
 public class KtoRegionProfileProvider implements RegionProfileProvider {
 
+	private static final Logger log = LoggerFactory.getLogger(KtoRegionProfileProvider.class);
+
 	private final KtoPlaceClient placeClient;
 	private final KtoCongestionClient congestionClient;
 
@@ -69,39 +74,56 @@ public class KtoRegionProfileProvider implements RegionProfileProvider {
 		this.shareCache = new RegionCache<>(clock);
 	}
 
+	/**
+	 * ⚠️ <b>한 지역이 공사에 닿지 못하면 나머지는 묻지 않는다</b> (2026-09-06).
+	 *
+	 * <p>공사가 침묵하던 날 이 자리가 <b>65초</b>를 먹었다. 지역이 열하나이고 지역마다
+	 * 카탈로그·예측 둘을 부르니 스물두 번이고, 호출마다 타임아웃 3초를 꼬박 기다린 것이다.
+	 *
+	 * <p>더 나쁜 것은 <b>{@code TtlCache}의 60초 백오프가 듣지 않았다</b>는 점이다 —
+	 * 요청 하나가 65초를 쓰는 바람에, 두 번째 요청이 시작될 때는 첫 요청 앞부분에서 남긴
+	 * 실패 기록이 <b>이미 만료</b>돼 있었다. 아낀 시간이 하나도 없었다.
+	 *
+	 * <p>닿지 못하는 것은 <b>그 지역의 사정이 아니라 공사의 사정</b>이다. 한 곳에서 확인했으면
+	 * 남은 열 곳도 같은 답이므로, 30초를 더 기다려 같은 결론에 이를 이유가 없다.
+	 *
+	 * <p>⚠️ <b>자료가 비어 있는 것과는 다르다.</b> 카탈로그가 0건이거나 예측이 없는 지역은
+	 * 예외가 아니라 <b>빈 값</b>으로 오므로 여기서 멈추지 않는다 — 그런 지역은 프로필이
+	 * 만들어지되 {@code RegionChatPicker}가 걸러낸다.
+	 */
 	@Override
 	public List<RegionProfile> profiles(LocalDate from, int days) {
 		List<RegionProfile> profiles = new ArrayList<>();
 		for (SupportedRegion region : SupportedRegion.values()) {
-			profiles.add(profileOf(region, from, days));
+			try {
+				profiles.add(profileOf(region, from, days));
+			}
+			catch (KtoApiException e) {
+				log.warn("공사에 닿지 못해 지역 프로필 수집을 멈춥니다. 마지막 지역={}, 모은 지역={}곳",
+						region.shortName(), profiles.size());
+				break;
+			}
 		}
 		return List.copyOf(profiles);
 	}
 
 	/**
-	 * 지역 하나. <b>자료가 없어도 예외를 던지지 않는다</b> — 부르는 쪽은 열하나를 돌고 있고,
-	 * 한 지역이 비었다고 챗봇 전체가 죽으면 안 된다.
+	 * 지역 하나.
+	 *
+	 * <p><b>자료가 비어 있는 것</b>(카탈로그 0건·예측 없음)은 여기서 빈 프로필이 되어 나가고,
+	 * <b>공사에 닿지 못한 것</b>은 예외로 위에 올라간다. 둘은 다른 일이다 —
+	 * 앞은 그 지역의 사정이고 뒤는 공사의 사정이라, 뒤에서는 나머지를 물어봐야 소용없다.
 	 */
 	private RegionProfile profileOf(SupportedRegion supported, LocalDate from, int days) {
 		Region region = supported.toRegion();
 
-		Map<Interest, Double> shares;
-		try {
-			shares = shareCache.get(region, this::sharesOf);
-		}
-		catch (RuntimeException e) {
-			// 카탈로그를 못 받았다. 관심사로 거를 수는 없지만 한적 비율은 아직 말할 수 있다.
-			shares = Map.of();
-		}
-
-		RegionForecast forecast;
-		try {
-			forecast = congestionClient.forecastOf(region);
-		}
-		catch (RuntimeException e) {
-			forecast = RegionForecast.empty();
-		}
-		Week week = weekOf(forecast, from, days);
+		/*
+		 * ⚠️ 실패를 삼키지 않는다. 예전에는 지역마다 try/catch로 감싸 빈 값으로 넘겼는데,
+		 * 그러면 공사가 죽었을 때 <b>열한 곳을 모두 헛되이 기다린다.</b> 지금은 위로 올려
+		 * 부르는 쪽이 한 번에 멈춘다.
+		 */
+		Map<Interest, Double> shares = shareCache.get(region, this::sharesOf);
+		Week week = weekOf(congestionClient.forecastOf(region), from, days);
 
 		return new RegionProfile(supported, shares, week.quietShare(), week.places());
 	}
