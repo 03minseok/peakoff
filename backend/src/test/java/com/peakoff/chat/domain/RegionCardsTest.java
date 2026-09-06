@@ -107,6 +107,40 @@ class RegionCardsTest {
 		assertThat(RegionCards.isUsable("한적도가 65예요", SupportedRegion.TONGYEONG)).isFalse();
 	}
 
+	/**
+	 * 공사 자료는 <b>예측</b>이라 "지금"이라고 말하면 안 된다. 실호출 첫날 바로 나왔다 —
+	 * "여수는 음식점이 많고 지금 아주 한적해요"(2026-09-06).
+	 */
+	@Test
+	@DisplayName("시점을 주장하는 문장은 버린다 — 우리가 아는 것은 이번 주 예측뿐이다")
+	void rejectsLinesClaimingTheMoment() {
+		assertThat(RegionCards.isUsable("지금 아주 한적해요", SupportedRegion.TONGYEONG)).isFalse();
+		assertThat(RegionCards.isUsable("현재 한산한 편이에요", SupportedRegion.TONGYEONG)).isFalse();
+		assertThat(RegionCards.isUsable("오늘 가기 좋아요", SupportedRegion.TONGYEONG)).isFalse();
+		assertThat(RegionCards.isUsable("요즘 붐비는 편이에요", SupportedRegion.TONGYEONG)).isFalse();
+		// "이번 주"는 우리가 실제로 본 창이다
+		assertThat(RegionCards.isUsable("이번 주에는 한적한 편이에요", SupportedRegion.TONGYEONG)).isTrue();
+	}
+
+	/**
+	 * 우리가 모델에게 넘긴 것은 <b>순위</b>이지 사람 수가 아니다.
+	 * "제주시는 이번 주에 방문객이 많은 편이에요"가 실제로 나왔다.
+	 */
+	@Test
+	@DisplayName("세지 않은 것을 세었다고 하는 문장은 버린다")
+	void rejectsLinesInventingCounts() {
+		assertThat(RegionCards.isUsable("방문객이 많은 편이에요", SupportedRegion.JEJU)).isFalse();
+		assertThat(RegionCards.isUsable("관광객이 몰려요", SupportedRegion.JEJU)).isFalse();
+		assertThat(RegionCards.isUsable("회가 유명해요", SupportedRegion.YEOSU)).isFalse();
+	}
+
+	@Test
+	@DisplayName("금지어가 애먼 말을 잡지 않는다 — \"명소\"는 우리가 쓰는 말이다")
+	void bannedWordsDoNotCatchOurOwnCopy() {
+		assertThat(RegionCards.isUsable("문화 명소 비중이 높은 편이에요", SupportedRegion.TONGYEONG)).isTrue();
+		assertThat(RegionCards.isUsable("바닷가·물가 명소가 많아요", SupportedRegion.TAEAN)).isTrue();
+	}
+
 	@Test
 	@DisplayName("너무 길거나 빈 문장은 버린다 — 350px 칸에서 카드가 무너진다")
 	void rejectsBadLengths() {
