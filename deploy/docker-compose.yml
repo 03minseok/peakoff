@@ -58,6 +58,16 @@ services:
       KTO_RECOMMENDATION: ${KTO_RECOMMENDATION:-real}
       KTO_SERVICE_KEY: ${KTO_SERVICE_KEY:?KTO_SERVICE_KEY가 필요합니다}
 
+      # 챗봇("어디로 갈지 물어보세요")이 쓰는 LLM 열쇠.
+      #
+      # ⚠️ <필수로 걸지 않는다.> 키가 없으면 서버는 그대로 뜨고 챗봇만 조용히 꺼진다 —
+      # /api/chat/status가 enabled:false를 주고 화면은 설문으로 안내한다. 이미 그렇게
+      # 설계돼 있으므로 :? 로 걸면 <챗봇 하나 때문에 서비스 전체가 안 뜨게> 된다.
+      #
+      # 지역을 고르는 판단은 서버가 하고 LLM은 관심사 고르기와 문장 쓰기만 한다.
+      # 그래서 꺼져도 나머지 기능은 전부 살아 있다.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+
       # 비어 있으면 재시작할 때마다 토큰이 무효가 되어 로그인이 풀린다.
       PEAKOFF_JWT_SECRET: ${PEAKOFF_JWT_SECRET:?PEAKOFF_JWT_SECRET가 필요합니다}
 
