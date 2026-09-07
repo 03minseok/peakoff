@@ -16,6 +16,7 @@ import com.peakoff.congestion.domain.CongestionProvider;
 import com.peakoff.congestion.domain.QuietCandidate;
 import com.peakoff.congestion.domain.QuietSpot;
 import com.peakoff.congestion.domain.QuietSpotProvider;
+import com.peakoff.congestion.domain.Quietness;
 import com.peakoff.external.kto.client.KtoCongestionClient;
 import com.peakoff.external.kto.client.RegionForecast;
 import com.peakoff.external.kto.support.PlaceNameMatcher;
@@ -267,10 +268,9 @@ public class KtoCongestionProvider implements CongestionProvider, QuietSpotProvi
 	 * 한적도가 31~67에 모인다. 3단계 배지의 경계와 잘 맞는지, 아니면 관측 분포에 맞춰
 	 * 늘려야 하는지는 실제 데이터로 확정한다.
 	 */
-	//집중률 뒤집기
+	// 뒤집는 규칙은 Quietness 한 곳에 있다 — 챗봇의 지역 프로필도 같은 자를 쓴다.
 	private static int toQuietness(double concentrationRate) {
-		double quietness = Scores.MAX - concentrationRate;
-		return (int) Math.round(Math.clamp(quietness, Scores.MIN, Scores.MAX));
+		return Quietness.of(concentrationRate);
 	}
 
 	/**

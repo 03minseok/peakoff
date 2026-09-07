@@ -6,6 +6,7 @@ import type {
   ApiResponse,
   AuthMember,
   AuthResult,
+  ChatAnswer,
   ChangeNicknameRequest,
   ChangePasswordRequest,
   CourseDiagnosis,
@@ -50,10 +51,19 @@ export type RequestErrorCode = ApiErrorCode | 'NETWORK_ERROR'
 export class ApiRequestError extends Error {
   code: RequestErrorCode
 
-  constructor(code: RequestErrorCode, message: string) {
+  /**
+   * 몇 초 뒤에 다시 되는지. 429일 때만 채워진다.
+   *
+   * <b>서버만 아는 값이다.</b> 화면이 짐작해 잠그면 너무 일찍 풀려 다시 막히거나
+   * 너무 늦게 풀려 쓸 수 있는데 막아 둔다. 서버가 준 초를 그대로 센다.
+   */
+  retryAfterSeconds?: number
+
+  constructor(code: RequestErrorCode, message: string, retryAfterSeconds?: number) {
     super(message)
     this.name = 'ApiRequestError'
     this.code = code
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -160,12 +170,32 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
   }
 
   if (!payload.success) {
-    throw new ApiRequestError(payload.error.code, payload.error.message)
+    throw new ApiRequestError(
+      payload.error.code,
+      payload.error.message,
+      retryAfterOf(response),
+    )
   }
   return payload.data
 }
 
 /** POST /api/auth/signup — 가입 즉시 로그인 상태가 된다(토큰이 함께 온다). */
+/**
+ * Retry-After 헤더를 초로 읽는다.
+ *
+ * ⚠️ <b>같은 출처라야 읽힌다.</b> 개발은 Vite 프록시가, 배포는 Vercel rewrite가
+ * /api를 대신 전달하므로 브라우저에게는 같은 출처다 — 다른 도메인으로 직접 부르면
+ * 이 헤더가 CORS에 막혀 사라지고, 버튼이 영영 안 풀리거나 곧바로 풀린다.
+ */
+function retryAfterOf(response: Response): number | undefined {
+  const raw = response.headers.get('Retry-After')
+  if (!raw) {
+    return undefined
+  }
+  const seconds = Number.parseInt(raw, 10)
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined
+}
+
 export function signup(request: SignupRequest, signal?: AbortSignal): Promise<AuthResult> {
   return apiRequest<AuthResult>('/auth/signup', { method: 'POST', body: request, signal })
 }
@@ -622,4 +652,39 @@ export function fetchDateAlternatives(
   const query = new URLSearchParams({ date, range: String(range) })
   visits.forEach((visit) => query.append('slot', `${visit.day}:${visit.placeId}`))
   return apiRequest<DateAlternatives>(`/dates/alternatives?${query}`, { signal })
+}
+
+/* ─────────────────────────── 여행지 추천 챗봇 ─────────────────────────── */
+
+/**
+ * 챗봇을 켤 수 있는지 묻는다.
+ *
+ * 화면이 <b>처음 뜰 때 한 번만</b> 부른다. 꺼져 있으면 입력창 대신 설문으로 안내하는데,
+ * 그 판단을 매번 다시 하면 사용자가 글을 치는 도중에 화면이 바뀔 수 있다.
+ */
+/**
+ * 챗봇을 그릴지, 그리고 <b>어느 기간을 본다고 적을지</b>.
+ *
+ * basis를 여기서 함께 받는 이유: 머리글은 답을 받기 <b>전에</b> 서는 줄이라
+ * 답에 실린 기간으로는 채울 수 없다. 기간의 원천은 서버 한 곳이다.
+ */
+export function fetchChatStatus(
+  signal?: AbortSignal,
+): Promise<{ enabled: boolean; basis?: string }> {
+  return apiRequest<{ enabled: boolean; basis?: string }>('/chat/status', { signal })
+}
+
+/**
+ * 질문을 던져 지역 카드를 받는다.
+ *
+ * ⚠️ <b>같은 질문이라도 매번 다른 지역이 올 수 있다.</b> 서버가 자격을 갖춘 후보 안에서
+ * 균등 무작위로 뽑기 때문이다 — 늘 같은 셋을 보여주면 그곳이 새로운 혼잡지가 된다.
+ * 그래서 화면은 받은 답을 <b>상태에 담아 두고</b>, 다시 그려질 때 다시 묻지 않는다.
+ */
+export function askRegionChat(question: string, signal?: AbortSignal): Promise<ChatAnswer> {
+  return apiRequest<ChatAnswer>('/chat/regions', {
+    method: 'POST',
+    body: { question },
+    signal,
+  })
 }

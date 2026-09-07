@@ -26,6 +26,14 @@ public enum ErrorCode {
 	/** 이미 있는 값과 부딪힌다. 가입된 이메일로 다시 가입하려는 경우. */
 	CONFLICT(HttpStatus.CONFLICT),
 
+	/**
+	 * 너무 잦은 호출. <b>사용자 잘못이 아니라 우리 사정이다</b> — 챗봇 한 번이 유료 호출이라
+	 * 크레딧을 지키려고 우리가 막는다.
+	 *
+	 * <p>응답에 {@code Retry-After}가 함께 나간다. 화면은 그만큼 버튼을 잠근다.
+	 */
+	TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS),
+
 	/** 서버 내부 오류. 원인은 로그에만 남기고 밖으로는 알리지 않는다. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR),
 

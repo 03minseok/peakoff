@@ -132,6 +132,8 @@ backend/data/kto-calls/
 analysis/national/snapshots/
 analysis/region-candidates/snapshots/
 analysis/region-candidates/today/
+# 챗봇 지역 프로필 — 카탈로그·예측 원자료 9.2MB. 결론은 OPEN_DECISIONS 11-2에 있다
+analysis/region-chat/today/
 analysis/quietness-scale/*.json
 # 예측 흔들림 측정은 날마다 쌓여 하루 300KB다. 결과만 DRIFT-LOG.md에 남긴다.
 analysis/forecast-drift/*.json
