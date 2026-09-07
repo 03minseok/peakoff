@@ -1092,7 +1092,7 @@ export function MyPage() {
                     누우면서 오른쪽 끝이 흰 바탕이 됐다. 흰 하트는 거기서 보이지 않으므로
                     꺼진 하트를 회색으로 돌리고, 사진을 받치던 그림자도 함께 끈다.
                   */
-                          className={`press absolute top-2.5 right-2.5 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-0 bg-transparent drop-shadow-[0_1px_3px_rgb(42_62_84/0.55)] max-sm:top-1 max-sm:right-1 max-sm:h-8 max-sm:w-8 max-sm:drop-shadow-none ${
+                          className={`press absolute top-2.5 right-2.5 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-0 bg-transparent drop-shadow-[0_1px_3px_--alpha(var(--color-fg)/55%)] max-sm:top-1 max-sm:right-1 max-sm:h-8 max-sm:w-8 max-sm:drop-shadow-none ${
                             liked ? 'text-like' : 'text-white max-sm:text-hint'
                           }`}
                         >

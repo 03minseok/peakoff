@@ -22,9 +22,12 @@
  * 마크가 성립하는데, currentColor로 두면 글자색을 물려받아 한 덩어리로 뭉친다.
  *
  * <h3>어두운 면에서는 두 색이 모두 바뀐다</h3>
- * 봉우리는 흰색, 비껴간 조각은 <b>그린틸</b>({@code --c-quiet-soft})이다.
+ * 봉우리는 흰색({@code --c-surface}), 비껴간 조각은 <b>그린틸</b>({@code --c-quiet-soft})이다.
  * 어두운 패널에는 틸 글로우가 깔려 있어 브랜드 틸을 그대로 두면 배경에 묻히고,
  * 같은 면의 틸 버튼과 무게가 겹쳐 <b>로고가 행동 유도로 읽힌다.</b>
+ *
+ * <p>⚠️ <b>흰색도 토큰에서 꺼낸다.</b> {@code #FFFFFF}를 박아 두면 네 색 중 하나가
+ * 이 파일에만 사본으로 남아, 팔레트에서 순백을 조금이라도 옮기는 날 로고만 옛 흰색으로 선다.
  */
 
 interface Props {
@@ -94,7 +97,7 @@ const PEAK_PATH = 'M16 6 L23 20 L17.41 20 L16 17.18 L11.59 26 L6 26 Z'
 const OFFSET_PATH = 'M18.11 21.4 L23.7 21.4 L26 26 L20.41 26 Z'
 
 export function BrandMark({ tone = 'light', size = 26, className = '' }: Props) {
-  const peak = tone === 'dark' ? '#FFFFFF' : 'var(--c-fg)'
+  const peak = tone === 'dark' ? 'var(--c-surface)' : 'var(--c-fg)'
   const offset = tone === 'dark' ? 'var(--c-quiet-soft)' : 'var(--c-brand)'
 
   return (

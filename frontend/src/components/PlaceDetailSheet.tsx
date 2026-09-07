@@ -143,13 +143,13 @@ export function PlaceDetailSheet({
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
       <div
-        className="sheet-dim absolute inset-0 bg-[rgb(42_62_84/0.42)]"
+        className="sheet-dim absolute inset-0"
         onClick={onClose}
         aria-hidden="true"
       />
 
       <div
-        className="sheet-panel dialog-panel bg-surface relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-h-[84svh] lg:max-w-[480px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
+        className="sheet-panel dialog-panel bg-surface relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] lg:max-h-[84svh] lg:max-w-[480px] lg:rounded-[24px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="place-detail-title"
@@ -163,7 +163,7 @@ export function PlaceDetailSheet({
           type="button"
           onClick={onClose}
           aria-label="닫기"
-          className="press absolute top-3 right-3 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-[rgb(42_62_84/0.55)] text-base text-white"
+          className="press absolute top-3 right-3 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-fg/55 text-base text-white"
         >
           <Close />
         </button>

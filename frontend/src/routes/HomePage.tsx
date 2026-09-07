@@ -877,7 +877,7 @@ export function HomePage() {
               달고 있으면 "여기도 눌리는데?"가 되어 방금 없앤 혼란이 되돌아온다.
               대신 같은 hover에서 CTA가 함께 반응해 눌러야 할 곳을 가리킨다.
             */}
-            <div className="group bg-fg relative w-full overflow-hidden rounded-[24px] px-4.5 pt-4.5 pb-4.5 md:px-6 md:pt-6.5 md:pb-6 text-left text-white shadow-[0_8px_26px_rgb(42_62_84/0.18)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-[0_14px_34px_rgb(42_62_84/0.24)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
+            <div className="group bg-fg relative w-full overflow-hidden rounded-[24px] px-4.5 pt-4.5 pb-4.5 md:px-6 md:pt-6.5 md:pb-6 text-left text-white shadow-[0_8px_26px_--alpha(var(--color-fg)/18%)] transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-[0_14px_34px_--alpha(var(--color-fg)/24%)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:flex-1 lg:px-8 lg:pt-9">
           {/*
             ■ 모바일만: 그림글자가 <b>제목 위</b>에 홀로 선다 (2026-09-02)
 
