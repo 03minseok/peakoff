@@ -405,7 +405,7 @@ export function AlternativeSheet({
 
   return (
     <div
-      className="sheet-dim fixed inset-0 z-100 flex items-end justify-center bg-[rgb(42_62_84/0.42)] lg:items-center lg:p-6"
+      className="sheet-dim fixed inset-0 z-100 flex items-end justify-center lg:items-center lg:p-6"
       onClick={onClose}
     >
       {/*
@@ -422,7 +422,7 @@ export function AlternativeSheet({
       */}
       <div
         ref={panelRef}
-        className="sheet-panel dialog-panel bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
+        className="sheet-panel dialog-panel bg-bg flex max-h-[84svh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] focus-visible:outline-none lg:max-h-[76svh] lg:rounded-[24px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"

@@ -47,13 +47,13 @@ export function LegalSheet({ docId, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end lg:items-center lg:justify-center lg:p-8">
       <div
-        className="sheet-dim absolute inset-0 bg-[rgb(42_62_84/0.42)]"
+        className="sheet-dim absolute inset-0"
         onClick={onClose}
         aria-hidden="true"
       />
 
       <div
-        className="sheet-panel dialog-panel bg-bg relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] shadow-[0_-10px_40px_rgb(42_62_84/0.24)] lg:max-w-[520px] lg:rounded-[24px] lg:shadow-[0_24px_60px_rgb(42_62_84/0.28)]"
+        className="sheet-panel dialog-panel bg-bg relative flex max-h-[88svh] w-full flex-col overflow-hidden rounded-t-[26px] lg:max-w-[520px] lg:rounded-[24px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="legal-sheet-title"
