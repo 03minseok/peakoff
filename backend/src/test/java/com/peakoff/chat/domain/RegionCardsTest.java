@@ -23,6 +23,18 @@ class RegionCardsTest {
 		return new RegionProfile(region, Map.of(Interest.FOOD, foodShare), quietShare, 94);
 	}
 
+	/**
+	 * 실제로 내려가는 크기 — <b>둘</b>({@code RegionChatPicker.CARD_COUNT}).
+	 *
+	 * <p>아래 {@link #picked()}는 셋을 담는데, 그쪽이 확인하는 것은
+	 * <b>몫 순위와 한적 순위가 어긋나도 각자 제 말을 하는가</b>라 셋이 있어야 보인다.
+	 */
+	private List<RegionProfile> pickedTwo() {
+		return List.of(
+				profile(SupportedRegion.TONGYEONG, 65, 0.349),
+				profile(SupportedRegion.JEJU, 22, 0.345));
+	}
+
 	/** 실측 순서 그대로 — 통영 · 여수 · 제주시 (한적한 순). */
 	private List<RegionProfile> picked() {
 		return List.of(
@@ -56,14 +68,17 @@ class RegionCardsTest {
 	/**
 	 * 지역 평균으로는 3단계 등급이 서지 않는다({@link RegionProfile}). 그래서 한적함은
 	 * <b>견주는 말</b>로만 한다 — "한적해요"는 사실이 아닐 수 있지만 "이 중에서는"은 언제나 사실이다.
+	 *
+	 * <p>⚠️ <b>카드가 둘일 때의 문구를 잠근다</b>(2026-09-06). 실제로 내려가는 것이 둘이고,
+	 * 둘을 견주면서 "가장"·"붐빔"을 쓰면 <b>나머지 하나</b>를 분포의 꼬리처럼 부르게 된다.
 	 */
 	@Test
-	@DisplayName("관심사가 없으면 한적한 정도를 견주어 말한다 — 단정하지 않는다")
+	@DisplayName("관심사가 없으면 한적한 정도를 견주어 말한다 — 둘일 때는 더/덜로 짝짓는다")
 	void withoutInterestItComparesQuietness() {
-		List<RegionCard> cards = RegionCards.of(Interest.NONE, picked(), Map.of());
+		List<RegionCard> cards = RegionCards.of(Interest.NONE, pickedTwo(), Map.of());
 
-		assertThat(lineOf(cards, SupportedRegion.TONGYEONG)).isEqualTo("이 중에서는 가장 한적한 편이에요");
-		assertThat(lineOf(cards, SupportedRegion.JEJU)).isEqualTo("이 중에서는 붐비는 편이에요");
+		assertThat(lineOf(cards, SupportedRegion.TONGYEONG)).isEqualTo("이 중에서는 더 한적한 편이에요");
+		assertThat(lineOf(cards, SupportedRegion.JEJU)).isEqualTo("이 중에서는 덜 한적한 편이에요");
 		assertThat(cards).noneSatisfy(card -> assertThat(card.line()).isEqualTo("한적해요"));
 	}
 
@@ -71,11 +86,11 @@ class RegionCardsTest {
 	@DisplayName("쓸 만한 LLM 문장은 템플릿을 덮는다")
 	void usableLlmLinesWin() {
 		Map<SupportedRegion, String> written = Map.of(
-				SupportedRegion.TONGYEONG, "맛집이 몰려 있고 이번 주는 한산한 편이에요");
+				SupportedRegion.TONGYEONG, "맛집이 몰려 있고 한산한 편이에요");
 
 		List<RegionCard> cards = RegionCards.of(Interest.FOOD, picked(), written);
 
-		assertThat(lineOf(cards, SupportedRegion.TONGYEONG)).isEqualTo("맛집이 몰려 있고 이번 주는 한산한 편이에요");
+		assertThat(lineOf(cards, SupportedRegion.TONGYEONG)).isEqualTo("맛집이 몰려 있고 한산한 편이에요");
 		assertThat(sourceOf(cards, SupportedRegion.TONGYEONG)).isEqualTo(CardLineSource.LLM);
 		// 나머지는 그대로 템플릿이다. 하나만 왔다고 나머지를 비우지 않는다.
 		assertThat(sourceOf(cards, SupportedRegion.YEOSU)).isEqualTo(CardLineSource.TEMPLATE);
@@ -93,7 +108,7 @@ class RegionCardsTest {
 	@Test
 	@DisplayName("자기 지역 이름은 허용한다 — 군더더기일 뿐 틀린 말은 아니다")
 	void allowsItsOwnName() {
-		assertThat(RegionCards.isUsable("통영은 이번 주 한산한 편이에요", SupportedRegion.TONGYEONG)).isTrue();
+		assertThat(RegionCards.isUsable("통영은 한산한 편이에요", SupportedRegion.TONGYEONG)).isTrue();
 	}
 
 	/**
@@ -112,14 +127,19 @@ class RegionCardsTest {
 	 * "여수는 음식점이 많고 지금 아주 한적해요"(2026-09-06).
 	 */
 	@Test
-	@DisplayName("시점을 주장하는 문장은 버린다 — 우리가 아는 것은 이번 주 예측뿐이다")
+	@DisplayName("시점을 주장하는 문장은 버린다 — 우리가 아는 것은 창 안의 예측뿐이다")
 	void rejectsLinesClaimingTheMoment() {
 		assertThat(RegionCards.isUsable("지금 아주 한적해요", SupportedRegion.TONGYEONG)).isFalse();
 		assertThat(RegionCards.isUsable("현재 한산한 편이에요", SupportedRegion.TONGYEONG)).isFalse();
 		assertThat(RegionCards.isUsable("오늘 가기 좋아요", SupportedRegion.TONGYEONG)).isFalse();
 		assertThat(RegionCards.isUsable("요즘 붐비는 편이에요", SupportedRegion.TONGYEONG)).isFalse();
-		// "이번 주"는 우리가 실제로 본 창이다
-		assertThat(RegionCards.isUsable("이번 주에는 한적한 편이에요", SupportedRegion.TONGYEONG)).isTrue();
+		/*
+		 * ⚠️ <b>"이번 주"도 버린다</b>(2026-09-07에 뒤집었다). 창이 이레였을 때는 우리가
+		 * 실제로 본 기간이라 허용했는데, 지금은 예측 전체(24~30일)를 본다 —
+		 * 한 달치를 보고 이레의 이야기인 척하게 된다. 어느 기간인지는 서버가 basis로 말한다.
+		 */
+		assertThat(RegionCards.isUsable("이번 주에는 한적한 편이에요", SupportedRegion.TONGYEONG)).isFalse();
+		assertThat(RegionCards.isUsable("이번 달 가기 좋아요", SupportedRegion.TONGYEONG)).isFalse();
 	}
 
 	/**

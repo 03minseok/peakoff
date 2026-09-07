@@ -662,8 +662,16 @@ export function fetchDateAlternatives(
  * 화면이 <b>처음 뜰 때 한 번만</b> 부른다. 꺼져 있으면 입력창 대신 설문으로 안내하는데,
  * 그 판단을 매번 다시 하면 사용자가 글을 치는 도중에 화면이 바뀔 수 있다.
  */
-export function fetchChatStatus(signal?: AbortSignal): Promise<{ enabled: boolean }> {
-  return apiRequest<{ enabled: boolean }>('/chat/status', { signal })
+/**
+ * 챗봇을 그릴지, 그리고 <b>어느 기간을 본다고 적을지</b>.
+ *
+ * basis를 여기서 함께 받는 이유: 머리글은 답을 받기 <b>전에</b> 서는 줄이라
+ * 답에 실린 기간으로는 채울 수 없다. 기간의 원천은 서버 한 곳이다.
+ */
+export function fetchChatStatus(
+  signal?: AbortSignal,
+): Promise<{ enabled: boolean; basis?: string }> {
+  return apiRequest<{ enabled: boolean; basis?: string }>('/chat/status', { signal })
 }
 
 /**

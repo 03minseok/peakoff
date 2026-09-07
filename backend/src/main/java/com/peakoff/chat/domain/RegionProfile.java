@@ -11,7 +11,7 @@ import com.peakoff.place.domain.SupportedRegion;
  * <h2>숫자가 둘이고, 하는 일이 다르다</h2>
  * <ul>
  *   <li>{@code shares} — 관심사별 <b>몫</b>. 후보를 <b>거르는</b> 데만 쓴다</li>
- *   <li>{@code quietShare} — 이번 주 <b>한적한 예측의 비율</b>. <b>줄 세우는</b> 데 쓰고,
+ *   <li>{@code quietShare} — 창 안의 <b>한적한 예측의 비율</b>. <b>줄 세우는</b> 데 쓰고,
  *       그대로 <b>카드에 적힌다</b></li>
  * </ul>
  * 둘을 곱하거나 더해 하나로 만들지 않는다. 합치는 순간 "왜 이 지역이 1등인지"를
@@ -26,7 +26,7 @@ import com.peakoff.place.domain.SupportedRegion;
  * 충주 61 · 남원 61 · 가평 62 · 통영 63          ← 한적(65) 위도, 붐빔(35) 아래도 없다
  * </pre>
  *
- * 카드 셋의 배지가 언제나 같은 글자가 되어, "여러 개를 나란히 놓아 차이를 보인다"는
+ * 카드 둘의 배지가 언제나 같은 글자가 되어, "여러 개를 나란히 놓아 차이를 보인다"는
  * 이 화면의 존재 이유가 사라진다. {@code docs/OPEN_DECISIONS.md} 11-1이 적어 둔 함정과
  * 같은 뿌리다 — <b>표본을 늘릴수록 평균은 좁아진다.</b> 지역 하나가 50~244곳 × 7일이라
  * 가장 붐비는 곳과 가장 한적한 곳이 서로를 지운다.
@@ -41,7 +41,7 @@ import com.peakoff.place.domain.SupportedRegion;
  * 한적 장소 비율        39 ~ 96   57    위쪽에 몰린다(7곳이 78% 이상)
  * </pre>
  *
- * <b>한적 관측 비율</b>은 제주시 21.6%에서 통영 64.7%까지 벌어져, 카드 셋을 나란히 놓으면
+ * <b>한적 관측 비율</b>은 제주시 21.6%에서 통영 64.7%까지 벌어져, 카드 둘을 나란히 놓으면
  * 차이가 그대로 보인다. "가장 유명한 곳은 붐비고 비슷한 곳은 여유롭다"는 이 서비스의 말이
  * 22% 대 65%라는 숫자로 선다.
  *
@@ -56,8 +56,8 @@ import com.peakoff.place.domain.SupportedRegion;
  *
  * @param region       어느 지역
  * @param shares       관심사 → 그 분류가 지역 카탈로그에서 차지하는 몫 (0~1)
- * @param quietShare   이번 주 예측 중 한적(65+)인 관측의 비율 (0~100). 자료가 없으면 {@code null}
- * @param forecastSize 이번 주 예측이 있는 관광지 수. 카드가 모수를 함께 적는 데 쓴다 —
+ * @param quietShare   창 안의 예측 중 한적(65+)인 관측의 비율 (0~100). 자료가 없으면 {@code null}
+ * @param forecastSize 창 안에 예측이 있는 관광지 수. 카드가 모수를 함께 적는 데 쓴다 —
  *                     비율만 내걸면 몇 곳을 보고 한 말인지 알 수 없다
  */
 public record RegionProfile(

@@ -76,6 +76,13 @@ public class ChatIntentDevController {
 					body.put("relevant", read.relevant());
 					body.put("interest", read.interest().name());
 					body.put("interestLabel", read.interest().label());
+					/*
+					 * 시점도 함께 보인다. 이 값이 <b>거르는 문에서만</b> 쓰이는지
+					 * 확인하려면 읽어낸 숫자를 눈으로 봐야 한다 —
+					 * "이번 달 말"을 20으로 읽었는지 60으로 읽었는지에 따라
+					 * 답이 카드가 되기도 하고 "아직 예측이 없다"가 되기도 한다.
+					 */
+					body.put("horizonDays", read.horizonDays());
 				},
 				/*
 				 * 시간 초과 · 할당량 초과 · 모양이 어긋난 답이 모두 여기다.

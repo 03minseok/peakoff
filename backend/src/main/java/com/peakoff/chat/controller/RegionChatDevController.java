@@ -16,12 +16,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.peakoff.chat.domain.ForecastWindow;
 import com.peakoff.chat.domain.Interest;
 import com.peakoff.chat.domain.RegionCard;
 import com.peakoff.chat.domain.RegionCards;
 import com.peakoff.chat.domain.RegionChatPicker;
 import com.peakoff.chat.domain.RegionProfile;
 import com.peakoff.chat.domain.RegionProfileProvider;
+import com.peakoff.congestion.domain.CongestionProvider;
 import com.peakoff.global.response.ApiResponse;
 
 /**
@@ -43,17 +45,18 @@ import com.peakoff.global.response.ApiResponse;
 @RequestMapping("/api/dev/chat-regions")
 public class RegionChatDevController {
 
-	/** 이번 주. 챗봇이 보는 창과 같아야 여기서 본 값이 화면과 맞는다. */
-	private static final int FORECAST_DAYS = 7;
-
 	private final Optional<RegionProfileProvider> profileProvider;
 	private final RegionChatPicker picker;
+	/** 예측이 어디까지 닿는지. <b>챗봇과 같은 자리에서 읽어야</b> 여기 값이 화면과 맞는다 */
+	private final CongestionProvider congestionProvider;
 	private final Clock clock;
 
 	public RegionChatDevController(
-			Optional<RegionProfileProvider> profileProvider, RegionChatPicker picker, Clock clock) {
+			Optional<RegionProfileProvider> profileProvider, RegionChatPicker picker,
+			CongestionProvider congestionProvider, Clock clock) {
 		this.profileProvider = profileProvider;
 		this.picker = picker;
+		this.congestionProvider = congestionProvider;
 		this.clock = clock;
 	}
 
@@ -79,8 +82,12 @@ public class RegionChatDevController {
 			return ApiResponse.ok(body);
 		}
 
-		List<RegionProfile> profiles = profileProvider.get().profiles(LocalDate.now(clock), FORECAST_DAYS);
+		ForecastWindow window = ForecastWindow.of(
+				LocalDate.now(clock), congestionProvider.lastForecastDate());
+		List<RegionProfile> profiles = profileProvider.get().profiles(window.from(), window.days());
 		body.put("available", true);
+		body.put("basis", window.label());
+		body.put("windowDays", window.days());
 		body.put("all", profiles.stream().map(profile -> row(profile, read)).toList());
 		body.put("candidates", picker.filter(profiles, read).stream()
 				.map(profile -> profile.region().shortName())

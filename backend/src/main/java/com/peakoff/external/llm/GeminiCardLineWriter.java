@@ -64,9 +64,11 @@ public class GeminiCardLineWriter implements CardLineWriter {
 			- ⚠️ 다른 지역 이름을 언급하지 마라.
 			- ⚠️ 숫자를 쓰지 마라. 숫자는 화면이 따로 보여준다.
 
-			- ⚠️⚠️ <b>시점을 "지금"이라고 말하지 마라.</b> 우리가 아는 것은 <b>이번 주</b>
+			- ⚠️⚠️ <b>시점을 "지금"이라고 말하지 마라.</b> 우리가 아는 것은 <b>앞으로 며칠</b>
 			  예측뿐이다. "지금", "현재", "오늘", "실시간", "요즘"은 쓰면 안 된다.
-			  → 나쁨: "지금 아주 한적해요"   좋음: "이번 주에는 한적한 편이에요"
+			  → 나쁨: "지금 아주 한적해요"   좋음: "바닷가 명소가 많고 한적한 편이에요"
+			- ⚠️ <b>기간을 적지 마라</b>("이번 주"·"이번 달"). 어느 기간을 본 값인지는
+			  화면이 따로 말한다. 네가 적으면 두 곳이 다른 기간을 말하게 된다.
 
 			- ⚠️⚠️ <b>한적하다·붐빈다를 단정하지 마라.</b> 우리가 주는 것은 이 지역들
 			  <b>사이의 순위</b>이지 절대적인 등급이 아니다. 반드시 견주는 말을 붙여라.
@@ -138,16 +140,26 @@ public class GeminiCardLineWriter implements CardLineWriter {
 				prompt.append(", ").append(interest.noun()).append(" 비중=")
 						.append(profile.region() == topShare ? "이 중 가장 높음" : "높은 편");
 			}
-			prompt.append(", 이번 주 한적한 정도=").append(quietnessRank(rank, picked.size()))
+			prompt.append(", 예측 기간 한적한 정도=").append(quietnessRank(rank, picked.size()))
 					.append('\n');
 		}
 		return prompt.toString();
 	}
 
-	/** 순위를 말로 옮긴다. <b>절대 등급이 아니라 이 카드들 안에서의 자리</b>다. */
+	/**
+	 * 순위를 말로 옮긴다. <b>절대 등급이 아니라 이 카드들 안에서의 자리</b>다.
+	 *
+	 * <p>⚠️ {@code CardLineTemplate}과 <b>같은 자를 쓴다.</b> LLM 문장과 템플릿 문장이
+	 * 같은 자리에서 갈아 끼워지므로, 한쪽만 고치면 같은 카드가 어느 쪽이 쓰였느냐에 따라
+	 * 다른 세기로 말한다.
+	 */
 	private static String quietnessRank(int rank, int total) {
 		if (total <= 1) {
 			return "견줄 상대 없음";
+		}
+		if (total == 2) {
+			// 둘을 견줄 때 "가장"·"붐빔"은 과하다. 더/덜이 짝을 이룬다
+			return rank == 0 ? "이 중 더 한적함" : "이 중 덜 한적함";
 		}
 		if (rank == 0) {
 			return "이 중 가장 한적함";

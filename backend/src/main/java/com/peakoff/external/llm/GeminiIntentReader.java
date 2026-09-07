@@ -20,7 +20,7 @@ import com.peakoff.chat.domain.QuestionIntent;
 import com.peakoff.external.kto.support.TtlCache;
 
 /**
- * 질문에서 <b>관심사만</b> 뽑는다. 지역은 묻지 않는다.
+ * 질문에서 <b>관심사와 시점만</b> 뽑는다. 지역은 묻지 않는다.
  *
  * <h2>이 클래스가 지키는 선</h2>
  * 프롬프트에 "어느 지역을 추천할지 말하지 말라"고 적는 것으로 끝내지 않고,
@@ -87,9 +87,15 @@ public class GeminiIntentReader implements IntentReader {
 
 			2. interest: 질문에서 드러난 관심사 하나. 아래 목록의 <b>영문 식별자</b>를 그대로 써라.
 			   %s
-			   - 관심사가 드러나지 않으면 NONE (예: "이번 주 어디가 한산해요?")
+			   - 관심사가 드러나지 않으면 NONE (예: "요즘 어디가 한산해요?")
 			   - 애매하면 NONE. 억지로 고르지 마라
 			   - relevant가 false면 NONE
+
+			3. horizonDays: 질문이 가리키는 시점이 <b>오늘로부터 대략 며칠 뒤</b>인가.
+			   - 시점이 드러나지 않으면 null (예: "사람 적은 바다 여행지 없나요?")
+			   - "이번 주말" 3, "다음 주" 7, "다음 달" 30, "두 달 뒤" 60, "내년 여름" 300
+			   - 어림수면 된다. 정확한 날짜 계산을 하려 들지 마라
+			   - <b>예측이 가능한 기간인지는 판단하지 마라.</b> 그건 서버가 정한다
 
 			⚠️ 절대 지키기:
 			- 지역이나 장소 이름을 답하지 마라. 어디를 추천할지는 서버가 정한다.
@@ -144,10 +150,11 @@ public class GeminiIntentReader implements IntentReader {
 			}
 			/*
 			 * 모델이 목록에 없는 값을 줄 수 있다. Interest.of가 그것을 NONE으로 흘려보낸다 —
-			 * 관심사를 못 읽어도 "이번 주 한적한 곳"은 여전히 답할 수 있으므로,
+			 * 관심사를 못 읽어도 "한적한 곳"은 여전히 답할 수 있으므로,
 			 * 여기서 예외를 던져 질문 전체를 버리는 것은 과하다.
 			 */
-			return new QuestionIntent(true, Interest.of(node.path("interest").asText("")));
+			return new QuestionIntent(
+					true, Interest.of(node.path("interest").asText("")), horizonDays(node));
 		}
 		catch (Exception e) {
 			/*
@@ -161,16 +168,34 @@ public class GeminiIntentReader implements IntentReader {
 	}
 
 	/**
+	 * 시점을 며칠로 읽었는가.
+	 *
+	 * <p>⚠️ <b>없는 것과 0은 다르다.</b> 시점이 안 드러난 질문은 창과 견주지 않고
+	 * 그냥 지금 기간으로 답해야 하는데, 0으로 뭉치면 "오늘을 물었다"가 되어
+	 * 뜻이 달라진다. 숫자가 아닌 답(null·빈 문자열·"모름")은 전부 없는 것으로 본다.
+	 */
+	private static Integer horizonDays(JsonNode node) {
+		JsonNode horizon = node.path("horizonDays");
+		return horizon.isIntegralNumber() ? horizon.asInt() : null;
+	}
+
+	/**
 	 * 받을 JSON의 모양.
 	 *
 	 * <p>⚠️ <b>지역을 담을 칸이 없다.</b> 이 스키마가 곧 "LLM이 할 수 있는 일"의 경계다.
+	 * 시점도 <b>숫자 하나</b>일 뿐이라 "언제가 좋다"는 판단이 들어올 자리가 없다.
+	 *
+	 * <p>{@code horizonDays}는 <b>required가 아니다.</b> 시점이 안 드러난 질문이 대부분인데
+	 * 반드시 채우라고 하면 모델이 아무 숫자나 지어낸다 — 그 순간 "사람 적은 바다"가
+	 * 몇 달 뒤 질문으로 둔갑한다.
 	 */
 	private static Schema schema() {
 		return Schema.builder()
 				.type(Type.Known.OBJECT)
 				.properties(ImmutableMap.of(
 						"relevant", Schema.builder().type(Type.Known.BOOLEAN).build(),
-						"interest", Schema.builder().type(Type.Known.STRING).build()))
+						"interest", Schema.builder().type(Type.Known.STRING).build(),
+						"horizonDays", Schema.builder().type(Type.Known.INTEGER).nullable(true).build()))
 				.required("relevant", "interest")
 				.build();
 	}
