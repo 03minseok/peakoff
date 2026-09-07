@@ -8,6 +8,7 @@ import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from '../components/levelStyles'
 import { PublicCourseSheet } from '../components/PublicCourseSheet'
+import { RegionChat } from '../components/RegionChat'
 import { CARD_RAISED } from '../components/styles'
 import { ApiRequestError, fetchQuietSpots, fetchRecentCourses } from '../services/api'
 import type { PublicCourse, QuietSpot } from '../types/api'
@@ -1397,93 +1398,100 @@ export function HomePage() {
         </section>
 
         {/*
-          4. <b>비워 둔 칸.</b>
+          4. 다른 사람들의 여행.
 
-          채울 것이 정해져 있고(2026-09-02) 자리를 먼저 잡아 둔다. 나중에 채울 때
-          양옆 박스의 폭을 다시 계산할 일이 없다 — 넷·넷·넷이 이미 서 있다.
+          옆 칸과 <b>같은 박스</b>에 담는다. 예전에는 이쪽만 테두리 없이 배경 위에 떠 있어,
+          나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 셋이다.
 
-          ⚠️ <b>좁은 화면에서는 그리지 않는다.</b> 한 줄로 쌓이는 자리에서 빈 흰 카드는
-          자리를 맡아둔 것으로 읽히지 않고 <b>내용이 안 뜬 박스</b>로 읽힌다.
-          넓은 화면에서는 옆에 형제가 있어 "세 칸 중 하나"로 보이지만, 위아래로 쌓이면
-          그 문맥이 사라진다.
+          이름이 한 번 "요즘 저장된 여행"으로 갔다가 돌아왔다 (2026-09-01).
+          원래 이 이름이 서버의 "내 코스 빼기"와 짝이었는데 그 거르기가 사라졌고
+          (저장한 사람만 자기 코스를 못 봤다 — SavedCourseService.recent 주석),
+          이름만 남으니 내 코스가 섞여도 어색하지 않은 친숙한 쪽을 다시 골랐다.
+          ⚠️ 그래서 이 이름은 이제 <b>거르기의 근거가 아니다.</b> 이 이름을 이유로
+          서버에서 내 코스를 다시 빼지 말 것.
+
+          <p>순서 주장도 하지 않는 이름이다 — 실제로 최신순이 아니라
+          <b>한적 상위 절반에서 무작위</b>로 서고, 12초마다 갈린다(drawOtherCourses).
         */}
         <section
-          className={`${CARD_RAISED} hidden p-4.5 lg:col-span-4 lg:block lg:p-5.5`}
-          aria-hidden="true"
-        />
+          /*
+            ■ 높이를 줄에 맞춘다 (2026-08-31)
 
-          {/*
-            5. 다른 사람들의 여행.
+            {@code lg:self-start}가 있었다. "내용만큼만 키운다"는 뜻이었고, 옆이
+            700px가 넘던 시절에는 <b>저장된 코스가 없을 때 이 칸이 통째로 흰 여백</b>이
+            되는 것을 막아 주었다.
 
-            옆 칸과 <b>같은 박스</b>에 담는다. 데이터 줄은 <b>넷 칸씩 셋</b>이고
-            가운데는 채울 것을 기다리는 빈 칸이다. 예전에는 이쪽만 테두리 없이 배경 위에 떠 있어,
-            나란히 놓인 두 덩이가 같은 층위로 읽히지 않았다. 홈의 데이터 줄은 박스 셋이다.
+            <p>그 옆 칸이 사라졌다. 이제 나란히 서는 셋은 높이가 비슷하고,
+            <b>셋의 아랫변이 안 맞는 것</b>이 흰 여백보다 눈에 띈다.
+            격자 기본값(stretch)으로 되돌린다.
 
-            이름이 한 번 "요즘 저장된 여행"으로 갔다가 돌아왔다 (2026-09-01).
-            원래 이 이름이 서버의 "내 코스 빼기"와 짝이었는데 그 거르기가 사라졌고
-            (저장한 사람만 자기 코스를 못 봤다 — SavedCourseService.recent 주석),
-            이름만 남으니 내 코스가 섞여도 어색하지 않은 친숙한 쪽을 다시 골랐다.
-            ⚠️ 그래서 이 이름은 이제 <b>거르기의 근거가 아니다.</b> 이 이름을 이유로
-            서버에서 내 코스를 다시 빼지 말 것.
+            칸을 채우려고 OTHER_COURSE_COUNT를 늘리는 것은 여전히 답이 아니다 —
+            그 수는 실제 저장된 코스가 정하지 우리가 정하지 않는다.
+          */
+          className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:p-5.5`}
+        >
+          <div className="flex flex-col gap-0.75 px-1">
+            <h2 className={SECTION_TITLE}>다른 사람들의 여행</h2>
+            <span className="text-hint text-[12.5px]">
+              눌러서 어떤 코스인지 볼 수 있어요
+            </span>
+          </div>
 
-            <p>순서 주장도 하지 않는 이름이다 — 실제로 최신순이 아니라
-            <b>한적 상위 절반에서 무작위</b>로 서고, 12초마다 갈린다(drawOtherCourses).
-          */}
-          <section
+          {others.length > 0 ? (
             /*
-              ■ 높이를 줄에 맞춘다 (2026-08-31)
-
-              {@code lg:self-start}가 있었다. "내용만큼만 키운다"는 뜻이었고, 옆이
-              700px가 넘던 시절에는 <b>저장된 코스가 없을 때 이 칸이 통째로 흰 여백</b>이
-              되는 것을 막아 주었다.
-
-              <p>그 옆 칸이 사라졌다. 이제 나란히 서는 셋은 높이가 비슷하고,
-              <b>셋의 아랫변이 안 맞는 것</b>이 흰 여백보다 눈에 띈다.
-              격자 기본값(stretch)으로 되돌린다.
-
-              칸을 채우려고 OTHER_COURSE_COUNT를 늘리는 것은 여전히 답이 아니다 —
-              그 수는 실제 저장된 코스가 정하지 우리가 정하지 않는다.
+              region-fade는 <b>틀이 아니라 내용에</b> 붙는다 — 왼쪽 칸들과 같은 이유다.
+              카드째 사라지면 12초마다 화면에 구멍이 뚫린 것으로 읽힌다.
             */
-            className={`${CARD_RAISED} flex flex-col gap-3 p-4.5 lg:col-span-4 lg:p-5.5`}
-          >
-            <div className="flex flex-col gap-0.75 px-1">
-              <h2 className={SECTION_TITLE}>다른 사람들의 여행</h2>
-              <span className="text-hint text-[12.5px]">
-                눌러서 어떤 코스인지 볼 수 있어요
+            <div
+              className="region-fade grid grid-cols-1 gap-2.5 max-md:[&>*:nth-child(4)]:hidden md:grid-cols-2 lg:grid-cols-1"
+              data-fading={othersFading}
+            >
+              {others.map((course) => (
+                <OtherCourseCard
+                  key={`${course.region}-${course.startDate}-${course.createdAt}`}
+                  course={course}
+                  onOpen={() => setOpenedCourse(course)}
+                />
+              ))}
+            </div>
+          ) : (
+            /*
+              아직 저장된 코스가 없을 때. <b>빈 칸으로 두지 않는다.</b>
+              자리만 비워 두면 고장으로 읽히고, 스켈레톤을 계속 돌리면 영영 오지 않을 것을
+              기다리는 화면이 된다. 대신 첫 사람이 될 수 있다고 말한다.
+            */
+            <div className="bg-bg flex flex-col gap-1.5 rounded-[16px] p-4.5">
+              <span className="text-fg text-[14px] font-semibold">아직 저장된 코스가 없어요</span>
+              <span className="text-hint text-[12.5px] leading-[1.6]">
+                코스를 짜고 저장하면 여기 처음으로 올라와요.
               </span>
             </div>
+          )}
+        </section>
 
-            {others.length > 0 ? (
-              /*
-                region-fade는 <b>틀이 아니라 내용에</b> 붙는다 — 왼쪽 칸들과 같은 이유다.
-                카드째 사라지면 12초마다 화면에 구멍이 뚫린 것으로 읽힌다.
-              */
-              <div
-                className="region-fade grid grid-cols-1 gap-2.5 max-md:[&>*:nth-child(4)]:hidden md:grid-cols-2 lg:grid-cols-1"
-                data-fading={othersFading}
-              >
-                {others.map((course) => (
-                  <OtherCourseCard
-                    key={`${course.region}-${course.startDate}-${course.createdAt}`}
-                    course={course}
-                    onOpen={() => setOpenedCourse(course)}
-                  />
-                ))}
-              </div>
-            ) : (
-              /*
-                아직 저장된 코스가 없을 때. <b>빈 칸으로 두지 않는다.</b>
-                자리만 비워 두면 고장으로 읽히고, 스켈레톤을 계속 돌리면 영영 오지 않을 것을
-                기다리는 화면이 된다. 대신 첫 사람이 될 수 있다고 말한다.
-              */
-              <div className="bg-bg flex flex-col gap-1.5 rounded-[16px] p-4.5">
-                <span className="text-fg text-[14px] font-semibold">아직 저장된 코스가 없어요</span>
-                <span className="text-hint text-[12.5px] leading-[1.6]">
-                  코스를 짜고 저장하면 여기 처음으로 올라와요.
-                </span>
-              </div>
-            )}
-          </section>
+        {/*
+          5. <b>어디로 갈지 물어보기</b> (2026-09-06).
+
+          비워 두었던 칸이다. 채우는 것은 <b>지역을 아직 안 정한 사람</b>을 위한 진입점 —
+          왼쪽 위 두 카드가 "가고 싶은 곳이 있어요 / 없어요"를 묻는다면, 여기는
+          말로 물어볼 수 있는 자리다.
+
+          <p><b>줄의 끝에 둔다</b> (2026-09-06에 가운데에서 옮겼다). 나란한 셋 중
+          앞의 둘은 <b>서버가 고른 것을 읽는</b> 칸이고, 이 칸만 사용자가 <b>말을 거는</b>
+          칸이다. 성격이 다른 것을 사이에 끼우면 읽는 흐름이 한 번 끊겼다가 돌아온다 —
+          읽을 것끼리 붙이고, 손이 가는 것을 끝에 세운다.
+
+          <p>대화창은 입력 막대가 <b>바닥에 붙는</b> 짜임이라 줄에서 가장 키가 큰 칸에
+          맞춰 늘어나는 편이 낫다. 그래서 이 칸만 {@code flex flex-col}이다 —
+          늘어난 높이를 대화 기록이 받아 먹는다.
+
+          ⚠️ <b>좁은 화면에서도 그린다.</b> 비워 둘 때는 숨겼지만(빈 흰 카드는 고장으로
+          읽힌다) 이제는 내용이 있다. 위아래로 쌓여도 맨 아래에서 말을 거는 자리가
+          서는 것이 자연스럽다.
+        */}
+        <section className={`${CARD_RAISED} flex flex-col p-4.5 lg:col-span-4 lg:p-5.5`}>
+          <RegionChat />
+        </section>
         </div>
 
         {/*

@@ -1,10 +1,13 @@
 package com.peakoff.external.kto.support;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -45,6 +48,37 @@ public class KtoApiCaller {
 	 */
 	private static final ObjectMapper JSON = new ObjectMapper();
 
+	/**
+	 * 연결을 기다리는 시간. <b>공사가 침묵할 때 걸리는 자물쇠다.</b>
+	 *
+	 * <h3>왜 필요한가 — 있는 장치가 안 돌았다 (2026-09-06)</h3>
+	 * {@link TtlCache}에는 <b>갱신에 실패하면 옛 값을 돌려주는</b> 장치가 이미 있다.
+	 * 그런데 그 장치는 {@code catch}에 걸려 있어서 <b>예외가 나야</b> 돈다.
+	 *
+	 * <p>이날 공사({@code apis.data.go.kr})가 <b>오류를 주는 대신 아무 대답도 하지 않았다</b> —
+	 * TCP 연결조차 받지 않았다. 타임아웃이 없으니 호출이 실패로 판정되지 않고 그대로 매달렸고,
+	 * 그래서 <b>옛 값을 돌려주는 길도 60초 백오프도 한 줄도 실행되지 않았다.</b>
+	 * 화면은 빈 채로 하염없이 기다렸다.
+	 *
+	 * <p>2026-08-26 사고 때 만든 장치는 "오류를 주는" 실패만 잡았다. <b>침묵하는 실패</b>는
+	 * 종류가 다르고, 그것을 실패로 바꿔 주는 것이 이 값이다.
+	 *
+	 * <p>3초는 <b>연결</b>에 주는 시간이다. 정상일 때 국내 서버와의 TCP 연결은 수십 ms면
+	 * 끝나므로, 3초를 넘긴다는 것은 느린 것이 아니라 <b>안 되는 것</b>이다.
+	 */
+	private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+
+	/**
+	 * 응답을 기다리는 시간.
+	 *
+	 * <p>연결보다 넉넉하다. 지역 카탈로그는 한 번에 최대 5,000건이라 <b>정상일 때도</b>
+	 * 몇 초가 걸린다 — 짧게 잡으면 공사가 멀쩡한데 우리가 먼저 끊어 버린다.
+	 *
+	 * <p>8초를 넘기면 옛 값으로 넘어간다. 사용자에게는 <b>6시간 지난 값</b>이
+	 * 8초 더 기다린 끝의 빈 화면보다 낫다 — 공사 자료는 하루 한 번 갱신된다.
+	 */
+	private static final Duration READ_TIMEOUT = Duration.ofSeconds(8);
+
 	private static final String SUCCESS_CODE = "0000";
 
 	/** 오류 응답을 로그·메시지에 실을 때 자르는 길이. 응답 전체가 통째로 실리는 것을 막는다. */
@@ -63,7 +97,16 @@ public class KtoApiCaller {
 	private final KtoCallLog callLog;
 
 	public KtoApiCaller(RestClient.Builder builder, KtoProperties properties, KtoCallLog callLog) {
-		this.restClient = builder.build();
+		/*
+		 * ⚠️ <b>이 클라이언트에만 건다.</b> 전역 설정(spring.http.client.*)으로 걸면
+		 * 소셜 로그인 클라이언트까지 함께 바뀐다 — 그쪽은 사용자가 버튼을 누르고 기다리는
+		 * 자리라 견디는 시간이 다르고, 무엇보다 여기서 정한 값의 근거가 저기에는 없다.
+		 */
+		this.restClient = builder
+				.requestFactory(ClientHttpRequestFactoryBuilder.detect()
+						.build(HttpClientSettings.defaults()
+								.withTimeouts(CONNECT_TIMEOUT, READ_TIMEOUT)))
+				.build();
 		this.properties = properties;
 		this.callLog = callLog;
 	}

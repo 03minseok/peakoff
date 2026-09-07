@@ -398,6 +398,32 @@
     display: none;
   }
 
+  /* 새로 붙는 말풍선. 위 pk-chat-in 주석 참고 */
+  .chat-in {
+    animation: pk-chat-in 200ms var(--ease-out-quart) both;
+  }
+
+  .chat-dot {
+    animation: pk-chat-dot 1.1s ease-in-out infinite;
+  }
+
+  /*
+   * 한적 비율 막대가 <b>0에서 자란다.</b>
+   *
+   * 이 화면이 하려는 말은 "통영 66%"가 아니라 <b>"통영 66%인데 제주시는 22%"</b>다.
+   * 세 막대가 함께 자라면 그 차이가 <b>만들어지는 것</b>으로 보인다 — 이미 그려진 그림을
+   * 읽는 것보다 눈에 남는다.
+   *
+   * 카드가 올라오는 것(chat-in)과 <b>같은 순간</b>이다. 카드마다 지연을 달리 줘
+   * 위에서 아래로 이어지지만, 사건은 하나다 — 답이 도착한 순간.
+   *
+   * scaleX가 아니라 width다. 막대가 6px이라 양끝이 완전한 반원인데,
+   * scaleX로 늘리면 그 반원이 <b>납작한 타원으로 찌그러진 채</b> 자란다.
+   */
+  .bar-grow {
+    animation: pk-bar-grow 620ms var(--ease-out-quart) both;
+  }
+
   /*
    * ── 아래에서 올라오는 면 ────────────────────────────────────────────────
    *
@@ -868,6 +894,45 @@
   }
 }
 
+/*
+ * 말풍선이 아래에서 올라오며 나타난다.
+ *
+ * 메신저에서 새 말은 <b>아래에서 밀려 올라온다.</b> 그냥 나타나면 대화가 이어진 것이 아니라
+ * 화면이 다시 그려진 것처럼 보인다. 6px만 움직인다 — 대화가 길어지면 이 움직임이
+ * 여러 번 반복되므로, 눈에 띌 만큼 크면 그때부터 방해가 된다.
+ */
+@keyframes pk-chat-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/*
+ * "입력 중" 점.
+ *
+ * 스피너를 쓰지 않는 이유는 스켈레톤과 같다 — 스피너는 "돌고 있다"만 말하는데,
+ * 이 자리에 올 것은 <b>상대의 말</b>이라 말풍선 모양으로 기다리는 편이 정확하다.
+ */
+@keyframes pk-chat-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 0.85;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes pk-bar-grow {
+  from {
+    width: 0;
+  }
+}
+
 @keyframes pk-shimmer {
   0% {
     background-position: -320px 0;
@@ -909,6 +974,9 @@
     pointer-events: auto;
   }
 
+  .chat-in,
+  .chat-dot,
+  .bar-grow,
   .skeleton,
   .sheet-dim,
   .sheet-panel,

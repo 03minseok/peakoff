@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -49,6 +50,20 @@ public class GlobalExceptionHandler {
 	 *
 	 * <p>어떤 필드가 왜 틀렸는지 함께 내려준다.
 	 */
+	/**
+	 * 너무 잦은 호출.
+	 *
+	 * <p><b>{@code Retry-After}를 함께 보낸다.</b> 다른 오류와 달리 이것은 기다리면 낫고,
+	 * 얼마나 기다려야 하는지를 서버만 안다 — 화면이 그 초만큼 버튼을 잠그면
+	 * 사용자가 눌러서 확인할 필요가 없다.
+	 */
+	@ExceptionHandler(TooManyRequestsException.class)
+	public ResponseEntity<ApiResponse<Void>> handleTooManyRequests(TooManyRequestsException e) {
+		return ResponseEntity.status(ErrorCode.TOO_MANY_REQUESTS.status())
+				.header(HttpHeaders.RETRY_AFTER, String.valueOf(e.retryAfterSeconds()))
+				.body(ApiResponse.fail(ErrorCode.TOO_MANY_REQUESTS, e.getMessage()));
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponse<Void>> handleBodyValidation(
 			MethodArgumentNotValidException e) {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { CongestionBadge } from '../components/CongestionBadge'
 import { CourseMap } from '../components/CourseMap'
 import { ListEdgeJump } from '../components/ListEdgeJump'
@@ -161,7 +161,17 @@ export function RecommendPage() {
    * (2026-09-01): 지난 검색이 남긴 값이라 <b>이번에 고른 것처럼 보이지만 아무도 고른 적이
    * 없다.</b>
    */
-  const [region, setRegion] = useState('')
+  /*
+   * 홈의 챗봇이 고른 지역을 물려받는다(<code>/recommend?region=tongyeong</code>).
+   *
+   * 챗봇은 <b>진입점</b>이지 새 흐름이 아니다 — 지역만 정해 주고 나머지는 이 화면이 맡는다.
+   * 그래서 지역만 채워 두고 날짜·기간·설문은 사용자가 고르게 둔다.
+   *
+   * ⚠️ <b>처음 한 번만 읽는다.</b> 주소를 계속 지켜보면 사용자가 지역을 바꾼 뒤에도
+   * 주소가 그것을 도로 되돌린다.
+   */
+  const [searchParams] = useSearchParams()
+  const [region, setRegion] = useState(() => searchParams.get('region') ?? '')
   const regionName = regionNameOf(region)
   const isPastDate = startDate < today()
 
