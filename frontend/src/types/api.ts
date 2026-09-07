@@ -752,17 +752,21 @@ export interface DateAlternatives {
 /**
  * 챗봇이 답한 방식. 서버 ChatStatus와 짝을 이룬다.
  *
- * <b>셋 다 200으로 온다.</b> 챗봇이 쉬는 것은 고장이 아니고, 화면 한 칸이 빨갛게 죽으면
+ * <b>넷 다 200으로 온다.</b> 챗봇이 쉬는 것은 고장이 아니고, 화면 한 칸이 빨갛게 죽으면
  * 완성도에서 크게 손해다. 오류로 받으면 화면이 그것을 오류로 그리게 된다.
+ *
+ * <p>{@code TOO_FAR}는 예측이 닿지 않는 훗날을 물은 것이다("내년 여름"). ⚠️ 이것을
+ * UNAVAILABLE과 같이 그리지 말 것 — 저쪽은 설문으로 안내할 자리이고, 이쪽은
+ * <b>기간을 당겨 다시 물으면 되는</b> 자리다.
  */
-export type ChatStatus = 'OK' | 'OFF_TOPIC' | 'UNAVAILABLE'
+export type ChatStatus = 'OK' | 'OFF_TOPIC' | 'TOO_FAR' | 'UNAVAILABLE'
 
 /**
  * 챗봇 카드 한 장. 서버 RegionCardResponse와 짝을 이룬다.
  *
  * ⚠️ <b>quietShare는 한적도가 아니라 비율이다.</b> CongestionBadge를 붙이지 말 것 —
- * 65/35 경계는 한적도의 경계라 이 값에는 뜻이 없다. 이 값이 하는 일은 카드 셋을
- * 나란히 놓았을 때 <b>차이를 보이는 것</b>이다(제주시 22% vs 통영 65%).
+ * 65/35 경계는 한적도의 경계라 이 값에는 뜻이 없다. 이 값이 하는 일은 카드 둘을
+ * 나란히 놓았을 때 <b>차이를 보이는 것</b>이다(제주시 17% vs 통영 52%, 30일 창 기준).
  *
  * region이 슬러그로 오는 이유는 "이 지역에서 코스 발견하기"가 그대로 넘길 값이기 때문이다.
  * 이름으로 슬러그를 되찾게 두면 표기가 바뀌는 순간 그 길이 끊긴다.
@@ -778,7 +782,12 @@ export interface RegionCard {
 /** 챗봇의 답. cards는 status가 'OK'일 때만 차 있다. */
 export interface ChatAnswer {
   status: ChatStatus
-  /** 어느 기간을 본 값인지. <b>"지금"이 아니다</b> — 공사 자료는 예측이다 */
+  /**
+   * 어느 기간을 본 값인지("앞으로 30일"). <b>"지금"이 아니다</b> — 공사 자료는 예측이다.
+   *
+   * ⚠️ <b>화면이 이 문구를 지어 쓰지 않는다.</b> 예측 창은 24~30일 사이에서 실제로 변했고,
+   * 화면이 "이번 주"라고 적어 두면 창이 늘 때 서버와 화면이 다른 기간을 말하게 된다.
+   */
   basis: string
   interest: string | null
   cards: RegionCard[]

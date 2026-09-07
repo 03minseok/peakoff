@@ -55,7 +55,12 @@ import { ChevronRight } from './icons'
  * <p>남긴 둘이 이 서비스가 답할 수 있는 <b>양 끝</b>이다 — 관심사가 있는 질문(바다)과
  * 관심사 없이 한적한 곳만 찾는 질문. 그 사이는 사용자가 알아서 채운다.
  */
-const EXAMPLES = ['사람 적은 바다 여행지 없나요?', '이번 주 어디가 제일 한산해요?']
+/*
+  ⚠️ <b>"이번 주"라고 묻지 않는다</b>(2026-09-07). 서버는 예측이 닿는 기간 전체
+  (24~30일)를 보고 답하는데, 칩이 이레를 물으면 <b>묻지 않은 기간의 답</b>이 돌아온다.
+  기간을 특정하지 않는 문장이라야 화면과 답이 어긋나지 않는다.
+*/
+const EXAMPLES = ['사람 적은 바다 여행지 없나요?', '어디가 제일 한산해요?']
 
 /**
  * 답을 받은 뒤 입력을 잠그는 시간(초).
@@ -90,11 +95,21 @@ function textMessage(role: 'user' | 'bot', text: string): Message {
 
 export function RegionChat() {
   const [enabled, setEnabled] = useState<boolean | null>(null)
+  /**
+   * 어느 기간을 본다고 적을지. <b>서버가 정한다</b> — 예측 창은 24~30일 사이에서
+   * 실제로 변했고, 화면이 문구를 들고 있으면 창이 늘 때 둘이 어긋난다.
+   */
+  const [basis, setBasis] = useState('예측이 나온 기간')
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
   /* 인사말은 처음 한 번만 만든다. 매 렌더마다 새로 만들면 시각이 계속 갱신된다. */
   const [messages, setMessages] = useState<Message[]>(() => [
-    textMessage('bot', '안녕하세요! 이번 주 예측을 보고 한적한 여행지를 찾아드려요.'),
+    /*
+      ⚠️ 인사말에 <b>기간을 적지 않는다.</b> 이 말풍선은 status가 오기 전에 만들어지므로
+      기간을 쓰려면 나중에 고쳐 써야 하는데, 이미 뜬 말풍선의 글자가 바뀌는 것은
+      대화에서 일어나지 않는 일이다. 기간은 머리글이 말한다.
+    */
+    textMessage('bot', '안녕하세요! 예측 자료를 보고 한적한 여행지를 찾아드려요.'),
     textMessage('bot', '어떤 여행을 하고 싶으세요?'),
   ])
   /** 남은 잠금 시간(초). 0이면 풀린 상태다. */
@@ -107,7 +122,12 @@ export function RegionChat() {
   useEffect(() => {
     const controller = new AbortController()
     fetchChatStatus(controller.signal)
-      .then((status) => setEnabled(status.enabled))
+      .then((status) => {
+        setEnabled(status.enabled)
+        if (status.basis) {
+          setBasis(status.basis)
+        }
+      })
       .catch(() => setEnabled(false))
     return () => controller.abort()
   }, [])
@@ -189,7 +209,7 @@ export function RegionChat() {
   if (!enabled) {
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3">
-        <Header />
+        <Header basis={basis} />
         <div className="bg-bg flex min-h-[236px] flex-1 flex-col gap-3 rounded-[18px] p-3">
           <BotRow head tail at={stamp()}>
             <Bubble side="bot">지금은 질문을 받을 수 없어요.</Bubble>
@@ -212,7 +232,7 @@ export function RegionChat() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <Header />
+      <Header basis={basis} />
 
       {/*
         대화창. 바탕을 회백(--c-bg)으로 깔아 <b>흰 말풍선이 뜨게</b> 한다 —
@@ -350,17 +370,18 @@ export function RegionChat() {
   )
 }
 
-function Header() {
+function Header({ basis }: { basis: string }) {
   return (
     <div className="flex flex-col gap-0.75 px-1">
       <h2 className="text-fg m-0 text-[18px] font-bold tracking-[-0.02em] lg:text-[17px] lg:tracking-[-0.015em]">
         어디로 갈지 물어보세요
       </h2>
       {/*
-        ⚠️ "지금"이 아니라 "이번 주"다. 공사 자료는 실시간이 아니라 예측·통계값이라
-        시점을 잘못 말하면 심사에서 바로 지적받는다(CLAUDE.md 절대 규칙).
+        ⚠️ "지금"이 아니라 <b>서버가 준 기간</b>이다("앞으로 30일"). 공사 자료는 실시간이
+        아니라 예측·통계값이라 시점을 잘못 말하면 심사에서 바로 지적받는다(CLAUDE.md 절대 규칙).
+        화면이 기간을 들고 있지 않은 이유는 창이 실제로 24일에서 30일로 늘어난 적이 있어서다.
       */}
-      <span className="text-hint text-[12.5px]">이번 주 예측을 기준으로 찾아드려요</span>
+      <span className="text-hint text-[12.5px]">{basis} 예측을 기준으로 찾아드려요</span>
     </div>
   )
 }
@@ -461,6 +482,27 @@ function SendIcon() {
  * 대화 중에 표가 하나 떨어진 것처럼 보인다.
  */
 function AnswerBubbles({ answer }: { answer: ChatAnswer }) {
+  /*
+   * 예측이 닿지 않는 훗날을 물었다 — "내년 여름에 갈 만한 데".
+   *
+   * ⚠️ <b>말풍선 둘로 나눈다.</b> 못 한다는 말과 할 수 있는 말은 다른 마디다.
+   * 한 덩어리로 붙이면 거절이 길어지고, 나누면 뒷말이 <b>다시 물을 방법</b>으로 읽힌다.
+   *
+   * ⚠️ <b>잘못이라고 하지 않는다.</b> 여행은 원래 미리 계획하는 것이라, 미리 묻는 것은
+   * 옳은 행동이다. 창 밖 날짜로 코스를 짜도 막지 않고 "아직 예측이 나오지 않은 날짜예요"라고만
+   * 하는 것과 같은 태도다(CLAUDE.md).
+   */
+  if (answer.status === 'TOO_FAR') {
+    return (
+      <>
+        <Bubble side="bot">그때는 아직 예측이 나오지 않았어요.</Bubble>
+        <Bubble side="bot">
+          {`지금은 ${answer.basis}까지 볼 수 있어요. 그 안으로 물어봐 주시면 찾아드릴게요.`}
+        </Bubble>
+      </>
+    )
+  }
+
   if (answer.status !== 'OK' || answer.cards.length === 0) {
     /*
      * 여행지를 고르는 질문이 아니거나(OFF_TOPIC), 챗봇이 답할 수 없는 상태다.

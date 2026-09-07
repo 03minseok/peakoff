@@ -52,15 +52,25 @@ public class ChatController {
 
 	private final RegionChatService chatService;
 
+	/**
+	 * GET /api/chat/status — 챗봇을 그릴지, 그리고 <b>어느 기간을 본다고 적을지</b>.
+	 *
+	 * <p>{@code basis}를 함께 주는 이유: 화면 머리글("… 예측을 기준으로 찾아드려요")이
+	 * 답을 받기 <b>전에</b> 서는 줄이라, 답에 실린 기간만으로는 채울 수 없다.
+	 * 화면이 "이번 주"라고 적어 두면 창이 늘 때 <b>서버와 화면이 다른 기간을 말한다.</b>
+	 */
 	@Operation(summary = "챗봇 사용 가능 여부",
-			description = "화면이 처음 뜰 때 한 번 묻는다. 꺼져 있으면 설문으로 안내한다.")
+			description = "화면이 처음 뜰 때 한 번 묻는다. 꺼져 있으면 설문으로 안내한다. "
+					+ "basis는 예측이 닿는 기간(\"앞으로 30일\")으로, 창이 늘면 함께 늘어난다.")
 	@GetMapping("/status")
-	public ApiResponse<Map<String, Boolean>> status() {
-		return ApiResponse.ok(Map.of("enabled", chatService.isAvailable()));
+	public ApiResponse<Map<String, Object>> status() {
+		return ApiResponse.ok(Map.of(
+				"enabled", chatService.isAvailable(),
+				"basis", chatService.basis()));
 	}
 
 	@Operation(summary = "질문으로 지역 찾기",
-			description = "지역 둘~셋을 카드로 돌려준다. 무관한 질문이나 챗봇이 쉬는 중일 때도 "
+			description = "지역 둘을 카드로 돌려준다. 무관한 질문이나 챗봇이 쉬는 중일 때도 "
 					+ "200으로 나가고 status로 갈린다 — 화면 한 칸이 오류로 죽으면 안 된다.")
 	@PostMapping("/regions")
 	public ApiResponse<ChatResponse> ask(

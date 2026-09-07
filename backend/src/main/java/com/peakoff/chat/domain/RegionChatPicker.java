@@ -12,13 +12,13 @@ import lombok.RequiredArgsConstructor;
 import com.peakoff.recommendation.domain.WeightedPicker;
 
 /**
- * 질문 하나에 지역 둘~셋을 고른다. <b>거르기가 먼저, 뽑기가 마지막.</b>
+ * 질문 하나에 지역 둘을 고른다. <b>거르기가 먼저, 뽑기가 마지막.</b>
  *
  * <h2>층이 둘이다 — 관심사는 문, 한적함은 순서</h2>
  * <ol>
  *   <li><b>거르기</b> — 관심사의 몫이 중앙값 이상인 지역만 남긴다</li>
  *   <li><b>가르기</b> — 남은 것을 한적한 순으로 세워 위/아래로 반 가른다</li>
- *   <li><b>뽑기</b> — 위에서 둘, 아래에서 하나. 각 통 안에서는 <b>균등</b> 무작위</li>
+ *   <li><b>뽑기</b> — 위에서 하나, 아래에서 하나. 각 통 안에서는 <b>균등</b> 무작위</li>
  * </ol>
  * 관심사를 점수로 만들지 않는다. "음식 비중이 높으니 3점"처럼 더하기 시작하면
  * 화면에 없는 값으로 줄을 세우게 되고, 그때부터 1등의 이유를 설명할 수 없다.
@@ -28,7 +28,7 @@ import com.peakoff.recommendation.domain.WeightedPicker;
  * 음식은 17~45%인데 체험은 2~6%다. 중앙값은 <b>그 분류 안에서 상대적으로 강한 절반</b>을
  * 가리키므로 분류마다 값을 따로 둘 필요가 없다.
  *
- * <p>실측(2026-09-05)에서 관심사 일곱 모두 <b>여섯 곳</b>이 남았다. 셋을 뽑기에 넉넉하고,
+ * <p>실측(2026-09-05)에서 관심사 일곱 모두 <b>여섯 곳</b>이 남았다. 둘을 뽑기에 넉넉하고,
  * 열하나 전부를 남기는 것보다 "그 관심사에 강한 곳"이라는 말이 사실에 가깝다.
  *
  * <h2>⚠️ 위/아래를 <b>절대 등급</b>이 아니라 <b>후보 안의 순위</b>로 가른다</h2>
@@ -36,7 +36,7 @@ import com.peakoff.recommendation.domain.WeightedPicker;
  * <b>11곳의 주간 평균이 전부 보통</b>이라 그 갈래가 서지 않았다({@link RegionProfile} 참고).
  *
  * <p>순위로 가르면 절대값이 어떻든 <b>구조가 대비를 보장한다.</b> 아래쪽에서 하나를 반드시
- * 뽑으므로 카드 셋 중 하나는 언제나 "이 중에서는 덜 한적한 곳"이다.
+ * 뽑으므로 카드 둘 중 하나는 언제나 "이 중에서는 덜 한적한 곳"이다.
  * 붐빔이 하나 섞여야 한다는 요구는 <b>서로 견줄 때</b> 의미가 있고, 이 화면은 언제나
  * 여럿을 나란히 놓는 자리다.
  *
@@ -55,18 +55,35 @@ import com.peakoff.recommendation.domain.WeightedPicker;
 @RequiredArgsConstructor
 public class RegionChatPicker {
 
-	/** 카드로 세울 지역 수. 하나면 그냥 여행지 추천이 되고, 넷이면 350px 칸에 안 들어간다. */
-	public static final int CARD_COUNT = 3;
+	/**
+	 * 카드로 세울 지역 수.
+	 *
+	 * <p>하나면 그냥 여행지 추천이 된다 — 견줄 상대가 없으면 이 화면이 하려는 말
+	 * ("가장 유명한 곳은 붐비고 비슷한 곳은 여유롭다")이 서지 않는다. <b>둘이 그 최소치다.</b>
+	 *
+	 * <p>셋이었다가 둘로 줄였다(2026-09-06). 차이를 보이는 데는 둘이면 되고,
+	 * 고를 것이 적을수록 <b>고르기 쉽다</b> — 이 자리는 고민을 시작하는 곳이지
+	 * 목록을 훑는 곳이 아니다.
+	 *
+	 * <p>⚠️ <b>{@link #FROM_UPPER}와 짝이다.</b> 이 값만 줄이면 위쪽에서만 둘을 뽑아
+	 * 아래 [위/아래 가르기]가 죽는다.
+	 */
+	public static final int CARD_COUNT = 2;
 
-	/** 위쪽(더 한적한 쪽)에서 뽑을 수. 나머지 한 자리가 아래쪽 몫이다. */
-	private static final int FROM_UPPER = 2;
+	/**
+	 * 위쪽(더 한적한 쪽)에서 뽑을 수. 나머지 한 자리가 아래쪽 몫이다.
+	 *
+	 * <p>카드가 둘이므로 <b>1 + 1</b>이다. 한 장은 이 중 더 한적한 쪽,
+	 * 다른 한 장은 덜 한적한 쪽 — 대비가 카드 수와 무관하게 구조로 선다.
+	 */
+	private static final int FROM_UPPER = 1;
 
 	private final WeightedPicker picker;
 
 	/**
 	 * @param profiles 지역 프로필 전체. 순서는 상관없다
 	 * @param interest 질문에서 읽은 관심사. {@link Interest#NONE}이면 거르지 않는다
-	 * @return 한적한 순으로 세운 둘~셋. 후보가 모자라면 그만큼만 담긴다 —
+	 * @return 한적한 순으로 세운 둘. 후보가 모자라면 그만큼만 담긴다 —
 	 *         <b>채우려고 자격 없는 지역을 넣지 않는다</b>
 	 */
 	public List<RegionProfile> pick(List<RegionProfile> profiles, Interest interest) {
@@ -122,7 +139,7 @@ public class RegionChatPicker {
 	}
 
 	/**
-	 * 위에서 둘, 아래에서 하나.
+	 * 위에서 하나, 아래에서 하나.
 	 *
 	 * <p>후보가 적으면 통이 겹치거나 비는데, 그때는 <b>남은 데서 마저 채운다.</b>
 	 * 대비를 만들려다 카드 수를 줄이면 화면이 고장으로 읽힌다 — 후보가 둘뿐이면
@@ -133,7 +150,7 @@ public class RegionChatPicker {
 				.sorted(Comparator.comparingInt(RegionProfile::quietShare).reversed())
 				.toList();
 
-		// 홀수면 위쪽이 한 자리 더 갖는다. 아래쪽은 한 자리만 쓰므로 위쪽이 넓은 편이 낫다.
+		// 홀수면 위쪽이 한 자리 더 갖는다. 양쪽이 한 자리씩만 쓰므로 위쪽이 넓은 편이 낫다.
 		int half = (ranked.size() + 1) / 2;
 		List<RegionProfile> upper = new ArrayList<>(ranked.subList(0, half));
 		List<RegionProfile> lower = new ArrayList<>(ranked.subList(half, ranked.size()));

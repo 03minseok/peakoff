@@ -19,8 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 지역 고르기의 규칙을 잠근다.
  *
  * <p>여기서 지키는 것 셋 — <b>관심사는 거르기만 한다</b>(점수가 아니다),
- * <b>카드 셋에 대비가 선다</b>(전부 한적한 곳으로 채우지 않는다),
- * <b>매번 같은 셋이 나오지 않는다</b>(우리가 미는 지역이 새 혼잡지가 되지 않게).
+ * <b>카드에 대비가 선다</b>(전부 한적한 곳으로 채우지 않는다),
+ * <b>매번 같은 조합이 나오지 않는다</b>(우리가 미는 지역이 새 혼잡지가 되지 않게).
  */
 class RegionChatPickerTest {
 
@@ -79,7 +79,7 @@ class RegionChatPickerTest {
 	}
 
 	@Test
-	@DisplayName("카드 셋 중 하나는 언제나 덜 한적한 쪽이다 — 대비가 없으면 그냥 여행지 추천이다")
+	@DisplayName("카드 중 하나는 언제나 덜 한적한 쪽이다 — 대비가 없으면 그냥 여행지 추천이다")
 	void alwaysIncludesALessQuietOne() {
 		List<RegionProfile> profiles = eleven();
 		int median = 55;                                    // 열한 곳의 한적 비율 중앙값
@@ -87,7 +87,8 @@ class RegionChatPickerTest {
 		for (int trial = 0; trial < 200; trial++) {
 			List<RegionProfile> picked = picker.pick(profiles, Interest.NONE);
 
-			assertThat(picked).hasSize(3);
+			/* ⚠️ 숫자를 박지 않는다. 카드 수가 바뀌어도 지켜야 하는 것은 <b>대비</b>다 */
+			assertThat(picked).hasSize(RegionChatPicker.CARD_COUNT);
 			assertThat(picked).anyMatch(profile -> profile.quietShare() <= median);
 			assertThat(picked).anyMatch(profile -> profile.quietShare() >= median);
 		}
@@ -122,7 +123,7 @@ class RegionChatPickerTest {
 	 * 그 고장을 여기서 되풀이하지 않으려고 잠근다.
 	 */
 	@Test
-	@DisplayName("매번 같은 셋이 나오지 않는다 — 후보 여섯이 골고루 뜬다")
+	@DisplayName("매번 같은 조합이 나오지 않는다 — 후보가 골고루 뜬다")
 	void spreadsAcrossCandidates() {
 		Set<SupportedRegion> seen = new HashSet<>();
 		Set<String> combinations = new HashSet<>();
@@ -132,7 +133,7 @@ class RegionChatPickerTest {
 			combinations.add(picked.stream().map(profile -> profile.region().slug()).sorted().toList().toString());
 		}
 
-		// 열한 곳이 후보이고 카드는 셋이다. 뽑기가 돌면 열한 곳이 모두 한 번씩은 뜬다.
+		// 열한 곳이 후보다. 뽑기가 돌면 열한 곳이 모두 한 번씩은 뜬다.
 		assertThat(seen).hasSize(11);
 		assertThat(combinations).hasSizeGreaterThan(10);
 	}

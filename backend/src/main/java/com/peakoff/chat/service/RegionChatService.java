@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.peakoff.chat.domain.CallLimiter;
+import com.peakoff.chat.domain.ForecastWindow;
 import com.peakoff.chat.domain.CardLineWriter;
 import com.peakoff.chat.domain.DailyBudget;
 import com.peakoff.chat.domain.Interest;
@@ -23,11 +24,12 @@ import com.peakoff.chat.domain.RegionChatPicker;
 import com.peakoff.chat.domain.RegionProfile;
 import com.peakoff.chat.domain.RegionProfileProvider;
 import com.peakoff.chat.dto.ChatResponse;
+import com.peakoff.congestion.domain.CongestionProvider;
 import com.peakoff.global.error.TooManyRequestsException;
 import com.peakoff.place.domain.SupportedRegion;
 
 /**
- * 질문 하나를 지역 카드 둘~셋으로 바꾼다.
+ * 질문 하나를 지역 카드 둘로 바꾼다.
  *
  * <h2>층이 셋이고 <b>가운데가 우리 것</b>이다</h2>
  * <pre>
@@ -43,6 +45,7 @@ import com.peakoff.place.domain.SupportedRegion;
  *   <li><b>개인 제한</b> — 연타를 막는다. 유일하게 오류(429)로 나가는 자리다</li>
  *   <li><b>하루 상한</b> — 닿으면 조용히 폴백. 오류가 아니다</li>
  *   <li><b>의도 읽기</b> — 실패하면 폴백, 무관한 질문이면 물러난다</li>
+ *   <li><b>시점 견주기</b> — 예측이 닿지 않는 훗날이면 그렇다고 말한다</li>
  *   <li><b>지역 고르기</b> — 여기가 서버의 판단</li>
  *   <li><b>문장 쓰기</b> — 실패해도 카드는 이미 완성돼 있다</li>
  * </ol>
@@ -58,9 +61,6 @@ public class RegionChatService {
 
 	private static final Logger log = LoggerFactory.getLogger(RegionChatService.class);
 
-	/** 이번 주. 홈의 "이번 주 한적한 곳"과 같은 창이라야 두 화면의 숫자가 어긋나지 않는다. */
-	private static final int FORECAST_DAYS = 7;
-
 	/**
 	 * 지역 프로필을 만드는 쪽. <b>없을 수 있다.</b>
 	 *
@@ -68,6 +68,15 @@ public class RegionChatService {
 	 * 목업 카탈로그는 경주 한 곳뿐이라 견줄 것이 없다. 그때 챗봇은 조용히 꺼진다.
 	 */
 	private final Optional<RegionProfileProvider> profileProvider;
+
+	/**
+	 * 예측이 어디까지 닿는지 묻는 자리.
+	 *
+	 * <p>새 호출이 나가지 않는다 — 지역별 예측은 이미 6시간 캐시돼 있고 여기서는
+	 * 그 마지막 날만 읽는다. 날짜 고르는 화면이 쓰는 {@code /api/dates/forecast-window}와
+	 * <b>같은 값</b>이라, 두 화면이 서로 다른 기간을 말하지 않는다.
+	 */
+	private final CongestionProvider congestionProvider;
 
 	private final RegionChatPicker picker;
 	private final IntentReader intentReader;
@@ -82,6 +91,16 @@ public class RegionChatService {
 	}
 
 	/**
+	 * 어느 기간을 본다고 화면에 적을지.
+	 *
+	 * <p>답에 실리는 {@code basis}와 <b>같은 자리에서 나온다.</b> 화면이 제 문구를 들고
+	 * 있으면 창이 늘어날 때 머리글만 옛 기간을 말하게 된다.
+	 */
+	public String basis() {
+		return window().label();
+	}
+
+	/**
 	 * @param question 사용자가 친 질문
 	 * @param callerKey 게스트는 IP, 회원은 사용자 ID로 만든 열쇠
 	 * @throws TooManyRequestsException 연타로 막혔을 때. <b>이것만 오류로 나간다</b>
@@ -93,33 +112,60 @@ public class RegionChatService {
 					"잠시 후 다시 시도해주세요.", verdict.retryAfterSeconds());
 		}
 
+		/*
+		 * 창을 먼저 만든다. 자료가 없어 답하지 못하는 경우에도 <b>기간은 말할 수 있어야</b>
+		 * 하기 때문이다 — 화면 머리글이 이 값으로 "어느 기간을 보는지"를 적는다.
+		 */
+		ForecastWindow window = window();
+		String basis = window.label();
+
 		if (profileProvider.isEmpty()) {
-			return ChatResponse.unavailable();
+			return ChatResponse.unavailable(basis);
 		}
 
 		Optional<QuestionIntent> intent = readIntent(question);
 		if (intent.isEmpty()) {
 			// 인증키 없음 · 상한 · 시간 초과. 화면은 기존 설문으로 안내한다.
-			return ChatResponse.unavailable();
+			return ChatResponse.unavailable(basis);
 		}
 		if (!intent.get().relevant()) {
-			return ChatResponse.offTopic();
+			return ChatResponse.offTopic(basis);
+		}
+		/*
+		 * "내년 여름에 갈 만한 데" — 예측이 닿지 않는 시점이다.
+		 *
+		 * ⚠️ <b>여기서 물러나는 것이 카드를 내주는 것보다 정직하다.</b> 지금 창의 지역을
+		 * 붙이면 사용자는 그것을 물어본 시점의 답으로 읽는다. 답할 수 없다는 말과 함께
+		 * <b>어디까지 볼 수 있는지</b>(basis)를 주면, 다시 물을 수 있다.
+		 */
+		if (!window.covers(intent.get().horizonDays())) {
+			return ChatResponse.tooFar(basis);
 		}
 
 		Interest interest = intent.get().interest();
 		List<RegionProfile> picked = picker.pick(
-				profileProvider.get().profiles(LocalDate.now(clock), FORECAST_DAYS), interest);
+				profileProvider.get().profiles(window.from(), window.days()), interest);
 		if (picked.isEmpty()) {
 			/*
 			 * 예측 자료가 하나도 없는 상황. 공사가 흔들릴 때 일어난다.
 			 * 카드에 적을 숫자가 없으므로 지역을 추천할 근거가 없다 — 조용히 물러난다.
 			 */
 			log.warn("챗봇이 세울 지역이 없습니다. interest={}", interest);
-			return ChatResponse.unavailable();
+			return ChatResponse.unavailable(basis);
 		}
 
 		List<RegionCard> cards = RegionCards.of(interest, picked, writeLines(question, interest, picked));
-		return ChatResponse.ok(interest, cards);
+		return ChatResponse.ok(basis, interest, cards);
+	}
+
+	/**
+	 * 이번에 볼 기간.
+	 *
+	 * <p>요청마다 다시 만든다. 창은 <b>날짜가 바뀌면 하루씩 밀리고</b> 공사가 늘리면
+	 * 길이도 달라진다 — 서버가 뜰 때 한 번 정해 두면 자정을 넘긴 순간부터 어제 창을 본다.
+	 */
+	private ForecastWindow window() {
+		return ForecastWindow.of(LocalDate.now(clock), congestionProvider.lastForecastDate());
 	}
 
 	/**
