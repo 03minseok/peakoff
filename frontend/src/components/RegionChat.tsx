@@ -71,6 +71,36 @@ const EXAMPLES = ['사람 적은 바다 여행지 없나요?', '어디가 제일
 const COOLDOWN_SECONDS = 3
 
 /**
+ * 이스터에그. <b>서버로 보내지 않고 화면이 바로 답한다.</b>
+ *
+ * <h3>왜 화면인가</h3>
+ * 서버의 답에는 <b>봇이 말할 자유 문장 칸이 없다</b> — {@code basis}·{@code interest}·
+ * {@code cards}뿐이라, 이 한마디를 서버에서 내려보내려면 응답 모양을 이스터에그 하나 때문에
+ * 넓혀야 한다. 게다가 그 말은 여행지 질문이 아니라 {@code OFF_TOPIC}으로 갈려
+ * <b>"여행지를 고르는 질문에 답할 수 있어요"</b>라고 딱딱하게 거절당한다.
+ *
+ * <p>화면에서 가로채면 <b>LLM 호출이 0</b>이라 크레딧도 하루 상한도 쓰지 않는다.
+ * 장난 한 번에 진짜 질문 하나 분량의 상한이 깎이면 아깝다.
+ *
+ * <p>⚠️ <b>쿨다운을 걸지 않는다.</b> 그 잠금은 <b>서버를 부르는 것</b>을 막으려고 있는데
+ * 이 길은 서버에 닿지 않는다. 쿨다운 중에도 되고, 이 답이 다음 잠금을 만들지도 않는다.
+ */
+const EASTER_EGG = { name: '뽕가현', reply: '뽕가현 보고싶어' } as const
+
+/** 답이 곧바로 튀어나오면 사람이 아니라 자판기다. 점 셋을 잠깐 띄우는 시간(ms). */
+const EASTER_EGG_DELAY = 700
+
+/**
+ * 그 말만 친 것인가.
+ *
+ * <p>문장부호와 웃음(ㅋㅎ)을 떼고 견준다 — "뽕가현!!"이나 "뽕가현ㅋㅋ"으로 쳤는데
+ * 안 걸리면, 숨겨 둔 것을 찾아낸 사람이 <b>못 찾은 것으로 안다.</b>
+ */
+function isEasterEgg(text: string): boolean {
+  return text.replace(/[\s!?.~,ㅋㅎ]/g, '') === EASTER_EGG.name
+}
+
+/**
  * 주고받은 말 한 마디.
  *
  * <p>카드 답도 <b>같은 목록에 담는다.</b> 결과를 따로 두면 대화가 끊겨 "답이 화면을
@@ -117,6 +147,17 @@ export function RegionChat() {
 
   const inputRef = useRef<HTMLInputElement>(null)
   const logRef = useRef<HTMLDivElement>(null)
+  /* 이스터에그의 뜸 들이기. 화면을 떠나면 취소해야 사라진 컴포넌트에 답이 꽂히지 않는다 */
+  const eggTimer = useRef<number | null>(null)
+
+  useEffect(
+    () => () => {
+      if (eggTimer.current !== null) {
+        window.clearTimeout(eggTimer.current)
+      }
+    },
+    [],
+  )
 
   /* 챗봇을 켤 수 있는지는 처음 한 번만 묻는다. 글을 치는 도중에 화면이 바뀌면 안 된다. */
   useEffect(() => {
@@ -154,7 +195,27 @@ export function RegionChat() {
 
   const ask = async (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || asking || cooldown > 0) {
+    if (!trimmed || asking) {
+      return
+    }
+
+    /*
+     * 이스터에그가 <b>쿨다운 검사보다 앞</b>에 있다. 그 잠금은 서버를 부르는 것을
+     * 막으려고 있는데 이 길은 서버에 닿지 않는다 — 위 EASTER_EGG 주석 참고.
+     */
+    if (isEasterEgg(trimmed)) {
+      setQuestion('')
+      setMessages((prev) => [...prev, textMessage('user', trimmed)])
+      setAsking(true)
+      eggTimer.current = window.setTimeout(() => {
+        setMessages((prev) => [...prev, textMessage('bot', EASTER_EGG.reply)])
+        setAsking(false)
+        eggTimer.current = null
+      }, EASTER_EGG_DELAY)
+      return
+    }
+
+    if (cooldown > 0) {
       return
     }
     setAsking(true)
