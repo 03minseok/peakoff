@@ -277,7 +277,7 @@ public class KtoCongestionProvider implements CongestionProvider, QuietSpotProvi
 	 * 지역 하나에서 기간 안에 한적한 곳들 — <b>이름 상태의 후보</b>까지만.
 	 *
 	 * <h3>왜 예측에서 장소로 가는가 (그 반대가 아니라)</h3>
-	 * 장소부터 시작하면 장소마다 {@code locate}가 돌아 <b>일곱 지역을 훑고 이름을 잇는다.</b>
+	 * 장소부터 시작하면 장소마다 {@code locate}가 돌아 <b>지원 지역을 모두 훑고 이름을 잇는다.</b>
 	 * 지역 전체를 보려면 그 일을 (장소 수 × 날짜 수)만큼 되풀이하게 된다.
 	 *
 	 * <p>예측 자료는 이미 지역 한 덩어리로 캐시돼 있으므로, 여기서는
