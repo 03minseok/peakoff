@@ -5,7 +5,6 @@ import { BrandLockup } from '../components/BrandMark'
 import { ChevronRight, Heart } from '../components/icons'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
-import { rememberPlaces } from '../services/placeCache'
 import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from '../components/levelStyles'
 import { PublicCourseSheet } from '../components/PublicCourseSheet'
@@ -544,19 +543,10 @@ export function HomePage() {
     })
 
     /*
-      ⚠️ <b>id만 넘기면 편집 화면이 "2752379"를 그린다</b> (2026-09-09에 고쳤다).
-
-      코스는 id만 들고 다니고 이름·좌표는 {@code placeCache}가 되살린다. 홈에서
-      "이 장소로 여행가기"로 갈 때는 목록을 받으며 이미 기억해 둔 것이 있지만,
-      <b>남의 코스는 그 브라우저가 검색한 적이 없어</b> 되살릴 것이 없었다.
-
-      <p>이름만 심을 수는 없다 — 지도 마커에 좌표가 필요하고, 없는 좌표를 지어내면
-      엉뚱한 곳에 찍힌다. 그래서 서버가 온전한 장소를 함께 보낸다.
-
-      <p>카탈로그에서 사라진 장소는 {@code place}가 null이다. 그 칸만 못 되살릴 뿐
-      나머지는 그대로 선다.
+      ⚠️ 여기서 캐시를 심지 않는다. 목록을 받는 길목(services/api.ts의
+      fetchRecentCourses)이 이미 기억해 두었다 — 화면마다 부르면 빠뜨리는 자리가 생기고,
+      빠뜨린 곳에서만 장소가 <b>숫자 id로</b> 보이는 찾기 어려운 버그가 된다.
     */
-    rememberPlaces(course.places.map((place) => place.place).filter((place) => place !== null))
 
     restore(
       {
