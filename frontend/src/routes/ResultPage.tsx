@@ -97,6 +97,7 @@ function CourseColumn({
   diagnosis,
   changes,
   highlighted,
+  visibleDay = 'all',
 }: {
   title: string
   subtitle: string
@@ -121,24 +122,44 @@ function CourseColumn({
   changes?: Change[]
   /** 추천하는 쪽. 테두리와 배경으로 한 겹 띄운다 */
   highlighted?: boolean
+  /**
+   * 어느 일차만 펼지. {@code 'all'}이면 전부.
+   *
+   * <p>일수가 늘면 이 열이 그만큼 길어져, 3일차를 견주려면 <b>양쪽을 따로 스크롤</b>해야
+   * 한다. 좁은 화면에서는 스위치를 넘긴 뒤 그 자리를 다시 찾아야 해서 더 그렇다.
+   * 고른 일차만 남기면 두 열의 같은 날이 언제나 같은 높이에 선다.
+   *
+   * <p>⚠️ <b>거르는 것은 목록뿐이고 점수는 그대로 전체 코스의 것이다.</b>
+   * 일차별 평균을 여기서 새로 내면 화면이 서버 없이 점수를 만드는 셈이고,
+   * 숫자를 내걸 조건({@code CourseScoreStandard})까지 화면에 사본으로 두게 된다.
+   * 그래서 <b>탭 옆에 "점수는 전체 기준"이라고 적어</b> 어긋나 보이지 않게 한다.
+   */
+  visibleDay?: number | 'all'
 }) {
   return (
     <div
       /*
-        ⚠️ <b>opacity로 강약을 내지 않는다.</b> 예전에는 추천하지 않는 열에 opacity-85를
+        ⚠️ <b>이 열은 카드가 아니라 판이다</b>(2026-09-08). 예전에는 저마다
+        {@code rounded-card bg-surface shadow-*}를 두른 카드였고, 그래서 일차 칩과
+        스위치가 <b>카드 밖 바탕에</b> 남을 수밖에 없었다 — 조작이 무엇에 걸리는지
+        자리로 말할 방법이 없어 셋이 따로 노는 화면이 됐다.
+
+        <p>이제 바깥의 "코스 비교" 카드가 면과 그림자를 맡고, 조작은 그 카드의 머리에
+        들어앉는다. 이 열은 그 안의 판이라 <b>배경도 그림자도 갖지 않는다</b> —
+        가지면 카드 안에 카드가 되어 층이 하나 더 생긴다.
+
+        <p>⚠️ <b>opacity로 강약을 내지 않는다.</b> 예전에는 추천하지 않는 열에 opacity-85를
         걸었는데, 그것은 카드 하나를 통째로 흐리는 둔기다 — 부제(5.02→3.74)와 혼잡 배지처럼
         index.css에서 <b>개별로 조율해 둔 대비까지 함께 끌어내린다.</b>
 
-        추천하는 쪽은 이미 테두리·짙은 그림자·물든 머리를 셋이나 더 갖고 있어,
-        투명도를 빼도 어느 쪽이 결론인지는 그대로 읽힌다.
+        <p>추천하는 쪽은 <b>물든 머리와 배지</b>로 갈린다. 테두리와 그림자를 잃었지만
+        바로 옆에 견줄 것이 나란히 서 있어, 머리 한 겹이 물드는 것만으로 충분히 읽힌다.
       */
-      className={`overflow-hidden rounded-card bg-surface ${
-        highlighted ? 'border-quiet-soft shadow-raised border-[1.5px]' : 'shadow-rest'
-      }`}
+      className="min-w-0 overflow-hidden rounded-ui"
     >
       <div
-        className={`border-line flex items-center justify-between gap-3 border-b px-4.5 py-3.5 ${
-          highlighted ? 'bg-quiet-tint/60' : ''
+        className={`border-line flex items-center justify-between gap-3 border-b px-3.5 py-3 ${
+          highlighted ? 'bg-quiet-tint/60' : 'bg-bg'
         }`}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -151,9 +172,12 @@ function CourseColumn({
             배지를 제목 <b>밖에</b> 둔다. 안에 두었더니 이 카드의 접근 이름이
             "개선안추천"으로 붙어 읽혔다 — 눈으로는 gap이 갈라 주지만
             {@code textContent}에는 사이가 없다.
+
+            <b>h2가 아니라 h3다.</b> 이 두 열 위에 "코스 비교"라는 섹션 제목(h2)이
+            생겼으므로, 그 아래 칸으로 한 단 내려야 목차가 순서대로 읽힌다.
           */}
           <div className="flex items-center gap-2">
-            <h2 className="text-fg m-0 text-[15px] font-bold">{title}</h2>
+            <h3 className="text-fg m-0 text-[15px] font-bold">{title}</h3>
             {highlighted && (
               <span className="bg-brand-tint text-brand-deep rounded-full px-2 py-0.5 text-[11px] font-semibold">
                 추천
@@ -172,8 +196,14 @@ function CourseColumn({
         </span>
       </div>
 
-      <div className="flex flex-col gap-3.5 px-3.5 py-3.5">
-        {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map((day) => {
+      {/*
+        좌우 여백을 두지 않는다. 바깥 카드가 이미 한 겹 들여놓았고, 여기서 또 밀면
+        판의 머리(물든 면)와 아래 줄들의 왼쪽 끝이 어긋난다.
+      */}
+      <div className="flex flex-col gap-3.5 pt-3">
+        {Array.from({ length: diagnosis.days }, (_, index) => index + 1)
+          .filter((day) => visibleDay === 'all' || day === visibleDay)
+          .map((day) => {
           const daySlots = diagnosis.slots.filter((slot) => slot.day === day)
           if (daySlots.length === 0) {
             return null
@@ -285,6 +315,21 @@ export function ResultPage() {
   const [comparePage, setComparePage] = useState(0)
 
   /**
+   * 비교에서 어느 일차를 펼지. 'all'이면 전체.
+   *
+   * <b>'전체'로 연다.</b> 지도가 Day 1로 여는 것과 반대인데, 이유가 다르기 때문이다 —
+   * 지도는 일차가 뒤엉킨 선이 먼저 보이면 안 읽혀서 하루로 열지만, 여기는 <b>열 머리의
+   * 총점이 코스 전체의 값</b>이다. Day 1로 열면 전체 점수 아래에 하루치 목록만 서서
+   * 그 숫자가 1일차 점수로 읽힌다. 처음 눈에 닿는 화면은 숫자와 목록의 범위가 같아야 한다.
+   *
+   * <p>⚠️ <b>지도의 {@code mapDay}와 값을 나눠 쓰지 않는다.</b> 생김새가 같은 탭 둘이라
+   * 묶고 싶어지지만, 둘은 <b>다른 질문에 답한다</b> — 이쪽은 "어느 날을 견줄까",
+   * 저쪽은 "어느 날의 동선을 그릴까"다. 묶어 두면 저 아래 지도에서 탭을 눌렀을 때
+   * 화면 밖 비교가 함께 바뀌어, 스크롤을 올렸을 때 보고 있던 것이 사라져 있다.
+   */
+  const [compareDay, setCompareDay] = useState<number | 'all'>('all')
+
+  /**
    * 끌고 있는 동안의 손가락 이동량(px). 놓으면 0으로 돌아간다.
    *
    * <b>0이 아닌 동안은 전환 애니메이션을 끈다.</b> 손가락을 따라오는 면에 transition을
@@ -353,6 +398,12 @@ export function ResultPage() {
   const ready = beforeDiagnosis !== null && afterDiagnosis !== null
 
   const changes = ready ? diffCourses(beforeDiagnosis, afterDiagnosis) : []
+
+  /**
+   * 일차 수. <b>개선안을 기준으로 센다</b> — 날짜를 옮겨도 박 수는 그대로라 둘이 같지만,
+   * 화면이 결론으로 미는 쪽에 맞춰 두는 편이 나중에 갈릴 때 덜 놀란다.
+   */
+  const totalDays = afterDiagnosis?.days ?? beforeDiagnosis?.days ?? 0
   /*
     개선폭은 <b>양쪽 총점이 다 있어야</b> 성립한다. 진단된 칸이 하나도 없는 코스는
     총점이 null이라, 한쪽이라도 비면 0으로 두고 아래에서 비교 문구를 그리지 않는다.
@@ -913,29 +964,151 @@ export function ResultPage() {
               <p>원안이 먼저다. 스위치 순서도, 넓은 화면의 왼쪽 자리도 —
               "무엇이 어떻게 바뀌었는지"는 앞뒤가 있어야 읽힌다.
             */}
-            <div className="flex flex-col gap-3">
-              {/*
-                스위치. 고른 쪽이 흰 면으로 떠오른다. 홈과 같은 모양이라
-                이 서비스에서 "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
+            {/*
+              ■ 이 구역에 <b>제목이 없던 것</b>이 문제였다
 
-                고른 쪽에 등급색을 칠하지 않는다. 아래 줄마다 이미 배지가 서 있는데
-                스위치까지 같은 색을 쓰면 "지금 고른 것"과 "얼마나 붐비는지"가 겹친다.
+              히어로가 끝나고 곧바로 조작이 나와서, 일차 칩이 <b>어디에도 소속되지 않은</b>
+              채 페이지 바탕에 떠 있었다. 아래 "최종 동선"은 같은 칩을 쓰는데도 멀쩡한데,
+              <b>제목 옆에 붙어 있기 때문</b>이다 — 제목이 칩의 주인 노릇을 한다.
+
+              <p>그래서 여기도 같은 짜임으로 맞춘다: <b>제목 왼쪽, 칩 오른쪽.</b>
+              카드 머리(제목·부제 왼쪽, 점수 오른쪽)와도 같은 문법이라, 이 화면에
+              같은 모양의 머리줄이 셋 서게 된다.
+
+              <p>⚠️ <b>칩에 회색 트랙을 두르지 않는다.</b> 한 번 둘러 봤는데, 바로 아래
+              스위치가 이미 같은 트랙이라 <b>똑같이 생긴 회색 막대 둘</b>이 위아래로 붙어
+              섰다. 고른 칩의 색만 달랐지 멀리서 보면 같은 물건이 두 줄이고, 그 사이에 낀
+              작은 글씨는 어느 쪽 것인지도 알 수 없었다. 트랙은 <b>스위치 하나만</b> 두른다.
+
+              <p>대신 칩은 <b>흰 알약</b>이다. 지도 칩은 흰 카드 위에 있어 회색({@code bg-bg})으로
+              뜨지만, 여기는 페이지 바탕이 그 회색이라 같은 색을 쓰면 칩이 사라진다.
+            */}
+            <section className={`${CARD_RAISED} overflow-hidden`}>
+              {/*
+                카드 머리. <b>왼쪽은 제목(과 그 아래 단서), 오른쪽은 일차 칩.</b>
+                아래 "최종 동선" 카드의 머리와 글자 그대로 같은 짜임이다 —
+                같은 화면에서 같은 칩이 한 번은 왼쪽, 한 번은 오른쪽에 서면
+                두 구역이 다른 규칙을 쓰는 것처럼 보인다.
+
+                <p>⚠️ <b>아래에 선을 긋지 않는다.</b> "최종 동선"의 머리에도 없다.
+                머리와 몸통은 여백으로 갈리고, 선을 더하면 카드 안이 두 칸으로 쪼개져
+                한 덩어리로 만들려던 일이 되돌아간다.
+
+                <p>{@code items-start}라 칩이 여러 줄로 접혀도 제목이 가운데로 끌려가지 않는다.
               */}
-              <div className="bg-fill flex gap-1 rounded-[12px] p-1 lg:hidden">
-                {['원안', '개선안'].map((label, index) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setComparePage(index)}
-                    aria-pressed={comparePage === index}
-                    className={`flex-1 cursor-pointer rounded-[9px] py-1.75 text-[12.5px] font-semibold transition-colors ${
-                      comparePage === index ? 'bg-surface text-fg shadow-rest' : 'text-hint bg-transparent'
-                    }`}
+              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-4.5 pt-4 pb-3">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <h2 className="text-fg m-0 text-[15px] font-semibold">코스 비교</h2>
+                  {/*
+                    ⚠️ <b>하루만 보고 있을 때 점수의 범위를 밝힌다.</b> 열 머리의 숫자는
+                    코스 <b>전체</b>의 총점인데 목록은 하루치라, 적어 두지 않으면 그 숫자가
+                    1일차 점수로 읽힌다.
+
+                    <p>일차별 평균을 새로 내지 않는 이유: 화면이 서버 없이 점수를 만드는 일이 되고,
+                    숫자를 내걸 조건({@code CourseScoreStandard} — 진단 2곳 이상 · 진단율 50% 이상)까지
+                    화면에 사본으로 두게 된다. 한 줄로 밝히는 편이 정직하고 어긋날 자리도 없다.
+
+                    <p>제목 <b>바로 아래</b>다. 오른쪽 끝에 두어 봤는데, 그 자리는
+                    일차 칩의 것이다 — 칩을 밀어내면 "최종 동선"과 칩의 자리가 어긋나
+                    두 카드가 다른 규칙을 쓰는 것처럼 보인다. 카드 머리에서 제목 아래는
+                    부제가 앉는 자리이고(아래 판의 "내가 처음 짠 코스"와 같은 자리),
+                    이 말도 제목을 받아 주는 한 줄이라 그 자리가 맞다.
+                  */}
+                  {compareDay !== 'all' && (
+                    <span className="text-hint text-[11.5px]">
+                      점수는 {totalDays}일 전체 기준이에요
+                    </span>
+                  )}
+                </div>
+                {/*
+                  ■ 일차 칩 — 일수가 많을 때만 선다
+
+                  일수가 늘면 열이 그만큼 길어져, 3일차를 견주려면 <b>양쪽을 따로 스크롤</b>해야
+                  한다. 좁은 화면에서는 스위치를 넘긴 뒤 그 자리를 다시 찾아야 해서 더 그렇다.
+                  고른 일차만 남기면 두 열의 같은 날이 언제나 <b>같은 높이</b>에 선다.
+
+                  <p>하루짜리 여행에는 뜨지 않는다. 고를 것이 하나뿐인 칩은 자리만 먹고
+                  아무것도 하지 않는다 — 지도 칩이 {@code state.days.length > 1}로 거는 것과 같다.
+
+                  <p>⚠️ 지도 칩과 <b>값을 나눠 쓰지 않는다</b> — 이유는 {@code compareDay} 주석에.
+                */}
+                {totalDays > 1 && (
+                  /*
+                    ⚠️ <b>flex-wrap이 필수다.</b> 6박 7일이면 칩이 여덟이라 390px에서
+                    484px가 된다 — 넘치는 만큼이 잘리는데, 이 저장소는 가로로 미는 상자를
+                    쓰지 않으므로(CLAUDE.md) <b>Day 6·7·전체에 닿을 방법이 아예 없어진다.</b>
+                    줄을 바꾸면 자리만 한 줄 더 먹고 전부 누를 수 있다.
+                    {@code justify-end}라 접힌 줄도 오른쪽 끝을 지킨다 — 지도 칩과 같다.
+                  */
+                  <div
+                    className="flex flex-wrap justify-end gap-1.5"
+                    role="group"
+                    aria-label="비교할 일차"
                   >
-                    {label}
-                  </button>
-                ))}
+                    {([...Array.from({ length: totalDays }, (_, index) => index + 1), 'all'] as const).map(
+                      (tab) => {
+                        const active = tab === compareDay
+                        return (
+                          <button
+                            key={tab}
+                            type="button"
+                            /*
+                              고르지 않은 칩이 <b>흰 알약</b>이다. 지도 칩은 흰 카드 위에 있어
+                              회색({@code bg-bg})으로 뜨지만, 여기는 페이지 바탕이 그 회색이라
+                              같은 색을 쓰면 칩이 통째로 사라진다. 흰 알약은 이 페이지의 카드
+                              언어와도 맞는다 — 스위치의 고른 쪽도 흰 알약이다.
+
+                              <p>고른 칩은 배경이 잉크라 brand-deep 초점 링이 1.51:1이 된다.
+                              어두운 면에서는 흰 링으로 바꾼다 — 지도 칩과 같은 처리.
+
+                              <p>글자는 {@code text-muted}다. {@code text-hint}는 흰 면에서
+                              5.0:1로 통과하지만, 스위치의 고르지 않은 쪽과 같은 색이어야
+                              두 줄이 한 짝으로 읽힌다.
+                            */
+                            className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                              active
+                                ? 'bg-fg text-white focus-visible:outline-white'
+                                : 'bg-bg text-hint hover:text-fg'
+                            }`}
+                            aria-pressed={active}
+                            onClick={() => setCompareDay(tab)}
+                          >
+                            {tab === 'all' ? '전체' : `Day ${tab}`}
+                          </button>
+                        )
+                      },
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/*
+                카드의 몸통. 스위치와 두 판이 <b>한 면 위에</b> 있다 —
+                이것이 이 화면에서 조작과 내용이 따로 놀지 않게 하는 유일한 장치다.
+              */}
+              <div className="flex flex-col gap-2.5 p-3.5">
+                {/*
+                  스위치. 고른 쪽이 흰 면으로 떠오른다. 홈과 같은 모양이라
+                  이 서비스에서 "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
+
+                  고른 쪽에 등급색을 칠하지 않는다. 아래 줄마다 이미 배지가 서 있는데
+                  스위치까지 같은 색을 쓰면 "지금 고른 것"과 "얼마나 붐비는지"가 겹친다.
+                */}
+                <div className="bg-fill flex gap-1 rounded-[12px] p-1 lg:hidden">
+                  {['원안', '개선안'].map((label, index) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setComparePage(index)}
+                      aria-pressed={comparePage === index}
+                      className={`flex-1 cursor-pointer rounded-[9px] py-1.75 text-[12.5px] font-semibold transition-colors ${
+                        comparePage === index ? 'bg-surface text-fg shadow-rest' : 'text-muted bg-transparent'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
 
               {/*
                 두 열을 <b>가로로 이어 붙인 띠</b>를 놓고, 창만큼만 보여준다.
@@ -958,7 +1131,7 @@ export function ResultPage() {
               */}
               <div className="overflow-hidden lg:overflow-visible">
                 <div
-                  className={`flex touch-pan-y items-start gap-0 select-none translate-x-[var(--pane-x)] lg:select-auto lg:grid lg:translate-x-0 lg:grid-cols-2 lg:gap-4 ${
+                  className={`flex touch-pan-y items-start gap-0 select-none translate-x-[var(--pane-x)] lg:select-auto lg:grid lg:translate-x-0 lg:grid-cols-2 lg:gap-5 ${
                     // 손가락을 따라오는 동안에는 전환을 끈다. 켜두면 손끝보다 늦게 따라온다
                     dragOffset === 0 ? 'transition-transform duration-300 ease-out' : ''
                   } motion-reduce:transition-none`}
@@ -1038,8 +1211,13 @@ export function ResultPage() {
                       score={showBefore ? beforeDiagnosis.totalQuietness : null}
                       scoreLevel={beforeDiagnosis.totalLevel}
                       diagnosis={beforeDiagnosis}
+                      visibleDay={compareDay}
                     />
                   </div>
+                  {/*
+                    두 판 사이에 <b>선을 긋지 않는다.</b> 물든 머리와 사이 여백만으로
+                    갈린다 — 선까지 더하면 경계가 두 겹이 된다.
+                  */}
                   <div className="w-full shrink-0">
                     <CourseColumn
                       title="개선안"
@@ -1059,6 +1237,7 @@ export function ResultPage() {
                       scoreLevel={afterDiagnosis.totalLevel}
                       diagnosis={afterDiagnosis}
                       changes={changes}
+                      visibleDay={compareDay}
                       /*
                         바꾼 것이 하나도 없으면 두 열이 같은 코스다. 그때 한쪽에만 "추천" 배지를
                         달면 <b>같은 것 둘 중 하나를 고르라</b>는 말이 된다. 권할 것이 있을 때만 선다.
@@ -1068,7 +1247,8 @@ export function ResultPage() {
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
+            </section>
             </>
           )}
 
@@ -1092,7 +1272,8 @@ export function ResultPage() {
                 신호만 주고 아무것도 바뀌지 않아 오히려 헷갈린다.
               */}
               {state.days.length > 1 && (
-                <div className="flex gap-1.5" role="group" aria-label="지도에 표시할 일차">
+                // 비교 탭과 같은 이유로 줄을 바꾼다 — 6박 7일이면 칩 여덟이 390px를 넘는다.
+                <div className="flex flex-wrap justify-end gap-1.5" role="group" aria-label="지도에 표시할 일차">
                   {/*
                     <b>일차가 먼저, 전체가 마지막이다.</b>
 
