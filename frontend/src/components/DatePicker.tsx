@@ -92,6 +92,7 @@ export function DatePicker({
   onChange,
   forecastEnd = null,
   ariaLabel = '여행 시작일',
+  dense = false,
 }: {
   value: string
   onChange: (iso: string) => void
@@ -101,6 +102,20 @@ export function DatePicker({
    */
   forecastEnd?: string | null
   ariaLabel?: string
+  /**
+   * 글자를 한 단 낮춘다. <b>시트 안처럼 주변이 촘촘한 자리</b>에서 쓴다.
+   *
+   * <h3>왜 필요한가 (2026-09-09)</h3>
+   * 달력 자체는 어디서나 같은 크기였는데, <b>주변 글자가 화면마다 다르다.</b>
+   * 코스 짜기 카드는 가장 큰 글자가 15px(기간 버튼)이라 달력의 월 제목 15px이 나란히 서지만,
+   * 시트는 카드 제목이 14.5px·본문이 12.5px라 <b>월 제목이 그 시트에서 가장 큰 글자</b>가 된다.
+   * 날짜를 고르는 도구가 자기가 들어앉은 카드의 제목보다 크면 위아래가 뒤집힌다.
+   *
+   * <p>⚠️ <b>줄이는 것은 글자뿐이다.</b> 날짜 셀의 높이(40px)는 그대로 둔다 —
+   * 이미 권장 최소 터치(44px)에 못 미치는데 여기서 더 줄이면 손가락이 빗나간다.
+   * 사용자가 말한 것도 글자 크기다.
+   */
+  dense?: boolean
 }) {
   const todayIso = today()
   const [open, setOpen] = useState(false)
@@ -332,7 +347,11 @@ export function DatePicker({
           좁은 화면에서 이 칸의 날짜만 16px이라 같은 화면의 다른 글자들보다 커 보였다 —
           입력칸의 값은 <b>읽는 글</b>이지 제목이 아니다.
         */}
-        <span className="text-fg flex-1 text-[14.5px] font-semibold lg:text-base">
+        <span
+          className={`text-fg flex-1 font-semibold ${
+            dense ? 'text-[13.5px]' : 'text-[14.5px] lg:text-base'
+          }`}
+        >
           {formatKoreanDate(value)}
         </span>
         {/* 며칠 뒤인지. 날짜만으로는 "얼마나 먼 여행인가"가 안 읽힌다 */}
@@ -379,7 +398,7 @@ export function DatePicker({
             >
               <ChevronLeft />
             </button>
-            <span className="text-fg text-[15px] font-semibold">
+            <span className={`text-fg font-semibold ${dense ? 'text-[13.5px]' : 'text-[15px]'}`}>
               {year}년 {month}월
             </span>
             <button
@@ -394,7 +413,12 @@ export function DatePicker({
 
           <div className="grid grid-cols-7 gap-y-0.5">
             {WEEKDAYS.map((day) => (
-              <span key={day} className="text-hint pb-1 text-center text-[11.5px] font-medium">
+              <span
+                key={day}
+                className={`text-hint pb-1 text-center font-medium ${
+                  dense ? 'text-[11px]' : 'text-[11.5px]'
+                }`}
+              >
                 {day}
               </span>
             ))}
@@ -425,7 +449,9 @@ export function DatePicker({
                   aria-label={formatKoreanDate(iso)}
                   aria-pressed={selected}
                   aria-current={isToday ? 'date' : undefined}
-                  className={`press rounded-chip relative mx-auto grid h-10 w-full max-w-11 cursor-pointer place-items-center border-0 text-[14px] ${
+                  className={`press rounded-chip relative mx-auto grid h-10 w-full max-w-11 cursor-pointer place-items-center border-0 ${
+                    dense ? 'text-[13px]' : 'text-[14px]'
+                  } ${
                     selected
                       ? /* 밝은 틸 위에는 흰 글자가 아니라 잉크다. 흰 글자는 2.2:1로 안 보인다 */
                         'bg-brand text-fg font-bold'
