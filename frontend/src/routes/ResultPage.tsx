@@ -985,19 +985,19 @@ export function ResultPage() {
             */}
             <section className={`${CARD_RAISED} overflow-hidden`}>
               {/*
-                카드 머리. 두 줄이다 — 제목 줄과 일차 칩 줄.
+                카드 머리. <b>왼쪽은 제목(과 그 아래 단서), 오른쪽은 일차 칩.</b>
+                아래 "최종 동선" 카드의 머리와 글자 그대로 같은 짜임이다 —
+                같은 화면에서 같은 칩이 한 번은 왼쪽, 한 번은 오른쪽에 서면
+                두 구역이 다른 규칙을 쓰는 것처럼 보인다.
 
-                <p>칩을 제목과 같은 줄에 두었다가 내렸다. 6박 7일이면 칩이 여덟이라
-                제목과 폭을 다투다 어중간하게 접히는데, <b>제 줄을 주면 그 다툼이 없다.</b>
-                아래 "최종 동선"은 칩이 넷을 넘지 않아 한 줄로 둔다 — 같은 짜임을 쓰되
-                줄 수는 각자의 사정을 따른다.
+                <p>⚠️ <b>아래에 선을 긋지 않는다.</b> "최종 동선"의 머리에도 없다.
+                머리와 몸통은 여백으로 갈리고, 선을 더하면 카드 안이 두 칸으로 쪼개져
+                한 덩어리로 만들려던 일이 되돌아간다.
+
+                <p>{@code items-start}라 칩이 여러 줄로 접혀도 제목이 가운데로 끌려가지 않는다.
               */}
-              <div className="border-line flex flex-col gap-2 border-b px-4.5 pt-4 pb-3">
-                {/*
-                  제목 줄. 왼쪽은 제목, <b>오른쪽 끝은 지금 보고 있는 범위</b>다.
-                  {@code items-baseline}이라 크기가 다른 두 글자가 밑선에 함께 앉는다.
-                */}
-                <div className="flex items-baseline justify-between gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 px-4.5 pt-4 pb-3">
+                <div className="flex min-w-0 flex-col gap-0.5">
                   <h2 className="text-fg m-0 text-[15px] font-semibold">코스 비교</h2>
                   {/*
                     ⚠️ <b>하루만 보고 있을 때 점수의 범위를 밝힌다.</b> 열 머리의 숫자는
@@ -1008,15 +1008,14 @@ export function ResultPage() {
                     숫자를 내걸 조건({@code CourseScoreStandard} — 진단 2곳 이상 · 진단율 50% 이상)까지
                     화면에 사본으로 두게 된다. 한 줄로 밝히는 편이 정직하고 어긋날 자리도 없다.
 
-                    <p>제목과 <b>같은 줄 오른쪽 끝</b>이다. 제목 아래에 붙였더니 부제처럼
-                    읽혀 "코스 비교"를 설명하는 말로 보였는데, 이건 설명이 아니라
-                    <b>지금 무엇을 보고 있는지</b>를 말하는 값이다 — 카드 머리에서
-                    오른쪽 끝은 값이 앉는 자리다(아래 판의 점수와 같은 세로줄).
-
-                    <p>{@code flex-none}이라 제목이 길어져도 줄바꿈되지 않는다.
+                    <p>제목 <b>바로 아래</b>다. 오른쪽 끝에 두어 봤는데, 그 자리는
+                    일차 칩의 것이다 — 칩을 밀어내면 "최종 동선"과 칩의 자리가 어긋나
+                    두 카드가 다른 규칙을 쓰는 것처럼 보인다. 카드 머리에서 제목 아래는
+                    부제가 앉는 자리이고(아래 판의 "내가 처음 짠 코스"와 같은 자리),
+                    이 말도 제목을 받아 주는 한 줄이라 그 자리가 맞다.
                   */}
                   {compareDay !== 'all' && (
-                    <span className="text-hint flex-none text-[11.5px]">
+                    <span className="text-hint text-[11.5px]">
                       점수는 {totalDays}일 전체 기준이에요
                     </span>
                   )}
@@ -1039,11 +1038,13 @@ export function ResultPage() {
                     484px가 된다 — 넘치는 만큼이 잘리는데, 이 저장소는 가로로 미는 상자를
                     쓰지 않으므로(CLAUDE.md) <b>Day 6·7·전체에 닿을 방법이 아예 없어진다.</b>
                     줄을 바꾸면 자리만 한 줄 더 먹고 전부 누를 수 있다.
-
-                    <p>제 줄을 가졌으므로 <b>왼쪽 끝을 제목과 맞춘다.</b> 오른쪽에 붙이면
-                    제목과 칩 사이가 대각선으로 비어, 한 덩어리로 안 읽힌다.
+                    {@code justify-end}라 접힌 줄도 오른쪽 끝을 지킨다 — 지도 칩과 같다.
                   */
-                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="비교할 일차">
+                  <div
+                    className="flex flex-wrap justify-end gap-1.5"
+                    role="group"
+                    aria-label="비교할 일차"
+                  >
                     {([...Array.from({ length: totalDays }, (_, index) => index + 1), 'all'] as const).map(
                       (tab) => {
                         const active = tab === compareDay
