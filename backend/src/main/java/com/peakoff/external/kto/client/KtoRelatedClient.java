@@ -67,6 +67,13 @@ public class KtoRelatedClient {
 				"signguCd", RegionCodes.sigunguCodeOf(region)));
 
 		if (!items.isArray() || items.isEmpty()) {
+			/*
+			 * ⚠️ <b>여기서도 예외를 던지지 않는다.</b> 연관 관광지는 <b>비는 것이 정상 범위</b>다 —
+			 * 실측에서 관광지 넷 중 셋이 연관 후보를 얻지 못했다(CLAUDE.md). 그래서 지역
+			 * 카탈로그를 함께 보는 구조가 됐고, 대안 추천은 이것이 비어도 선다.
+			 *
+			 * <p>정상일 수 있는 응답을 실패로 만들면 <b>있지도 않은 장애를 만드는 것</b>이다.
+			 */
 			log.warn("연관 관광지 응답에 항목이 없습니다. region={}, baseYm={}", region.name(), BASE_MONTH);
 			return RelatedPlaces.empty();
 		}

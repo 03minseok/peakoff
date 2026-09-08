@@ -3,6 +3,7 @@ package com.peakoff.external.kto.support;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import com.peakoff.place.domain.Region;
 
@@ -42,7 +43,19 @@ public class RegionCache<T> {
 	}
 
 	public RegionCache(Clock clock, Duration ttl) {
-		this.cache = new TtlCache<>(clock, ttl, MAX_REGIONS);
+		this(clock, ttl, value -> true);
+	}
+
+	/**
+	 * @param usable 담을 가치가 있는 값인가. <b>빈 응답이 멀쩡한 옛 값을 밀어내지 못하게</b>
+	 *               할 때 쓴다 — 공사가 200에 항목 0건을 주는 일이 있다({@link TtlCache} 주석)
+	 */
+	public RegionCache(Clock clock, Duration ttl, Predicate<T> usable) {
+		this.cache = new TtlCache<>(clock, ttl, MAX_REGIONS, usable);
+	}
+
+	public RegionCache(Clock clock, Predicate<T> usable) {
+		this(clock, DEFAULT_TTL, usable);
 	}
 
 	/**
