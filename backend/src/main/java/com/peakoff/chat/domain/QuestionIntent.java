@@ -9,14 +9,18 @@ package com.peakoff.chat.domain;
  * 그 순간 서비스가 <b>계산하지 않은 것을 근거로</b> 말하게 된다.
  * 어느 지역인지는 서버가 자료를 보고 정한다.
  *
- * <h3>시점은 <b>숫자 하나</b>로만 받는다 (2026-09-07)</h3>
+ * <h3>시점은 <b>계산하지 않아도 되는 것</b>만 받는다 (2026-09-07 · 09-08)</h3>
  * "내년 여름에 갈 만한 데"라고 물으면 공사 예측이 닿지 않는다. 그 판단을 하려면
  * 질문이 <b>얼마나 먼 훗날</b>을 가리키는지 알아야 하는데, 그것은 자료가 아니라
  * 말에 들어 있어 서버가 읽을 수 없다.
  *
- * <p>그래서 칸을 하나 더 열되 <b>숫자 하나</b>로 막았다. 여기에는 지역도 이유도
- * 들어갈 자리가 없다. 그리고 <b>"예측할 수 있는가"는 묻지 않는다</b> —
+ * <p>그래서 칸을 열되 <b>숫자와 조각</b>으로 막았다. 여기에는 지역도 이유도 들어갈
+ * 자리가 없다. 그리고 <b>"예측할 수 있는가"는 묻지 않는다</b> —
  * 그건 우리 자료 사정이라 {@link ForecastWindow#covers}가 서버에서 정한다.
+ *
+ * <p>{@code period}는 기간을 <b>조각으로</b> 받아 서버가 날짜로 바꾼다({@link AskedPeriod}).
+ * {@code horizonDays}는 그 조각으로 못 읽는 먼 말("내년 여름")을 창 밖으로 거르는
+ * <b>보조 문</b>으로 남는다 — 어림수여도 창에서 한참 떨어져 있어 판정이 흔들리지 않는다.
  *
  * <h3>관련 없음과 관심사 없음은 다르다</h3>
  * <ul>
@@ -30,20 +34,27 @@ package com.peakoff.chat.domain;
  * @param relevant    여행지를 고르는 데 관한 질문인가
  * @param interest    읽어낸 관심사. 없거나 못 읽으면 {@link Interest#NONE}
  * @param horizonDays 질문이 가리키는 시점까지 대략 며칠 뒤인가. <b>안 드러나면 null</b>
+ * @param period      질문이 가리키는 기간의 조각. 못 읽으면 {@link AskedPeriod#NONE}
  */
-public record QuestionIntent(boolean relevant, Interest interest, Integer horizonDays) {
+public record QuestionIntent(
+		boolean relevant, Interest interest, Integer horizonDays, AskedPeriod period) {
 
 	/** 관련 없는 질문. */
-	public static final QuestionIntent OFF_TOPIC = new QuestionIntent(false, Interest.NONE, null);
+	public static final QuestionIntent OFF_TOPIC =
+			new QuestionIntent(false, Interest.NONE, null, AskedPeriod.NONE);
 
 	public QuestionIntent {
 		if (interest == null) {
 			interest = Interest.NONE;
 		}
+		if (period == null) {
+			period = AskedPeriod.NONE;
+		}
 		if (!relevant) {
 			// 답하지 않을 질문의 관심사는 뜻이 없다. 남겨 두면 뒷단이 그걸 보고 움직인다.
 			interest = Interest.NONE;
 			horizonDays = null;
+			period = AskedPeriod.NONE;
 		}
 		if (horizonDays != null && horizonDays < 0) {
 			/*
@@ -57,6 +68,6 @@ public record QuestionIntent(boolean relevant, Interest interest, Integer horizo
 
 	/** 시점을 읽지 못한 보통의 질문. */
 	public static QuestionIntent of(Interest interest) {
-		return new QuestionIntent(true, interest, null);
+		return new QuestionIntent(true, interest, null, AskedPeriod.NONE);
 	}
 }

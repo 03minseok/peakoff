@@ -66,6 +66,32 @@ public record RegionProfile(
 		Integer quietShare,
 		int forecastSize) {
 
+	/**
+	 * "한적한 곳이 <b>많다</b>"고 말할 수 있는 선 (2026-09-08).
+	 *
+	 * <h3>왜 필요한가</h3>
+	 * 카드 문장이 절대량을 주장하고 있었다 — 주말을 물으면 <b>18%인데 "한적한 곳이 많은
+	 * 편이에요"</b>라고 해서 화면이 스스로 모순됐다. 그 주말이 실제로 붐비기 때문이라
+	 * 뽑기로는 못 고치고, <b>말을 사실에 맞추는</b> 수밖에 없다.
+	 *
+	 * <h3>⚠️ 한적도의 경계(65/35)와 다른 자다</h3>
+	 * 저쪽은 <b>장소 하나가 그 날 얼마나 한적한가</b>를 가르고, 이 값은 <b>그런 곳이
+	 * 몇 할인가</b>를 가른다. 세는 대상이 달라서 숫자를 견줄 수 없다 —
+	 * 이름과 주석으로 구분해 두지 않으면 언젠가 하나로 합치려는 손이 온다.
+	 *
+	 * <h3>왜 40인가</h3>
+	 * 실측(2026-09-05 스냅샷)에서 두 상태가 이 선을 사이에 두고 갈렸다:
+	 *
+	 * <pre>
+	 *   30일 창의 통    42 ~ 52%   → 전부 40 이상
+	 *   주말 2일의 통   14 ~ 22%   → 전부 40 미만
+	 * </pre>
+	 *
+	 * <p>⚠️ <b>점수가 아니라 문구를 고르는 값이다.</b> 줄 세우기·거르기에는 쓰지 않는다 —
+	 * 쓰는 순간 화면에 없는 값으로 순위가 정해진다.
+	 */
+	public static final int MANY_QUIET_SHARE = 40;
+
 	public RegionProfile {
 		Objects.requireNonNull(region, "지역은 필수입니다.");
 		shares = Map.copyOf(shares);
@@ -90,5 +116,14 @@ public record RegionProfile(
 	 */
 	public boolean isRankable() {
 		return quietShare != null;
+	}
+
+	/**
+	 * 이 지역을 두고 "한적한 곳이 많다"고 말해도 되는가.
+	 *
+	 * <p>자료가 없으면 거짓이다 — 모르는 것을 많다고 할 수는 없다.
+	 */
+	public boolean hasManyQuietSpots() {
+		return quietShare != null && quietShare >= MANY_QUIET_SHARE;
 	}
 }
