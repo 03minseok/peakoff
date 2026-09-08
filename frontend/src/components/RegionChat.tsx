@@ -483,7 +483,7 @@ function BotRow({ head, tail, at, children }: BotRowProps) {
       <div className="w-8 flex-none self-start">
         {head && (
           /* 프로필은 로고 마크다. 캐릭터를 따로 만들면 정체성 장치가 하나 더 늘어난다 */
-          <div className="bg-brand-tint grid h-8 w-8 place-items-center rounded-[11px]">
+          <div className="bg-brand-tint grid h-8 w-8 place-items-center rounded-chip">
             <BrandMark size={20} />
           </div>
         )}

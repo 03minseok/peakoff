@@ -97,7 +97,7 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 cursor-pointer place-items-center rounded-[11px] bg-transparent text-base transition-colors"
+            className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 cursor-pointer place-items-center rounded-chip bg-transparent text-base press"
           >
             <Close />
           </button>
@@ -105,10 +105,10 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-6">
           {phase.status === 'loading' && (
-            <div className="bg-surface shadow-rest rounded-[20px] p-5">
+            <div className="bg-surface shadow-rest rounded-card p-5">
               <div className="skeleton mb-3 h-4.5 w-40" />
               <div className="skeleton mb-4 h-3 w-28" />
-              <div className="skeleton h-16 w-full rounded-[14px]" />
+              <div className="skeleton h-16 w-full rounded-ui" />
             </div>
           )}
 
@@ -121,7 +121,7 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
           )}
 
           {course && (
-            <article className="bg-surface shadow-rest flex flex-col gap-3.5 rounded-[20px] p-4.5 lg:p-5">
+            <article className="bg-surface shadow-rest flex flex-col gap-3.5 rounded-card p-4.5 lg:p-5">
               <div className="flex flex-col gap-1">
                 <span className="text-fg text-[16.5px] font-bold tracking-[-0.01em]">
                   {course.name}
@@ -216,7 +216,7 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
                 <button
                   type="button"
                   onClick={() => onOpenInFlow(course)}
-                  className="border-line bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border text-sm font-semibold transition-colors"
+                  className="border-line bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border text-sm font-semibold press"
                 >
                   수정하기
                 </button>

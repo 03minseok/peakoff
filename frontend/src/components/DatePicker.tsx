@@ -322,7 +322,7 @@ export function DatePicker({
          * 높이·테두리·모서리를 다른 입력칸과 맞춘다(TEXT_INPUT과 같은 규격).
          * 폼 안에서 이 칸만 다른 크기면 "입력하는 칸"으로 안 읽힌다.
          */
-        className={`rounded-ui bg-surface flex h-13 w-full cursor-pointer items-center gap-2.5 border px-3.5 text-left transition-colors ${
+        className={`press rounded-ui bg-surface flex h-13 w-full cursor-pointer items-center gap-2.5 border px-3.5 text-left ${
           open ? 'border-brand-deep' : 'border-line hover:border-brand-soft'
         }`}
       >
@@ -375,7 +375,7 @@ export function DatePicker({
               disabled={!canGoPrev}
               aria-label="이전 달"
               /* 지난 달로는 못 간다. 지난 날짜를 못 고르므로 볼 것이 없는 달이다 */
-              className="rounded-chip text-muted hover:bg-fill disabled:text-line grid h-9 w-9 cursor-pointer place-items-center border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              className="press touch-hitbox rounded-chip text-muted hover:bg-fill disabled:text-line grid h-9 w-9 cursor-pointer place-items-center border-0 bg-transparent disabled:cursor-not-allowed disabled:hover:bg-transparent"
             >
               <ChevronLeft />
             </button>
@@ -386,7 +386,7 @@ export function DatePicker({
               type="button"
               onClick={() => setYm(shiftMonth(ym, 1))}
               aria-label="다음 달"
-              className="rounded-chip text-muted hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center border-0 bg-transparent transition-colors"
+              className="press touch-hitbox rounded-chip text-muted hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center border-0 bg-transparent"
             >
               <ChevronRight />
             </button>
@@ -425,7 +425,7 @@ export function DatePicker({
                   aria-label={formatKoreanDate(iso)}
                   aria-pressed={selected}
                   aria-current={isToday ? 'date' : undefined}
-                  className={`rounded-chip relative mx-auto grid h-10 w-full max-w-11 cursor-pointer place-items-center border-0 text-[14px] transition-colors ${
+                  className={`press rounded-chip relative mx-auto grid h-10 w-full max-w-11 cursor-pointer place-items-center border-0 text-[14px] ${
                     selected
                       ? /* 밝은 틸 위에는 흰 글자가 아니라 잉크다. 흰 글자는 2.2:1로 안 보인다 */
                         'bg-brand text-fg font-bold'

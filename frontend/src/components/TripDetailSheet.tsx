@@ -183,7 +183,7 @@ export function TripDetailSheet({
               type="button"
               onClick={onClose}
               aria-label="닫기"
-              className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 flex-none cursor-pointer place-items-center rounded-[11px] bg-transparent text-base transition-colors"
+              className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 flex-none cursor-pointer place-items-center rounded-chip bg-transparent text-base press"
             >
               <Close />
             </button>
@@ -218,7 +218,7 @@ export function TripDetailSheet({
                   aria-current={active}
                   disabled={locked}
                   onClick={() => setPane(option.key)}
-                  className={`h-8 cursor-pointer rounded-[9px] border-0 px-3.5 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed ${
+                  className={`h-8 cursor-pointer rounded-[9px] border-0 px-3.5 text-[13px] font-semibold press disabled:cursor-not-allowed ${
                     active
                       ? 'bg-surface text-fg shadow-rest'
                       : 'text-muted hover:text-fg disabled:text-hint bg-transparent'

@@ -1066,7 +1066,7 @@ export function ResultPage() {
                               5.0:1로 통과하지만, 스위치의 고르지 않은 쪽과 같은 색이어야
                               두 줄이 한 짝으로 읽힌다.
                             */
-                            className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                            className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap press ${
                               active
                                 ? 'bg-fg text-white focus-visible:outline-white'
                                 : 'bg-bg text-hint hover:text-fg'
@@ -1102,7 +1102,7 @@ export function ResultPage() {
                       type="button"
                       onClick={() => setComparePage(index)}
                       aria-pressed={comparePage === index}
-                      className={`flex-1 cursor-pointer rounded-[9px] py-1.75 text-[12.5px] font-semibold transition-colors ${
+                      className={`flex-1 cursor-pointer rounded-[9px] py-1.75 text-[12.5px] font-semibold press ${
                         comparePage === index ? 'bg-surface text-fg shadow-rest' : 'text-muted bg-transparent'
                       }`}
                     >
@@ -1297,7 +1297,7 @@ export function ResultPage() {
                             그 위에서 1.51:1이 된다 — 키보드로 훑을 때 <b>지금 어디에 있는지가
                             하필 현재 탭에서만</b> 사라졌다. 어두운 면에서는 흰 링으로 바꾼다.
                           */
-                          className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                          className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap press ${
                             active
                               ? 'bg-fg text-white focus-visible:outline-white'
                               : 'bg-bg text-hint hover:text-fg'
@@ -1458,7 +1458,7 @@ export function ResultPage() {
             */}
             <Link
               to="/"
-              className="text-hint hover:bg-surface hover:text-fg rounded-ui grid min-h-11 w-full place-items-center text-[14px] font-medium no-underline transition-colors lg:mx-auto lg:max-w-read"
+              className="text-hint hover:bg-surface hover:text-fg rounded-ui grid min-h-11 w-full place-items-center text-[14px] font-medium no-underline press lg:mx-auto lg:max-w-read"
             >
               홈으로
             </Link>

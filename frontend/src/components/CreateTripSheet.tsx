@@ -117,7 +117,7 @@ export function CreateTripSheet({ onCreate, onClose }: Props) {
               onClick={onClose}
               disabled={busy}
               aria-label="닫기"
-              className="text-hint hover:text-fg -mt-1 -mr-1 flex-none cursor-pointer rounded-full border-0 bg-transparent p-2 transition-colors disabled:cursor-not-allowed"
+              className="text-hint hover:text-fg -mt-1 -mr-1 flex-none cursor-pointer rounded-full border-0 bg-transparent p-2 press disabled:cursor-not-allowed"
             >
               <Close size={18} />
             </button>

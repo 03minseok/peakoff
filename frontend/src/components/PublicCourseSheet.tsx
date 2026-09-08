@@ -114,14 +114,14 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 cursor-pointer place-items-center rounded-[11px] bg-transparent text-base transition-colors"
+            className="text-muted hover:bg-line/40 grid h-8.5 w-8.5 cursor-pointer place-items-center rounded-chip bg-transparent text-base press"
           >
             <Close />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <article className="bg-surface shadow-rest flex flex-col gap-3.5 rounded-[20px] p-4.5 lg:p-5">
+          <article className="bg-surface shadow-rest flex flex-col gap-3.5 rounded-card p-4.5 lg:p-5">
             {/* 홈 카드와 같은 제목을 쓴다. 눌러서 열었는데 제목이 달라지면 같은 코스로 안 읽힌다 */}
             <div className="flex flex-col gap-1">
               <span className="text-fg text-[16.5px] font-bold tracking-[-0.01em]">
@@ -219,7 +219,7 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
               <button
                 type="button"
                 onClick={() => setPicking(true)}
-                className="border-brand bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border-[1.5px] text-sm font-semibold transition-colors"
+                className="border-brand bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border-[1.5px] text-sm font-semibold press"
               >
                 {/*
                   ⚠️ <b>"나도"를 뺐다</b> (2026-08-31). 목록에 <b>내 코스도 섞이면서</b>
@@ -251,7 +251,7 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
                   type="button"
                   disabled={!startDate}
                   onClick={() => onCopyToFlow(course, startDate)}
-                  className="bg-brand hover:bg-brand-hover text-fg rounded-ui disabled:bg-bg disabled:text-hint h-12 cursor-pointer text-sm font-semibold transition-colors disabled:cursor-not-allowed"
+                  className="bg-brand hover:bg-brand-hover text-fg rounded-ui disabled:bg-bg disabled:text-hint h-12 cursor-pointer text-sm font-semibold press disabled:cursor-not-allowed"
                 >
                   이 날짜로 코스 짜기
                 </button>

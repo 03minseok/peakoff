@@ -121,7 +121,7 @@ export function FormSheet({
             <button
               type="submit"
               disabled={!canSubmit || busy}
-              className={`rounded-ui disabled:bg-line disabled:text-hint h-13 cursor-pointer text-[15.5px] font-semibold transition-colors disabled:cursor-not-allowed ${
+              className={`rounded-ui disabled:bg-line disabled:text-hint h-13 cursor-pointer text-[15.5px] font-semibold press disabled:cursor-not-allowed ${
                 danger
                   ? 'bg-crowded-strong hover:bg-crowded-deep text-white'
                   : 'bg-brand hover:bg-brand-hover text-fg'
@@ -133,7 +133,7 @@ export function FormSheet({
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="border-line bg-surface text-fg hover:bg-bg rounded-ui disabled:text-hint h-13 cursor-pointer border text-[15.5px] font-semibold transition-colors disabled:cursor-not-allowed"
+              className="border-line bg-surface text-fg hover:bg-bg rounded-ui disabled:text-hint h-13 cursor-pointer border text-[15.5px] font-semibold press disabled:cursor-not-allowed"
             >
               {cancelLabel}
             </button>

@@ -53,10 +53,10 @@ type TripPick =
   | { status: 'hidden' }
 
 const OUTLINE_BUTTON =
-  'h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15.5px] font-semibold text-fg transition-colors hover:bg-bg disabled:cursor-not-allowed disabled:text-hint'
+  'press h-13 cursor-pointer rounded-ui border border-line bg-surface text-[15.5px] font-semibold text-fg hover:bg-bg disabled:cursor-not-allowed disabled:text-hint'
 
 const GHOST_BUTTON =
-  'h-11 cursor-pointer rounded-ui bg-transparent text-[13.5px] font-medium text-hint transition-colors hover:text-muted'
+  'press h-11 cursor-pointer rounded-ui bg-transparent text-[13.5px] font-medium text-hint hover:text-muted'
 
 /**
  * 코스를 저장하려 할 때 아래에서 올라오는 시트.
@@ -364,7 +364,7 @@ export function SaveCourseSheet({
                         <button
                           key={trip.id}
                           type="button"
-                          className="bg-brand-tint text-brand-deep hover:bg-brand-soft rounded-chip min-h-9 cursor-pointer border-0 px-3.5 text-[13px] font-semibold transition-colors"
+                          className="bg-brand-tint text-brand-deep hover:bg-brand-soft rounded-chip min-h-9 cursor-pointer border-0 px-3.5 text-[13px] font-semibold press"
                           onClick={() => {
                             /*
                               담기에 실패해도 저장은 이미 끝났다. 실패를 붙잡아 화면에 세우면

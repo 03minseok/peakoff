@@ -45,7 +45,7 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
   return (
     // relative: 제목 버튼의 ::after가 이 상자를 기준으로 늘어난다
     <div
-      className={`bg-surface shadow-rest relative flex flex-col gap-3 rounded-[20px] border-[1.5px] border-transparent p-4.5 transition-colors max-md:gap-2 max-md:rounded-[16px] max-md:p-3.5 ${
+      className={`bg-surface shadow-rest relative flex flex-col gap-3 rounded-card border-[1.5px] border-transparent p-4.5 transition-colors max-md:gap-2 max-md:rounded-[16px] max-md:p-3.5 ${
         past ? 'opacity-65' : ''
       }`}
     >
@@ -64,7 +64,7 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
           <button
             type="button"
             onClick={onOpen}
-            className="text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] max-md:text-[14.5px] after:absolute after:inset-0 after:rounded-[20px] after:content-[''] max-md:after:rounded-[16px]"
+            className="press text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] max-md:text-[14.5px] after:absolute after:inset-0 after:rounded-card after:content-[''] max-md:after:rounded-[16px]"
           >
             <span className="block truncate">{course.name}</span>
           </button>
@@ -75,7 +75,7 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
           type="button"
           onClick={onDelete}
           aria-label={`${course.name} 삭제`}
-          className="text-line hover:bg-crowded-tint hover:text-crowded relative z-10 grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-[10px] bg-transparent text-[15px] transition-colors max-md:h-7 max-md:w-7 max-md:text-[13px]"
+          className="text-line hover:bg-crowded-tint hover:text-crowded relative z-10 grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-[10px] bg-transparent text-[15px] press max-md:h-7 max-md:w-7 max-md:text-[13px]"
         >
           <Close />
         </button>
@@ -100,7 +100,7 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
         재보지도 않은 코스에 "붐빔"이나 "한적"을 붙이게 된다.
       */}
       <div
-        className={`flex items-center justify-between rounded-[14px] px-3.5 py-3 max-md:rounded-[12px] max-md:px-3 max-md:py-2 ${
+        className={`flex items-center justify-between rounded-ui px-3.5 py-3 max-md:rounded-[12px] max-md:px-3 max-md:py-2 ${
           course.level === null ? 'bg-bg text-hint' : LEVEL_TINT[course.level]
         }`}
       >

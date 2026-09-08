@@ -82,7 +82,7 @@ export function RegionProvider({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setAttempt((value) => value + 1)}
-            className="border-line text-fg hover:bg-fill rounded-full border px-4 py-2 text-[13.5px] font-semibold"
+            className="press border-line text-fg hover:bg-fill rounded-full border px-4 py-2 text-[13.5px] font-semibold"
           >
             다시 시도
           </button>

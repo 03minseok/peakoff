@@ -25,7 +25,7 @@ type ThumbnailSize = 'sm' | 'md' | 'lg' | 'card' | 'banner'
 const SIZE_CLASS: Record<ThumbnailSize, string> = {
   sm: 'h-10 w-10 rounded-chip text-[15px]',
   md: 'h-16 w-16 rounded-ui text-[19px]',
-  lg: 'h-21 w-21 rounded-[14px] text-[22px]',
+  lg: 'h-21 w-21 rounded-ui text-[22px]',
   /*
    * 홈의 "이번 주 한적한 곳". <b>좁은 화면에서는 카드 맨 위를 가로지르는 사진,
    * lg부터는 왼쪽 썸네일</b>이다 — banner와 같은 수법이고 갈리는 지점만 다르다
