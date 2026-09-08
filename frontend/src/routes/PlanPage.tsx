@@ -176,8 +176,25 @@ export function PlanPage() {
       칸이 넓다고 고르기 쉬워지지 않고, 눈은 오히려 라벨과 값 사이를 멀리 오간다.
 
       좁은 화면에서는 지금까지처럼 설명이 폼 위에 오는 한 줄이다.
+
+      ■ <b>좁은 화면에서는 가운데에 세운다</b> (2026-09-08)
+
+      내용이 화면의 60%에서 끝나고 아래가 통째로 비어 있었다. 위에서부터 쌓이니
+      제목만 커 보이고 정작 <b>할 일(입력칸)</b>은 화면 가운데 아래에 걸쳐 있었다.
+
+      ⚠️ {@code min-h}로 두는 것이 핵심이다. {@code h-full}로 잡으면 내용이 화면보다
+      길 때 {@code justify-center}가 위아래로 넘쳐 <b>제목이 화면 밖으로 잘린다.</b>
+      최소 높이로 두면 내용이 길어지는 순간 남는 공간이 0이 되어 가운데 정렬이
+      저절로 꺼진다 — 코스 발견처럼 폼이 긴 화면이 그렇다.
+
+      ⚠️ {@code min-h-full}은 <b>듣지 않는다.</b> 부모(Layout의 main)가 {@code flex-1}로
+      늘어난 칸이라 퍼센트 높이가 해석될 기준이 없다. 그래서 화면 높이에서 직접 뺀다 —
+      헤더 {@code h-14}(3.5rem)와 본문 아래 여백 {@code pb-8}(2rem)이 그 값이다.
+
+      ⚠️ {@code dvh}가 아니라 {@code svh}다. 주소창이 여닫힐 때마다 높이가 변하면
+      가운데가 <b>따라 움직인다</b> — 작은 쪽(주소창이 보이는 상태)으로 고정한다.
     */
-    <div className="mx-auto w-full max-w-form lg:grid lg:max-w-app lg:grid-cols-12 lg:items-start lg:gap-10">
+    <div className="mx-auto flex min-h-[calc(100svh-5.5rem)] w-full max-w-form flex-col justify-center lg:grid lg:min-h-0 lg:max-w-app lg:grid-cols-12 lg:items-start lg:gap-10">
       {/* 폼을 채우는 동안 왼쪽 설명이 따라와 무엇을 하는 화면인지가 계속 남는다 */}
       {/*
         위 여백을 여기서 더 얹지 않는다. Layout이 이미 본문 위 여백(pt-6/lg:pt-8)을 주는데
@@ -195,10 +212,13 @@ export function PlanPage() {
           보고 사용자가 정한다. 문구가 하는 일보다 앞서 나가면 서비스가 참견으로 읽힌다.
           진단 화면의 "새로운 곳 발견하기"·"더 여유로운 날 발견하기"와 같은 맥락이다.
         */}
-        <h1 className="text-fg text-[34px] leading-[1.25] font-bold tracking-[-0.025em] lg:text-[40px]">
-          붐비는지
-          <br />
-          확인해드려요
+        {/*
+          ⚠️ 크기를 한 단계 내렸다(34→26 / 40→36, 2026-09-08). 두 줄짜리 34px이
+          좁은 화면에서 첫 화면의 3분의 1을 차지해, 인사보다 <b>선언</b>처럼 읽혔다.
+          이 값은 {@code /recommend}와 <b>같아야 한다</b> — 그쪽 주석 참고.
+        */}
+        <h1 className="text-fg text-[26px] leading-[1.3] font-bold tracking-[-0.025em] lg:text-[36px]">
+          붐비는지 확인해드려요
         </h1>
         {/*
           min-w를 걸지 않는다. 폭을 강제하면 화면이 그보다 좁을 때 문단이 밖으로 삐져나가
