@@ -535,7 +535,19 @@ export interface PublicPlace {
   day: number
   order: number
   placeId: string
+  /** 저장 시점의 이름. 카드에 보이는 것은 이 값이다 */
   name: string
+  /**
+   * 지금의 장소. <b>좌표까지 든 온전한 값이다.</b>
+   *
+   * 이 값이 있어야 남의 코스를 베껴 편집 화면으로 갔을 때 그 칸이 <b>숫자가 아니라
+   * 이름</b>으로 선다 — 코스는 id만 들고 다니고 화면이 {@code placeCache}로 되살리는데,
+   * 남의 코스는 그 브라우저가 검색한 적이 없어 되살릴 것이 없었다.
+   *
+   * ⚠️ <b>null일 수 있다.</b> 공사 카탈로그에서 사라졌거나 호출이 실패한 경우다.
+   * 그때는 위 {@code name}이 남는다 — 좌표는 못 줘도 이름은 보여야 한다.
+   */
+  place: Place | null
 }
 
 /**

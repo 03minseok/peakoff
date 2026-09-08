@@ -8,6 +8,7 @@ import java.util.List;
 import com.peakoff.congestion.domain.CongestionLevel;
 import com.peakoff.course.domain.SavedCourse;
 import com.peakoff.course.domain.SavedCoursePlace;
+import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.SupportedRegion;
 
 /**
@@ -91,15 +92,29 @@ public record PublicCourseSummary(
 	 *                이것이 있어야 "이 코스로 나도 짜보기"가 성립한다 — 이름만으로는
 	 *                같은 장소를 다시 찾을 수 없다(집중률 API의 이름 매칭이 어려운 이유와 같다).
 	 * @param name    저장 시점의 이름. 화면에 보이는 것은 이 값이다
+	 * @param place   <b>지금의 장소.</b> 좌표까지 든 온전한 값이라, 이 코스를 베껴 편집
+	 *                화면으로 갈 때 그 칸이 <b>숫자가 아니라 이름</b>으로 선다.
+	 *                코스는 id만 들고 다니고 화면이 {@code placeCache}로 되살리는데,
+	 *                남의 코스는 그 브라우저가 검색한 적이 없어 되살릴 것이 없었다.
+	 *                <p>⚠️ <b>null일 수 있다.</b> 공사 카탈로그에서 사라졌거나 호출이
+	 *                실패한 경우다. 그래서 위 {@code name}(저장 시점 스냅샷)을 남겨 둔다 —
+	 *                좌표는 못 줘도 이름은 보여야 한다. 찜이 쓰는 방식과 같다
+	 *                ({@code FavoritePlace.place})
 	 */
-	public record PublicPlace(int day, int order, String placeId, String name) {
+	public record PublicPlace(int day, int order, String placeId, String name, Place place) {
 	}
 
 	/**
 	 * ⚠️ <b>총점이 있는 코스만 넘어온다.</b> {@code SavedCourseService.recent()}가 걸러 준다 —
 	 * 이 응답에는 점수를 비울 자리가 없다(원형 게이지와 배지가 그 값을 전제한다).
 	 */
-	public static PublicCourseSummary from(SavedCourse course) {
+	/**
+	 * @param livePlaceOf 장소 id를 <b>지금의 장소</b>로 바꿔 주는 것. 못 찾으면 null을 준다.
+	 *                    부르는 쪽(서비스)이 지역을 알고 있으므로 조회는 그쪽이 맡는다 —
+	 *                    이 DTO가 {@code PlaceProvider}를 알면 표현 계층이 공사 연동에 묶인다
+	 */
+	public static PublicCourseSummary from(
+			SavedCourse course, java.util.function.Function<String, Place> livePlaceOf) {
 		CongestionLevel level = CongestionLevel.fromQuietness(course.totalQuietness());
 
 		// 담은 순서대로. 무작위로 섞으면 같은 코스가 볼 때마다 달라 보인다.
@@ -110,7 +125,8 @@ public record PublicCourseSummary(
 						place.day(),
 						place.visitOrder(),
 						place.placeId(),
-						place.placeName()))
+						place.placeName(),
+						livePlaceOf.apply(place.placeId())))
 				.toList();
 
 		SupportedRegion region = SupportedRegion.fromSlug(course.region());
