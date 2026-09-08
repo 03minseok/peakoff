@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Close } from './icons'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
-import { TEXT_INPUT } from './styles'
+import { DatePicker } from './DatePicker'
+import { fetchForecastWindow } from '../services/api'
 import type { PublicCourse, PublicPlace } from '../types/api'
-import { formatDateRange, formatNights, isPastDate, today } from '../utils/date'
+import { formatDateRange, formatKoreanDate, formatNights, isPastDate, today } from '../utils/date'
 import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
@@ -78,10 +79,29 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
    * 정하고 있다</b> — 장소가 그 지역의 것이고, 일차 수가 곧 기간이다.
    * 이미 답이 있는 것을 다시 묻는 화면은 베끼는 일을 번거롭게만 만든다.
    */
-  const [startDate, setStartDate] = useState('')
+  /*
+    오늘로 연다. 예전에는 빈 값으로 두고 고르기 전까지 버튼을 잠갔는데, 달력은 늘 어느 한 날을
+    가리키고 있어야 한다(코스 짜기 화면과 같은 규칙). 오늘이 서 있고 사용자가 옮긴다.
+  */
+  const [startDate, setStartDate] = useState(() => today())
 
   /** 날짜를 묻는 중인가. 버튼을 누르기 전에는 이 시트가 <b>읽는 자리</b>다 */
   const [picking, setPicking] = useState(false)
+
+  /**
+   * 예측이 닿는 마지막 날. 코스 짜기 화면과 <b>같은 달력</b>을 쓰므로 같은 값을 넘긴다 —
+   * 이게 없으면 여기서 고른 달력에만 앰버 점이 안 떠, 두 화면의 달력이 다른 물건으로 보인다.
+   * 못 받아오면 null이고, 달력은 점 없이 서 있다(없는 제약을 설명하는 것보다 조용한 편이 낫다).
+   */
+  const [forecastEnd, setForecastEnd] = useState<string | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchForecastWindow(controller.signal)
+      .then((window) => setForecastEnd(window.lastDate))
+      .catch(() => setForecastEnd(null))
+    return () => controller.abort()
+  }, [])
+  const beyondForecast = forecastEnd !== null && startDate > forecastEnd
   // "경상북도 경주시" → "경주시". 카드가 좁아 앞쪽 도명까지는 들어가지 않는다.
   const shortRegion = course.regionName.replace(/^.*\s/, '')
 
@@ -231,25 +251,48 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
               </button>
             ) : (
               <div className="mt-1 flex flex-col gap-2.5">
-                <label className="text-fg text-[13.5px] font-semibold" htmlFor="copy-start-date">
-                  언제 떠나세요?
-                </label>
+                <span className="text-fg text-[13.5px] font-semibold">언제 떠나세요?</span>
                 {/*
-                  min을 오늘로 건다. 지난 날짜는 예측이 없어 진단이 통째로 비는데,
-                  담고 나서 숫자가 안 나오면 사용자는 그것을 고장으로 읽는다.
-                  ⚠️ 예측 창 <b>끝</b>은 막지 않는다 — 여행은 원래 미리 계획한다.
+                  ■ 코스 짜기 화면과 <b>같은 달력</b>이다 (2026-09-09)
+
+                  예전에는 여기만 {@code <input type="date">}였다. 브라우저가 그리는 달력이라
+                  기기마다 모양이 다르고, 코스 짜기에서 본 달력(앰버 점·지난 날 잠금·눌림 반응)과
+                  <b>확연히 다른 물건</b>이 떴다 — 같은 서비스에서 날짜를 두 가지 달력으로 고르게
+                  하고 있었다. DatePicker가 지난 날짜를 잠그고 예측 창 밖에 점을 찍는 일을
+                  이미 하고 있으므로, 여기서 {@code min}을 따로 걸 필요도 없다.
+
+                  <p>⚠️ 예측 창 <b>끝</b>은 여전히 막지 않는다 — 여행은 원래 미리 계획한다.
                 */}
-                <input
-                  id="copy-start-date"
-                  type="date"
-                  className={TEXT_INPUT}
+                <DatePicker
                   value={startDate}
-                  min={today()}
-                  onChange={(event) => setStartDate(event.target.value)}
+                  onChange={setStartDate}
+                  forecastEnd={forecastEnd}
+                  ariaLabel="여행 시작일"
                 />
+                {/*
+                  예측 창 밖 안내. 코스 짜기 화면의 그 줄과 같은 말·같은 색(보통=앰버)이다.
+                  달력 안의 점이 이미 말하지만, 달력을 닫으면 그 점도 사라진다 — 고른 결과
+                  옆에 남는 한 줄이 있어야 "왜 진단이 비어 나오나"를 나중에 묻지 않는다.
+                */}
+                {beyondForecast && (
+                  <div className="bg-moderate-tint rounded-ui flex items-start gap-2.5 px-3.5 py-3">
+                    <span
+                      className="bg-moderate mt-1.5 h-2 w-2 flex-none rounded-full"
+                      aria-hidden="true"
+                    />
+                    <p className="text-moderate-deep m-0 text-[12.5px] leading-[1.6]">
+                      예상 혼잡은{' '}
+                      <strong className="font-semibold">{formatKoreanDate(forecastEnd!)}</strong>
+                      까지만 나와 있어요.
+                      <br />
+                      이 날짜로도 코스를 짤 수 있지만 지금은 혼잡 진단이 비어 나와요 —
+                      여행이 가까워지면 다시 진단할 수 있어요.
+                    </p>
+                  </div>
+                )}
                 <button
                   type="button"
-                  disabled={!startDate}
+                  /* 달력이 늘 한 날을 가리키므로 잠글 조건이 없다. 지난 날은 달력이 이미 막는다 */
                   onClick={() => onCopyToFlow(course, startDate)}
                   className="bg-brand hover:bg-brand-hover text-fg rounded-ui disabled:bg-bg disabled:text-hint h-12 cursor-pointer text-sm font-semibold press disabled:cursor-not-allowed"
                 >
