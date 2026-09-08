@@ -198,7 +198,7 @@ function QuietSpotCard({
       <button
         type="button"
         onClick={onOpen}
-        className="press bg-surface border-line shadow-rest hover:bg-fill lg:bg-bg lg:border-0 lg:shadow-none lg:hover:bg-line/40 lg:rounded-card relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[16px] border p-0 text-left transition-colors lg:flex-row lg:items-center lg:gap-3 lg:p-2.5 lg:pr-11"
+        className="press bg-surface border-line shadow-rest hover:bg-fill lg:bg-bg lg:border-0 lg:shadow-none lg:hover:bg-line/40 lg:rounded-card relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[16px] border p-0 text-left lg:flex-row lg:items-center lg:gap-3 lg:p-2.5 lg:pr-11"
       >
       {/*
         ■ 모바일은 사진이 위, <b>lg는 예전 그대로</b> 왼쪽 썸네일이다 (2026-09-02)
@@ -286,7 +286,7 @@ function QuietSpotCard({
         onClick={onFavorite}
         aria-pressed={favorite}
         aria-label={favorite ? `${spot.place.name} 찜 취소` : `${spot.place.name} 찜하기`}
-        className={`press touch-hitbox absolute top-1.5 right-1.5 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-white/90 shadow-rest transition-colors lg:top-1/2 lg:right-2 lg:h-9 lg:w-9 lg:-translate-y-1/2 lg:bg-transparent lg:shadow-none ${
+        className={`press touch-hitbox absolute top-1.5 right-1.5 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-white/90 shadow-rest lg:top-1/2 lg:right-2 lg:h-9 lg:w-9 lg:-translate-y-1/2 lg:bg-transparent lg:shadow-none ${
           favorite ? 'text-like' : 'text-hint hover:text-fg'
         }`}
       >
@@ -338,7 +338,7 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
     <button
       type="button"
       onClick={onOpen}
-      className="group bg-bg hover:bg-fill flex w-full cursor-pointer flex-col gap-2.5 rounded-[16px] border-none p-3 text-left transition-colors lg:p-3.5"
+      className="group bg-bg hover:bg-fill flex w-full cursor-pointer flex-col gap-2.5 rounded-[16px] border-none p-3 text-left press lg:p-3.5"
     >
       <div className="flex w-full items-center gap-3">
         {/*
@@ -1046,7 +1046,7 @@ export function HomePage() {
               <Link
                 to="/plan"
                 aria-label="코스 직접 짜기 시작하기"
-                  className="bg-fg/80 group-hover:bg-fg/95 hover:bg-fg/95 border border-white/45 text-white backdrop-blur-[3px] rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
+                  className="bg-fg/80 group-hover:bg-fg/95 hover:bg-fg/95 border border-white/45 text-white backdrop-blur-[3px] rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline press lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
                 >
                   시작하기
                   {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
@@ -1170,7 +1170,7 @@ export function HomePage() {
                 <Link
                   to="/recommend"
                   aria-label="새로운 코스 발견하기 시작하기"
-                    className="bg-brand/86 group-hover:bg-brand hover:bg-brand border border-brand-tint text-fg backdrop-blur-[10px] backdrop-brightness-125 rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
+                    className="bg-brand/86 group-hover:bg-brand hover:bg-brand border border-brand-tint text-fg backdrop-blur-[10px] backdrop-brightness-125 rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline press lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
                   >
                     시작하기
                     <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />

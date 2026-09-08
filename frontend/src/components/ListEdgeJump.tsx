@@ -47,7 +47,7 @@ export function ListEdgeJump({ targetId, direction, label }: Props) {
     <button
       type="button"
       onClick={jump}
-      className="press text-hint hover:text-brand-deep rounded-chip -mr-1 flex flex-none cursor-pointer items-center gap-1 bg-transparent px-1 py-0.5 text-[12px] font-semibold whitespace-nowrap transition-colors"
+      className="press text-hint hover:text-brand-deep rounded-chip -mr-1 flex flex-none cursor-pointer items-center gap-1 bg-transparent px-1 py-0.5 text-[12px] font-semibold whitespace-nowrap"
     >
       {direction === 'down' ? <ArrowDown size={13} /> : <ArrowUp size={13} />}
       {label} {direction === 'down' ? '끝으로' : '처음으로'}

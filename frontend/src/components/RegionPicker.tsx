@@ -182,7 +182,7 @@ export function RegionPicker({
                     /* 마우스로 짚은 줄과 키보드로 짚은 줄을 하나로 둔다 — 둘이 동시에 켜지면 어느 것이 골라질지 흐려진다 */
                     onPointerEnter={() => setActive(index)}
                     onClick={() => pick(option.slug)}
-                    className={`flex w-full cursor-pointer items-baseline justify-between gap-3 rounded-[10px] border-0 px-3 py-2.5 text-left transition-colors ${
+                    className={`flex w-full cursor-pointer items-baseline justify-between gap-3 rounded-[10px] border-0 px-3 py-2.5 text-left press ${
                       index === active ? 'bg-brand-tint' : 'bg-transparent'
                     }`}
                   >

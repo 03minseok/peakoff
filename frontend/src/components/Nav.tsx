@@ -201,7 +201,7 @@ export function MobileMenu() {
         aria-expanded={open}
         aria-controls="mobile-menu"
         aria-label={open ? '메뉴 닫기' : '메뉴 열기'}
-        className="text-fg hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] bg-transparent transition-colors"
+        className="text-fg hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center rounded-chip bg-transparent press"
       >
         {/* 열려 있으면 X. 같은 버튼이 여닫이라는 것을 모양으로 말한다 */}
         <svg
@@ -247,7 +247,7 @@ export function MobileMenu() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-[11px] px-3 py-2.5 text-[14px] no-underline transition-colors ${
+                  `flex items-center gap-2.5 rounded-chip px-3 py-2.5 text-[14px] no-underline transition-colors ${
                     isActive
                       ? 'bg-brand-tint text-brand-deep font-semibold'
                       : 'text-fg hover:bg-bg font-medium'
@@ -280,7 +280,7 @@ export function MobileMenu() {
                 <button
                   type="button"
                   onClick={logout}
-                  className="text-hint hover:bg-bg hover:text-fg flex cursor-pointer items-center gap-2.5 rounded-[11px] bg-transparent px-3 py-2.5 text-left text-[14px] font-medium transition-colors"
+                  className="text-hint hover:bg-bg hover:text-fg flex cursor-pointer items-center gap-2.5 rounded-chip bg-transparent px-3 py-2.5 text-left text-[14px] font-medium press"
                 >
                   <LogoutIcon />
                   로그아웃
@@ -368,7 +368,7 @@ export function HeaderAuthAction() {
     <button
       type="button"
       onClick={logout}
-      className="text-hint hover:text-fg hidden cursor-pointer rounded-chip bg-transparent p-2 text-[13px] font-medium whitespace-nowrap transition-colors md:block"
+      className="text-hint hover:text-fg hidden cursor-pointer rounded-chip bg-transparent p-2 text-[13px] font-medium whitespace-nowrap press md:block"
     >
       로그아웃
     </button>

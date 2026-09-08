@@ -19,7 +19,7 @@ interface Errors {
 
 /** 카카오·네이버 버튼. 두 곳(모바일·데스크톱)에서 같은 모양이라 상수로 둔다. */
 const SOCIAL_BUTTON =
-  'flex h-13 w-full cursor-pointer items-center justify-center gap-2.25 rounded-ui border-0 text-[15.5px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-default'
+  'press flex h-13 w-full cursor-pointer items-center justify-center gap-2.25 rounded-ui border-0 text-[15.5px] font-semibold hover:opacity-90 disabled:cursor-default'
 
 /** 문구에 쓰는 이름. 실패 안내가 "어느 쪽이 안 됐는지"까지 말할 수 있어야 한다. */
 const PROVIDER_LABEL: Record<SocialProvider, string> = {
@@ -225,7 +225,7 @@ export function LoginPage() {
           labelAction={
             <button
               type="button"
-              className="text-hint hover:text-muted cursor-pointer bg-transparent text-[12.5px] font-medium"
+              className="press text-hint hover:text-muted cursor-pointer bg-transparent text-[12.5px] font-medium"
               onClick={() =>
                 setNotice('비밀번호 찾기는 준비 중이에요.')
               }
@@ -316,7 +316,7 @@ export function LoginPage() {
       <div className="mt-auto pt-9 lg:hidden">
         <Link
           to="/"
-          className="rounded-ui text-muted hover:text-fg bg-fill flex h-12.5 w-full items-center justify-center gap-1.5 text-[14.5px] font-semibold no-underline transition-colors"
+          className="rounded-ui text-muted hover:text-fg bg-fill flex h-12.5 w-full items-center justify-center gap-1.5 text-[14.5px] font-semibold no-underline press"
         >
           로그인 없이 둘러보기 <ChevronRight size={15} />
         </Link>

@@ -94,7 +94,7 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
           <button
             type="button"
             onClick={goBack}
-            className="text-muted hover:bg-line/50 grid h-9.5 w-9.5 cursor-pointer place-items-center rounded-chip bg-transparent text-[17px] transition-colors"
+            className="text-muted hover:bg-line/50 grid h-9.5 w-9.5 cursor-pointer place-items-center rounded-chip bg-transparent text-[17px] press"
             aria-label="뒤로 가기"
           >
             <ChevronLeft />

@@ -234,7 +234,7 @@ export function PlaceDetailSheet({
                     이쪽은 주황 기운이라 나란히 두어도 갈린다 — 같은 색을 쓰면 한적한 곳을
                     찜했는데 "붐빔"과 같은 색으로 켜져 신호가 엇갈린다. 자세한 것은 index.css.
                   */
-                  className={`press touch-hitbox grid h-9 w-9 flex-none cursor-pointer place-items-center rounded-chip bg-transparent transition-colors ${
+                  className={`press touch-hitbox grid h-9 w-9 flex-none cursor-pointer place-items-center rounded-chip bg-transparent ${
                     favorite ? 'text-like' : 'text-hint hover:text-fg'
                   }`}
                 >
@@ -317,7 +317,7 @@ export function PlaceDetailSheet({
               <button
                 type="button"
                 onClick={onPlanTrip}
-                className="press bg-brand hover:bg-brand-hover text-fg rounded-ui mt-1 h-12 w-full cursor-pointer text-[15px] font-semibold transition-colors"
+                className="press bg-brand hover:bg-brand-hover text-fg rounded-ui mt-1 h-12 w-full cursor-pointer text-[15px] font-semibold"
               >
                 이 장소로 여행가기
               </button>

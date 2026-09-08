@@ -74,7 +74,7 @@ const SENSITIVITY_OPTIONS: { value: CrowdSensitivity; label: string; hint: strin
 /* /plan의 선택 버튼과 같은 구조다. 라디오를 sr-only로 숨기고 옆의 span을 버튼처럼 꾸민다.
    sr-only는 화면에서만 감추고 초점은 살려둔다 — display:none이면 키보드로 못 고른다. */
 const SEGMENT_BASE =
-  'flex cursor-pointer items-center justify-center rounded-ui px-3 text-center transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-deep'
+  'press flex cursor-pointer items-center justify-center rounded-ui px-3 text-center peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-deep'
 
 /** 한 줄에 나란히 서는 단일 선택 (밀도·기간) */
 /*
@@ -834,7 +834,7 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
                   <button
                     key={tab}
                     type="button"
-                    className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                    className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap press ${
                       active ? 'bg-fg text-white' : 'bg-bg text-hint hover:text-fg'
                     }`}
                     aria-pressed={active}
@@ -948,7 +948,7 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         </button>
         <button
           type="button"
-          className="text-hint hover:text-muted h-11 cursor-pointer bg-transparent text-[13.5px] font-medium"
+          className="press text-hint hover:text-muted h-11 cursor-pointer bg-transparent text-[13.5px] font-medium"
           onClick={onEditAnswers}
         >
           답변 다시 고르기

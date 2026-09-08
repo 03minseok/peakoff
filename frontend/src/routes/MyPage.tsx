@@ -96,7 +96,7 @@ function MoreButton({ remaining, onClick }: { remaining: number; onClick: () => 
     <button
       type="button"
       onClick={onClick}
-      className="press border-line bg-surface text-muted hover:bg-bg rounded-ui h-12 w-full cursor-pointer border text-[13.5px] font-semibold transition-colors"
+      className="press border-line bg-surface text-muted hover:bg-bg rounded-ui h-12 w-full cursor-pointer border text-[13.5px] font-semibold"
     >
       더보기 <span className="text-hint">({remaining})</span>
     </button>
@@ -146,7 +146,7 @@ const SECTIONS = [
 
 /** 계정 정보 줄의 오른쪽에 서는 작은 버튼 */
 const ROW_ACTION =
-  'border-line bg-surface text-fg hover:bg-bg h-9 flex-none cursor-pointer rounded-[11px] border px-3.5 text-[13px] font-semibold transition-colors'
+  'press border-line bg-surface text-fg hover:bg-bg h-9 flex-none cursor-pointer rounded-chip border px-3.5 text-[13px] font-semibold'
 
 /**
  * 계정 정보 한 줄.
@@ -700,7 +700,7 @@ export function MyPage() {
               type="button"
               aria-current={active ? 'true' : undefined}
               onClick={() => goTo(anchor)}
-              className={`flex cursor-pointer items-center gap-2.5 rounded-[12px] border-0 px-3 py-2.5 text-left text-[13.5px] font-semibold transition-colors ${
+              className={`flex cursor-pointer items-center gap-2.5 rounded-[12px] border-0 px-3 py-2.5 text-left text-[13.5px] font-semibold press ${
                 active ? 'bg-brand-tint text-brand-deep' : 'text-muted hover:bg-fill bg-transparent'
               }`}
             >
@@ -719,7 +719,7 @@ export function MyPage() {
           바로 옆에 같은 닉네임이 전체로 다시 적혀 있어 같은 정보가 두 번 섰다.
           그림 정의는 ProfileAvatar 한 곳에 있다.
         */}
-          <ProfileAvatar className="h-14 w-14 rounded-[18px] md:h-16 md:w-16 md:rounded-[20px]" />
+          <ProfileAvatar className="h-14 w-14 rounded-[18px] md:h-16 md:w-16 md:rounded-card" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.75">
             <span className="text-fg text-[19px] font-bold tracking-[-0.015em] md:text-[22px]">
               {member.nickname}
@@ -753,7 +753,7 @@ export function MyPage() {
                 type="button"
                 aria-current={active}
                 onClick={() => setTab(name)}
-                className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-[14px] border-0 px-1 py-3 transition-colors ${
+                className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-ui border-0 px-1 py-3 press ${
                   active ? 'bg-fg' : 'bg-surface shadow-rest'
                 }`}
               >
@@ -812,7 +812,7 @@ export function MyPage() {
               type="button"
               onClick={() => setNotice(null)}
               aria-label="알림 닫기"
-              className={`grid h-7 w-7 flex-none cursor-pointer place-items-center rounded-full bg-transparent text-sm ${
+              className={`press grid h-7 w-7 flex-none cursor-pointer place-items-center rounded-full bg-transparent text-sm ${
                 notice.tone === 'error'
                   ? 'text-crowded-deep/70 hover:text-crowded-deep'
                   : 'text-brand-deep/70 hover:text-brand-deep'
@@ -852,11 +852,11 @@ export function MyPage() {
               {Array.from({ length: 3 }, (_, index) => (
                 <div
                   key={index}
-                  className="bg-surface shadow-rest rounded-[20px] p-4.5 max-md:rounded-[16px] max-md:p-3.5"
+                  className="bg-surface shadow-rest rounded-card p-4.5 max-md:rounded-[16px] max-md:p-3.5"
                 >
                   <div className="skeleton mb-3 h-4.5 w-32 max-md:mb-2.5 max-md:h-4" />
                   <div className="skeleton mb-4 h-3 w-24 max-md:mb-3" />
-                  <div className="skeleton h-14 w-full rounded-[14px] max-md:h-12 max-md:rounded-[12px]" />
+                  <div className="skeleton h-14 w-full rounded-ui max-md:h-12 max-md:rounded-[12px]" />
                 </div>
               ))}
             </div>
@@ -926,13 +926,13 @@ export function MyPage() {
               <div className="mt-1 flex w-full max-w-70 flex-col gap-2 sm:max-w-none sm:flex-row sm:justify-center">
                 <Link
                   to="/plan"
-                  className="bg-brand hover:bg-brand-hover shadow-cta rounded-ui text-fg grid h-13.5 place-items-center px-6 text-base font-semibold no-underline transition-colors"
+                  className="bg-brand hover:bg-brand-hover shadow-cta rounded-ui text-fg grid h-13.5 place-items-center px-6 text-base font-semibold no-underline press"
                 >
                   코스 짜러 가기
                 </Link>
                 <Link
                   to="/recommend"
-                  className="border-brand bg-surface hover:bg-bg text-fg rounded-ui grid h-13.5 place-items-center border-[1.5px] px-6 text-base font-semibold no-underline transition-colors"
+                  className="border-brand bg-surface hover:bg-bg text-fg rounded-ui grid h-13.5 place-items-center border-[1.5px] px-6 text-base font-semibold no-underline press"
                 >
                   코스 발견하기
                 </Link>
@@ -1131,7 +1131,7 @@ export function MyPage() {
                             type="button"
                             onClick={() => setOpenedPlace(favorite)}
                             aria-label={`${favorite.placeName} 상세보기`}
-                            className="press border-line bg-surface text-fg hover:bg-bg rounded-ui h-11 w-full cursor-pointer border text-[13.5px] font-semibold transition-colors max-sm:h-7.5 max-sm:w-auto max-sm:rounded-[9px] max-sm:px-2.5 max-sm:text-[11.5px]"
+                            className="press border-line bg-surface text-fg hover:bg-bg rounded-ui h-11 w-full cursor-pointer border text-[13.5px] font-semibold max-sm:h-7.5 max-sm:w-auto max-sm:rounded-[9px] max-sm:px-2.5 max-sm:text-[11.5px]"
                           >
                             상세보기
                           </button>
@@ -1185,7 +1185,7 @@ export function MyPage() {
 
               <button
                 type="button"
-                className="bg-brand hover:bg-brand-hover grid h-9.5 cursor-pointer place-items-center rounded-[12px] border-0 px-4 text-[13.5px] font-semibold text-fg transition-colors"
+                className="bg-brand hover:bg-brand-hover grid h-9.5 cursor-pointer place-items-center rounded-[12px] border-0 px-4 text-[13.5px] font-semibold text-fg press"
                 onClick={() => setCreatorOpen(true)}
               >
                 여행 만들기
@@ -1216,7 +1216,7 @@ export function MyPage() {
             */}
                 <button
                   type="button"
-                  className="text-brand-deep mt-1 cursor-pointer border-0 bg-transparent text-[13px] font-semibold hover:underline"
+                  className="press text-brand-deep mt-1 cursor-pointer border-0 bg-transparent text-[13px] font-semibold hover:underline"
                   onClick={() => setCreatorOpen(true)}
                 >
                   첫 여행 만들기
@@ -1336,7 +1336,7 @@ export function MyPage() {
                     */}
                         <button
                           type="button"
-                          className="text-hint hover:text-crowded-deep -mt-0.5 -mr-1 flex-none cursor-pointer border-0 bg-transparent p-1 text-[12px] font-medium transition-colors"
+                          className="text-hint hover:text-crowded-deep -mt-0.5 -mr-1 flex-none cursor-pointer border-0 bg-transparent p-1 text-[12px] font-medium press"
                           onClick={() => setPendingTripDelete(trip)}
                         >
                           삭제
@@ -1416,7 +1416,7 @@ export function MyPage() {
                         <button
                           type="button"
                           aria-expanded={pickerOpen}
-                          className={`h-10 flex-1 cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold transition-colors ${
+                          className={`h-10 flex-1 cursor-pointer rounded-[12px] border-0 px-4 text-[13.5px] font-semibold press ${
                             pickerOpen
                               ? 'bg-fill text-fg hover:bg-line/45'
                               : 'bg-brand-soft text-brand-deep hover:bg-brand hover:text-fg'
@@ -1446,7 +1446,7 @@ export function MyPage() {
                           <button
                             type="button"
                             onClick={() => setDetailTripId(trip.id)}
-                            className="border-line bg-surface text-fg hover:bg-bg h-10 flex-1 cursor-pointer rounded-[12px] border text-[13.5px] font-semibold transition-colors"
+                            className="border-line bg-surface text-fg hover:bg-bg h-10 flex-1 cursor-pointer rounded-[12px] border text-[13.5px] font-semibold press"
                           >
                             상세보기
                           </button>
@@ -1529,7 +1529,7 @@ export function MyPage() {
                                     </div>
                                     <button
                                       type="button"
-                                      className="bg-brand-soft text-brand-deep hover:bg-brand hover:text-fg rounded-chip h-8 flex-none cursor-pointer border-0 px-3.5 text-[12.5px] font-semibold transition-colors"
+                                      className="bg-brand-soft text-brand-deep hover:bg-brand hover:text-fg rounded-chip h-8 flex-none cursor-pointer border-0 px-3.5 text-[12.5px] font-semibold press"
                                       onClick={() => void handleAddToTrip(trip.id, course.id)}
                                     >
                                       담기
@@ -1567,7 +1567,7 @@ export function MyPage() {
                   aria-label="이전 쪽"
                   disabled={currentTripPage === 0}
                   onClick={() => setTripPage(currentTripPage - 1)}
-                  className="text-muted hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
+                  className="text-muted hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center rounded-chip border-0 bg-transparent press disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
                 >
                   <ChevronLeft />
                 </button>
@@ -1581,7 +1581,7 @@ export function MyPage() {
                       aria-label={`${page + 1}쪽`}
                       aria-current={active ? 'page' : undefined}
                       onClick={() => setTripPage(page)}
-                      className={`h-9 min-w-9 cursor-pointer rounded-[11px] border-0 px-2 font-mono text-[13px] font-semibold transition-colors ${
+                      className={`h-9 min-w-9 cursor-pointer rounded-chip border-0 px-2 font-mono text-[13px] font-semibold press ${
                         active ? 'bg-fg text-white' : 'text-muted hover:bg-fill bg-transparent'
                       }`}
                     >
@@ -1595,7 +1595,7 @@ export function MyPage() {
                   aria-label="다음 쪽"
                   disabled={currentTripPage === tripPageCount - 1}
                   onClick={() => setTripPage(currentTripPage + 1)}
-                  className="text-muted hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
+                  className="text-muted hover:bg-fill grid h-9 w-9 cursor-pointer place-items-center rounded-chip border-0 bg-transparent press disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
                 >
                   <ChevronRight />
                 </button>
@@ -1720,7 +1720,7 @@ export function MyPage() {
         */}
             <button
               type="button"
-              className="border-crowded-soft text-crowded-deep hover:bg-crowded-tint rounded-ui bg-surface min-h-13 w-full cursor-pointer border text-[15px] font-semibold transition-colors"
+              className="border-crowded-soft text-crowded-deep hover:bg-crowded-tint rounded-ui bg-surface min-h-13 w-full cursor-pointer border text-[15px] font-semibold press"
               /*
             로그아웃만 하고 화면 이동은 시키지 않는다. member가 비면 위 가드가
             <b>홈으로</b> 보낸다 — 같은 일을 두 곳에서 시키면 둘이 어긋나는 날이 온다.
@@ -1740,7 +1740,7 @@ export function MyPage() {
         */}
             <button
               type="button"
-              className="text-crowded-deep hover:bg-crowded-tint rounded-ui min-h-11 w-full cursor-pointer bg-transparent text-[13.5px] font-medium transition-colors"
+              className="text-crowded-deep hover:bg-crowded-tint rounded-ui min-h-11 w-full cursor-pointer bg-transparent text-[13.5px] font-medium press"
               onClick={() => setAccountSheet('delete')}
             >
               회원 탈퇴

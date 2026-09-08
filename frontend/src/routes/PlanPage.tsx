@@ -35,7 +35,7 @@ const DURATIONS = [
 // 기간은 네 칸이 한 줄에 들어가야 해서 좌우 여백을 좁게 잡는다.
 const SEGMENT_BASE =
   // 초점링은 brand-deep이다. brand(틸)는 흰 카드 위에서 2.2:1이라 링으로는 보이지 않는다
-  'flex h-11 cursor-pointer items-center justify-center rounded-ui px-3 text-[15px] font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-deep'
+  'press flex h-11 cursor-pointer items-center justify-center rounded-ui px-3 text-[15px] font-medium peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-deep'
 
 
 const DURATION_SEGMENT = `${SEGMENT_BASE} border border-line bg-surface text-muted peer-checked:border-fg peer-checked:bg-fg peer-checked:font-semibold peer-checked:text-white`
