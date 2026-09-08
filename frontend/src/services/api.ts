@@ -567,8 +567,29 @@ export function updateCourse(
  *
  * 로그인 없이 부를 수 있다. 로그인 상태면 서버가 내 코스를 빼고 준다.
  */
-export function fetchRecentCourses(limit = 4, signal?: AbortSignal): Promise<PublicCourse[]> {
-  return apiRequest<PublicCourse[]>(`/courses/recent?limit=${limit}`, { signal })
+export async function fetchRecentCourses(
+  limit = 4,
+  signal?: AbortSignal,
+): Promise<PublicCourse[]> {
+  const courses = await apiRequest<PublicCourse[]>(`/courses/recent?limit=${limit}`, { signal })
+
+  /*
+   * 장소가 서버에서 들어오는 길목이라 여기서도 기억해 둔다.
+   *
+   * <p>남의 코스를 베껴 편집 화면으로 가면 그 칸이 <b>숫자 id로 보였다.</b> 코스는 id만
+   * 들고 다니고 화면이 캐시에서 이름·좌표를 되살리는데, 남의 코스는 그 브라우저가
+   * 검색한 적이 없어 되살릴 것이 없었다. 실제로 그랬다.
+   *
+   * <p>⚠️ <b>화면이 아니라 여기서 부른다.</b> 베끼는 자리에서 부르면 그 화면에서만
+   * 고쳐지고, 같은 목록을 쓰는 다음 화면에서 또 숫자가 뜬다 — 위 rememberFromResponse
+   * 주석이 경계하는 그 버그다.
+   *
+   * <p>카탈로그에서 사라진 장소는 place가 null이라 걸러 낸다.
+   */
+  rememberPlaces(
+    courses.flatMap((course) => course.places.map((place) => place.place)).filter((place) => place !== null),
+  )
+  return courses
 }
 
 /** GET /api/courses — 내가 저장한 코스 목록. 최근 저장한 것이 먼저 온다 */
