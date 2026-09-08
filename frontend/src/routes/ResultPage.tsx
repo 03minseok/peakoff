@@ -985,14 +985,19 @@ export function ResultPage() {
             */}
             <section className={`${CARD_RAISED} overflow-hidden`}>
               {/*
-                카드 머리. 왼쪽은 제목과 (하루만 볼 때의) 단서, 오른쪽은 일차 칩.
-                아래 "최종 동선" 카드의 머리와 <b>글자 그대로 같은 짜임</b>이라,
-                두 구역이 형제로 읽힌다.
+                카드 머리. 두 줄이다 — 제목 줄과 일차 칩 줄.
 
-                {@code items-start}라 칩이 여러 줄로 접혀도 제목이 가운데로 끌려가지 않는다.
+                <p>칩을 제목과 같은 줄에 두었다가 내렸다. 6박 7일이면 칩이 여덟이라
+                제목과 폭을 다투다 어중간하게 접히는데, <b>제 줄을 주면 그 다툼이 없다.</b>
+                아래 "최종 동선"은 칩이 넷을 넘지 않아 한 줄로 둔다 — 같은 짜임을 쓰되
+                줄 수는 각자의 사정을 따른다.
               */}
-              <div className="border-line flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b px-4.5 pt-4 pb-3">
-                <div className="flex min-w-0 flex-col gap-0.5">
+              <div className="border-line flex flex-col gap-2 border-b px-4.5 pt-4 pb-3">
+                {/*
+                  제목 줄. 왼쪽은 제목, <b>오른쪽 끝은 지금 보고 있는 범위</b>다.
+                  {@code items-baseline}이라 크기가 다른 두 글자가 밑선에 함께 앉는다.
+                */}
+                <div className="flex items-baseline justify-between gap-3">
                   <h2 className="text-fg m-0 text-[15px] font-semibold">코스 비교</h2>
                   {/*
                     ⚠️ <b>하루만 보고 있을 때 점수의 범위를 밝힌다.</b> 열 머리의 숫자는
@@ -1003,11 +1008,15 @@ export function ResultPage() {
                     숫자를 내걸 조건({@code CourseScoreStandard} — 진단 2곳 이상 · 진단율 50% 이상)까지
                     화면에 사본으로 두게 된다. 한 줄로 밝히는 편이 정직하고 어긋날 자리도 없다.
 
-                    <p>제목 <b>아래</b>에 붙인다. 한때 회색 트랙 둘 사이에 홀로 떠 있어
-                    누구의 말인지 알 수 없었다 — 카드 머리의 부제가 앉는 자리와 같다.
+                    <p>제목과 <b>같은 줄 오른쪽 끝</b>이다. 제목 아래에 붙였더니 부제처럼
+                    읽혀 "코스 비교"를 설명하는 말로 보였는데, 이건 설명이 아니라
+                    <b>지금 무엇을 보고 있는지</b>를 말하는 값이다 — 카드 머리에서
+                    오른쪽 끝은 값이 앉는 자리다(아래 판의 점수와 같은 세로줄).
+
+                    <p>{@code flex-none}이라 제목이 길어져도 줄바꿈되지 않는다.
                   */}
                   {compareDay !== 'all' && (
-                    <span className="text-hint text-[11.5px]">
+                    <span className="text-hint flex-none text-[11.5px]">
                       점수는 {totalDays}일 전체 기준이에요
                     </span>
                   )}
@@ -1030,13 +1039,11 @@ export function ResultPage() {
                     484px가 된다 — 넘치는 만큼이 잘리는데, 이 저장소는 가로로 미는 상자를
                     쓰지 않으므로(CLAUDE.md) <b>Day 6·7·전체에 닿을 방법이 아예 없어진다.</b>
                     줄을 바꾸면 자리만 한 줄 더 먹고 전부 누를 수 있다.
-                    {@code justify-end}라 접힌 줄도 오른쪽 끝을 지킨다.
+
+                    <p>제 줄을 가졌으므로 <b>왼쪽 끝을 제목과 맞춘다.</b> 오른쪽에 붙이면
+                    제목과 칩 사이가 대각선으로 비어, 한 덩어리로 안 읽힌다.
                   */
-                  <div
-                    className="flex flex-wrap justify-end gap-1.5"
-                    role="group"
-                    aria-label="비교할 일차"
-                  >
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="비교할 일차">
                     {([...Array.from({ length: totalDays }, (_, index) => index + 1), 'all'] as const).map(
                       (tab) => {
                         const active = tab === compareDay
@@ -1207,11 +1214,10 @@ export function ResultPage() {
                     />
                   </div>
                   {/*
-                    넓은 화면에서 두 판 사이에 <b>세로 선</b>을 긋는다. 판이 카드 껍데기를
-                    잃어 배경으로는 갈리지 않으므로, 경계는 선이 맡는다.
-                    좁은 화면에서는 한 번에 하나만 보이므로 선이 없다.
+                    두 판 사이에 <b>선을 긋지 않는다.</b> 물든 머리와 사이 여백만으로
+                    갈린다 — 선까지 더하면 경계가 두 겹이 된다.
                   */}
-                  <div className="w-full shrink-0 lg:border-line lg:border-l lg:pl-5">
+                  <div className="w-full shrink-0">
                     <CourseColumn
                       title="개선안"
                       subtitle={
