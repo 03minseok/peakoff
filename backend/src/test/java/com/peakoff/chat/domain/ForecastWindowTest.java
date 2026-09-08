@@ -43,14 +43,15 @@ class ForecastWindowTest {
 		ForecastWindow narrow = ForecastWindow.of(TODAY, Optional.of(TODAY.plusDays(23)));
 		ForecastWindow wide = ForecastWindow.of(TODAY, Optional.of(TODAY.plusDays(29)));
 
-		assertThat(narrow.covers(27)).isFalse();
-		assertThat(wide.covers(27)).isTrue();
+		assertThat(narrow.coversHorizon(27)).isFalse();
+		assertThat(wide.coversHorizon(27)).isTrue();
 	}
 
 	@Test
 	@DisplayName("시점이 안 드러난 질문은 창 밖이 아니다 — 가장 잘 답할 수 있는 질문이다")
 	void unknownHorizonIsAlwaysCovered() {
-		assertThat(ForecastWindow.of(TODAY, Optional.of(TODAY.plusDays(29))).covers(null)).isTrue();
+		assertThat(ForecastWindow.of(TODAY, Optional.of(TODAY.plusDays(29))).coversHorizon(null))
+				.isTrue();
 	}
 
 	@Test

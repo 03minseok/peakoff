@@ -1,5 +1,7 @@
 package com.peakoff.chat.controller;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -42,10 +44,13 @@ public class ChatIntentDevController {
 
 	private final IntentReader intentReader;
 	private final DailyBudget budget;
+	/** 조각을 날짜로 바꿔 보이려면 오늘이 필요하다. 서비스와 같은 시계를 쓴다 */
+	private final Clock clock;
 
-	public ChatIntentDevController(IntentReader intentReader, DailyBudget budget) {
+	public ChatIntentDevController(IntentReader intentReader, DailyBudget budget, Clock clock) {
 		this.intentReader = intentReader;
 		this.budget = budget;
+		this.clock = clock;
 	}
 
 	@Operation(summary = "의도 추출 확인",
@@ -83,6 +88,15 @@ public class ChatIntentDevController {
 					 * 답이 카드가 되기도 하고 "아직 예측이 없다"가 되기도 한다.
 					 */
 					body.put("horizonDays", read.horizonDays());
+					/*
+					 * 읽어낸 조각과 <b>서버가 만든 날짜</b>를 나란히 보인다.
+					 * 답이 이상할 때 모델이 잘못 읽은 것인지 우리 달력이 잘못 센 것인지를
+					 * 가르려면 두 층이 함께 보여야 한다.
+					 */
+					body.put("period", read.period().toString());
+					body.put("dates", read.period().resolve(LocalDate.now(clock))
+							.map(range -> range.label() + " (" + range.days() + "일)")
+							.orElse("기간 없음 — 예측 전체로 답한다"));
 				},
 				/*
 				 * 시간 초과 · 할당량 초과 · 모양이 어긋난 답이 모두 여기다.

@@ -99,14 +99,16 @@ public final class RegionCards {
 	public static List<RegionCard> of(
 			Interest interest, List<RegionProfile> picked, Map<SupportedRegion, String> llmLines) {
 
-		SupportedRegion topShare = topShareRegion(interest, picked);
-
+		/*
+		 * ⚠️ 두 장을 <b>서로</b> 견주지 않는다 (2026-09-08). 둘 다 위쪽 절반에서 뽑히므로
+		 * 견주는 순간 한 장이 "덜 좋은 쪽"이 된다 — 두 장을 준 뜻이 사라진다.
+		 *
+		 * <p>다만 <b>자기 값</b>에 따라 말투는 갈린다. 18%인데 "한적한 곳이 많다"고 하면
+		 * 화면이 스스로 모순되기 때문이다(CardLineTemplate 참고).
+		 */
 		List<RegionCard> cards = new ArrayList<>();
-		for (int rank = 0; rank < picked.size(); rank++) {
-			RegionProfile profile = picked.get(rank);
-			String template = CardLineTemplate.of(
-					interest, profile.region() == topShare, rank, picked.size());
-
+		for (RegionProfile profile : picked) {
+			String template = CardLineTemplate.of(interest, profile.hasManyQuietSpots());
 			String written = llmLines == null ? null : llmLines.get(profile.region());
 			boolean usable = isUsable(written, profile.region());
 
@@ -118,25 +120,6 @@ public final class RegionCards {
 					usable ? CardLineSource.LLM : CardLineSource.TEMPLATE));
 		}
 		return List.copyOf(cards);
-	}
-
-	/**
-	 * 카드들 중 그 관심사의 몫이 가장 큰 지역.
-	 *
-	 * <p><b>뽑힌 것들 안에서만</b> 견준다. 열한 곳 전체의 1등을 말하면 화면에 없는 것을
-	 * 근거로 말하는 것이 된다 — 사용자가 보는 것은 이 카드 둘뿐이다.
-	 */
-	private static SupportedRegion topShareRegion(Interest interest, List<RegionProfile> picked) {
-		if (interest == null || !interest.filtersRegions() || picked.isEmpty()) {
-			return null;
-		}
-		RegionProfile top = picked.get(0);
-		for (RegionProfile profile : picked) {
-			if (profile.shareOf(interest) > top.shareOf(interest)) {
-				top = profile;
-			}
-		}
-		return top.region();
 	}
 
 	/**

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.peakoff.chat.domain.CallLimiter;
+import com.peakoff.chat.domain.DateRange;
 import com.peakoff.chat.domain.ForecastWindow;
 import com.peakoff.chat.domain.CardLineWriter;
 import com.peakoff.chat.domain.DailyBudget;
@@ -45,7 +46,7 @@ import com.peakoff.place.domain.SupportedRegion;
  *   <li><b>개인 제한</b> — 연타를 막는다. 유일하게 오류(429)로 나가는 자리다</li>
  *   <li><b>하루 상한</b> — 닿으면 조용히 폴백. 오류가 아니다</li>
  *   <li><b>의도 읽기</b> — 실패하면 폴백, 무관한 질문이면 물러난다</li>
- *   <li><b>시점 견주기</b> — 예측이 닿지 않는 훗날이면 그렇다고 말한다</li>
+ *   <li><b>기간 정하기</b> — 질문이 가리키는 며칠을 서버가 계산한다. 창 밖이면 그렇다고 말한다</li>
  *   <li><b>지역 고르기</b> — 여기가 서버의 판단</li>
  *   <li><b>문장 쓰기</b> — 실패해도 카드는 이미 완성돼 있다</li>
  * </ol>
@@ -132,19 +133,50 @@ public class RegionChatService {
 			return ChatResponse.offTopic(basis);
 		}
 		/*
+		 * ■ 물어본 며칠만 센다 (2026-09-08)
+		 *
+		 * "이번 주말에 사람 적은 바다"에 예측 전체(한 달) 평균으로 답하고 있었다.
+		 * 기간을 화면에 적어 두어 거짓말은 아니었지만, <b>물은 기간과 답한 기간이 달랐다.</b>
+		 *
+		 * <p>그것이 사소하지 않다는 것을 실측이 보여줬다 — 같은 자료를 창만 바꿔 재니
+		 * <b>순위가 뒤집힌다.</b> 30일 기준 꼴찌인 서귀포시(20.2%)가 9/12~13 주말에는
+		 * 1위(21.8%)이고, 1위였던 통영(51.6%)이 4위(16.5%)로 내려간다.
+		 * 주말을 물은 사람에게 한 달 평균으로 답하는 것은 <b>틀린 지역을 주는 일</b>이었다.
+		 *
+		 * ⚠️ 날짜는 <b>서버가 만든다.</b> 모델은 "3주 뒤 주말"에서 3과 WEEKEND를
+		 * 꺼내 줄 뿐이다(AskedPeriod).
+		 */
+		Optional<DateRange> asked = intent.get().period().resolve(LocalDate.now(clock));
+
+		/*
 		 * "내년 여름에 갈 만한 데" — 예측이 닿지 않는 시점이다.
 		 *
 		 * ⚠️ <b>여기서 물러나는 것이 카드를 내주는 것보다 정직하다.</b> 지금 창의 지역을
 		 * 붙이면 사용자는 그것을 물어본 시점의 답으로 읽는다. 답할 수 없다는 말과 함께
 		 * <b>어디까지 볼 수 있는지</b>(basis)를 주면, 다시 물을 수 있다.
+		 *
+		 * <p>기간을 읽어냈으면 <b>그 첫날</b>로 견준다. 못 읽었을 때만 모델의 어림수를
+		 * 쓴다 — 우리 달력이 있는데 어림수를 볼 이유가 없다.
 		 */
-		if (!window.covers(intent.get().horizonDays())) {
+		boolean tooFar = asked.isPresent()
+				? !window.covers(asked.get().from())
+				: !window.coversHorizon(intent.get().horizonDays());
+		if (tooFar) {
 			return ChatResponse.tooFar(basis);
 		}
 
+		/*
+		 * 끝이 창 밖으로 넘치면 잘라서 <b>적은 대로만 센다.</b> 안 자르면 뒤쪽 며칠은
+		 * 자료가 없어 관측에 안 잡히고, 그러면 화면에 적힌 기간과 실제로 센 기간이 어긋난다.
+		 */
+		DateRange counted = asked
+				.map(range -> range.clampTo(window.lastDate()))
+				.orElseGet(() -> new DateRange(window.from(), window.lastDate()));
+		basis = asked.isPresent() ? counted.label() : basis;
+
 		Interest interest = intent.get().interest();
-		List<RegionProfile> picked = picker.pick(
-				profileProvider.get().profiles(window.from(), window.days()), interest);
+		List<RegionProfile> profiles = profileProvider.get().profiles(counted.from(), counted.days());
+		List<RegionProfile> picked = picker.pick(profiles, interest);
 		if (picked.isEmpty()) {
 			/*
 			 * 예측 자료가 하나도 없는 상황. 공사가 흔들릴 때 일어난다.
@@ -155,7 +187,23 @@ public class RegionChatService {
 		}
 
 		List<RegionCard> cards = RegionCards.of(interest, picked, writeLines(question, interest, picked));
-		return ChatResponse.ok(basis, interest, cards);
+		return ChatResponse.ok(basis, interest, crowdedPeriod(profiles), cards);
+	}
+
+	/**
+	 * 그 기간이 <b>어디나 붐비는가</b>.
+	 *
+	 * <p>⚠️ <b>뽑힌 둘이 아니라 열한 곳 전부</b>를 본다. 카드 둘만 보면 거짓이 되는 경우가
+	 * 있다 — "사람 적은 바다"를 물으면 뽑힌 둘이 34%·20%로 낮은데, 그것은 <b>기간이
+	 * 붐벼서가 아니라 바닷가 지역이 붐벼서</b>다. 같은 기간에 통영은 55%다.
+	 * 그 상태로 "이 기간은 어디나 붐빈다"고 하면 화면이 거짓을 말한다.
+	 *
+	 * <p>실측(2026-09-05 스냅샷)에서 이 판정이 두 상태를 정확히 갈랐다 —
+	 * 30일 창은 최고 52%(붐비지 않음), 주말 이틀은 최고 22%(어디나 붐빔).
+	 */
+	private static boolean crowdedPeriod(List<RegionProfile> profiles) {
+		return profiles.stream().anyMatch(RegionProfile::isRankable)
+				&& profiles.stream().noneMatch(RegionProfile::hasManyQuietSpots);
 	}
 
 	/**

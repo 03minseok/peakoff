@@ -81,6 +81,22 @@ public record ForecastWindow(LocalDate from, int days) {
 		return "앞으로 %d일".formatted(days);
 	}
 
+	/** 예측이 닿는 마지막 날(포함). */
+	public LocalDate lastDate() {
+		return from.plusDays(days - 1L);
+	}
+
+	/**
+	 * 그날이 창 안인가.
+	 *
+	 * <p>{@link #covers(Integer)}가 어림수를 받는 자리라면 이쪽은 <b>서버가 계산해 낸
+	 * 날짜</b>를 받는 자리다. 기간을 읽어낸 질문은 이쪽으로 판정한다 — 모델의 어림수보다
+	 * 우리 달력이 정확하다.
+	 */
+	public boolean covers(LocalDate date) {
+		return date != null && !date.isAfter(lastDate());
+	}
+
 	/**
 	 * 그만큼 뒤를 이 창이 덮는가.
 	 *
@@ -88,11 +104,15 @@ public record ForecastWindow(LocalDate from, int days) {
 	 * 않는다 — 그것은 모델이 알 수 없는 <b>우리 자료 사정</b>이고, 창이 24일에서 30일로
 	 * 늘면 답도 따라 바뀌어야 한다. 모델이 하는 일은 "두 달 뒤 ≈ 60"까지다.
 	 *
+	 * <p>⚠️ 이름을 {@link #covers(LocalDate)}와 <b>가른다.</b> 한 이름으로 두면
+	 * {@code covers(null)}이 어느 쪽인지 모호해지고, 무엇보다 <b>다른 일</b>이다 —
+	 * 이쪽은 모델의 어림수를 받고 저쪽은 우리가 계산한 날짜를 받는다.
+	 *
 	 * @param daysAhead 질문이 가리키는 시점까지 대략 며칠 뒤인가. 모르면 {@code null}
 	 * @return 모르면 <b>참</b>이다. 시점이 안 드러난 질문("어디가 한산해요?")을
 	 *         창 밖이라고 물리치면, 가장 잘 답할 수 있는 질문을 거절하게 된다
 	 */
-	public boolean covers(Integer daysAhead) {
+	public boolean coversHorizon(Integer daysAhead) {
 		return daysAhead == null || daysAhead < days;
 	}
 }

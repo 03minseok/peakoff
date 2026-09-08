@@ -14,6 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.time.MonthDay;
+import java.time.format.DateTimeParseException;
+
+import com.peakoff.chat.domain.AskedPeriod;
 import com.peakoff.chat.domain.Interest;
 import com.peakoff.chat.domain.IntentReader;
 import com.peakoff.chat.domain.QuestionIntent;
@@ -91,11 +95,37 @@ public class GeminiIntentReader implements IntentReader {
 			   - 애매하면 NONE. 억지로 고르지 마라
 			   - relevant가 false면 NONE
 
-			3. horizonDays: 질문이 가리키는 시점이 <b>오늘로부터 대략 며칠 뒤</b>인가.
-			   - 시점이 드러나지 않으면 null (예: "사람 적은 바다 여행지 없나요?")
-			   - "이번 주말" 3, "다음 주" 7, "다음 달" 30, "두 달 뒤" 60, "내년 여름" 300
-			   - 어림수면 된다. 정확한 날짜 계산을 하려 들지 마라
+			3. 기간: 질문이 가리키는 때를 <b>조각으로</b> 답해라.
+			   ⚠️ 날짜를 계산하지 마라. 오늘이 며칠인지 너는 모른다.
+			      "3주 뒤"에서 3을 꺼내기만 해라. 날짜는 서버가 만든다.
+
+			   periodAnchor: WEEK | MONTH | DATE | NONE
+			   periodOffset: 이번=0, 다음=1, "3주 뒤"=3 (상대로 말했을 때만)
+			   periodPart:   WEEKEND | EARLY | MID | LATE | WHOLE
+			   periodMonth:  달을 <b>이름으로</b> 말했을 때 그 달 (예: "10월" → 10)
+			   periodDate:   "MM-DD" (DATE일 때만. 예: "09-12")
+
+			   ⚠️ 달을 이름으로 말했으면(10월) periodMonth에 10을 넣고 periodOffset은 비워라.
+			      "몇 달 뒤인지" 계산하지 마라 — 오늘이 몇 월인지 너는 모른다.
+
+			   보기)
+			     "이번 주말"    → WEEK  0 WEEKEND
+			     "3주 뒤 주말"  → WEEK  3 WEEKEND
+			     "다음 주"      → WEEK  1 WHOLE
+			     "이번 달 말"   → MONTH 0 LATE
+			     "다음 달 중순" → MONTH 1 MID
+			     "10월 중순"    → MONTH   MID   (periodMonth=10)
+			     "9월 12일"     → DATE  (periodDate="09-12")
+			     "내년 여름"    → NONE  (달력으로 셀 수 없다)
+
+			   - 때가 안 드러나면 NONE (예: "사람 적은 바다 여행지 없나요?")
+			   - "단풍철"·"추석 연휴"처럼 <b>달력으로 셀 수 없는 이름</b>도 NONE.
+			     지어내지 마라
 			   - <b>예측이 가능한 기간인지는 판단하지 마라.</b> 그건 서버가 정한다
+
+			4. horizonDays: NONE으로 흘려보낸 먼 훗날만 어림잡아라. 대략 며칠 뒤인가.
+			   - 때가 안 드러났으면 null
+			   - "두 달 뒤" 60, "내년 여름" 300 정도의 어림수면 된다
 
 			⚠️ 절대 지키기:
 			- 지역이나 장소 이름을 답하지 마라. 어디를 추천할지는 서버가 정한다.
@@ -154,7 +184,8 @@ public class GeminiIntentReader implements IntentReader {
 			 * 여기서 예외를 던져 질문 전체를 버리는 것은 과하다.
 			 */
 			return new QuestionIntent(
-					true, Interest.of(node.path("interest").asText("")), horizonDays(node));
+					true, Interest.of(node.path("interest").asText("")),
+					horizonDays(node), period(node));
 		}
 		catch (Exception e) {
 			/*
@@ -180,6 +211,48 @@ public class GeminiIntentReader implements IntentReader {
 	}
 
 	/**
+	 * 기간 조각을 모은다.
+	 *
+	 * <p>⚠️ <b>모르는 값은 전부 NONE으로 흘린다.</b> 모델이 목록에 없는 말을 지어내거나
+	 * 날짜 모양이 어긋나면, 그 질문만 기간 없이 답하면 된다 — 예외를 던져
+	 * <b>질문 전체를 버리는 것</b>은 과하다. {@code Interest.of}가 하는 것과 같은 태도다.
+	 */
+	private static AskedPeriod period(JsonNode node) {
+		AskedPeriod.Anchor anchor = enumOf(
+				AskedPeriod.Anchor.class, node.path("periodAnchor").asText(""));
+		if (anchor == null || anchor == AskedPeriod.Anchor.NONE) {
+			return AskedPeriod.NONE;
+		}
+		AskedPeriod.Part part = enumOf(AskedPeriod.Part.class, node.path("periodPart").asText(""));
+		JsonNode month = node.path("periodMonth");
+		return new AskedPeriod(
+				anchor,
+				node.path("periodOffset").asInt(0),
+				part == null ? AskedPeriod.Part.WHOLE : part,
+				month.isIntegralNumber() ? month.asInt() : null,
+				monthDay(node.path("periodDate").asText("")));
+	}
+
+	private static <E extends Enum<E>> E enumOf(Class<E> type, String raw) {
+		try {
+			return Enum.valueOf(type, raw.trim().toUpperCase());
+		}
+		catch (IllegalArgumentException | NullPointerException e) {
+			return null;
+		}
+	}
+
+	/** {@code "09-12"}. 연도는 서버가 정하므로 월·일만 읽는다. */
+	private static MonthDay monthDay(String raw) {
+		try {
+			return MonthDay.parse("--" + raw.trim());
+		}
+		catch (DateTimeParseException e) {
+			return null;
+		}
+	}
+
+	/**
 	 * 받을 JSON의 모양.
 	 *
 	 * <p>⚠️ <b>지역을 담을 칸이 없다.</b> 이 스키마가 곧 "LLM이 할 수 있는 일"의 경계다.
@@ -195,7 +268,17 @@ public class GeminiIntentReader implements IntentReader {
 				.properties(ImmutableMap.of(
 						"relevant", Schema.builder().type(Type.Known.BOOLEAN).build(),
 						"interest", Schema.builder().type(Type.Known.STRING).build(),
-						"horizonDays", Schema.builder().type(Type.Known.INTEGER).nullable(true).build()))
+						"horizonDays", Schema.builder().type(Type.Known.INTEGER).nullable(true).build(),
+						/*
+						 * 기간 조각. ⚠️ 여기도 <b>required가 아니다</b> — 때가 안 드러난
+						 * 질문이 대부분인데 반드시 채우라고 하면 모델이 아무 때나 지어낸다.
+						 * 그 순간 "사람 적은 바다"가 특정 주말의 질문으로 둔갑한다.
+						 */
+						"periodAnchor", Schema.builder().type(Type.Known.STRING).nullable(true).build(),
+						"periodOffset", Schema.builder().type(Type.Known.INTEGER).nullable(true).build(),
+						"periodPart", Schema.builder().type(Type.Known.STRING).nullable(true).build(),
+						"periodMonth", Schema.builder().type(Type.Known.INTEGER).nullable(true).build(),
+						"periodDate", Schema.builder().type(Type.Known.STRING).nullable(true).build()))
 				.required("relevant", "interest")
 				.build();
 	}
