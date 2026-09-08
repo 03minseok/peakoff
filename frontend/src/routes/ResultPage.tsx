@@ -97,6 +97,7 @@ function CourseColumn({
   diagnosis,
   changes,
   highlighted,
+  visibleDay = 'all',
 }: {
   title: string
   subtitle: string
@@ -121,6 +122,19 @@ function CourseColumn({
   changes?: Change[]
   /** 추천하는 쪽. 테두리와 배경으로 한 겹 띄운다 */
   highlighted?: boolean
+  /**
+   * 어느 일차만 펼지. {@code 'all'}이면 전부.
+   *
+   * <p>일수가 늘면 이 열이 그만큼 길어져, 3일차를 견주려면 <b>양쪽을 따로 스크롤</b>해야
+   * 한다. 좁은 화면에서는 스위치를 넘긴 뒤 그 자리를 다시 찾아야 해서 더 그렇다.
+   * 고른 일차만 남기면 두 열의 같은 날이 언제나 같은 높이에 선다.
+   *
+   * <p>⚠️ <b>거르는 것은 목록뿐이고 점수는 그대로 전체 코스의 것이다.</b>
+   * 일차별 평균을 여기서 새로 내면 화면이 서버 없이 점수를 만드는 셈이고,
+   * 숫자를 내걸 조건({@code CourseScoreStandard})까지 화면에 사본으로 두게 된다.
+   * 그래서 <b>탭 옆에 "점수는 전체 기준"이라고 적어</b> 어긋나 보이지 않게 한다.
+   */
+  visibleDay?: number | 'all'
 }) {
   return (
     <div
@@ -173,7 +187,9 @@ function CourseColumn({
       </div>
 
       <div className="flex flex-col gap-3.5 px-3.5 py-3.5">
-        {Array.from({ length: diagnosis.days }, (_, index) => index + 1).map((day) => {
+        {Array.from({ length: diagnosis.days }, (_, index) => index + 1)
+          .filter((day) => visibleDay === 'all' || day === visibleDay)
+          .map((day) => {
           const daySlots = diagnosis.slots.filter((slot) => slot.day === day)
           if (daySlots.length === 0) {
             return null
@@ -285,6 +301,21 @@ export function ResultPage() {
   const [comparePage, setComparePage] = useState(0)
 
   /**
+   * 비교에서 어느 일차를 펼지. 'all'이면 전체.
+   *
+   * <b>'전체'로 연다.</b> 지도가 Day 1로 여는 것과 반대인데, 이유가 다르기 때문이다 —
+   * 지도는 일차가 뒤엉킨 선이 먼저 보이면 안 읽혀서 하루로 열지만, 여기는 <b>열 머리의
+   * 총점이 코스 전체의 값</b>이다. Day 1로 열면 전체 점수 아래에 하루치 목록만 서서
+   * 그 숫자가 1일차 점수로 읽힌다. 처음 눈에 닿는 화면은 숫자와 목록의 범위가 같아야 한다.
+   *
+   * <p>⚠️ <b>지도의 {@code mapDay}와 값을 나눠 쓰지 않는다.</b> 생김새가 같은 탭 둘이라
+   * 묶고 싶어지지만, 둘은 <b>다른 질문에 답한다</b> — 이쪽은 "어느 날을 견줄까",
+   * 저쪽은 "어느 날의 동선을 그릴까"다. 묶어 두면 저 아래 지도에서 탭을 눌렀을 때
+   * 화면 밖 비교가 함께 바뀌어, 스크롤을 올렸을 때 보고 있던 것이 사라져 있다.
+   */
+  const [compareDay, setCompareDay] = useState<number | 'all'>('all')
+
+  /**
    * 끌고 있는 동안의 손가락 이동량(px). 놓으면 0으로 돌아간다.
    *
    * <b>0이 아닌 동안은 전환 애니메이션을 끈다.</b> 손가락을 따라오는 면에 transition을
@@ -353,6 +384,12 @@ export function ResultPage() {
   const ready = beforeDiagnosis !== null && afterDiagnosis !== null
 
   const changes = ready ? diffCourses(beforeDiagnosis, afterDiagnosis) : []
+
+  /**
+   * 일차 수. <b>개선안을 기준으로 센다</b> — 날짜를 옮겨도 박 수는 그대로라 둘이 같지만,
+   * 화면이 결론으로 미는 쪽에 맞춰 두는 편이 나중에 갈릴 때 덜 놀란다.
+   */
+  const totalDays = afterDiagnosis?.days ?? beforeDiagnosis?.days ?? 0
   /*
     개선폭은 <b>양쪽 총점이 다 있어야</b> 성립한다. 진단된 칸이 하나도 없는 코스는
     총점이 null이라, 한쪽이라도 비면 0으로 두고 아래에서 비교 문구를 그리지 않는다.
@@ -938,6 +975,68 @@ export function ResultPage() {
               </div>
 
               {/*
+                ■ 일차 탭 — 일수가 많을 때만 선다
+
+                일수가 늘면 열이 그만큼 길어져, 3일차를 견주려면 <b>양쪽을 따로 스크롤</b>해야
+                한다. 좁은 화면에서는 스위치를 넘긴 뒤 그 자리를 다시 찾아야 해서 더 그렇다.
+                고른 일차만 남기면 두 열의 같은 날이 언제나 <b>같은 높이</b>에 선다.
+
+                <p>모양과 순서를 아래 지도 탭에서 그대로 가져왔다(일차가 먼저, 전체가 마지막).
+                한 화면에 같은 생김새의 탭이 둘 서는데 다르게 움직이면 그것이 더 헷갈린다.
+                <b>값만 따로 든다</b> — 이유는 {@code compareDay} 주석에 적어 두었다.
+
+                <p>하루짜리 여행에는 뜨지 않는다. 고를 것이 하나뿐인 탭은 자리만 먹고
+                아무것도 하지 않는다 — 지도 탭이 {@code state.days.length > 1}로 거는 것과 같다.
+              */}
+              {totalDays > 1 && (
+                <div className="flex flex-col gap-1.5">
+                  {/*
+                    ⚠️ <b>flex-wrap이 필수다.</b> 6박 7일이면 칩이 여덟이라 390px에서
+                    484px가 된다 — 넘치는 만큼이 잘리는데, 이 저장소는 가로로 미는 상자를
+                    쓰지 않으므로(CLAUDE.md) <b>Day 6·7·전체에 닿을 방법이 아예 없어진다.</b>
+                    줄을 바꾸면 자리만 한 줄 더 먹고 전부 누를 수 있다.
+                  */}
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="비교할 일차">
+                    {([...Array.from({ length: totalDays }, (_, index) => index + 1), 'all'] as const).map(
+                      (tab) => {
+                        const active = tab === compareDay
+                        return (
+                          <button
+                            key={tab}
+                            type="button"
+                            // 고른 탭은 배경이 잉크라 brand-deep 초점 링이 1.51:1이 된다. 지도 탭과 같은 처리.
+                            className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                              active
+                                ? 'bg-fg text-white focus-visible:outline-white'
+                                : 'bg-bg text-hint hover:text-fg'
+                            }`}
+                            aria-pressed={active}
+                            onClick={() => setCompareDay(tab)}
+                          >
+                            {tab === 'all' ? '전체' : `Day ${tab}`}
+                          </button>
+                        )
+                      },
+                    )}
+                  </div>
+                  {/*
+                    ⚠️ <b>하루만 보고 있을 때 점수의 범위를 밝힌다.</b> 열 머리의 숫자는
+                    코스 <b>전체</b>의 총점인데 목록은 하루치라, 적어 두지 않으면 그 숫자가
+                    1일차 점수로 읽힌다.
+
+                    <p>일차별 평균을 새로 내지 않는 이유: 화면이 서버 없이 점수를 만드는 일이 되고,
+                    숫자를 내걸 조건({@code CourseScoreStandard} — 진단 2곳 이상 · 진단율 50% 이상)까지
+                    화면에 사본으로 두게 된다. 한 줄로 밝히는 편이 정직하고 어긋날 자리도 없다.
+                  */}
+                  {compareDay !== 'all' && (
+                    <p className="text-hint m-0 text-[11.5px]">
+                      점수는 {totalDays}일 전체 기준이에요.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/*
                 두 열을 <b>가로로 이어 붙인 띠</b>를 놓고, 창만큼만 보여준다.
                 좁은 화면에서는 고른 쪽이 그 창에 들어와 서고, 넓은 화면에서는 띠를 풀어
                 둘을 나란히 세운다.
@@ -1038,6 +1137,7 @@ export function ResultPage() {
                       score={showBefore ? beforeDiagnosis.totalQuietness : null}
                       scoreLevel={beforeDiagnosis.totalLevel}
                       diagnosis={beforeDiagnosis}
+                      visibleDay={compareDay}
                     />
                   </div>
                   <div className="w-full shrink-0">
@@ -1059,6 +1159,7 @@ export function ResultPage() {
                       scoreLevel={afterDiagnosis.totalLevel}
                       diagnosis={afterDiagnosis}
                       changes={changes}
+                      visibleDay={compareDay}
                       /*
                         바꾼 것이 하나도 없으면 두 열이 같은 코스다. 그때 한쪽에만 "추천" 배지를
                         달면 <b>같은 것 둘 중 하나를 고르라</b>는 말이 된다. 권할 것이 있을 때만 선다.
@@ -1092,7 +1193,8 @@ export function ResultPage() {
                 신호만 주고 아무것도 바뀌지 않아 오히려 헷갈린다.
               */}
               {state.days.length > 1 && (
-                <div className="flex gap-1.5" role="group" aria-label="지도에 표시할 일차">
+                // 비교 탭과 같은 이유로 줄을 바꾼다 — 6박 7일이면 칩 여덟이 390px를 넘는다.
+                <div className="flex flex-wrap justify-end gap-1.5" role="group" aria-label="지도에 표시할 일차">
                   {/*
                     <b>일차가 먼저, 전체가 마지막이다.</b>
 
