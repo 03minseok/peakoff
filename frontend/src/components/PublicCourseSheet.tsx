@@ -263,11 +263,17 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
 
                   <p>⚠️ 예측 창 <b>끝</b>은 여전히 막지 않는다 — 여행은 원래 미리 계획한다.
                 */}
+                {/*
+                  {@code dense}: 시트는 카드 제목이 14.5px·본문이 12.5px라, 달력이 기본 크기면
+                  월 제목(15px)이 <b>이 시트에서 가장 큰 글자</b>가 된다 — 날짜를 고르는 도구가
+                  자기가 들어앉은 카드의 제목보다 커진다.
+                */}
                 <DatePicker
                   value={startDate}
                   onChange={setStartDate}
                   forecastEnd={forecastEnd}
                   ariaLabel="여행 시작일"
+                  dense
                 />
                 {/*
                   예측 창 밖 안내. 코스 짜기 화면의 그 줄과 같은 말·같은 색(보통=앰버)이다.
