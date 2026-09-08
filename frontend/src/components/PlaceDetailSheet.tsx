@@ -201,7 +201,7 @@ export function PlaceDetailSheet({
               ⚠️ 출처를 <b>중립적으로</b> 적는다. 공사 이름이나 로고를 서비스 안에 쓰지 않는 것이
               공모전 규칙이라(CLAUDE.md 절대 규칙 4), 기관명 대신 "공공데이터"로만 밝힌다.
             */}
-            <span className="text-hint text-[11px]">공공데이터 기반 이미지</span>
+            <span className="text-hint text-[11px]">이미지 출처 ⓒ한국관광공사</span>
 
             <div className="flex flex-col gap-1.5">
               {/*
