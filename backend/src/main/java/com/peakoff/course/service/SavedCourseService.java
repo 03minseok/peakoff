@@ -25,7 +25,9 @@ import com.peakoff.global.error.UnauthorizedException;
 import com.peakoff.member.domain.Member;
 import com.peakoff.member.domain.MemberRepository;
 import com.peakoff.place.domain.Place;
+import com.peakoff.place.domain.Region;
 import com.peakoff.place.domain.PlaceProvider;
+import com.peakoff.place.domain.SupportedRegion;
 import com.peakoff.place.dto.PlaceResponse;
 
 /**
@@ -199,6 +201,24 @@ public class SavedCourseService {
 	 * 목록 이름을 "요즘 저장된 여행"으로 바꾸고 거르기를 걷었다.
 	 */
 	@Transactional(readOnly = true)
+	/**
+	 * 저장된 id를 <b>지금의 장소</b>로 바꾼다. 찜이 쓰는 것과 같은 길이다.
+	 *
+	 * <p>⚠️ <b>실패를 삼킨다.</b> 이 목록은 홈을 열 때마다 불리는데, 예전에는 공사 호출이
+	 * 아예 없어 공사가 흔들려도 멀쩡했다. 여기서 예외를 올리면 <b>장소 하나 때문에
+	 * 홈의 목록이 통째로 죽는다.</b> 못 찾으면 null이고, 화면은 저장 시점 이름으로 그린다.
+	 */
+	private Place livePlaceOf(SavedCourse course, String placeId) {
+		try {
+			Region region = SupportedRegion.fromSlug(course.region()).toRegion();
+			return placeProvider.findInRegion(region, placeId).orElse(null);
+		}
+		catch (RuntimeException e) {
+			// 조용히 넘긴다. 이 실패로 화면이 잃는 것은 좌표뿐이고, 이름은 스냅샷이 지킨다.
+			return null;
+		}
+	}
+
 	public List<PublicCourseSummary> recent(int limit) {
 		List<SavedCourse> courses = savedCourseRepository.findTop12ByOrderByCreatedAtDesc();
 
@@ -218,7 +238,19 @@ public class SavedCourseService {
 				.filter(SavedCourse::isPublic)
 				.filter(course -> course.totalQuietness() != null)
 				.limit(limit)
-				.map(PublicCourseSummary::from)
+				/*
+				 * ■ 지금의 장소까지 실어 보낸다 (2026-09-09)
+				 *
+				 * 남의 코스를 베껴 편집 화면으로 가면 <b>일부 칸이 "2752379"처럼 숫자로</b>
+				 * 떴다. 코스는 id만 들고 다니고 화면이 캐시로 이름을 되살리는데, 남의 코스는
+				 * 그 브라우저가 검색한 적이 없어 되살릴 것이 없었다.
+				 *
+				 * <p>이름만 보내서는 못 고친다 — 지도 마커에 좌표가 필요하고,
+				 * 없는 좌표를 지어내면 엉뚱한 곳에 찍힌다(CLAUDE.md).
+				 *
+				 * <p>카탈로그는 6시간 캐시라 대개 공사 호출이 나가지 않는다.
+				 */
+				.map(course -> PublicCourseSummary.from(course, placeId -> livePlaceOf(course, placeId)))
 				.toList();
 	}
 }
