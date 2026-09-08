@@ -92,7 +92,7 @@ export function RegionPicker({
       const step = event.key === 'ArrowDown' ? 1 : -1
       setActive((current) => {
         const next = current + step
-        // 끝에서 반대편으로 돈다. 일곱 줄이라 끝까지 갔다가 되짚어 오는 편이 길다.
+        // 끝에서 반대편으로 돈다. 줄이 여럿이라 끝까지 갔다가 되짚어 오는 편이 길다.
         return next < 0 ? matched.length - 1 : next >= matched.length ? 0 : next
       })
       return
@@ -146,7 +146,7 @@ export function RegionPicker({
          * 통째로 밀려 내려간다. 무엇을 고를지 보려고 열었는데 보고 있던 것이 움직인다.
          *
          * <p><b>넉 줄쯤에서 자르고</b> 나머지는 굴려서 본다({@code max-h-[11.5rem]}).
-         * 일곱을 다 펴면 목록이 날짜 칸을 지나 기간 칸까지 덮어, 지역을 고르는 동안
+         * 전부 다 펴면 목록이 날짜 칸을 지나 기간 칸까지 덮어, 지역을 고르는 동안
          * 나머지 폼이 통째로 가려진다. 잘린 줄이 반쯤 보여야 "아래에 더 있다"도 함께 말한다.
          */
         <ul

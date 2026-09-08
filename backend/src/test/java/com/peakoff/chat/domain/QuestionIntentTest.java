@@ -29,22 +29,26 @@ class QuestionIntentTest {
 	@Test
 	@DisplayName("관련 없는 질문에는 관심사가 남지 않는다 — 남기면 뒷단이 그걸 보고 움직인다")
 	void offTopicCarriesNoInterest() {
-		QuestionIntent intent = new QuestionIntent(false, Interest.FOOD, 60);
+		QuestionIntent intent = new QuestionIntent(
+				false, Interest.FOOD, 60,
+				new AskedPeriod(AskedPeriod.Anchor.WEEK, 0, AskedPeriod.Part.WEEKEND, null, null));
 
 		assertThat(intent.interest()).isEqualTo(Interest.NONE);
 		assertThat(intent.horizonDays()).isNull();
+		// 답하지 않을 질문의 기간도 남기지 않는다. 남기면 뒷단이 그걸 보고 창을 옮긴다.
+		assertThat(intent.period()).isEqualTo(AskedPeriod.NONE);
 		assertThat(QuestionIntent.OFF_TOPIC.relevant()).isFalse();
 	}
 
 	@Test
 	@DisplayName("관심사가 비어 오면 관심사 없음으로 읽는다 — 모델이 칸을 비울 수 있다")
 	void nullInterestBecomesNone() {
-		assertThat(new QuestionIntent(true, null, null).interest()).isEqualTo(Interest.NONE);
+		assertThat(new QuestionIntent(true, null, null, null).interest()).isEqualTo(Interest.NONE);
 	}
 
 	@Test
 	@DisplayName("지난 시점을 가리키면 시점이 없는 것으로 읽는다 — 과거 예측은 애초에 없다")
 	void pastHorizonIsDropped() {
-		assertThat(new QuestionIntent(true, Interest.NONE, -7).horizonDays()).isNull();
+		assertThat(new QuestionIntent(true, Interest.NONE, -7, null).horizonDays()).isNull();
 	}
 }

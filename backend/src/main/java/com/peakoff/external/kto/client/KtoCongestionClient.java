@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.peakoff.external.kto.support.KtoApiCaller;
+import com.peakoff.external.kto.support.KtoApiException;
 import com.peakoff.external.kto.support.RegionCache;
 import com.peakoff.external.kto.support.RegionCodes;
 import com.peakoff.place.domain.Region;
@@ -50,7 +51,11 @@ public class KtoCongestionClient {
 
 	public KtoCongestionClient(KtoApiCaller caller, Clock clock) {
 		this.caller = caller;
-		this.cache = new RegionCache<>(clock);
+		/*
+		 * ⚠️ <b>빈 예측은 담지 않는다.</b> 공사가 200에 항목 0건을 주면 그것이 정상 응답이라
+		 * 멀쩡하던 옛 값을 덮어쓴다 — 9/8 여수가 그랬다. 쓸 만한 옛 값이 있는 한 지킨다.
+		 */
+		this.cache = new RegionCache<>(clock, forecast -> !forecast.isEmpty());
 	}
 
 	/** 그 지역의 예측 전체. 캐시가 살아 있으면 호출하지 않는다. */
@@ -69,6 +74,22 @@ public class KtoCongestionClient {
 
 		JsonNode items = body.path("items").path("item");
 		if (!items.isArray() || items.isEmpty()) {
+			/*
+			 * ■ 빈 응답을 그대로 <b>돌려주되, 캐시가 덮어쓰지는 않는다</b> (2026-09-08)
+			 *
+			 * 실제로 났다 — 9/5에 97곳 2,910건이 오던 여수가 9/8에 항목 0건이 됐다
+			 * (46/46130·12/12130 두 코드 모두). 오류가 아니라 빈 응답이라 조용히 지나갔고,
+			 * 캐시는 그것을 정상 응답으로 받아 <b>멀쩡하던 옛 값 위에 덮어썼다.</b>
+			 *
+			 * <p>⚠️ 여기서 <b>예외를 던지면 안 된다.</b> 한 번 그렇게 해 봤는데, 지역 하나가
+			 * 비었다는 이유로 <b>챗봇 전체가 EXTERNAL_UNAVAILABLE</b>이 됐다 — 프로필을
+			 * 만드는 쪽이 실패를 위로 올리기 때문이다. 여수 코스의 진단도 칸마다
+			 * "자료 없음"이 아니라 화면째 오류가 된다.
+			 *
+			 * <p>대신 <b>캐시에게 "이 값은 덮어쓸 가치가 없다"고 알린다</b>
+			 * ({@code RegionCache}의 usable 조건). 옛 값이 있으면 그것을 계속 쓰고,
+			 * 없으면 지금처럼 빈 값으로 다룬다 — 그 지역만 조용히 빠지고 나머지는 그대로 돈다.
+			 */
 			log.warn("공사 집중률 응답에 항목이 없습니다. region={}", region.name());
 			return RegionForecast.empty();
 		}

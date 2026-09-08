@@ -790,5 +790,13 @@ export interface ChatAnswer {
    */
   basis: string
   interest: string | null
+  /**
+   * 그 기간이 <b>열한 곳 어디나 붐비는가</b>.
+   *
+   * ⚠️ 뽑힌 카드 둘이 아니라 <b>그 기간의 전 지역</b>을 보고 서버가 정한 값이다.
+   * 카드 둘만 보면 거짓이 된다 — "바다"를 물었을 때 뽑힌 둘이 낮은 것은 기간이
+   * 붐벼서가 아니라 바닷가 지역이 붐벼서이고, 같은 기간에 통영은 55%다.
+   */
+  crowdedPeriod: boolean
   cards: RegionCard[]
 }

@@ -98,6 +98,57 @@ class TtlCacheTest {
 		assertThat(calls.get()).isEqualTo(1);
 	}
 
+	/**
+	 * 메꾸기는 <b>잠깐 끊길 때</b>를 위한 것이다. 오래 쓰면 두 가지가 조용히 망가진다 —
+	 * 예측 창이 짧아지는데 화면은 아무 말도 안 하고, "물어보는 서비스"인지 "받아 둔 것을
+	 * 보여주는 서비스"인지 경계가 흐려진다(TtlCache.MAX_STALE 주석).
+	 */
+	@Test
+	@DisplayName("너무 오래된 값으로는 메꾸지 않는다 — 사흘이 한도다")
+	void refusesTooStaleValues() {
+		assertThat(cache.get("gyeongju", key -> "사흘 전 값")).isEqualTo("사흘 전 값");
+
+		// 이틀째: 아직 메꾼다.
+		clock.advance(Duration.ofDays(2));
+		assertThat(cache.get("gyeongju", this::failingLoader)).isEqualTo("사흘 전 값");
+
+		// 사흘째: 옛 값을 버리고 정직하게 실패한다.
+		clock.advance(Duration.ofDays(1));
+		assertThatThrownBy(() -> cache.get("gyeongju", this::failingLoader))
+				.isInstanceOf(RuntimeException.class);
+	}
+
+	/**
+	 * 공사가 <b>200에 항목 0건</b>을 주는 일이 있다(2026-09-08 여수). 오류가 아니라 정상
+	 * 응답이라 그대로 담으면 멀쩡하던 옛 값을 우리 손으로 지우게 된다.
+	 *
+	 * <p>⚠️ 그렇다고 예외를 던지지는 않는다 — 한 번 그렇게 해 봤더니 지역 하나가 비었다는
+	 * 이유로 챗봇 전체가 오류가 됐다. 옛 값이 없으면 빈 값을 그대로 돌려준다.
+	 */
+	@Test
+	@DisplayName("빈 응답은 멀쩡한 옛 값을 밀어내지 못한다")
+	void uselessValueDoesNotEvictGoodOne() {
+		TtlCache<String> cache = new TtlCache<>(clock, Duration.ofHours(6), 10, value -> !value.isEmpty());
+
+		assertThat(cache.get("yeosu", key -> "97곳")).isEqualTo("97곳");
+
+		// 수명이 지나 다시 부르는데 공사가 빈 응답을 준다.
+		clock.advance(Duration.ofHours(7));
+		assertThat(cache.get("yeosu", key -> "")).isEqualTo("97곳");
+
+		// 공사가 돌아오면 자동으로 새 값으로 갈아끼워진다.
+		clock.advance(Duration.ofMinutes(2));
+		assertThat(cache.get("yeosu", key -> "99곳")).isEqualTo("99곳");
+	}
+
+	@Test
+	@DisplayName("지킬 옛 값이 없으면 빈 응답이라도 그대로 돌려준다 — 그 지역만 조용히 빠진다")
+	void uselessValuePassesThroughWithoutHistory() {
+		TtlCache<String> cache = new TtlCache<>(clock, Duration.ofHours(6), 10, value -> !value.isEmpty());
+
+		assertThat(cache.get("yeosu", key -> "")).isEmpty();
+	}
+
 	@Test
 	@DisplayName("성공하면 실패의 기억이 지워진다")
 	void successClearsFailure() {

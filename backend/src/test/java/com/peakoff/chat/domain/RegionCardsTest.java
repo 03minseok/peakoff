@@ -32,15 +32,20 @@ class RegionCardsTest {
 	private List<RegionProfile> pickedTwo() {
 		return List.of(
 				profile(SupportedRegion.TONGYEONG, 65, 0.349),
-				profile(SupportedRegion.JEJU, 22, 0.345));
+				profile(SupportedRegion.JEJU, 45, 0.345));
 	}
 
-	/** 실측 순서 그대로 — 통영 · 여수 · 제주시 (한적한 순). */
+	/**
+	 * 실측 순서 그대로 — 통영 · 여수 · 제주시 (한적한 순).
+	 *
+	 * <p>셋 다 <b>한적한 곳이 넉넉한 쪽</b>(40 이상)이다. 뽑기가 위쪽 절반에서만 고르므로
+	 * 보통은 이런 모양이고, 값이 낮은 경우는 아래 주말 시험이 따로 본다.
+	 */
 	private List<RegionProfile> picked() {
 		return List.of(
 				profile(SupportedRegion.TONGYEONG, 65, 0.349),
 				profile(SupportedRegion.YEOSU, 57, 0.449),
-				profile(SupportedRegion.JEJU, 22, 0.345));
+				profile(SupportedRegion.JEJU, 45, 0.345));
 	}
 
 	@Test
@@ -55,30 +60,67 @@ class RegionCardsTest {
 		});
 	}
 
+	/**
+	 * 카드 문장이 <b>두 장을 견주지 않는다</b>(2026-09-08). 뽑기가 위쪽 절반에서만 고르게 되면서
+	 * 두 장 다 "한적한 쪽"이 됐는데, 그런데도 순위를 말하면 한 장이 덜 좋은 쪽으로 읽힌다 —
+	 * 두 장을 준 뜻이 사라진다.
+	 */
 	@Test
-	@DisplayName("관심사 몫이 가장 큰 곳만 \"가장 높아요\"라고 말한다")
-	void onlyTheTopShareSaysHighest() {
+	@DisplayName("한적한 곳이 넉넉하면 두 장에 같은 말을 한다 — 서열을 만들지 않는다")
+	void sameLineWhenBothHaveManyQuietSpots() {
 		List<RegionCard> cards = RegionCards.of(Interest.FOOD, picked(), Map.of());
 
-		// 음식 몫은 여수(44.9%)가 가장 크다. 한적한 순서(통영이 첫째)와 다른 순위다.
-		assertThat(lineOf(cards, SupportedRegion.YEOSU)).isEqualTo("음식점 비중이 가장 높아요");
-		assertThat(lineOf(cards, SupportedRegion.TONGYEONG)).isEqualTo("음식점 비중이 높은 편이에요");
+		assertThat(cards).extracting(RegionCard::line)
+				.containsOnly("음식점이 많고, 한적한 곳이 많은 편이에요");
+	}
+
+	@Test
+	@DisplayName("한 장만 넉넉하면 문장이 갈린다 — 각자 자기 값을 말한다")
+	void eachCardFollowsItsOwnValue() {
+		List<RegionProfile> mixed = List.of(
+				profile(SupportedRegion.TONGYEONG, 52, 0.30),
+				profile(SupportedRegion.JEJU, 22, 0.30));
+
+		List<RegionCard> cards = RegionCards.of(Interest.FOOD, mixed, Map.of());
+
+		assertThat(lineOf(cards, SupportedRegion.TONGYEONG))
+				.isEqualTo("음식점이 많고, 한적한 곳이 많은 편이에요");
+		assertThat(lineOf(cards, SupportedRegion.JEJU))
+				.isEqualTo("음식점이 많고, 덜 붐비는 편이에요");
 	}
 
 	/**
-	 * 지역 평균으로는 3단계 등급이 서지 않는다({@link RegionProfile}). 그래서 한적함은
-	 * <b>견주는 말</b>로만 한다 — "한적해요"는 사실이 아닐 수 있지만 "이 중에서는"은 언제나 사실이다.
+	 * 붐비는 기간에는 <b>말을 사실에 맞춘다</b>(2026-09-08). 18%인데 "한적한 곳이 많은 편"이라고
+	 * 하면 숫자는 적다고 하고 문장은 많다고 해 화면이 스스로 모순된다.
 	 *
-	 * <p>⚠️ <b>카드가 둘일 때의 문구를 잠근다</b>(2026-09-06). 실제로 내려가는 것이 둘이고,
-	 * 둘을 견주면서 "가장"·"붐빔"을 쓰면 <b>나머지 하나</b>를 분포의 꼬리처럼 부르게 된다.
+	 * <p>추천을 접을 일은 아니다 — 그 지역이 위쪽 절반이라는 사실은 그대로이므로,
+	 * 양 대신 <b>견주는 말</b>로 옮긴다.
 	 */
 	@Test
-	@DisplayName("관심사가 없으면 한적한 정도를 견주어 말한다 — 둘일 때는 더/덜로 짝짓는다")
-	void withoutInterestItComparesQuietness() {
+	@DisplayName("한적한 곳이 적으면 \"많다\"고 하지 않는다 — 숫자와 문장이 부딪히면 안 된다")
+	void saysLessCrowdedWhenQuietSpotsAreFew() {
+		List<RegionProfile> weekend = List.of(
+				profile(SupportedRegion.SEOGWIPO, 18, 0.30),
+				profile(SupportedRegion.JEJU, 10, 0.30));
+
+		List<RegionCard> cards = RegionCards.of(Interest.FOOD, weekend, Map.of());
+
+		assertThat(cards).extracting(RegionCard::line)
+				.containsOnly("음식점이 많고, 덜 붐비는 편이에요");
+	}
+
+	/**
+	 * 지역 평균으로는 3단계 등급이 서지 않는다({@link RegionProfile}). 그래서 <b>단정하지
+	 * 않는다</b> — 우리가 센 것은 지역이 한적하다는 사실이 아니라 그 기간에 <b>한적한 곳이
+	 * 얼마나 되는가</b>이고, 카드에 적히는 숫자도 그 값이다.
+	 */
+	@Test
+	@DisplayName("관심사가 없어도 단정하지 않는다 — \"한적해요\"는 사실이 아닐 수 있다")
+	void withoutInterestItStillHedges() {
 		List<RegionCard> cards = RegionCards.of(Interest.NONE, pickedTwo(), Map.of());
 
-		assertThat(lineOf(cards, SupportedRegion.TONGYEONG)).isEqualTo("이 중에서는 더 한적한 편이에요");
-		assertThat(lineOf(cards, SupportedRegion.JEJU)).isEqualTo("이 중에서는 덜 한적한 편이에요");
+		assertThat(cards).extracting(RegionCard::line)
+				.containsOnly("다른 지역보다 한적한 곳이 많은 편이에요");
 		assertThat(cards).noneSatisfy(card -> assertThat(card.line()).isEqualTo("한적해요"));
 	}
 

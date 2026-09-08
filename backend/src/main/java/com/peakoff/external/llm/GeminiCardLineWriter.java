@@ -70,9 +70,17 @@ public class GeminiCardLineWriter implements CardLineWriter {
 			- ⚠️ <b>기간을 적지 마라</b>("이번 주"·"이번 달"). 어느 기간을 본 값인지는
 			  화면이 따로 말한다. 네가 적으면 두 곳이 다른 기간을 말하게 된다.
 
-			- ⚠️⚠️ <b>한적하다·붐빈다를 단정하지 마라.</b> 우리가 주는 것은 이 지역들
-			  <b>사이의 순위</b>이지 절대적인 등급이 아니다. 반드시 견주는 말을 붙여라.
-			  → 나쁨: "지금은 붐벼요"   좋음: "이 중에서는 붐비는 편이에요"
+			- ⚠️⚠️ <b>지역들끼리 견주지 마라.</b> 여기 오는 지역은 <b>모두</b> 그 기간에
+			  한적한 쪽으로 추려진 곳이다. 어느 하나를 "덜 한적하다"고 하면 사용자는
+			  고를 것이 하나뿐이라고 읽는다. 둘 다 같은 결로 써라.
+			  → 나쁨: "이 중 덜 한적해요"   좋음: "한적한 곳이 많은 편이에요"
+
+			- ⚠️⚠️ <b>한적하다고 단정하지 마라.</b> 우리가 센 것은 지역이 한적하다는 사실이
+			  아니라 <b>그 기간에 한적한 곳이 얼마나 되는가</b>다. 그리고 그 값이 낮은
+			  기간에는 <b>"많다"고도 하지 마라</b> — 숫자는 적다고 하는데 문장이 많다고 하면
+			  화면이 스스로 모순된다. 각 지역에 준 <b>예측 기간=</b> 값을 그대로 따라라.
+			  → "한적한 곳이 많은 편"을 받았으면: "한적한 곳이 많은 편이에요"
+			  → "덜 붐비는 편"을 받았으면:      "덜 붐비는 편이에요"
 
 			- ⚠️⚠️ <b>사람 수를 말하지 마라.</b> "방문객이 많다", "관광객이 몰린다"처럼
 			  쓰면 안 된다 — 우리는 사람 수를 세지 않는다. 순위만 안다.
@@ -120,8 +128,6 @@ public class GeminiCardLineWriter implements CardLineWriter {
 	 * 그러면 카드에 같은 숫자가 두 번 뜬다. 필요한 것은 <b>순위</b>뿐이다.
 	 */
 	private static String prompt(String question, Interest interest, List<RegionProfile> picked) {
-		SupportedRegion topShare = topShareRegion(interest, picked);
-
 		StringBuilder prompt = new StringBuilder();
 		prompt.append("사용자 질문: ").append(trim(question)).append('\n');
 		if (interest != null && interest.filtersRegions()) {
@@ -132,56 +138,19 @@ public class GeminiCardLineWriter implements CardLineWriter {
 		}
 		prompt.append("\n지역들 (한적한 순):\n");
 
-		for (int rank = 0; rank < picked.size(); rank++) {
-			RegionProfile profile = picked.get(rank);
+		for (RegionProfile profile : picked) {
 			prompt.append("- slug=").append(profile.region().slug())
 					.append(", 이름=").append(profile.region().shortName());
 			if (interest != null && interest.filtersRegions()) {
-				prompt.append(", ").append(interest.noun()).append(" 비중=")
-						.append(profile.region() == topShare ? "이 중 가장 높음" : "높은 편");
+				prompt.append(", ").append(interest.noun()).append(" 비중=높은 편");
 			}
-			prompt.append(", 예측 기간 한적한 정도=").append(quietnessRank(rank, picked.size()))
+			prompt.append(", 예측 기간=")
+					.append(profile.hasManyQuietSpots() ? "한적한 곳이 많은 편" : "덜 붐비는 편")
 					.append('\n');
 		}
 		return prompt.toString();
 	}
 
-	/**
-	 * 순위를 말로 옮긴다. <b>절대 등급이 아니라 이 카드들 안에서의 자리</b>다.
-	 *
-	 * <p>⚠️ {@code CardLineTemplate}과 <b>같은 자를 쓴다.</b> LLM 문장과 템플릿 문장이
-	 * 같은 자리에서 갈아 끼워지므로, 한쪽만 고치면 같은 카드가 어느 쪽이 쓰였느냐에 따라
-	 * 다른 세기로 말한다.
-	 */
-	private static String quietnessRank(int rank, int total) {
-		if (total <= 1) {
-			return "견줄 상대 없음";
-		}
-		if (total == 2) {
-			// 둘을 견줄 때 "가장"·"붐빔"은 과하다. 더/덜이 짝을 이룬다
-			return rank == 0 ? "이 중 더 한적함" : "이 중 덜 한적함";
-		}
-		if (rank == 0) {
-			return "이 중 가장 한적함";
-		}
-		if (rank == total - 1) {
-			return "이 중 가장 붐빔";
-		}
-		return "중간";
-	}
-
-	private static SupportedRegion topShareRegion(Interest interest, List<RegionProfile> picked) {
-		if (interest == null || !interest.filtersRegions()) {
-			return null;
-		}
-		RegionProfile top = picked.get(0);
-		for (RegionProfile profile : picked) {
-			if (profile.shareOf(interest) > top.shareOf(interest)) {
-				top = profile;
-			}
-		}
-		return top.region();
-	}
 
 	/**
 	 * 받을 JSON의 모양.

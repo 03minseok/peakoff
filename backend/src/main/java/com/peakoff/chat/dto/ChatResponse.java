@@ -12,24 +12,34 @@ import com.peakoff.chat.domain.RegionCard;
  * @param basis      어느 기간을 본 값인지. <b>"지금"이 아니다</b> — 공사 자료는 예측이고,
  *                   이 화면은 <b>예측이 닿는 기간 전체</b>를 본다({@code ForecastWindow})
  * @param interest   읽어낸 관심사 이름. 화면이 "식도락" 같은 말을 되비추는 데 쓴다
+ * @param crowdedPeriod 그 기간이 <b>열한 곳 어디나 붐비는가</b>. 화면이 한 줄로 알린다
  * @param cards      지역 카드. {@code OK}가 아니면 빈 목록이다
  */
 public record ChatResponse(
 		ChatStatus status,
 		String basis,
 		String interest,
+		boolean crowdedPeriod,
 		List<RegionCardResponse> cards) {
 
 	/** 창을 못 읽었을 때 쓸 말. 며칠인지 모를 뿐 <b>예측을 본다는 사실</b>은 그대로다. */
 	private static final String UNKNOWN_BASIS = "예측이 나온 기간";
 
-	public static ChatResponse ok(String basis, Interest interest, List<RegionCard> cards) {
-		return new ChatResponse(ChatStatus.OK, basis(basis), interest.label(),
+	/**
+	 * @param crowdedPeriod ⚠️ <b>카드 둘이 아니라 그 기간의 열한 곳 전부</b>를 보고 정한 값이다.
+	 *                      뽑힌 둘만 보면 거짓이 될 수 있다 — "바다"를 물었을 때 뽑힌 둘이
+	 *                      낮은 것은 <b>기간이 붐벼서가 아니라 바닷가 지역이 붐벼서</b>이고,
+	 *                      그때 통영은 55%다. 그 상태로 "어디나 붐빈다"고 하면 거짓말이 된다
+	 */
+	public static ChatResponse ok(
+			String basis, Interest interest, boolean crowdedPeriod, List<RegionCard> cards) {
+
+		return new ChatResponse(ChatStatus.OK, basis(basis), interest.label(), crowdedPeriod,
 				cards.stream().map(RegionCardResponse::from).toList());
 	}
 
 	public static ChatResponse offTopic(String basis) {
-		return new ChatResponse(ChatStatus.OFF_TOPIC, basis(basis), null, List.of());
+		return new ChatResponse(ChatStatus.OFF_TOPIC, basis(basis), null, false, List.of());
 	}
 
 	/**
@@ -40,11 +50,11 @@ public record ChatResponse(
 	 * 대신 {@code basis}가 어디까지 볼 수 있는지 말하므로, 화면은 그 기간을 알려 줄 수 있다.
 	 */
 	public static ChatResponse tooFar(String basis) {
-		return new ChatResponse(ChatStatus.TOO_FAR, basis(basis), null, List.of());
+		return new ChatResponse(ChatStatus.TOO_FAR, basis(basis), null, false, List.of());
 	}
 
 	public static ChatResponse unavailable(String basis) {
-		return new ChatResponse(ChatStatus.UNAVAILABLE, basis(basis), null, List.of());
+		return new ChatResponse(ChatStatus.UNAVAILABLE, basis(basis), null, false, List.of());
 	}
 
 	/**

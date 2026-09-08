@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 지역 고르기의 규칙을 잠근다.
  *
  * <p>여기서 지키는 것 셋 — <b>관심사는 거르기만 한다</b>(점수가 아니다),
- * <b>카드에 대비가 선다</b>(전부 한적한 곳으로 채우지 않는다),
+ * <b>두 장 다 나은 쪽에서 나온다</b>(덜 한적한 곳을 일부러 끼우지 않는다),
  * <b>매번 같은 조합이 나오지 않는다</b>(우리가 미는 지역이 새 혼잡지가 되지 않게).
  */
 class RegionChatPickerTest {
@@ -78,19 +78,23 @@ class RegionChatPickerTest {
 				.allMatch(RegionProfile::isRankable);
 	}
 
+	/**
+	 * 한동안 <b>일부러</b> 아래쪽에서 하나를 뽑았다(2026-09-08에 되돌렸다). 두 장을 주면서
+	 * 한 장은 우리가 알고도 덜 좋은 곳을 넣는 셈이라, 고르는 사람에게는 고를 것이 하나뿐이었다.
+	 * <b>한산한 곳으로 사람을 보내는 것</b>이 목적인 서비스가 할 일이 아니다.
+	 */
 	@Test
-	@DisplayName("카드 중 하나는 언제나 덜 한적한 쪽이다 — 대비가 없으면 그냥 여행지 추천이다")
-	void alwaysIncludesALessQuietOne() {
+	@DisplayName("두 장 다 나은 쪽에서 나온다 — 덜 한적한 곳을 일부러 끼우지 않는다")
+	void bothComeFromTheQuieterHalf() {
 		List<RegionProfile> profiles = eleven();
 		int median = 55;                                    // 열한 곳의 한적 비율 중앙값
 
 		for (int trial = 0; trial < 200; trial++) {
 			List<RegionProfile> picked = picker.pick(profiles, Interest.NONE);
 
-			/* ⚠️ 숫자를 박지 않는다. 카드 수가 바뀌어도 지켜야 하는 것은 <b>대비</b>다 */
+			/* ⚠️ 숫자를 박지 않는다. 카드 수가 바뀌어도 지켜야 하는 것은 <b>자격</b>이다 */
 			assertThat(picked).hasSize(RegionChatPicker.CARD_COUNT);
-			assertThat(picked).anyMatch(profile -> profile.quietShare() <= median);
-			assertThat(picked).anyMatch(profile -> profile.quietShare() >= median);
+			assertThat(picked).allMatch(profile -> profile.quietShare() >= median);
 		}
 	}
 
@@ -123,7 +127,7 @@ class RegionChatPickerTest {
 	 * 그 고장을 여기서 되풀이하지 않으려고 잠근다.
 	 */
 	@Test
-	@DisplayName("매번 같은 조합이 나오지 않는다 — 후보가 골고루 뜬다")
+	@DisplayName("매번 같은 조합이 나오지 않는다 — 통 안에서 골고루 뜬다")
 	void spreadsAcrossCandidates() {
 		Set<SupportedRegion> seen = new HashSet<>();
 		Set<String> combinations = new HashSet<>();
@@ -133,8 +137,11 @@ class RegionChatPickerTest {
 			combinations.add(picked.stream().map(profile -> profile.region().slug()).sorted().toList().toString());
 		}
 
-		// 열한 곳이 후보다. 뽑기가 돌면 열한 곳이 모두 한 번씩은 뜬다.
-		assertThat(seen).hasSize(11);
+		/*
+		 * 열한 곳 중 위쪽 여섯이 통이다. 그 여섯은 모두 떠야 하고, 조합도 여럿이라야 한다 —
+		 * 늘 같은 둘이 나가면 <b>우리가 미는 지역이 새 혼잡지</b>가 된다.
+		 */
+		assertThat(seen).hasSize(6);
 		assertThat(combinations).hasSizeGreaterThan(10);
 	}
 

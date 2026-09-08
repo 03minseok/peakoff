@@ -92,7 +92,7 @@ public class DateAlternativeController {
 					되돌아갈 날짜와 비교 대상이 목록 안에 있어야 한다.
 					고를 수 있는지(지난 날짜 제외)는 화면이 판단한다.
 
-					창 안에 더 나은 날이 하나도 없으면 alreadyQuietest가 true다.
+					창 안에 더 나은 날이 하나도 없으면 status가 ALREADY_QUIETEST다(TimeOffStatus 5종).
 					목록이 비었다는 뜻은 아니다.""")
 	@GetMapping("/alternatives")
 	public ApiResponse<DateAlternativeResponse> alternatives(
