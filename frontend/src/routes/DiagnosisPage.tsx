@@ -486,9 +486,9 @@ export function DiagnosisPage() {
                     label={diagnosis.totalLevelLabel}
                   />
                 )}
-                {/* 출처 표기(절대 규칙 4). 공사 이름 대신 중립 표현 — 숫자가 서는 화면마다 한 번은 말한다 */}
+                {/* 출처 표기. 숫자가 서는 화면마다 한 번은 말한다 — 표기 규칙은 HomePage 주석 참고 */}
                 <span className="text-hint text-[13px]">
-                  {formatKoreanDate(plan.startDate)} 기준 · 공공데이터 기반 예측
+                  {formatKoreanDate(plan.startDate)} 기준 예측 · 출처 ⓒ한국관광공사
                 </span>
               </div>
 
@@ -671,7 +671,7 @@ export function DiagnosisPage() {
               {toggleableDates ? (
                 <button
                   type="button"
-                  className="text-brand-deep hover:text-brand -mr-1 cursor-pointer bg-transparent px-1 py-0.5 text-[12.5px] font-semibold lg:hidden"
+                  className="press text-brand-deep hover:text-brand -mr-1 cursor-pointer bg-transparent px-1 py-0.5 text-[12.5px] font-semibold lg:hidden"
                   aria-expanded={datesOpen}
                   aria-controls="date-alternatives"
                   onClick={() => setDatesOpen((open) => !open)}
@@ -854,7 +854,7 @@ export function DiagnosisPage() {
                       ) : (
                         <button
                           type="button"
-                          className={`rounded-chip h-9 flex-none cursor-pointer px-3.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                          className={`rounded-chip h-9 flex-none cursor-pointer px-3.5 text-[12.5px] font-semibold whitespace-nowrap press ${
                             row.base
                               ? 'border-line bg-surface text-fg hover:bg-bg border'
                               : 'bg-fg hover:bg-fg/85 text-white'
@@ -906,7 +906,7 @@ export function DiagnosisPage() {
                         <button
                           key={day}
                           type="button"
-                          className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
+                          className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap press ${
                             day === safeDay ? 'bg-fg text-white' : 'bg-bg text-hint hover:text-fg'
                           }`}
                           aria-pressed={day === safeDay}

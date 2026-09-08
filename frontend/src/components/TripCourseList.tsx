@@ -167,7 +167,7 @@ export function TripCourseList({
                     <button
                       type="button"
                       title={course.name}
-                      className="text-fg hover:text-brand-deep min-w-0 cursor-pointer border-0 bg-transparent p-0 text-left text-[15px] font-semibold transition-colors"
+                      className="text-fg hover:text-brand-deep min-w-0 cursor-pointer border-0 bg-transparent p-0 text-left text-[15px] font-semibold press"
                       onClick={() => onOpenCourse(course.id)}
                     >
                       <span className="block truncate">{course.name}</span>
@@ -215,7 +215,7 @@ export function TripCourseList({
                     <button
                       type="button"
                       aria-label={`${course.name} 여행에서 빼기`}
-                      className="text-hint hover:text-fg hover:bg-fill flex-none cursor-pointer rounded-full border-0 bg-transparent p-1.5 transition-colors"
+                      className="text-hint hover:text-fg hover:bg-fill flex-none cursor-pointer rounded-full border-0 bg-transparent p-1.5 press"
                       onClick={() => onRemove(course.id)}
                     >
                       <Close size={13} />
@@ -244,7 +244,7 @@ export function TripCourseList({
           <button
             type="button"
             onClick={onShowAll}
-            className="text-hint hover:text-brand-deep -my-0.5 -ml-1 cursor-pointer rounded-[8px] border-0 bg-transparent px-1 py-0.5 text-left text-[12.5px] transition-colors"
+            className="text-hint hover:text-brand-deep -my-0.5 -ml-1 cursor-pointer rounded-[8px] border-0 bg-transparent px-1 py-0.5 text-left text-[12.5px] press"
           >
             코스 {hidden}개가 더 있어요
           </button>

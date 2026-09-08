@@ -289,7 +289,7 @@ export function SignupPage() {
           <button
             type="button"
             onClick={toggleAll}
-            className="border-line/60 flex h-13.5 cursor-pointer items-center gap-2.75 border-b bg-transparent p-0 text-left"
+            className="press border-line/60 flex h-13.5 cursor-pointer items-center gap-2.75 border-b bg-transparent p-0 text-left"
           >
             <span className={allAgreed ? CHECKBOX_ON : CHECKBOX_OFF} aria-hidden="true">
               ✓
@@ -302,7 +302,7 @@ export function SignupPage() {
               <button
                 type="button"
                 onClick={() => toggle(term.id)}
-                className="flex cursor-pointer items-center gap-2.75 bg-transparent p-0 text-left"
+                className="press flex cursor-pointer items-center gap-2.75 bg-transparent p-0 text-left"
                 aria-pressed={agreed[term.id]}
               >
                 <span className={agreed[term.id] ? CHECKBOX_ON : CHECKBOX_OFF} aria-hidden="true">
@@ -314,7 +314,7 @@ export function SignupPage() {
               {term.doc && (
                 <button
                   type="button"
-                  className="text-hint hover:text-muted cursor-pointer bg-transparent px-0.5 py-1.5 text-[12.5px]"
+                  className="press text-hint hover:text-muted cursor-pointer bg-transparent px-0.5 py-1.5 text-[12.5px]"
                   onClick={() => setOpenDoc(term.doc)}
                 >
                   보기

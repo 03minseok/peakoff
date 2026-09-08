@@ -201,7 +201,7 @@ export function PlaceDetailSheet({
               ⚠️ 출처를 <b>중립적으로</b> 적는다. 공사 이름이나 로고를 서비스 안에 쓰지 않는 것이
               공모전 규칙이라(CLAUDE.md 절대 규칙 4), 기관명 대신 "공공데이터"로만 밝힌다.
             */}
-            <span className="text-hint text-[11px]">공공데이터 기반 이미지</span>
+            <span className="text-hint text-[11px]">이미지 출처 ⓒ한국관광공사</span>
 
             <div className="flex flex-col gap-1.5">
               {/*
@@ -234,7 +234,7 @@ export function PlaceDetailSheet({
                     이쪽은 주황 기운이라 나란히 두어도 갈린다 — 같은 색을 쓰면 한적한 곳을
                     찜했는데 "붐빔"과 같은 색으로 켜져 신호가 엇갈린다. 자세한 것은 index.css.
                   */
-                  className={`press touch-hitbox grid h-9 w-9 flex-none cursor-pointer place-items-center rounded-chip bg-transparent transition-colors ${
+                  className={`press touch-hitbox grid h-9 w-9 flex-none cursor-pointer place-items-center rounded-chip bg-transparent ${
                     favorite ? 'text-like' : 'text-hint hover:text-fg'
                   }`}
                 >
@@ -317,7 +317,7 @@ export function PlaceDetailSheet({
               <button
                 type="button"
                 onClick={onPlanTrip}
-                className="press bg-brand hover:bg-brand-hover text-fg rounded-ui mt-1 h-12 w-full cursor-pointer text-[15px] font-semibold transition-colors"
+                className="press bg-brand hover:bg-brand-hover text-fg rounded-ui mt-1 h-12 w-full cursor-pointer text-[15px] font-semibold"
               >
                 이 장소로 여행가기
               </button>

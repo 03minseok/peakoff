@@ -198,7 +198,7 @@ function QuietSpotCard({
       <button
         type="button"
         onClick={onOpen}
-        className="press bg-surface border-line shadow-rest hover:bg-fill lg:bg-bg lg:border-0 lg:shadow-none lg:hover:bg-line/40 lg:rounded-card relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[16px] border p-0 text-left transition-colors lg:flex-row lg:items-center lg:gap-3 lg:p-2.5 lg:pr-11"
+        className="press bg-surface border-line shadow-rest hover:bg-fill lg:bg-bg lg:border-0 lg:shadow-none lg:hover:bg-line/40 lg:rounded-card relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[16px] border p-0 text-left lg:flex-row lg:items-center lg:gap-3 lg:p-2.5 lg:pr-11"
       >
       {/*
         ■ 모바일은 사진이 위, <b>lg는 예전 그대로</b> 왼쪽 썸네일이다 (2026-09-02)
@@ -286,7 +286,7 @@ function QuietSpotCard({
         onClick={onFavorite}
         aria-pressed={favorite}
         aria-label={favorite ? `${spot.place.name} 찜 취소` : `${spot.place.name} 찜하기`}
-        className={`press touch-hitbox absolute top-1.5 right-1.5 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-white/90 shadow-rest transition-colors lg:top-1/2 lg:right-2 lg:h-9 lg:w-9 lg:-translate-y-1/2 lg:bg-transparent lg:shadow-none ${
+        className={`press touch-hitbox absolute top-1.5 right-1.5 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-white/90 shadow-rest lg:top-1/2 lg:right-2 lg:h-9 lg:w-9 lg:-translate-y-1/2 lg:bg-transparent lg:shadow-none ${
           favorite ? 'text-like' : 'text-hint hover:text-fg'
         }`}
       >
@@ -338,7 +338,7 @@ function OtherCourseCard({ course, onOpen }: { course: PublicCourse; onOpen: () 
     <button
       type="button"
       onClick={onOpen}
-      className="group bg-bg hover:bg-fill flex w-full cursor-pointer flex-col gap-2.5 rounded-[16px] border-none p-3 text-left transition-colors lg:p-3.5"
+      className="group bg-bg hover:bg-fill flex w-full cursor-pointer flex-col gap-2.5 rounded-[16px] border-none p-3 text-left press lg:p-3.5"
     >
       <div className="flex w-full items-center gap-3">
         {/*
@@ -541,6 +541,12 @@ export function HomePage() {
     course.places.forEach((place) => {
       days[place.day - 1]?.push(place.placeId)
     })
+
+    /*
+      ⚠️ 여기서 캐시를 심지 않는다. 목록을 받는 길목(services/api.ts의
+      fetchRecentCourses)이 이미 기억해 두었다 — 화면마다 부르면 빠뜨리는 자리가 생기고,
+      빠뜨린 곳에서만 장소가 <b>숫자 id로</b> 보이는 찾기 어려운 버그가 된다.
+    */
 
     restore(
       {
@@ -1040,7 +1046,7 @@ export function HomePage() {
               <Link
                 to="/plan"
                 aria-label="코스 직접 짜기 시작하기"
-                  className="bg-fg/80 group-hover:bg-fg/95 hover:bg-fg/95 border border-white/45 text-white backdrop-blur-[3px] rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
+                  className="bg-fg/80 group-hover:bg-fg/95 hover:bg-fg/95 border border-white/45 text-white backdrop-blur-[3px] rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline press lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
                 >
                   시작하기
                   {/* 카드에 손을 올리면 화살표가 함께 나아가 "여기를 누르세요"를 가리킨다 */}
@@ -1164,7 +1170,7 @@ export function HomePage() {
                 <Link
                   to="/recommend"
                   aria-label="새로운 코스 발견하기 시작하기"
-                    className="bg-brand/86 group-hover:bg-brand hover:bg-brand border border-brand-tint text-fg backdrop-blur-[10px] backdrop-brightness-125 rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline transition-colors lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
+                    className="bg-brand/86 group-hover:bg-brand hover:bg-brand border border-brand-tint text-fg backdrop-blur-[10px] backdrop-brightness-125 rounded-full lg:rounded-ui inline-flex h-9 flex-none cursor-pointer items-center gap-1.25 self-end px-3.5 text-[12.5px] font-semibold whitespace-nowrap no-underline press lg:h-11.5 lg:gap-1.75 lg:px-5 lg:text-[15.5px]"
                   >
                     시작하기
                     <ChevronRight className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
@@ -1482,12 +1488,22 @@ export function HomePage() {
         </div>
 
         {/*
-          출처 표기. 절대 규칙 4 — 공사 이름·로고는 못 쓰고 "공공데이터 기반" 같은
-          중립 표현만 허용된다. 화면의 모든 숫자가 어디서 왔는지 말하는 유일한 줄이라,
-          심사위원이 어느 화면에서 시작하든 닿는 홈에 둔다.
+          ■ <b>출처를 이름으로 밝힌다</b> (2026-09-09에 뒤집었다)
+
+          예전에는 "공공데이터 기반"이라는 <b>중립 표현만</b> 썼다. 공사 이름을 쓰면 안 된다는
+          규칙 때문이었는데, 공모전 공지 FAQ가 그 충돌을 정확히 갈라 놓았다 —
+          금지되는 것은 <b>서비스가 공사 것처럼 오인시키는 것</b>이고,
+          <b>단순 출처 명시는 필수 사항이며 금지 대상이 아니다.</b>
+
+          <p>공지가 정한 표기는 {@code 출처: ⓒ한국관광공사}이고, {@code TourAPI}처럼
+          API 이름만 단독으로 적는 것은 지양한다. ⚠️ <b>텍스트만</b> 쓴다 — 공식 로고
+          이미지는 여전히 무단 사용 금지다.
+
+          <p>"예측"이라는 말은 그대로 남긴다. 이 자료는 실시간이 아니라 통계·예측값이라,
+          출처를 밝히는 것과 <b>무엇인지 밝히는 것</b>은 다른 일이다.
         */}
         <p className="text-hint m-0 pt-5 pb-2 text-center text-[11.5px]">
-          혼잡 예측은 공공데이터 기반 통계·예측값으로, 실제와 다를 수 있어요.
+          혼잡 예측은 통계·예측값이라 실제와 다를 수 있어요 · 출처 ⓒ한국관광공사
         </p>
       </div>
 

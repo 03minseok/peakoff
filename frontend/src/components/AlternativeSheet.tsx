@@ -672,7 +672,7 @@ export function AlternativeSheet({
           {load.phase === 'nearby' && load.nearby.length > 0 && (
             <button
               type="button"
-              className="text-hint mt-2.5 h-11 w-full cursor-pointer bg-transparent text-[13.5px] font-medium"
+              className="press text-hint mt-2.5 h-11 w-full cursor-pointer bg-transparent text-[13.5px] font-medium"
               onClick={onClose}
             >
               그대로 둘게요
@@ -1020,7 +1020,7 @@ export function AlternativeSheet({
           {load.phase === 'loaded' && load.alternatives.length > 0 && (
             <button
               type="button"
-              className="text-hint mt-2.5 h-11 w-full cursor-pointer bg-transparent text-[13.5px] font-medium"
+              className="press text-hint mt-2.5 h-11 w-full cursor-pointer bg-transparent text-[13.5px] font-medium"
               onClick={onClose}
             >
               그대로 둘게요

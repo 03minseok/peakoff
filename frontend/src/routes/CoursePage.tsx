@@ -293,7 +293,7 @@ export function CoursePage() {
               <button
                 key={day}
                 type="button"
-                className={`rounded-ui flex h-13 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 px-3 transition-colors ${
+                className={`rounded-ui flex h-13 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 px-3 press ${
                   active ? 'bg-fg' : 'bg-surface shadow-rest'
                 }`}
                 aria-current={active}
@@ -371,6 +371,11 @@ export function CoursePage() {
                         여기만 -mr로 당겨 번호를 원래 자리에 가깝게 되돌린다.
 
                         w-6이어도 h-9이라 <b>누를 면적은 충분하다</b> — 좁아진 것은 폭뿐이다.
+                      */
+                      /*
+                        ⚠️ press를 붙이지 않는다. 이건 누르는 버튼이 아니라 <b>끄는 손잡이</b>다 —
+                        누른 채로 끌고 있는데 3% 줄어들면 손가락 밑에서 흔들리는 것으로 읽힌다.
+                        눌림 반응이 필요한 곳은 "눌렀다 뗀다"가 한 동작인 자리다.
                       */
                       className="text-hint hover:text-fg hover:bg-bg -mr-1 grid h-9 w-6 flex-none cursor-grab place-items-center rounded-[9px] bg-transparent transition-colors active:cursor-grabbing"
                       aria-label={`${place?.name ?? ''} 순서 바꾸기. 끌어서 옮기거나 위아래 화살표를 누르세요`}

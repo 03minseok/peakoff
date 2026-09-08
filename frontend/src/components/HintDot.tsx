@@ -140,7 +140,7 @@ export function HintDot({ label, tone = 'warn' }: { label: string; tone?: HintTo
         }}
         onFocus={() => setHovered(true)}
         onBlur={() => setHovered(false)}
-        className={`-m-1.5 cursor-pointer rounded-full border-0 bg-transparent p-1.5 transition-colors ${TONE[tone]}`}
+        className={`-m-1.5 cursor-pointer rounded-full border-0 bg-transparent p-1.5 press ${TONE[tone]}`}
       >
         <Alert size={15} />
       </button>

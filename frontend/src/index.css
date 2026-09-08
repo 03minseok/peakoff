@@ -793,11 +793,16 @@
    * 방향이 없는 변화라 대칭인 곡선이 맞고, 눌림은 손가락에 반응하는 것이라 빠르게 출발해야 한다.
    */
   .press {
+    /*
+     * opacity도 여기서 맡는다(2026-09-09). 소셜 로그인 버튼이 hover에서 살짝 흐려지는데
+     * transition-opacity를 따로 두면 위와 같은 충돌로 눌림이 튄다 — 한 선언에 합친다.
+     */
     transition:
       color 150ms ease,
       background-color 150ms ease,
       border-color 150ms ease,
       box-shadow 150ms ease,
+      opacity 150ms ease,
       transform 120ms var(--ease-out-quad);
   }
 
