@@ -139,20 +139,27 @@ function CourseColumn({
   return (
     <div
       /*
-        ⚠️ <b>opacity로 강약을 내지 않는다.</b> 예전에는 추천하지 않는 열에 opacity-85를
+        ⚠️ <b>이 열은 카드가 아니라 판이다</b>(2026-09-08). 예전에는 저마다
+        {@code rounded-card bg-surface shadow-*}를 두른 카드였고, 그래서 일차 칩과
+        스위치가 <b>카드 밖 바탕에</b> 남을 수밖에 없었다 — 조작이 무엇에 걸리는지
+        자리로 말할 방법이 없어 셋이 따로 노는 화면이 됐다.
+
+        <p>이제 바깥의 "코스 비교" 카드가 면과 그림자를 맡고, 조작은 그 카드의 머리에
+        들어앉는다. 이 열은 그 안의 판이라 <b>배경도 그림자도 갖지 않는다</b> —
+        가지면 카드 안에 카드가 되어 층이 하나 더 생긴다.
+
+        <p>⚠️ <b>opacity로 강약을 내지 않는다.</b> 예전에는 추천하지 않는 열에 opacity-85를
         걸었는데, 그것은 카드 하나를 통째로 흐리는 둔기다 — 부제(5.02→3.74)와 혼잡 배지처럼
         index.css에서 <b>개별로 조율해 둔 대비까지 함께 끌어내린다.</b>
 
-        추천하는 쪽은 이미 테두리·짙은 그림자·물든 머리를 셋이나 더 갖고 있어,
-        투명도를 빼도 어느 쪽이 결론인지는 그대로 읽힌다.
+        <p>추천하는 쪽은 <b>물든 머리와 배지</b>로 갈린다. 테두리와 그림자를 잃었지만
+        바로 옆에 견줄 것이 나란히 서 있어, 머리 한 겹이 물드는 것만으로 충분히 읽힌다.
       */
-      className={`overflow-hidden rounded-card bg-surface ${
-        highlighted ? 'border-quiet-soft shadow-raised border-[1.5px]' : 'shadow-rest'
-      }`}
+      className="min-w-0 overflow-hidden rounded-ui"
     >
       <div
-        className={`border-line flex items-center justify-between gap-3 border-b px-4.5 py-3.5 ${
-          highlighted ? 'bg-quiet-tint/60' : ''
+        className={`border-line flex items-center justify-between gap-3 border-b px-3.5 py-3 ${
+          highlighted ? 'bg-quiet-tint/60' : 'bg-bg'
         }`}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -189,7 +196,11 @@ function CourseColumn({
         </span>
       </div>
 
-      <div className="flex flex-col gap-3.5 px-3.5 py-3.5">
+      {/*
+        좌우 여백을 두지 않는다. 바깥 카드가 이미 한 겹 들여놓았고, 여기서 또 밀면
+        판의 머리(물든 면)와 아래 줄들의 왼쪽 끝이 어긋난다.
+      */}
+      <div className="flex flex-col gap-3.5 pt-3">
         {Array.from({ length: diagnosis.days }, (_, index) => index + 1)
           .filter((day) => visibleDay === 'all' || day === visibleDay)
           .map((day) => {
@@ -972,12 +983,15 @@ export function ResultPage() {
               <p>대신 칩은 <b>흰 알약</b>이다. 지도 칩은 흰 카드 위에 있어 회색({@code bg-bg})으로
               뜨지만, 여기는 페이지 바탕이 그 회색이라 같은 색을 쓰면 칩이 사라진다.
             */}
-            <div className="flex flex-col gap-3">
+            <section className={`${CARD_RAISED} overflow-hidden`}>
               {/*
-                섹션 머리. 왼쪽은 제목과 (하루만 볼 때의) 단서, 오른쪽은 일차 칩.
+                카드 머리. 왼쪽은 제목과 (하루만 볼 때의) 단서, 오른쪽은 일차 칩.
+                아래 "최종 동선" 카드의 머리와 <b>글자 그대로 같은 짜임</b>이라,
+                두 구역이 형제로 읽힌다.
+
                 {@code items-start}라 칩이 여러 줄로 접혀도 제목이 가운데로 끌려가지 않는다.
               */}
-              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+              <div className="border-line flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b px-4.5 pt-4 pb-3">
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <h2 className="text-fg m-0 text-[15px] font-semibold">코스 비교</h2>
                   {/*
@@ -989,7 +1003,7 @@ export function ResultPage() {
                     숫자를 내걸 조건({@code CourseScoreStandard} — 진단 2곳 이상 · 진단율 50% 이상)까지
                     화면에 사본으로 두게 된다. 한 줄로 밝히는 편이 정직하고 어긋날 자리도 없다.
 
-                    <p>제목 <b>아래</b>에 붙인다. 예전에는 트랙 둘 사이에 홀로 떠 있어
+                    <p>제목 <b>아래</b>에 붙인다. 한때 회색 트랙 둘 사이에 홀로 떠 있어
                     누구의 말인지 알 수 없었다 — 카드 머리의 부제가 앉는 자리와 같다.
                   */}
                   {compareDay !== 'all' && (
@@ -1046,7 +1060,7 @@ export function ResultPage() {
                             className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
                               active
                                 ? 'bg-fg text-white focus-visible:outline-white'
-                                : 'bg-surface text-muted shadow-rest hover:text-fg'
+                                : 'bg-bg text-hint hover:text-fg'
                             }`}
                             aria-pressed={active}
                             onClick={() => setCompareDay(tab)}
@@ -1061,10 +1075,10 @@ export function ResultPage() {
               </div>
 
               {/*
-                스위치와 카드는 <b>바짝</b>이다. 스위치가 고르는 것이 바로 아래 카드라,
-                섹션 머리와의 사이(12px)보다 좁아야 무엇에 걸리는 조작인지 자리로 읽힌다.
+                카드의 몸통. 스위치와 두 판이 <b>한 면 위에</b> 있다 —
+                이것이 이 화면에서 조작과 내용이 따로 놀지 않게 하는 유일한 장치다.
               */}
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2.5 p-3.5">
                 {/*
                   스위치. 고른 쪽이 흰 면으로 떠오른다. 홈과 같은 모양이라
                   이 서비스에서 "좁은 화면에서 번갈아 보기"는 늘 이렇게 생겼다.
@@ -1109,7 +1123,7 @@ export function ResultPage() {
               */}
               <div className="overflow-hidden lg:overflow-visible">
                 <div
-                  className={`flex touch-pan-y items-start gap-0 select-none translate-x-[var(--pane-x)] lg:select-auto lg:grid lg:translate-x-0 lg:grid-cols-2 lg:gap-4 ${
+                  className={`flex touch-pan-y items-start gap-0 select-none translate-x-[var(--pane-x)] lg:select-auto lg:grid lg:translate-x-0 lg:grid-cols-2 lg:gap-5 ${
                     // 손가락을 따라오는 동안에는 전환을 끈다. 켜두면 손끝보다 늦게 따라온다
                     dragOffset === 0 ? 'transition-transform duration-300 ease-out' : ''
                   } motion-reduce:transition-none`}
@@ -1192,7 +1206,12 @@ export function ResultPage() {
                       visibleDay={compareDay}
                     />
                   </div>
-                  <div className="w-full shrink-0">
+                  {/*
+                    넓은 화면에서 두 판 사이에 <b>세로 선</b>을 긋는다. 판이 카드 껍데기를
+                    잃어 배경으로는 갈리지 않으므로, 경계는 선이 맡는다.
+                    좁은 화면에서는 한 번에 하나만 보이므로 선이 없다.
+                  */}
+                  <div className="w-full shrink-0 lg:border-line lg:border-l lg:pl-5">
                     <CourseColumn
                       title="개선안"
                       subtitle={
@@ -1222,7 +1241,7 @@ export function ResultPage() {
                 </div>
               </div>
               </div>
-            </div>
+            </section>
             </>
           )}
 
