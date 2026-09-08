@@ -79,6 +79,15 @@ public class KtoHubClient {
 				"signguCd", RegionCodes.sigunguCodeOf(region)));
 
 		if (!items.isArray() || items.isEmpty()) {
+			/*
+			 * ⚠️ <b>여기서는 예외를 던지지 않는다.</b> 집중률·카탈로그와 다른 판단이다
+			 * (2026-09-08). 그쪽은 0건이 곧 이상 신호라 실패로 다뤄 옛 값으로 메꾸지만,
+			 * 중심 관광지는 <b>기준 월에 따라 실제로 빌 수 있다.</b>
+			 *
+			 * <p>비어도 잃는 것은 검색 전에 뜨는 칩 몇 개뿐이고 서비스는 그대로 돈다.
+			 * 정상일 수 있는 응답을 실패로 만들면 60초 백오프가 걸려 <b>멀쩡한 지역까지</b>
+			 * 느려진다.
+			 */
 			log.warn("중심 관광지 응답에 항목이 없습니다. region={}, baseYm={}", region.name(), BASE_MONTH);
 			return List.of();
 		}

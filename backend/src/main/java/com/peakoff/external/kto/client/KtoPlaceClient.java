@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.peakoff.external.kto.support.KtoApiCaller;
+import com.peakoff.external.kto.support.KtoApiException;
 import com.peakoff.external.kto.support.RegionCache;
 import com.peakoff.external.kto.support.RegionCodes;
 import com.peakoff.external.kto.support.TtlCache;
@@ -102,7 +103,8 @@ public class KtoPlaceClient {
 
 	public KtoPlaceClient(KtoApiCaller caller, Clock clock) {
 		this.caller = caller;
-		this.cache = new RegionCache<>(clock);
+		// 빈 카탈로그도 담지 않는다. 이유는 KtoCongestionClient와 같다.
+		this.cache = new RegionCache<>(clock, catalog -> !catalog.isEmpty());
 		this.detailCache = new TtlCache<>(clock, RegionCache.DEFAULT_TTL, DETAIL_CACHE_MAX);
 		this.descriptionCache = new TtlCache<>(clock, DESCRIPTION_TTL, DETAIL_CACHE_MAX);
 	}
@@ -178,6 +180,14 @@ public class KtoPlaceClient {
 
 		JsonNode items = body.path("items").path("item");
 		if (!items.isArray() || items.isEmpty()) {
+			/*
+			 * 빈 카탈로그도 <b>덮어쓰지 않는다</b> — 집중률과 같은 처리다
+			 * (KtoCongestionClient 참고). 여기서는 더 크게 무너진다: 카탈로그가 비면
+			 * 검색도 코스 편집도 멈추는데, 오류가 아니라 "그 지역에 장소가 없다"로 읽힌다.
+			 *
+			 * <p>⚠️ 0건은 그 지역의 사정이 아니다. 지원 지역은 카탈로그가 196~1,271곳이고,
+			 * 비어 있다는 이유로 빠진 곳도 있다(세종 0건, {@code SupportedRegion}).
+			 */
 			log.warn("국문 관광정보 응답에 항목이 없습니다. region={}", region.name());
 			return RegionCatalog.empty();
 		}
