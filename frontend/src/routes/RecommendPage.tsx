@@ -8,7 +8,7 @@ import { LEVEL_SOLID } from '../components/levelStyles'
 import { CARD, CARD_RAISED, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../components/styles'
 import { DatePicker } from '../components/DatePicker'
 import { RegionPicker } from '../components/RegionPicker'
-import { regionNameOf } from '../constants/regions'
+import { regionNameOf, regionOptions } from '../constants/regions'
 import { ApiRequestError, fetchForecastWindow, recommendCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
 import type {
@@ -24,6 +24,7 @@ import {
   formatWeekday,
   today,
 } from '../utils/date'
+import { withJosa } from '../utils/josa'
 
 /**
  * 설문으로 코스를 추천받는 화면.
@@ -104,8 +105,35 @@ interface Answers {
 type Phase =
   | { phase: 'survey' }
   | { phase: 'loading' }
-  | { phase: 'result'; draft: CourseDraft }
+  /**
+   * 결과가 <b>자기 지역을 들고 다닌다.</b>
+   *
+   * <p>지역을 무작위로 뽑는 길이 생기면서, 화면 위쪽 폼의 {@code region} 상태와
+   * "이 초안이 어느 지역 것인가"가 갈렸다. 뽑은 값을 폼 상태에 써 넣으면
+   * 답을 고치러 돌아갔을 때 <b>고른 적 없는 지역이 칸에 적혀 있게</b> 된다.
+   * 결과에 함께 실어 두면 폼은 사용자가 고른 것만 들고, 결과는 자기 근거를 들고 선다.
+   */
+  | { phase: 'result'; draft: CourseDraft; region: string }
   | { phase: 'error'; message: string }
+
+/**
+ * 지원 지역 중 하나를 <b>고르게</b> 뽑는다.
+ *
+ * <p>⚠️ <b>한적한 지역에 가중치를 주지 않는다.</b> 한적한 쪽으로 확률을 기울이면
+ * "아무 데나"를 고른 사람들이 늘 같은 두세 곳으로 몰려, 우리가 미는 지역이
+ * <b>새로운 혼잡지</b>가 된다 — 이 서비스가 막으려는 2차 오버투어리즘 그 자체다.
+ * 홈의 "이번 주 한적한 곳"이 후보를 넓힌 뒤 균등으로 뽑는 것과 같은 규칙이다.
+ *
+ * <p>한적한 곳으로 보내는 일은 <b>지역 안에서</b> 이미 일어난다. 서버가 그 지역의
+ * 상위 후보군에서 가중 무작위로 슬롯을 채우므로, 지역까지 기울일 이유가 없다.
+ *
+ * <p>목록은 서버가 준 것을 그대로 쓴다({@code regionOptions}). 화면에 슬러그를 박아 두면
+ * 지역이 늘어도 뽑기에서만 빠진다.
+ */
+function drawRegion(): string {
+  const options = regionOptions()
+  return options[Math.floor(Math.random() * options.length)]?.slug ?? ''
+}
 
 /** 초안 슬롯을 일차별 장소 ID 배열로 접는다. 편집 흐름(TripState.days)이 쓰는 모양이다. */
 function toDays(draft: CourseDraft): string[][] {
@@ -173,6 +201,21 @@ export function RecommendPage() {
   const [searchParams] = useSearchParams()
   const [region, setRegion] = useState(() => searchParams.get('region') ?? '')
   const regionName = regionNameOf(region)
+  /*
+   * ■ <b>"아무 데나 괜찮아요"</b>. 지역을 우리가 뽑는다.
+   *
+   * <p>이 화면은 <b>어디로 갈지 모르는 사람의 문</b>인데, 첫 칸이 "어디로 가시나요"라
+   * 그 사람이 바로 그 자리에서 막혔다. 열한 곳을 훑어보며 고르는 일 자체가
+   * 이미 "어디를 갈지 아는 사람"의 일이다.
+   *
+   * <p>⚠️ <b>지역과 함께 켜지지 않는다.</b> 둘 다 켜져 있으면 무엇으로 코스를 짰는지
+   * 화면이 말할 수 없다. 하나를 고르면 다른 하나가 꺼지므로 <b>잠긴 칸을 만들 필요가
+   * 없다</b> — 이 저장소는 "잠긴 버튼은 왜 안 되는지를 설명하지 못한다"를 지킨다.
+   *
+   * <p>뽑는 시점은 <b>누른 뒤</b>다. 켤 때 미리 뽑아 칸에 적어 두면 사용자가 고른 지역과
+   * 구분되지 않고, 무엇보다 "다른 코스도 발견하기"가 같은 지역에 갇힌다.
+   */
+  const [anyRegion, setAnyRegion] = useState(false)
   const isPastDate = startDate < today()
 
   /*
@@ -205,7 +248,7 @@ export function RecommendPage() {
    * 점수 비중과 하한을 바꾼다) 우리가 대신 정하면 사용자가 고르지 않은 코스가 나온다.
    */
   const canSubmit =
-    Boolean(region) &&
+    (Boolean(region) || anyRegion) &&
     nights !== null &&
     answers.density !== undefined &&
     answers.sensitivity !== undefined &&
@@ -216,16 +259,25 @@ export function RecommendPage() {
     if (nights === null || answers.density === undefined || answers.sensitivity === undefined) {
       return
     }
+    /*
+     * "아무 데나"면 <b>부를 때마다 다시 뽑는다.</b> 그래서 "다른 코스도 발견하기"가
+     * 지역까지 바꾼다 — 아무 데나 괜찮다고 한 사람에게 같은 지역만 되풀이해 보여주면
+     * 그 답을 고른 뜻이 사라진다.
+     *
+     * <p>방금 나온 지역을 빼고 뽑지는 않는다. 가끔 같은 지역이 다시 나오는 편이
+     * 균등이고, 그때도 코스는 다르다(서버가 상위 후보군에서 가중 무작위로 뽑는다).
+     */
+    const target = anyRegion ? drawRegion() : region
     setView({ phase: 'loading' })
     try {
       const draft = await recommendCourse({
-        region,
+        region: target,
         startDate,
         nights,
         density: answers.density,
         sensitivity: answers.sensitivity,
       })
-      setView({ phase: 'result', draft })
+      setView({ phase: 'result', draft, region: target })
     } catch (error) {
       /* 서버 메시지를 그대로 쓴다. "이 지역에서 예상 혼잡을 계산할 수 있는 장소를 찾지
          못했습니다" 같은 문구는 무엇을 바꾸면 되는지까지 알려주므로,
@@ -246,14 +298,19 @@ export function RecommendPage() {
     void requestDraft()
   }
 
-  /** 초안을 편집 흐름에 올린다. 여기서부터는 사용자의 코스다 */
-  function startEditing(draft: CourseDraft) {
+  /**
+   * 초안을 편집 흐름에 올린다. 여기서부터는 사용자의 코스다.
+   *
+   * <p>지역을 <b>인자로 받는다.</b> 폼의 {@code region}을 쓰면 무작위로 뽑힌 코스가
+   * 빈 지역으로 편집 화면에 올라가, 장소를 더 담으려 할 때 검색 범위가 없다.
+   */
+  function startEditing(draft: CourseDraft, draftRegion: string) {
     /*
      * restore를 쓴다. 원안 기준(baseline)이 null로 초기화되는 것이 중요하다 —
      * 초안을 원안이라고 찍어두면 최종 비교가 "시스템이 짠 코스 대비 개선폭"을 재게 된다.
      * 사용자가 편집을 마치고 진단에 들어가는 순간 그 코스가 원안이 된다.
      */
-    restore({ region, startDate: draft.startDate, nights: draft.nights }, toDays(draft))
+    restore({ region: draftRegion, startDate: draft.startDate, nights: draft.nights }, toDays(draft))
     navigate('/course')
   }
 
@@ -261,8 +318,8 @@ export function RecommendPage() {
     return (
       <DraftResult
         draft={view.draft}
-        regionName={regionName}
-        onStart={() => startEditing(view.draft)}
+        regionName={regionNameOf(view.region)}
+        onStart={() => startEditing(view.draft, view.region)}
         onReroll={() => void requestDraft()}
         onEditAnswers={() => setView({ phase: 'survey' })}
       />
@@ -417,7 +474,8 @@ export function RecommendPage() {
           </span>
           <dl className="m-0 flex flex-col gap-2">
             {[
-              { term: '지역', value: regionName },
+              /* 아직 뽑기 전이라 이름을 적을 수 없다. 무엇을 골랐는지만 말한다 */
+              { term: '지역', value: anyRegion ? '무작위' : regionName },
               {
                 term: '일정',
                 value: DENSITY_OPTIONS.find((o) => o.value === answers.density)?.label ?? '',
@@ -462,8 +520,51 @@ export function RecommendPage() {
           <div>
             <legend className={`${CARD_TITLE} p-0`}>어디로 가시나요</legend>
           </div>
-          {/* 코스 짜기와 같은 컴포넌트다. RegionPicker 주석 참고 */}
-          <RegionPicker value={region} onChange={setRegion} />
+          {/*
+            코스 짜기와 같은 컴포넌트다. RegionPicker 주석 참고.
+
+            지역을 고르면 "아무 데나"가 꺼진다. 둘을 <b>서로 끄게</b> 두면 잠긴 칸도,
+            "지역을 지우고 다시 고르세요" 같은 안내도 필요 없다.
+          */}
+          <RegionPicker
+            value={region}
+            onChange={(slug) => {
+              setRegion(slug)
+              setAnyRegion(false)
+            }}
+          />
+          {/*
+            <b>어디로 갈지 모르는 사람의 자리.</b> 이 화면이 그 사람의 문인데 첫 칸이
+            "어디로 가시나요"라 거기서 막혔다.
+
+            <p>체크박스를 label로 감싸 글자를 눌러도 켜지게 한다 — 네모 하나만 누르게 하면
+            손가락으로는 잘 안 맞는다(저장 시트의 공개 토글과 같은 모양).
+
+            <p>⚠️ <b>지원 지역 수를 문구에 적지 않는다.</b> 목록의 원천은 서버이고,
+            지역이 늘면 이 문장만 옛 수로 남는다.
+          */}
+          <label className="hover:bg-bg -mx-1.5 flex cursor-pointer items-start gap-2.5 rounded-[12px] px-1.5 py-2 transition-colors">
+            <input
+              type="checkbox"
+              checked={anyRegion}
+              onChange={(event) => {
+                setAnyRegion(event.target.checked)
+                /* 켜는 순간 고른 지역을 비운다. 남겨두면 무엇으로 짰는지가 흐려진다 */
+                if (event.target.checked) {
+                  setRegion('')
+                }
+              }}
+              className="accent-brand mt-0.5 h-4 w-4 flex-none cursor-pointer"
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-fg text-[13.5px] font-medium">아무 데나 괜찮아요</span>
+              <span className="text-hint text-[12px] leading-[1.55]">
+                갈 만한 지역 중 한 곳을 무작위로 골라 드려요.
+                <br />
+                어디가 뽑혔는지는 결과에서 알려드려요.
+              </span>
+            </span>
+          </label>
         </fieldset>
 
         {/*
@@ -609,7 +710,7 @@ export function RecommendPage() {
 
         <div className="mt-2 pb-4">
           <div className="flex items-center justify-between px-1 pb-2.5">
-            <span className="text-[13px]">{regionName}</span>
+            <span className="text-[13px]">{anyRegion ? '지역 무작위' : regionName}</span>
             {/* 위 요약표와 같은 규칙 — 고르지 않은 기간의 날짜 범위는 적지 않는다 */}
             <span className="text-fg font-mono text-[13px] font-medium">
               {nights === null ? '' : formatDateRange(startDate, nights)}
@@ -760,8 +861,10 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
         고른 곳을 대신할 것을 찾는 자리라 "이걸 왜 추천했나"에 답이 있어야 하고, 바로 아래
         추천도와 반영 비율을 편다. 거기서 운을 강조하면 그 숫자가 구색이 된다.
 
-        <p>지역 이름은 셋 다 모음으로 끝나(경주·제주시·서귀포시) "를"이 붙는다.
-        ⚠️ 자음으로 끝나는 지역을 추가하면 이 조사를 함께 손봐야 한다.
+        <p>⚠️ <b>조사를 글자로 박지 않는다.</b> 지역이 셋이던 때는 모두 모음으로 끝나
+        (경주·제주시·서귀포시) "를"이었지만, 지금은 통영·남원·태안·춘천·가평이 있어
+        <b>"통영를 발견했어요"</b>가 된다. 지역을 무작위로 뽑는 길이 생기면서
+        절반 가까이가 그 쪽으로 나온다. 받침 판별은 {@code withJosa}에 맡긴다.
       */}
       <header className="flex flex-col gap-2">
         {/*
@@ -782,7 +885,7 @@ function DraftResult({ draft, regionName, onStart, onReroll, onEditAnswers }: Re
           FULL PEAKOFF
         </span>
         <h1 className="text-fg m-0 text-[26px] leading-[1.3] font-bold tracking-[-0.025em]">
-          새로운 {regionName}를 발견했어요
+          새로운 {withJosa(regionName, '을/를')} 발견했어요
         </h1>
         <p className="text-muted m-0 text-[14px] leading-[1.6] text-pretty">
           취향은 챙기고, 붐빔은 살짝 비켜간 코스예요.
