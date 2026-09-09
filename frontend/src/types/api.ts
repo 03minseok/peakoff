@@ -812,3 +812,24 @@ export interface ChatAnswer {
   crowdedPeriod: boolean
   cards: RegionCard[]
 }
+
+/**
+ * 서버 QuotaResponse — 오늘 공사 OpenAPI를 몇 번 불렀나.
+ *
+ * <p>심사에서 "실제로 공사 API를 부르나요?"에 화면으로 답하는 값이다. 한도는 포털이
+ * 알려주지 않아 서버가 가정한 값({@code assumedDailyLimit})을 함께 내려보낸다 —
+ * 화면이 1,000을 박아 두면 서버가 그 가정을 고칠 때 한쪽만 바뀐다.
+ */
+export interface QuotaSummary {
+  /** yyyy-MM-dd. 서버 시계 기준 */
+  date: string
+  assumedDailyLimit: number
+  apis: {
+    api: string
+    total: number
+    success: number
+    failure: number
+    percentOfAssumedLimit: number
+  }[]
+  totalAllApis: number
+}

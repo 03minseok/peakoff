@@ -30,6 +30,7 @@ import type {
   SocialLinkRequest,
   SocialLoginResult,
   SocialProvider,
+  QuotaSummary,
 } from '../types/api'
 import { rememberPlaces } from './placeCache'
 
@@ -708,4 +709,14 @@ export function askRegionChat(question: string, signal?: AbortSignal): Promise<C
     body: { question },
     signal,
   })
+}
+
+/**
+ * GET /api/quotas — 오늘 공사 OpenAPI 호출 수.
+ *
+ * <p>읽기 전용이고 로그인 없이 열린다. 호출 이력 자체가 공모전 규칙 1의 증거라
+ * 감출 이유가 없고, 값도 개인과 무관한 집계다.
+ */
+export function fetchQuotas(signal?: AbortSignal): Promise<QuotaSummary> {
+  return apiRequest<QuotaSummary>('/quotas', { signal })
 }

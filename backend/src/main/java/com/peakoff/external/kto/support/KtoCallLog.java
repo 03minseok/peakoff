@@ -105,6 +105,34 @@ public class KtoCallLog {
 		return countsOf(LocalDate.now(clock));
 	}
 
+	/**
+	 * 하루치 호출 수를 화면이 그릴 모양으로 뭉친다. {@code /api/quotas}와 dev 컨트롤러가 함께 쓴다.
+	 *
+	 * <p>한도는 포털이 알려주지 않아 <b>가정값</b>({@link #ASSUMED_DAILY_LIMIT})이다. 그 사실을
+	 * 응답에 실어 보낸다 — 화면이 1,000을 박아 두면 가정을 고칠 때 한쪽만 바뀐다.
+	 * 비율은 소수 첫째 자리까지다(1,000 기준 0.1% = 호출 1건).
+	 */
+	public Summary summaryOf(LocalDate date) {
+		List<Row> rows = countsOf(date).entrySet().stream()
+				.map(entry -> new Row(entry.getKey(), entry.getValue()))
+				.toList();
+		long total = rows.stream().mapToLong(Row::total).sum();
+		return new Summary(date, ASSUMED_DAILY_LIMIT, rows, total);
+	}
+
+	/** 하루치 집계. {@code apis}는 활용신청 단위(API별)로 늘 같은 순서다 — 안 부른 것도 0으로 선다. */
+	public record Summary(LocalDate date, int assumedDailyLimit, List<Row> apis, long totalAllApis) {
+	}
+
+	/** API 하나의 하루치. */
+	public record Row(String api, long total, long success, long failure, double percentOfAssumedLimit) {
+
+		Row(String api, Counts counts) {
+			this(api, counts.total(), counts.success(), counts.failure(),
+					Math.round(counts.total() * 1000.0 / ASSUMED_DAILY_LIMIT) / 10.0);
+		}
+	}
+
 	public Map<String, Counts> countsOf(LocalDate date) {
 		Path file = fileOf(date);
 		Map<String, Counts> result = new LinkedHashMap<>();
