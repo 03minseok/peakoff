@@ -356,6 +356,19 @@
     min-height: 100svh;
   }
 
+  /*
+   * 한 화면 안에서 차례표로 건너뛸 때만 쓰인다(/data). 어디로 갔는지 보여야 차례표가
+   * 차례표 구실을 한다 — 순간이동하면 같은 화면이 다른 내용으로 갈린 것처럼 보인다.
+   *
+   * ⚠️ 움직임에 예민한 사용자에게는 켜지 않는다. 그래서 reduce를 막는 것이 아니라
+   * no-preference일 때만 켠다 — 기본값이 "안 움직임"이어야 안전한 쪽으로 기운다.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
   /* 키보드 이동 시 초점이 어디 있는지 항상 보이게 한다.
      brand가 아니라 brand-deep인 이유: 밝은 틸 테두리는 흰 카드 위에서 2.2:1이라 링으로 서지 못한다. */
   :focus-visible {

@@ -37,11 +37,15 @@ export function DataPage() {
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-7 pb-4">
       <PageHeader />
+      <SectionIndex />
       <LiveTiles />
       <FlowSection />
       <ScoreSection />
       <ThresholdSection />
       <PlaceOffSection />
+      <TimeOffSection />
+      <RegionOffSection />
+      <FullPeakoffSection />
       <SpreadSection />
       <RulesSection />
     </div>
@@ -79,22 +83,96 @@ function Measured({ on }: { on: string }) {
   return <span className="text-hint text-[10.5px] whitespace-nowrap">{on}</span>
 }
 
+/**
+ * 이 화면에 있는 절 전부. <b>번호·이름의 원천이 여기 한 곳</b>이다.
+ *
+ * <p>차례표와 각 절의 머리가 같은 배열을 읽는다. 두 벌로 적으면 절을 하나 끼울 때
+ * 한쪽만 고쳐져 <b>차례에는 있는데 눌러도 안 가는 줄</b>이 생긴다.
+ *
+ * <p>순서가 곧 번호다 — 절을 옮기면 번호도 따라 옮는다. 손으로 매기면 사이에
+ * 하나를 끼울 때 뒤의 번호를 전부 고쳐야 하고, 그러다 하나를 빠뜨린다.
+ */
+const SECTIONS = [
+  { id: 'flow', kicker: 'FLOW', title: '공사 응답이 화면에 닿기까지' },
+  { id: 'scores', kicker: 'SCORES', title: '점수는 둘뿐입니다' },
+  { id: 'evidence', kicker: 'EVIDENCE', title: '값을 정한 근거' },
+  { id: 'place-off', kicker: 'PLACE OFF', title: '대안 하나가 뽑히기까지' },
+  { id: 'time-off', kicker: 'TIME OFF', title: '더 한적한 날짜를 고르는 법' },
+  { id: 'region-off', kicker: 'REGION OFF', title: '어디로 갈지 묻는 자리' },
+  { id: 'full', kicker: 'FULL PEAKOFF', title: '설문에서 코스가 나오기까지' },
+  { id: 'spread', kicker: 'ANTI-CONCENTRATION', title: '같은 곳으로 몰지 않는 장치' },
+  { id: 'rules', kicker: 'RULES', title: '계산이 지키는 것' },
+] as const
+
+type SectionId = (typeof SECTIONS)[number]['id']
+
+/** 번호는 배열의 자리에서 온다. 1부터 세고 두 자리로 맞춘다. */
+function numberOf(id: SectionId) {
+  return String(SECTIONS.findIndex((section) => section.id === id) + 1).padStart(2, '0')
+}
+
+/**
+ * 눌러서 그 절로 건너뛰는 차례표.
+ *
+ * <p>절이 아홉이라 위에서부터 훑기에는 길다. 발표 중에 "그건 여기 있습니다" 하고
+ * 곧장 짚을 수 있어야 이 화면이 <b>가리킬 화면</b> 구실을 한다.
+ *
+ * <p>⚠️ 건너뛴 자리가 헤더 뒤로 숨지 않게 {@code scroll-mt}를 절마다 둔다. 머리 막대는
+ * 넓은 화면에서만 붙어 있으므로(Layout) 여백도 그때만 크다.
+ */
+function SectionIndex() {
+  return (
+    <nav aria-label="이 화면의 차례" className={`${CARD} flex flex-col gap-1.5 p-4`}>
+      <p className="text-fg m-0 text-[13px] font-semibold">이 화면에 있는 것</p>
+      <ol className="m-0 grid list-none grid-cols-1 gap-x-5 p-0 sm:grid-cols-2">
+        {SECTIONS.map((section) => (
+          <li key={section.id}>
+            <a
+              href={`#${section.id}`}
+              className="text-muted hover:text-brand-deep flex items-baseline gap-2 py-1 text-[12.5px] no-underline"
+            >
+              <span className="text-hint font-mono text-[11px] tabular-nums">
+                {numberOf(section.id)}
+              </span>
+              <span>{section.title}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}
+
+/**
+ * 절 하나. <b>이름과 번호는 넘기지 않고 {@link SECTIONS}에서 찾아 쓴다.</b>
+ *
+ * <p>번호가 차례표의 것과 같아야 눌러서 온 사람이 자기가 어디 왔는지 안다.
+ * 부르는 쪽이 번호를 손으로 넘기면 언젠가 둘이 어긋난다.
+ */
 function Section({
-  kicker,
-  title,
+  id,
   lead,
   children,
 }: {
-  kicker: string
-  title: string
+  id: SectionId
   lead?: string
   children: React.ReactNode
 }) {
+  const meta = SECTIONS.find((section) => section.id === id)
+  if (!meta) {
+    return null
+  }
   return (
-    <section className="flex flex-col gap-3">
+    <section id={id} className="flex scroll-mt-4 flex-col gap-3 lg:scroll-mt-[72px]">
       <div className="flex flex-col gap-1.5">
-        <p className={KICKER}>{kicker}</p>
-        <h2 className={SECTION_TITLE}>{title}</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-hint font-mono text-[11px] font-semibold tabular-nums">
+            {numberOf(id)}
+          </span>
+          <span className="bg-line h-px w-3" aria-hidden="true" />
+          <p className={KICKER}>{meta.kicker}</p>
+        </div>
+        <h2 className={SECTION_TITLE}>{meta.title}</h2>
         {lead && <p className={LEAD}>{lead}</p>}
       </div>
       {children}
@@ -294,8 +372,7 @@ function Step({
 function FlowSection() {
   return (
     <Section
-      kicker="FLOW"
-      title="공사 응답이 화면에 닿기까지"
+      id="flow"
       lead="파일을 받아 두거나 DB에 적재하지 않습니다. 값이 필요할 때마다 공사에 묻고, 성능을 위해 원자료만 잠시 기억합니다."
     >
       <div className={`${CARD} p-4.5`}>
@@ -380,8 +457,7 @@ function FlowSection() {
 function ScoreSection() {
   return (
     <Section
-      kicker="SCORES"
-      title="점수는 둘뿐입니다"
+      id="scores"
       lead="화면에 없는 값으로 목록을 줄 세우면 '왜 이게 1등인지'를 설명할 수 없습니다. 그래서 셋째 점수를 만들지 않았습니다."
     >
       <div className="flex flex-col gap-2.5">
@@ -477,8 +553,7 @@ function Evidence({
 function ThresholdSection() {
   return (
     <Section
-      kicker="EVIDENCE"
-      title="값을 정한 근거"
+      id="evidence"
       lead="아래 숫자들은 임의로 고른 것이 아니라 실제 데이터를 재서 정했습니다. 측정한 날짜를 함께 적습니다."
     >
       <div className="flex flex-col gap-2.5">
@@ -646,8 +721,7 @@ function CardHead({ title, measured }: { title: string; measured: string }) {
 function PlaceOffSection() {
   return (
     <Section
-      kicker="PLACE OFF"
-      title="대안 하나가 뽑히기까지"
+      id="place-off"
       lead="붐빌 것으로 예측된 자리에 다른 곳을 권하는 경로입니다. 거르기가 먼저이고 뽑기가 마지막입니다 — 순서를 뒤집으면 자격 미달 후보가 무작위로 1등이 될 수 있습니다."
     >
       {/* 1. 거르기 */}
@@ -926,6 +1000,439 @@ function PlaceOffSection() {
   )
 }
 
+/* ── 날짜 대안 ────────────────────────────────────────────── */
+
+/**
+ * 날짜를 옮기는 회피 경로.
+ *
+ * <p>접수 때 낸 서비스 개요가 <b>회피 경로 둘</b>을 약속했다 — 날짜와 장소. 장소 쪽이
+ * 훨씬 두꺼워 보여 이 경로가 곁가지처럼 읽히기 쉬운데, 실제로는 <b>먼저 물어야 할 쪽</b>이다.
+ * 날짜 하나를 옮기면 코스 전체의 한적도가 함께 움직인다.
+ */
+function TimeOffSection() {
+  return (
+    <Section
+      id="time-off"
+      lead="장소를 바꾸는 대신 날짜를 옮기는 길입니다. 코스는 그대로 두고 하루를 옮기면 모든 칸의 한적도가 함께 바뀝니다."
+    >
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="앞뒤로 사흘씩, 이레를 봅니다" measured="설계 규칙 · 상한 앞뒤 14일" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          <strong className="text-fg font-semibold">앞으로만 보지 않습니다.</strong> 앞만 보면 사용자가
+          날짜를 옮긴 뒤 원래 날짜로 돌아갈 수 없습니다 — 옮긴 날짜를 기준으로 다시 물으면 이전 날짜는
+          창 밖(과거)이라 목록에 영영 나오지 않습니다. 앞뒤로 열어 두면 되돌아갈 날짜가 늘 목록 안에
+          있습니다.
+        </p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          <strong className="text-fg font-semibold">사흘인 이유</strong>는 여행 날짜를 옮길 수 있는 폭이
+          현실적으로 주말 하나를 넘지 않기 때문입니다. 넓게 열어 두면{' '}
+          <strong className="text-fg font-semibold">"두 주 뒤가 가장 한적합니다"</strong> 같은, 실행할 수
+          없는 제안이 위로 올라옵니다.
+        </p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          더 붐비는 날과 고를 수 없는 날도 함께 내려보냅니다. 화면이{' '}
+          <strong className="text-fg font-semibold">날짜를 고르는 표</strong>로 쓰이기 때문입니다 —
+          되돌아갈 날짜와 견줄 대상이 함께 있어야 표가 표 구실을 합니다.
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="다섯 상태로 답하고, 순서가 규칙입니다" measured="설계 규칙" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          예전에는 참·거짓 하나였습니다. 그러면 화면이 할 수 있는 말이 둘뿐인데,{' '}
+          <strong className="text-fg font-semibold">"더 나은 날이 없다"와 "자료를 못 불러왔다"와 "이미
+          충분히 한적하다"는 전혀 다른 소식</strong>입니다. 위에서부터 먼저 들어맞는 것을 씁니다 —
+          조건을 나란히 두면 둘이 동시에 참일 때 어느 쪽을 보여줄지가 코드 순서로 우연히 정해집니다.
+        </p>
+        {/*
+         * ⚠️ 색 둘이 <b>같은 자의 두 눈금이 아니다.</b> ②의 초록은 등급 신호(그 날이 실제로
+         * 한적하다)이고 ⑤의 틸은 강조(화면이 개선폭을 내세워도 되는 유일한 상태)다.
+         * 팔레트가 둘에게 다른 자리를 준 그대로 쓴 것이지, 5단계 색 눈금이 아니다.
+         */}
+        <ol className="m-0 flex list-none flex-col gap-2 p-0">
+          {[
+            { no: 1, label: '자료 부족', text: '날짜 정보를 충분히 불러오지 못했어요' },
+            { no: 2, label: '이미 한적', text: '지금 일정도 충분히 여유로워요', tone: 'quiet' as const },
+            { no: 3, label: '지금이 최선', text: '선택한 날짜가 앞뒤 며칠 중 가장 한적해요' },
+            { no: 4, label: '차이 미미', text: '날짜별 혼잡 차이가 크지 않아요' },
+            { no: 5, label: '권함', text: '더 한적한 날짜가 있어요', tone: 'brand' as const },
+          ].map((row) => (
+            <li
+              key={row.no}
+              className={`rounded-ui flex items-baseline gap-2.5 px-3.5 py-2.5 ${
+                row.tone === 'quiet' ? 'bg-quiet-tint' : row.tone === 'brand' ? 'bg-brand-tint' : 'bg-bg'
+              }`}
+            >
+              <span className="text-hint font-mono text-[11px] font-semibold">{row.no}</span>
+              <span
+                className={`flex-none text-[11px] font-semibold ${
+                  row.tone === 'quiet' ? 'text-quiet-deep' : 'text-hint'
+                }`}
+              >
+                {row.label}
+              </span>
+              <span
+                className={`text-[12.5px] leading-[1.6] ${
+                  row.tone === 'quiet' ? 'text-quiet-deep' : 'text-muted'
+                }`}
+              >
+                {row.text}
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          ② 가 특히 중요합니다. 코스 전체가 이미 한적한데 <Num>1</Num>점 더 나은 날을 들이밀면 서비스가{' '}
+          <strong className="text-fg font-semibold">쓸데없이 참견하는 것</strong>이 됩니다. 개별 장소가
+          붐비는 문제는 장소 교체가 맡습니다 — 칸 하나가 붐빈다고 여행 날짜 전체를 옮기라고 할 일은
+          아닙니다.
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-2 p-4.5`}>
+        <CardHead title="옮기라고 권하는 최소 개선폭" measured="분석 검증 전 임시값" />
+        <p className="text-brand-deep m-0 text-[17px] font-semibold tracking-[-0.01em]">
+          한적도 <Num>+5</Num>점
+        </p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          장소 교체의 하한과 <strong className="text-fg font-semibold">값은 같지만 상수를 나눠
+          두었습니다.</strong> 날짜를 옮기는 것은 숙소·교통까지 딸린 큰 결정이고 장소 하나를 바꾸는 것은
+          가볍습니다 — 실행 비용이 다르니 언제든 갈릴 값이고, 지금 같다는 이유로 묶어 두면 한쪽을
+          조정할 때 다른 쪽이 딸려 옵니다. 이 값도 화면에 적지 않고{' '}
+          <strong className="text-fg font-semibold">응답에 실어 보냅니다.</strong>
+        </p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          동점이면 <strong className="text-fg font-semibold">기준일에 가까운 날</strong>을, 그래도 같으면
+          이른 날을 고릅니다. 이미 잡아 둔 일정에서 덜 움직이는 쪽이 실행 가능성이 높습니다.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+/* ── 지역 추천 챗봇 ────────────────────────────────────────── */
+
+function RegionOffSection() {
+  return (
+    <Section
+      id="region-off"
+      lead="아직 어디로 갈지 안 정한 사람의 입구입니다. 질문 하나를 지역 카드 둘로 바꿉니다."
+    >
+      <div className="bg-moderate-tint rounded-card flex items-start gap-2.5 px-4 py-3.5">
+        <span className="bg-moderate mt-1.5 h-2 w-2 flex-none rounded-full" aria-hidden="true" />
+        <p className="text-moderate-deep m-0 text-[12.5px] leading-[1.7]">
+          <strong className="font-semibold">이름과 달리 "다른 데 가라"가 아닙니다.</strong> 지역을 이미
+          정한 사람에게 바꾸라고 하지 않습니다. 나머지 기능이 전부{' '}
+          <strong className="font-semibold">지역을 정했다고 전제</strong>하는데, 여행의 첫 결정은 "어디
+          갈까"라 그 자리가 비어 있었습니다.
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="층이 셋이고, 가운데가 우리 것입니다" measured="설계 규칙" />
+        <ol className="m-0 flex list-none flex-col gap-2 p-0">
+          <li className="bg-bg rounded-ui flex flex-col gap-0.5 px-3.5 py-3">
+            <span className="text-hint text-[11px] font-semibold">LLM ①</span>
+            <span className="text-muted text-[12.5px] leading-[1.7]">
+              질문 → 관심사 · 기간 조각. <strong className="text-fg font-semibold">고르기와 읽기만</strong>{' '}
+              시킵니다.
+            </span>
+          </li>
+          <li className="bg-brand-tint rounded-ui flex flex-col gap-0.5 px-3.5 py-3">
+            <span className="text-brand-deep text-[11px] font-semibold">서버</span>
+            <span className="text-fg text-[12.5px] leading-[1.7]">
+              그것으로 <strong className="font-semibold">지역과 날짜를 정합니다. 판단은 전부 여기</strong>서
+              일어납니다.
+            </span>
+          </li>
+          <li className="bg-bg rounded-ui flex flex-col gap-0.5 px-3.5 py-3">
+            <span className="text-hint text-[11px] font-semibold">LLM ②</span>
+            <span className="text-muted text-[12.5px] leading-[1.7]">
+              우리가 준 값 → 문장. <strong className="text-fg font-semibold">옮기기만</strong> 시킵니다.
+            </span>
+          </li>
+        </ol>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          <strong className="text-fg font-semibold">위아래가 다 죽어도 가운데는 돕니다.</strong> ①이 없으면
+          관심사 없이 한적한 곳을 고르고, ②가 없으면 서버 템플릿이 문장을 씁니다. 인증키가 없거나 하루
+          상한에 닿아도 오류가 아니라 설문으로 안내합니다 — 화면 한 칸이 빨갛게 죽는 것이 더 손해입니다.
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="LLM에게 시키지 않는 것 둘" measured="2026-09 실측" />
+        <div className="flex flex-col gap-1">
+          <p className="text-fg m-0 text-[13px] font-semibold">지역을 고르게 하지 않습니다</p>
+          <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+            막는 방법이 프롬프트가 아니라 <strong className="text-fg font-semibold">응답 스키마에 지역
+            칸을 만들지 않는 것</strong>입니다. 프롬프트로 금지하면 언젠가 넘어오지만, 받을 칸이 없으면
+            넘어올 자리가 없습니다. 같은 이유로 관심사도 자유 문자열이 아니라{' '}
+            <strong className="text-fg font-semibold">정해진 아홉</strong> 중 하나입니다.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-fg m-0 text-[13px] font-semibold">날짜 산수를 시키지 않습니다</p>
+          <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+            "며칠 뒤냐"를 숫자로 물었더니 <strong className="text-fg font-semibold">"10월 중순"을{' '}
+            <Num>45</Num>일로 읽었습니다</strong>(실제 <Num>38</Num>일). 오늘이 며칠인지 알려준 적이
+            없으니 답할 수 없는 것을 물어본 셈입니다. 모델은{' '}
+            <strong className="text-fg font-semibold">조각만 읽고</strong>, 달력은 서버가 봅니다.
+          </p>
+        </div>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="물어본 기간만 셉니다" measured="2026-09-08 실측" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          기간을 안 말하면 예측이 닿는 기간 전체를, 말하면 그 며칠만 셉니다.{' '}
+          <strong className="text-fg font-semibold">사소한 차이가 아닙니다</strong> — 같은 자료를 창만 바꿔
+          재면 순위가 뒤집힙니다.
+        </p>
+        <div className="bg-bg rounded-ui flex flex-col gap-2 p-3.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-muted text-[12.5px]">서귀포시 · 30일 창</span>
+            <span className="text-hint font-mono text-[12.5px]">꼴찌 20.2%</span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-fg text-[12.5px] font-semibold">서귀포시 · 9/12~13 주말</span>
+            <span className="text-quiet-deep font-mono text-[12.5px] font-semibold">1위 21.8%</span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-muted text-[12.5px]">통영시 · 30일 → 그 주말</span>
+            <span className="text-crowded-deep font-mono text-[12.5px]">51.6% → 16.5%</span>
+          </div>
+        </div>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          주말을 물은 사람에게 한 달 평균으로 답하는 것은 정밀도 문제가 아니라{' '}
+          <strong className="text-fg font-semibold">틀린 지역을 주는 일</strong>입니다. 창 밖을 물으면
+          카드를 주지 않고 "아직 예측이 나오지 않았어요"라고 합니다 — 지금 창의 지역을 붙이면 사용자가
+          그것을 물어본 시점의 답으로 읽습니다. 달력으로 셀 수 없는 말("추석 연휴"·"단풍철")은 모델
+          지식에 기대야 하므로 읽지 않습니다.
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="카드에 적히는 숫자는 평균이 아닙니다" measured="설계 규칙" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          그 기간의 <strong className="text-fg font-semibold">(장소 × 날짜) 관측 중 한적(65+)인 관측의
+          비율</strong>입니다. 지역 평균 한적도가 아닙니다 — 열한 곳이 전부 <Num>48~63</Num>으로
+          "보통"이라 평균으로는 카드가 서로 구분되지 않습니다. 비율로 세면 제주시 <Num>17%</Num>에서 통영{' '}
+          <Num>52%</Num>까지 벌어집니다.
+        </p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          ⚠️ 이 값에는 <strong className="text-fg font-semibold">3단계 배지를 붙이지 않습니다.</strong>{' '}
+          <Num>65</Num>/<Num>35</Num>는 한적도의 경계라 이 값에는 뜻이 없습니다. 문구를 가르는 기준도
+          따로입니다 — <Num>40%</Num> 이상이면 "한적한 곳이 많은 편이에요", 아래면 "덜 붐비는 편이에요".{' '}
+          <Num>18%</Num>인데 "한적한 곳이 많다"고 하면 <strong className="text-fg font-semibold">화면이
+          스스로 모순됩니다.</strong>
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="두 장 다 한적한 쪽에서 고릅니다" measured="2026-09-08 되돌림" />
+        <ol className="m-0 flex list-none flex-col gap-2 p-0">
+          <li className="bg-bg rounded-ui flex flex-col gap-0.5 px-3.5 py-3">
+            <span className="text-fg text-[12.5px] font-semibold">거르기 · 관심사의 몫이 중앙값 이상</span>
+            <span className="text-muted text-[12px] leading-[1.7]">
+              관심사는 <strong className="text-fg font-semibold">문이지 점수가 아닙니다.</strong> 분류마다
+              몫의 크기가 달라(음식 17~45% · 체험 2~6%) 절대 등급을 세울 수 없으므로, 그 분류 안에서
+              상대적으로 강한 절반만 남깁니다.
+            </span>
+          </li>
+          <li className="bg-bg rounded-ui flex flex-col gap-0.5 px-3.5 py-3">
+            <span className="text-fg text-[12.5px] font-semibold">자르기 · 한적한 순 위쪽 절반</span>
+            <span className="text-muted text-[12px] leading-[1.7]">
+              바닥으로 <strong className="text-fg font-semibold">최소 <Num>4</Num>곳</strong>을 둡니다.
+              관심사가 좁으면 후보가 다섯뿐이라 절반만 남기면 통이 둘~셋이 되고, 그러면 늘 같은 조합이
+              나가 <strong className="text-fg font-semibold">그곳이 새로운 혼잡지</strong>가 됩니다.
+            </span>
+          </li>
+          <li className="bg-brand-tint rounded-ui flex flex-col gap-0.5 px-3.5 py-3">
+            <span className="text-fg text-[12.5px] font-semibold">뽑기 · 그 통에서 둘을 균등 무작위</span>
+            <span className="text-fg text-[12px] leading-[1.7]">
+              가중이 아니라 <strong className="font-semibold">균등</strong>입니다. 자격으로 이미 자른 뒤
+              남은 점수 차는 우열이 아니라 같은 등급 안의 잔차입니다.
+            </span>
+          </li>
+        </ol>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          ⚠️ 한때 <strong className="text-fg font-semibold">아래쪽에서 하나를 일부러 끼웠다가
+          되돌렸습니다.</strong> "붐비는 곳이 하나 섞여야 차이가 보인다"고 만들었는데, 추천받는 사람에게는{' '}
+          <strong className="text-fg font-semibold">고를 것이 하나뿐</strong>이었습니다. 한산한 곳으로
+          사람을 보내는 것이 목적인 서비스가 덜 한산한 곳에 한 자리를 보장하고 있었습니다.
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="계산하지 않은 것을 말하지 않게 막습니다" measured="실제로 나온 답에서" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          LLM이 쓴 문장은 검증을 통과해야 카드에 오릅니다 — <Num>40</Num>자 이하 ·{' '}
+          <strong className="text-fg font-semibold">숫자 금지</strong>(카드의 숫자는 전부 서버가 계산합니다)
+          · 다른 지역 이름 금지 · 금칙어. 걸리면 템플릿이 그 자리를 지킵니다.
+        </p>
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {[
+            {
+              words: '지금 · 현재 · 실시간 · 오늘 · 요즘',
+              why: '공사 자료는 예측이다 — "여수는 지금 아주 한적해요"',
+            },
+            {
+              words: '이번 주 · 이번 달',
+              why: '어느 기간을 봤는지는 서버가 말한다. 모델이 적으면 한 달치를 보고 이레의 이야기인 척한다',
+            },
+            {
+              words: '방문객 · 관광객 · 인파 · 유명',
+              why: '우리는 사람 수를 세지 않는다 — "제주시는 방문객이 많은 편이에요"',
+            },
+          ].map((row) => (
+            <li key={row.words} className="bg-crowded-tint rounded-ui flex flex-col gap-0.5 px-3.5 py-2.5">
+              <span className="text-crowded-deep text-[12.5px] font-semibold">{row.words}</span>
+              <span className="text-crowded-deep text-[11.5px] leading-[1.6] opacity-90">{row.why}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Section>
+  )
+}
+
+/* ── 설문 코스 초안 ────────────────────────────────────────── */
+
+function FullPeakoffSection() {
+  return (
+    <Section
+      id="full"
+      lead="지역만 알고 어디를 담을지 모르는 사람에게 코스 초안을 만들어 줍니다. 사후 교정이 아니라 사전 분산 유도라, 과제 해결 측면에서는 이쪽이 더 강합니다."
+    >
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="문항이 둘뿐인 것은 줄인 결과입니다" measured="2026-08-27" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          넷이었다가 둘을 걷어냈습니다. 지킬 규칙이 하나 있어서입니다 —{' '}
+          <strong className="text-fg font-semibold">어느 답을 골라도 코스가 나와야 합니다.</strong> 고른
+          대가로 결과가 비는 문항은 선택지가 아니라 함정입니다.
+        </p>
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <li className="bg-crowded-tint rounded-ui flex flex-col gap-0.5 px-3.5 py-2.5">
+            <span className="text-crowded-deep text-[12.5px] font-semibold">걷어냄 · 여행 스타일</span>
+            <span className="text-crowded-deep text-[11.5px] leading-[1.6] opacity-90">
+              하나만 고르면 후보가 제주시 3곳·서귀포 2곳으로 쪼그라들었다
+            </span>
+          </li>
+          <li className="bg-crowded-tint rounded-ui flex flex-col gap-0.5 px-3.5 py-2.5">
+            <span className="text-crowded-deep text-[12.5px] font-semibold">걷어냄 · 이동수단</span>
+            <span className="text-crowded-deep text-[11.5px] leading-[1.6] opacity-90">
+              대중교통을 고르면 반경 8km 밖이 통째로 잘렸다
+            </span>
+          </li>
+        </ul>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          둘 다 <strong className="text-fg font-semibold">"고른 답이 후보를 거른다"</strong>는 같은
+          병이었습니다. 남은 두 문항은 후보를 거르지 않습니다 — 밀도는 슬롯 수만, 민감도는 점수 비중과
+          하한만 바꿉니다.
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="남은 두 문항이 바꾸는 것" measured="설계 규칙" />
+        <div className="flex flex-col gap-1.5">
+          <p className="text-fg m-0 text-[13px] font-semibold">일정 밀도 · 하루에 몇 칸</p>
+          <div className="bg-bg rounded-ui flex flex-col gap-1.5 p-3.5">
+            {[
+              ['여유', '2~3칸'],
+              ['적당', '3~4칸'],
+              ['알차게', '4~5칸'],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-3">
+                <span className="text-muted text-[12.5px]">{label}</span>
+                <span className="text-brand-deep text-[12.5px] font-semibold">
+                  <Num>{value}</Num>
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-hint m-0 text-[11.5px] leading-[1.7]">
+            범위 안에서 <strong className="text-muted font-semibold">날마다 다시 뽑습니다.</strong> 장소만
+            분산하고 코스 골격이 늘 같으면 결국 같은 동선이 됩니다.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-fg m-0 text-[13px] font-semibold">혼잡 민감도 · 점수와 후보군</p>
+          <div className="bg-bg rounded-ui flex flex-col gap-1.5 p-3.5">
+            {[
+              ['유명한 곳 위주', '55:45', '후보군 제한 없음'],
+              ['적당히 섞기', '70:30', '후보군 8곳'],
+              ['한적한 곳 위주', '85:15', '후보군 5곳 · 붐빔 제외'],
+            ].map(([label, ratio, pool]) => (
+              <div key={label} className="flex flex-col gap-0.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-muted text-[12.5px]">{label}</span>
+                  <span className="text-brand-deep text-[12.5px] font-semibold">
+                    <Num>{ratio}</Num>
+                  </span>
+                </div>
+                <span className="text-hint text-[11px]">{pool}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-hint m-0 text-[11.5px] leading-[1.7]">
+            <strong className="text-muted font-semibold">세 답 모두 한적도의 비중이 가장 큽니다.</strong>{' '}
+            "유명한 곳 위주"를 골라도 인기도가 가점이 되지는 않습니다 — 그것은 과제와 정면으로 어긋나서,
+            설문 답 하나로 뒤집을 수 있는 것이 아닙니다. 명소가 코스에 오르게 하는 장치는{' '}
+            <strong className="text-muted font-semibold">후보군을 자르지 않는 것</strong>과 한적도 하한을
+            걸지 않는 것입니다.
+          </p>
+        </div>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="거리는 둘로 막습니다" measured="분석 검증 전 임시값" />
+        <div className="bg-bg rounded-ui flex flex-col gap-1.5 p-3.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-muted text-[12.5px]">그 날 첫 장소로부터의 반경</span>
+            <span className="text-brand-deep text-[12.5px] font-semibold">
+              <Num>25km</Num>
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-muted text-[12.5px]">직전 장소에서 다음 장소까지</span>
+            <span className="text-brand-deep text-[12.5px] font-semibold">
+              <Num>15km</Num>
+            </span>
+          </div>
+        </div>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          <strong className="text-fg font-semibold">둘인 이유</strong>는 슬롯 간 거리만 제한하면 짧은
+          이동이 이어져 하루 동안 한 방향으로 계속 밀려날 수 있기 때문입니다 — <Num>5km</Num>씩 네 번이면{' '}
+          <Num>20km</Num>입니다. 날 단위 반경이 그 표류를 막습니다.
+        </p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          이동수단 문항을 걷어내면서 자차(<Num>25km</Num>)와 대중교통(<Num>8km</Num>) 중{' '}
+          <strong className="text-fg font-semibold">넓은 쪽을 남겼습니다.</strong> 좁은 쪽으로 두면
+          고치려던 "추천이 안 뜬다"가 그대로 다시 생깁니다. 거리는 좌표 기반 직선거리이지 실제 도로·환승
+          시간이 아닙니다 — 최단 경로 최적화는 이 서비스의 범위가 아니고, "하루에 다닐 만한가"만 가리면
+          충분합니다.
+        </p>
+      </div>
+
+      <div className={`${CARD} flex flex-col gap-2 p-4.5`}>
+        <CardHead title="후보는 대표 관광지 100곳에서" measured="설계 규칙" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          공사 <strong className="text-fg font-semibold">중심 관광지</strong>(실제 이동 데이터 기반 순위)
+          상위 <Num>100</Num>곳을 원천으로 삼고, 거기서{' '}
+          <strong className="text-fg font-semibold">코스에 어울리지 않는 분류만</strong> 뺍니다 —
+          음식점·숙박·축제, 그리고 문화·명소에 섞여 있는 리조트·도서관·수련관. 그 뒤는 장소 교체와 같은
+          장치를 씁니다: 추천도를 매기고, 상위 후보군에서 가중 무작위로 한 칸씩 채웁니다.
+        </p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          <strong className="text-fg font-semibold">1등을 그대로 쓰지 않는 이유가 여기서도 같습니다.</strong>{' '}
+          같은 장소가 모든 사용자에게 추천되면 그곳이 새로운 혼잡지가 됩니다. 붐비는 곳을 피하라고 안내해
+          놓고 한 곳으로 몰아주면 서비스가 직접 2차 오버투어리즘을 만드는 셈입니다.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
 /* ── 분산 ──────────────────────────────────────────────────── */
 
 /**
@@ -937,9 +1444,8 @@ function PlaceOffSection() {
 function SpreadSection() {
   return (
     <Section
-      kicker="ANTI-CONCENTRATION"
-      title="같은 곳으로 몰지 않는 장치"
-      lead="동일한 대안이 모든 사용자에게 반복 추천되면 그곳이 새로운 혼잡지가 됩니다. 오버투어리즘을 풀겠다는 서비스가 오버투어리즘을 만드는 셈입니다."
+      id="spread"
+      lead="동일한 대안이 모든 사용자에게 반복 추천되면 그곳이 새로운 혼잡지가 됩니다. 오버투어리즘을 풀겠다는 서비스가 오버투어리즘을 만드는 셈입니다. 위 네 경로가 모두 이 장치를 지납니다."
     >
       {/* 뽑기 방식 */}
       <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
@@ -1115,7 +1621,7 @@ function RulesSection() {
   ]
 
   return (
-    <Section kicker="RULES" title="계산이 지키는 것">
+    <Section id="rules">
       <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
         {rules.map((rule) => (
           <li key={rule.title} className={`${CARD} flex flex-col gap-1 p-4`}>
