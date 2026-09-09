@@ -33,7 +33,16 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # root로 돌리지 않는다. 컨테이너가 뚫렸을 때 할 수 있는 일을 줄인다.
-RUN useradd --system --create-home --shell /usr/sbin/nologin peakoff
+#
+# ⚠️ 계정을 만드는 김에 <b>작업 디렉터리를 넘겨준다.</b> WORKDIR이 만든 /app은 root 소유라,
+# USER를 바꾸기만 하면 앱이 그 안에 아무것도 쓰지 못한다. 실제로 그래서 공사 호출 기록
+# (data/kto-calls)이 배포 서버에서 통째로 비어 있었다 — 호출은 제대로 나가는데 세는 것만
+# 조용히 실패했고, /api/quotas가 늘 0을 보여 "공사 API를 안 쓴다"는 정반대의 증거가 됐다.
+#
+# 폴더를 이미지 안에서 미리 만들어 두는 것도 이유가 있다. compose가 여기에 볼륨을 붙이는데,
+# 도커는 <b>새 볼륨을 만들 때 이미지 쪽 폴더의 소유권을 그대로 가져간다</b> — 미리 chown 해
+# 두지 않으면 볼륨이 root 소유로 생겨 같은 문제가 되돌아온다.
+RUN useradd --system --create-home --shell /usr/sbin/nologin peakoff  && mkdir -p /app/data  && chown -R peakoff:peakoff /app
 USER peakoff
 
 COPY --from=build --chown=peakoff:peakoff /src/build/libs/*.jar app.jar

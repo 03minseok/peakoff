@@ -78,6 +78,11 @@ services:
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-}
       NAVER_REDIRECT_URI: ${NAVER_REDIRECT_URI:-}
+    volumes:
+      # 공사 API 호출 기록. 컨테이너 밖에 두어야 재배포에도 그날 수가 남는다(맨 아래 설명).
+      # ⚠️ 이미지가 /app/data를 실행 계정 소유로 미리 만들어 둔다 — 도커가 새 볼륨을 만들 때
+      # 그 소유권을 가져가기 때문이다. 그것이 없으면 볼륨이 root 소유로 생겨 다시 못 쓴다.
+      - ktocalls:/app/data
     ports:
       # 밖에서 오는 것은 Vercel의 리라이트뿐이다. 브라우저가 직접 부르지 않는다.
       - '8080:8080'
@@ -103,3 +108,7 @@ services:
 
 volumes:
   pgdata:
+  # 공사 API 호출 기록(data/kto-calls). 컨테이너 안에만 두면 <b>배포할 때마다 그날 수가 0으로
+  # 돌아간다</b> — 심사 직전에 배포하면 "오늘 몇 번 불렀나"라는 증거가 사라진다.
+  # 한도가 하루 단위라 그 수를 잃으면 "한도를 넘겼나"에도 답할 수 없다.
+  ktocalls:

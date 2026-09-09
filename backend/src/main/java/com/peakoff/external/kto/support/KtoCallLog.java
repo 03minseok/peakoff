@@ -74,6 +74,21 @@ public class KtoCallLog {
 	/** 이 프로세스가 이미 경고한 지점. 같은 경고를 매 호출마다 찍지 않기 위해서다. */
 	private final Map<String, Integer> warnedLevel = new java.util.concurrent.ConcurrentHashMap<>();
 
+	/**
+	 * 기록을 못 남긴다고 이미 알렸는가.
+	 *
+	 * <p>⚠️ <b>이것이 없어서 오래 못 봤다</b> (2026-09-09). 배포 컨테이너에서 쓰기가 막혀 있었는데
+	 * 실패를 {@code debug}로 삼키고 있어 운영 로그(INFO)에 한 줄도 남지 않았다. 그동안
+	 * {@code /api/quotas}는 늘 0을 보여줬고, 공사 API를 실제로 부른다는 증거로 만든 화면이
+	 * <b>정반대를 증명</b>하고 있었다.
+	 *
+	 * <p>그렇다고 매 호출마다 찍으면 로그가 그것으로 덮인다. <b>한 번만</b> 알리고,
+	 * 어디에 쓰려다 실패했는지 <b>절대 경로</b>를 함께 남긴다 — 상대 경로만 적으면 컨테이너에서
+	 * 그게 어디인지 알 수 없다.
+	 */
+	private final java.util.concurrent.atomic.AtomicBoolean warnedNotWritable =
+			new java.util.concurrent.atomic.AtomicBoolean();
+
 	public KtoCallLog(Clock clock) {
 		this.clock = clock;
 		this.directory = Path.of("data", "kto-calls");
@@ -94,7 +109,11 @@ public class KtoCallLog {
 					StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 		}
 		catch (IOException e) {
-			log.debug("공사 호출 기록에 실패했습니다. api={}", api, e);
+			if (warnedNotWritable.compareAndSet(false, true)) {
+				log.warn("[공사 API] ⚠️ 호출 기록을 남기지 못합니다. 이후 이 경고는 다시 찍지 않습니다. "
+								+ "경로={} (쓰기 권한을 확인하세요). 호출 자체는 정상이지만 /api/quotas가 0으로 보입니다.",
+						directory.toAbsolutePath(), e);
+			}
 			return;
 		}
 		warnIfNearLimit(api, todayCounts().getOrDefault(api, Counts.EMPTY).total());
