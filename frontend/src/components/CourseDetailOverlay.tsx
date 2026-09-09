@@ -205,8 +205,13 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
                     지난 여행에는 버튼을 두지 않는다. 예측 데이터가 미래만 다루므로
                     지난 날짜로 다시 진단하면 값이 나오지 않는다. 버튼을 비활성으로 두는 대신
                     문장으로 이유를 말한다 — 잠긴 버튼은 "왜 안 되는지"를 설명하지 못한다.
+
+                    ⚠️ <b>시작일로 잰다.</b> 마이페이지가 예정·지난을 가르는 기준과 같아야
+                    "예정된 여행"에서 연 창과 "지난 여행"에서 연 창이 다른 말을 하지 않는다.
+                    끝나는 날로 재면 어제 떠난 여행에 버튼이 서는데, 코스 짜기가 오늘 이전
+                    시작일을 받지 않아 눌러도 진단이 나오지 않는다.
                   */}
-              {isPastDate(course.endDate) ? (
+              {isPastDate(course.startDate) ? (
                 <p className="bg-bg text-hint rounded-ui m-0 mt-1 px-3.5 py-3 text-center text-[12.5px] leading-[1.6]">
                   지난 여행이에요.
                   <br />
