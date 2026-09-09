@@ -4,7 +4,7 @@ import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import { DatePicker } from './DatePicker'
 import { fetchForecastWindow } from '../services/api'
 import type { PublicCourse, PublicPlace } from '../types/api'
-import { formatDateRange, formatKoreanDate, formatNights, isPastDate, today } from '../utils/date'
+import { formatDateRange, formatKoreanDate, formatNights, today } from '../utils/date'
 import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
@@ -63,8 +63,6 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
   course.places.forEach((place) => {
     byDay[place.day - 1]?.push(place)
   })
-
-  const past = isPastDate(course.endDate)
 
   /**
    * 고른 출발일. <b>빈 문자열이면 아직 안 골랐다.</b>
@@ -306,17 +304,15 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
                 </button>
               </div>
             )}
-            {past && !picking && (
-              /*
-                지난 여행이라는 사실은 그대로 알린다. 다만 "날짜는 새로 골라 드려요"가
-                아니라 <b>사용자가 고른다</b> — 위 버튼이 이제 날짜부터 묻는다.
-              */
-              <p className="text-hint m-0 text-center text-[11.5px] leading-[1.6]">
-                지난 날짜의 여행이라
-                <br />
-                장소만 담고 날짜는 새로 골라요.
-              </p>
-            )}
+            {/*
+              ⚠️ <b>"지난 날짜의 여행이라 장소만 담고 날짜는 새로 골라요"를 걷어냈다</b>
+              (2026-09-09).
+
+              지난 코스에만 이 줄을 세웠는데, <b>지나지 않은 코스도 똑같이 동작한다</b> —
+              위 달력은 어느 코스에서 열든 늘 오늘부터 시작하고(남의 출발일을 물려주지
+              않는다), 담아 오는 것은 어느 쪽이든 장소뿐이다. 모든 코스에 해당하는 일을
+              한쪽에만 적으면 <b>다른 쪽은 날짜까지 따라오는 것처럼</b> 읽힌다.
+            */}
           </article>
         </div>
       </div>
