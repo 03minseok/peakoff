@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.peakoff.auth.jwt.AuthenticatedMember;
+import com.peakoff.chat.dto.ChatLinesRequest;
+import com.peakoff.chat.dto.ChatLinesResponse;
 import com.peakoff.chat.dto.ChatRequest;
 import com.peakoff.chat.dto.ChatResponse;
 import com.peakoff.chat.service.RegionChatService;
@@ -88,6 +90,21 @@ public class ChatController {
 	 * <p>회원은 <b>기기를 옮겨도 같은 사람</b>이고, 게스트는 주소로 가른다.
 	 * 회원을 IP로 세면 같은 와이파이를 쓰는 일행이 서로의 몫을 깎는다.
 	 */
+	@Operation(summary = "카드 문장만 따로 받기",
+			description = """
+					위 /regions가 먼저 준 카드에 <b>더 나은 문장</b>을 얹는다. 카드는 이미 템플릿 문장으로
+					완결돼 있으므로 이 요청이 늦거나 실패해도 화면은 그대로다.
+
+					앞 응답의 moreLines가 false면 부르지 않는다 — 같은 템플릿이 돌아올 뿐이다.
+					돌려주는 것은 문장뿐이고, 카드의 숫자는 앞 응답의 것(서버가 계산한 값)이 남는다.""")
+	@PostMapping("/regions/lines")
+	public ApiResponse<ChatLinesResponse> lines(
+			@Valid @RequestBody ChatLinesRequest request,
+			@AuthenticationPrincipal AuthenticatedMember member,
+			HttpServletRequest servletRequest) {
+		return ApiResponse.ok(chatService.lines(request, callerKeyOf(member, servletRequest)));
+	}
+
 	private static String callerKeyOf(AuthenticatedMember member, HttpServletRequest request) {
 		if (member != null) {
 			return "member:" + member.id();

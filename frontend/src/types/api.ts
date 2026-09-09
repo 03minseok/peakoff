@@ -818,6 +818,20 @@ export interface ChatAnswer {
   basis: string
   interest: string | null
   /**
+   * 관심사의 **코드**. 문장을 받으러 갈 때 그대로 돌려보낸다.
+   *
+   * 위 `interest`는 사람에게 보이는 이름("바다")이라 되돌려 보내면 표기를 바꾸는 순간
+   * 조용히 깨진다. 이 값은 화면이 읽지 않는다.
+   */
+  interestCode: string | null
+  /**
+   * 카드 문장을 **따로 받아 갈 것이 남았는가.**
+   *
+   * 이 응답의 문장은 서버 템플릿이다. `true`면 `fetchChatLines`로 더 나은 문장을 받아
+   * 조용히 갈아끼운다. `false`면 묻지 않는다 — 같은 템플릿이 돌아올 뿐이다.
+   */
+  moreLines: boolean
+  /**
    * 그 기간이 <b>열한 곳 어디나 붐비는가</b>.
    *
    * ⚠️ 뽑힌 카드 둘이 아니라 <b>그 기간의 전 지역</b>을 보고 서버가 정한 값이다.
@@ -826,6 +840,11 @@ export interface ChatAnswer {
    */
   crowdedPeriod: boolean
   cards: RegionCard[]
+}
+
+/** `POST /api/chat/regions/lines`의 답. **문장만** 온다 — 숫자는 첫 응답의 것이 남는다 */
+export interface ChatLines {
+  lines: { region: string; line: string }[]
 }
 
 /**

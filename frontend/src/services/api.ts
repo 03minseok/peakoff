@@ -7,6 +7,7 @@ import type {
   AuthMember,
   AuthResult,
   ChatAnswer,
+  ChatLines,
   ChangeNicknameRequest,
   ChangePasswordRequest,
   CourseDiagnosis,
@@ -73,17 +74,14 @@ export type RequestErrorCode = ApiErrorCode | 'NETWORK_ERROR' | 'TIMEOUT'
  */
 const DEFAULT_TIMEOUT_MS = 15_000
 
-/**
- * LLM이 끼는 요청의 시간 제한.
+/*
+ * ⚠️ 챗봇용 35초 제한이 여기 있었는데 <b>걷어냈다</b> (2026-09-09).
  *
- * <p>챗봇은 의도 읽기와 문장 쓰기로 <b>모델을 두 번</b> 부르고, 그 둘이 차례로 일어난다.
- * 실측이 8.5~9.4초라 기본값으로는 멀쩡한 답을 끊는다. 모델 응답은 날마다 흔들리므로
- * 실측의 서너 배를 둔다.
- *
- * <p>⚠️ 이 값이 큰 것은 <b>지금 구조가 느리기 때문</b>이지 이래도 된다는 뜻이 아니다.
- * 두 호출을 갈라 카드를 먼저 내려보내면 이 값도 함께 내려야 한다.
+ * 모델을 두 번 차례로 부르느라 한 요청이 8.5~9.4초였고, 그래서 기본값을 못 썼다.
+ * 지금은 카드와 문장을 <b>두 요청으로 갈랐다</b> — 각각은 모델을 한 번만 부르므로
+ * 기본 15초 안에 넉넉히 들어온다(서버가 의도 추출에 10초, 문장에 5초를 준다).
+ * 예외를 두지 않는 편이 낫다: 값이 크면 정말 멈춘 서버도 그만큼 붙잡고 있게 된다.
  */
-const CHAT_TIMEOUT_MS = 35_000
 
 export class ApiRequestError extends Error {
   code: RequestErrorCode
@@ -826,8 +824,28 @@ export function askRegionChat(question: string, signal?: AbortSignal): Promise<C
     method: 'POST',
     body: { question },
     signal,
-    // 모델을 두 번 부르는 자리라 기본 제한으로는 멀쩡한 답을 끊는다 (CHAT_TIMEOUT_MS 주석)
-    timeoutMs: CHAT_TIMEOUT_MS,
+  })
+}
+
+/**
+ * POST /api/chat/regions/lines — 카드에 얹을 **더 나은 문장**만 따로 받는다.
+ *
+ * 카드는 이미 템플릿 문장으로 완결돼 있으므로 이 요청은 **늦거나 실패해도 된다.**
+ * 부르는 쪽은 실패를 조용히 삼키고 카드를 그대로 둔다.
+ *
+ * 서버가 앞 답을 기억하지 않으므로 문장을 쓰는 데 필요한 것을 화면이 되돌려 보낸다.
+ * ⚠️ 되돌려 보낸 값으로 카드의 숫자가 다시 그려지지는 않는다 — 돌아오는 것은 문장뿐이다.
+ */
+export function fetchChatLines(
+  question: string,
+  interest: string | null,
+  regions: { slug: string; quietShare: number | null }[],
+  signal?: AbortSignal,
+): Promise<ChatLines> {
+  return apiRequest<ChatLines>('/chat/regions/lines', {
+    method: 'POST',
+    body: { question, interest, regions },
+    signal,
   })
 }
 
