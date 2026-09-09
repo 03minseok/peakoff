@@ -9,7 +9,7 @@ import { NotFoundPage } from './routes/NotFoundPage'
 import { OAuthCallbackPage } from './routes/OAuthCallbackPage'
 import { PlanPage } from './routes/PlanPage'
 import { RecommendPage } from './routes/RecommendPage'
-import { PreviewPage } from './routes/PreviewPage'
+import { DataPage } from './routes/DataPage'
 import { ResultPage } from './routes/ResultPage'
 import { SharedCoursePage } from './routes/SharedCoursePage'
 import { SignupPage } from './routes/SignupPage'
@@ -71,8 +71,15 @@ function App() {
               옮겨 보낸다. 히스토리를 남기지 않아(replace) 뒤로가기가 이 주소를 다시 밟지 않는다.
             */}
             <Route path="my/account" element={<Navigate to="/my" replace />} />
-            {/* 개발용. 화면 구현이 끝나면 이 줄과 PreviewPage를 함께 지운다. */}
-            <Route path="preview" element={<PreviewPage />} />
+            {/*
+              데이터가 흐르는 길과 값을 정한 근거. 심사에서 "왜 이 값인가"에 가리킬 화면이다.
+
+              ⚠️ 예전 주소는 {@code /preview}였다 — 공통 컴포넌트 미리보기였던 시절의 이름이고,
+              내용이 통째로 바뀌면서 뜻을 잃었다. 아래 한 줄이 옛 주소를 여기로 보낸다.
+              히스토리를 남기지 않아(replace) 뒤로가기가 그 주소를 다시 밟지 않는다.
+            */}
+            <Route path="data" element={<DataPage />} />
+            <Route path="preview" element={<Navigate to="/data" replace />} />
             {/*
               공유 링크. 마이페이지 상세 창의 "링크 복사"가 만드는 주소({@code shareUrlOf})와
               한 몸이다 — 경로를 바꾸면 그쪽도 함께 바꾼다. 짧게 둔 이유: 카톡에 붙이는 주소다.
