@@ -11,6 +11,7 @@ import { PlanPage } from './routes/PlanPage'
 import { RecommendPage } from './routes/RecommendPage'
 import { PreviewPage } from './routes/PreviewPage'
 import { ResultPage } from './routes/ResultPage'
+import { SharedCoursePage } from './routes/SharedCoursePage'
 import { SignupPage } from './routes/SignupPage'
 import { AuthProvider } from './state/AuthProvider'
 import { FavoriteProvider } from './state/FavoriteProvider'
@@ -72,6 +73,12 @@ function App() {
             <Route path="my/account" element={<Navigate to="/my" replace />} />
             {/* 개발용. 화면 구현이 끝나면 이 줄과 PreviewPage를 함께 지운다. */}
             <Route path="preview" element={<PreviewPage />} />
+            {/*
+              공유 링크. 마이페이지 상세 창의 "링크 복사"가 만드는 주소({@code shareUrlOf})와
+              한 몸이다 — 경로를 바꾸면 그쪽도 함께 바꾼다. 짧게 둔 이유: 카톡에 붙이는 주소다.
+              Layout 안이라 로고와 출처 푸터가 함께 선다.
+            */}
+            <Route path="s/:token" element={<SharedCoursePage />} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Route>

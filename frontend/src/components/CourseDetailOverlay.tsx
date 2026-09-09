@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Close } from './icons'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
-import { fetchSavedCourse } from '../services/api'
+import { fetchSavedCourse, shareSavedCourse, shareUrlOf } from '../services/api'
 import type { SavedCourseDetail } from '../types/api'
 import { formatDateRange, formatNights, isPastDate } from '../utils/date'
 import { useScrollLock } from '../hooks/useScrollLock'
@@ -36,6 +36,36 @@ type Phase =
  */
 export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) {
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
+
+  /**
+   * 공유 링크 버튼의 상태. {@code shown}은 클립보드가 안 되어 주소를 글자로 세운 경우다 —
+   * 링크는 이미 만들어졌으니 실패({@code failed})와 가른다.
+   */
+  const [share, setShare] = useState<
+    | { status: 'idle' }
+    | { status: 'working' }
+    | { status: 'copied' }
+    | { status: 'shown'; url: string }
+    | { status: 'failed' }
+  >({ status: 'idle' })
+
+  async function copyShareLink(id: number) {
+    setShare({ status: 'working' })
+    let url: string
+    try {
+      url = shareUrlOf(await shareSavedCourse(id))
+    } catch {
+      setShare({ status: 'failed' })
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setShare({ status: 'copied' })
+    } catch {
+      // 링크는 살아 있다. 복사만 안 된 것이니 주소를 보여 주고 사용자가 옮기게 한다.
+      setShare({ status: 'shown', url })
+    }
+  }
 
   // 뒤 화면 잠금. ⚠️ body가 아니라 html에 건다 — 이유는 useScrollLock 주석에
   useScrollLock()
@@ -226,6 +256,38 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
                   수정하기
                 </button>
               )}
+
+              {/*
+                ■ 공유 링크 (2026-09-09)
+
+                지난 여행에도 선다 — 다녀온 코스를 남에게 보내는 일은 오히려 흔하다.
+                서버는 토큰만 주고 주소는 이 배포본의 origin으로 여기서 만든다(shareUrlOf).
+                두 번 눌러도 같은 링크다.
+
+                <p>클립보드가 안 되는 자리(http · 권한 거부 · 오래된 브라우저)에서는 주소를 그대로
+                보여준다 — "복사했어요"라고 거짓말하는 것보다 길게 눌러 복사할 수 있는 글자가 낫다.
+                주소는 링크를 만든 순간부터 살아 있으니, 복사 실패가 공유 실패는 아니다.
+              */}
+              <div className="mt-1 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => void copyShareLink(course.id)}
+                  disabled={share.status === 'working'}
+                  className="border-line bg-surface text-fg hover:bg-bg rounded-ui disabled:text-hint h-12 cursor-pointer border text-sm font-semibold press disabled:cursor-wait"
+                >
+                  {share.status === 'copied' ? '링크를 복사했어요' : '공유 링크 복사'}
+                </button>
+                {share.status === 'shown' && (
+                  <p className="bg-bg text-fg rounded-ui m-0 px-3.5 py-3 font-mono text-[12px] leading-[1.6] break-all select-all">
+                    {share.url}
+                  </p>
+                )}
+                {share.status === 'failed' && (
+                  <p className="text-crowded-deep m-0 text-center text-[12.5px]" role="alert">
+                    링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.
+                  </p>
+                )}
+              </div>
             </article>
           )}
         </div>

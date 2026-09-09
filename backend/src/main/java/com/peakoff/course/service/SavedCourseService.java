@@ -1,5 +1,6 @@
 package com.peakoff.course.service;
 
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -19,6 +20,7 @@ import com.peakoff.course.dto.PublicCourseSummary;
 import com.peakoff.course.dto.SaveCourseRequest;
 import com.peakoff.course.dto.SavedCourseDetail;
 import com.peakoff.course.dto.SavedCourseSummary;
+import com.peakoff.course.dto.SharedCourseView;
 import com.peakoff.global.error.ConflictException;
 import com.peakoff.global.error.NotFoundException;
 import com.peakoff.global.error.UnauthorizedException;
@@ -178,6 +180,38 @@ public class SavedCourseService {
 	 * 알려주는 셈이라, 번호를 훑어 남의 코스가 몇 개인지 세는 통로가 된다.
 	 * 조회 자체를 회원 조건과 함께 걸어 두 경우를 구분할 수 없게 만든다.
 	 */
+	/**
+	 * 공유 링크를 연다. 내 코스가 아니면 404(소유권 검사는 {@link #getOwned}가 한다).
+	 *
+	 * <p>이미 열려 있으면 같은 토큰을 돌려준다 — 버튼을 두 번 누른 사람이 먼저 보낸 링크를 잃지 않는다.
+	 * 유일 제약에 부딪히는 일(62^16 중 충돌)은 실질적으로 없다고 보고 재시도를 두지 않는다.
+	 */
+	@Transactional
+	public String share(Long memberId, Long courseId) {
+		return getOwned(memberId, courseId).openShareLink(newShareToken());
+	}
+
+	/** 공유 링크로 코스를 연다. 누구든 본다 — 토큰이 열쇠다. 없거나 지워진 코스는 404. */
+	public SharedCourseView findShared(String token) {
+		SavedCourse course = savedCourseRepository.findByShareToken(token)
+				.orElseThrow(() -> new NotFoundException("링크가 만료됐거나 지워진 코스입니다."));
+		return SharedCourseView.from(course, placeId -> livePlaceOf(course, placeId));
+	}
+
+	private static final SecureRandom RANDOM = new SecureRandom();
+	private static final String TOKEN_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	/** 16자 · 62진 ≈ 95비트. 하루 종일 훑어도 맞힐 수 없는 길이면서 카톡에 붙여도 짧다. */
+	private static final int TOKEN_LENGTH = 16;
+
+	/** URL에 그대로 들어가는 글자만 쓴다(인코딩이 필요한 글자는 붙였다 떼는 사이에 깨진다). */
+	private static String newShareToken() {
+		StringBuilder token = new StringBuilder(TOKEN_LENGTH);
+		for (int i = 0; i < TOKEN_LENGTH; i++) {
+			token.append(TOKEN_ALPHABET.charAt(RANDOM.nextInt(TOKEN_ALPHABET.length())));
+		}
+		return token.toString();
+	}
+
 	private SavedCourse getOwned(Long memberId, Long courseId) {
 		return savedCourseRepository.findByIdAndMemberId(courseId, memberId)
 				.orElseThrow(() -> new NotFoundException("존재하지 않는 코스입니다."));
