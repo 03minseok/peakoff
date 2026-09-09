@@ -1,5 +1,6 @@
 package com.peakoff.external.llm;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -90,8 +91,15 @@ public class GeminiClient {
 				 * SDK 쪽 타임아웃도 함께 건다. 이것이 먼저 끊기면 스레드가 제때 풀려
 				 * 버려지는 호출이 줄어든다 — 우리 시계는 그것이 안 들을 때를 위한 보험이다.
 				 */
+				/*
+				 * ⚠️ HTTP 상한은 <b>가장 긴 쪽</b>에 맞춘다. 이 값은 클라이언트를 만들 때 한 번 굳는데,
+				 * 짧은 쪽(카드 문장 5초)에 맞추면 의도 추출에 10초를 줘도 HTTP 층이 먼저 끊는다.
+				 * 호출마다의 진짜 상한은 아래 callWithin이 우리 시계로 건다.
+				 */
 				.httpOptions(HttpOptions.builder()
-						.timeout((int) properties.timeout().toMillis())
+						.timeout((int) Math.max(
+								properties.timeout().toMillis(),
+								properties.intentTimeout().toMillis()))
 						.build())
 				.build();
 	}
@@ -111,7 +119,16 @@ public class GeminiClient {
 	 * @throws LlmUnavailableException 키가 없거나, 늦거나, 실패했거나, 빈 답이 왔을 때 —
 	 *                                 <b>부르는 쪽은 이유를 가리지 않고 폴백한다</b>
 	 */
+	/** 기본 상한({@code peakoff.chat.timeout})으로 부른다. */
 	public String json(String systemInstruction, String prompt, Schema schema) {
+		return json(systemInstruction, prompt, schema, properties.timeout());
+	}
+
+	/**
+	 * 상한을 정해서 부른다. 부르는 쪽마다 <b>늦었을 때 잃는 것이 다르기</b> 때문에 값을 나눈다
+	 * ({@code LlmProperties.DEFAULT_INTENT_TIMEOUT} 주석).
+	 */
+	public String json(String systemInstruction, String prompt, Schema schema, Duration timeout) {
 		if (client == null) {
 			throw new LlmUnavailableException("LLM 인증키가 설정되지 않았습니다.");
 		}
@@ -129,7 +146,7 @@ public class GeminiClient {
 				.thinkingConfig(ThinkingConfig.builder().thinkingBudget(0).build())
 				.build();
 
-		String text = callWithin(config, prompt);
+		String text = callWithin(config, prompt, timeout);
 		if (text == null || text.isBlank()) {
 			// 오류 없이 빈 답이 오는 경우가 있다. 조용히 넘기면 그 다음이 더 이상하게 깨진다.
 			throw new LlmUnavailableException("LLM이 빈 답을 돌려줬습니다.");
@@ -138,7 +155,7 @@ public class GeminiClient {
 	}
 
 	/** 우리 시계로 기다린다. SDK가 안 끊어 줄 때 요청 스레드를 풀어 주는 것이 목적이다. */
-	private String callWithin(GenerateContentConfig config, String prompt) {
+	private String callWithin(GenerateContentConfig config, String prompt, Duration timeout) {
 		CompletableFuture<String> call = CompletableFuture.supplyAsync(() -> {
 			GenerateContentResponse response =
 					client.models.generateContent(properties.model(), prompt, config);
@@ -146,13 +163,13 @@ public class GeminiClient {
 		}, executor);
 
 		try {
-			return call.get(properties.timeout().toMillis(), TimeUnit.MILLISECONDS);
+			return call.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
 		}
 		catch (TimeoutException e) {
 			// 답을 버린다. 사용자를 더 붙잡아 두는 것보다 낫다.
 			call.cancel(true);
 			throw new LlmUnavailableException("LLM 응답이 %d초를 넘겼습니다."
-					.formatted(properties.timeout().toSeconds()), e);
+					.formatted(timeout.toSeconds()), e);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
