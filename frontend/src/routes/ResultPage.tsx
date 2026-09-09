@@ -915,7 +915,7 @@ export function ResultPage() {
                 {movedDate
                   ? `원안 ${formatKoreanDate(movedDate.from)} · 개선안 ${formatKoreanDate(movedDate.to)} 기준`
                   : `${formatKoreanDate(plan.startDate)} 기준`}
-                {' 예측 · 출처 ⓒ한국관광공사'}
+                {' 예측 · 출처: ⓒ한국관광공사'}
               </p>
             </div>
           </section>

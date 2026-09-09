@@ -198,10 +198,12 @@ export function PlaceDetailSheet({
 
           <div className="flex flex-col gap-3.5 px-5 pt-4 pb-6">
             {/*
-              ⚠️ 출처를 <b>중립적으로</b> 적는다. 공사 이름이나 로고를 서비스 안에 쓰지 않는 것이
-              공모전 규칙이라(CLAUDE.md 절대 규칙 4), 기관명 대신 "공공데이터"로만 밝힌다.
+              사진 바로 아래 출처. 이 시트는 Layout 밖(홈)에서도 열리므로 껍데기의 출처 줄에
+              기댈 수 없고, 사진은 그 자체가 공사 저작물이라 붙어 있는 자리에서 밝힌다.
+              형식은 공고 FAQ의 {@code 출처: ⓒ한국관광공사}(콜론). 예전 주석은 "중립 표현만"이라
+              적어 두었는데 2026-09-09에 뒤집혔다 — CLAUDE.md 절대 규칙 4 참고.
             */}
-            <span className="text-hint text-[11px]">이미지 출처 ⓒ한국관광공사</span>
+            <span className="text-hint text-[11px]">이미지 출처: ⓒ한국관광공사</span>
 
             <div className="flex flex-col gap-1.5">
               {/*
