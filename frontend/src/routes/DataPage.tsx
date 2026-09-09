@@ -41,6 +41,7 @@ export function DataPage() {
       <FlowSection />
       <ScoreSection />
       <ThresholdSection />
+      <PlaceOffSection />
       <SpreadSection />
       <RulesSection />
     </div>
@@ -597,8 +598,342 @@ function ThresholdSection() {
   )
 }
 
+/* ── 장소 교체 ────────────────────────────────────────────── */
+
+/**
+ * 후보가 통과해야 하는 문 하나.
+ *
+ * <p>{@link Step}과 모양이 비슷하지만 <b>다른 것을 말한다.</b> 저쪽은 순서대로 일어나는
+ * 일이라 세로선으로 잇고, 여기는 <b>모두 통과해야 하는 조건</b>이라 잇지 않는다 —
+ * 선을 그으면 "1번 다음에 2번"으로 읽혀 하나만 걸려도 탈락한다는 뜻이 흐려진다.
+ */
+function Gate({ no, title, body }: { no: number; title: string; body: React.ReactNode }) {
+  return (
+    <li className="border-line flex gap-2.5 border-t pt-3 first:border-t-0 first:pt-0">
+      <span className="bg-fill text-muted grid h-5 w-5 flex-none place-items-center rounded-full font-mono text-[10.5px] font-semibold">
+        {no}
+      </span>
+      <div className="flex flex-col gap-0.5">
+        <p className="text-fg m-0 text-[13px] font-semibold">{title}</p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">{body}</p>
+      </div>
+    </li>
+  )
+}
+
+/** 카드 안의 작은 제목 + 오른쪽 꼬리표. */
+function CardHead({ title, measured }: { title: string; measured: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <h3 className="text-fg m-0 text-[14px] font-bold">{title}</h3>
+      <Measured on={measured} />
+    </div>
+  )
+}
+
+/**
+ * 장소 교체 추천이 어떻게 한 줄을 고르는지 편다.
+ *
+ * <h3>왜 이 절이 있나</h3>
+ * 발표에서 가장 많이 받을 질문이 <b>"그래서 이 대안은 왜 여기 떴나요"</b>다.
+ * 진단 화면은 결과만 보여주고, 대안 카드의 구성 내역은 <b>점수 두 항목</b>까지만 말한다 —
+ * 그 앞에 있는 <b>거르기</b>와 뒤에 있는 <b>뽑기</b>는 화면 어디에도 드러나지 않는다.
+ * 이 절이 그 앞뒤를 채운다.
+ *
+ * <p>⚠️ 여기 적힌 숫자는 <b>서버 값의 사본</b>이다. 임계값이 바뀌면 함께 고쳐야 한다 —
+ * 그래서 이 화면은 값을 <b>쓰는</b> 곳이 아니라 <b>설명하는</b> 곳으로만 둔다.
+ */
+function PlaceOffSection() {
+  return (
+    <Section
+      kicker="PLACE OFF"
+      title="대안 하나가 뽑히기까지"
+      lead="붐빌 것으로 예측된 자리에 다른 곳을 권하는 경로입니다. 거르기가 먼저이고 뽑기가 마지막입니다 — 순서를 뒤집으면 자격 미달 후보가 무작위로 1등이 될 수 있습니다."
+    >
+      {/* 1. 거르기 */}
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="① 문을 모두 통과해야 후보가 됩니다" measured="점수 매기기 이전" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          일곱 개가 <strong className="text-fg font-semibold">순서가 아니라 조건</strong>입니다. 하나라도
+          걸리면 그 자리에서 탈락하고, 점수는 통과한 것에만 매깁니다.
+        </p>
+        <ul className="m-0 flex list-none flex-col gap-3 p-0">
+          <Gate
+            no={1}
+            title="원래 장소의 한적도를 안다"
+            body={
+              <>
+                얼마나 나아지는지 재려면 기준이 있어야 합니다. 음식점·숙박처럼 공사의 예측 대상이
+                아닌 자리는 여기서 갈라져,{' '}
+                <strong className="text-fg font-semibold">"같은 분류 · 가까운 순"이라는 다른 경로</strong>로
+                안내합니다. 점수 자리가 빈 응답을 추천과 같은 곳으로 내보내면 화면이 "아직 점수가 안 온
+                추천"으로 읽습니다.
+              </>
+            }
+          />
+          <Gate
+            no={2}
+            title="같은 지역 안이다"
+            body="기준 장소가 든 지역의 후보만 봅니다. 어느 지역 카탈로그에도 없는 장소는 연관 목록에도 없습니다."
+          />
+          <Gate
+            no={3}
+            title="세부 분류가 맞는다"
+            body={
+              <>
+                대분류로 뭉뚱그리지 않고 <strong className="text-fg font-semibold">중분류로 가릅니다</strong>.
+                대분류만 보면 문화·명소가 박물관과 리조트를 한데 묶어{' '}
+                <strong className="text-fg font-semibold">황리단길 자리에 리조트</strong>가 올라옵니다.
+                유적에서 박물관으로 갈 수 있으면 반대도 되어야 하므로 양방향으로 맞춥니다 — 한쪽만 열면
+                같은 두 장소가 어느 쪽을 눌렀느냐에 따라 다른 답을 줍니다.
+              </>
+            }
+          />
+          <Gate
+            no={4}
+            title="직선거리 15km 안이다"
+            body={
+              <>
+                근접도가 이미 거리를 반영하지만 <strong className="text-fg font-semibold">깎을 뿐 막지는
+                못합니다</strong>. 반영 비율이 30%라 아주 한적한 곳은 근접도가 0점이어도 총점이 높게
+                나옵니다. 실측에서 경주 <Num>38.8km</Num> · 제주시 <Num>62.7km</Num> 떨어진 곳이 대안으로
+                나가고 있었습니다 — 코스의 한 칸을 대신하는 자리에 그 거리는 실행할 수 없는 제안입니다.
+              </>
+            }
+          />
+          <Gate
+            no={5}
+            title="그 날 혼잡 예측이 있다"
+            body="후보 쪽에도 예측이 있어야 한적도를 매길 수 있습니다. 없으면 얼마나 나은지 말할 방법이 없습니다."
+          />
+          <Gate
+            no={6}
+            title="원래 자리보다 한적도 +5점 이상이다"
+            body={
+              <>
+                <strong className="text-fg font-semibold">이 하한이 없으면 더 붐비는 곳이 대안으로
+                나갑니다</strong> — 추천도에 근접도가 섞여 있어 아주 가까운 곳은 총점이 높기 때문입니다.
+                0점이 아니라 5점인 이유는 <Num>1~2</Num>점 차이가 예측값의 오차 범위 안이라서입니다.
+                그 정도로 "여기가 낫다"고 하면 장소를 바꾸는 수고를 시켜 놓고 실제로는 아무것도
+                나아지지 않습니다.
+              </>
+            }
+          />
+          <Gate
+            no={7}
+            title="이미 그 날 코스에 담겨 있지 않다"
+            body={
+              <>
+                <strong className="text-fg font-semibold">자격을 따진 뒤, 뽑기 앞입니다.</strong> 뽑기
+                뒤로 미루면 고를 수 없는 곳이 후보군 자리를 차지해 목록이 이유 없이 짧아지고, 자격 심사
+                앞에 두면 "이미 담긴 후보"가 몇이었는지 몰라 <strong className="text-fg font-semibold">더
+                한적한 곳을 찾고도 "찾지 못했다"</strong>고 말하게 됩니다.
+              </>
+            }
+          />
+        </ul>
+      </div>
+
+      {/* 2. 점수 */}
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="② 통과한 것에만 점수를 매깁니다" measured="비율은 서버가 내려보냄" />
+        {/*
+         * ⚠️ 한 줄 수식으로 쓰지 않는다. 좁은 화면에서 "추천도 = 한적도 × 70% + …"가
+         * 제멋대로 줄을 바꿔 <b>수식으로 읽히라고 만든 줄이 조각 더미</b>가 됐다.
+         * 대안 카드의 구성 내역이 같은 이유로 세로 목록이 됐고, 여기도 같은 문법을 쓴다.
+         *
+         * <p>그리고 이 줄에 {@code font-mono}를 씌우지 않는다 — 자간이 벌어져 "한적도"가
+         * "한 적 도"로 읽힌다. 고정폭은 {@link Num}이 감싼 숫자에만 간다.
+         */}
+        <div className="bg-bg rounded-ui flex flex-col gap-2.5 p-3.5">
+          <p className="text-fg m-0 text-[12.5px] font-semibold">추천도 = 두 항목의 가중 평균</p>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-muted text-[12.5px]">한적도</span>
+              <span className="text-brand-deep text-[12.5px] font-semibold">
+                반영 <Num>70%</Num>
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-muted text-[12.5px]">동선 근접도</span>
+              <span className="text-brand-deep text-[12.5px] font-semibold">
+                반영 <Num>30%</Num>
+              </span>
+            </div>
+          </div>
+          <p className="text-hint m-0 text-[11.5px] leading-[1.7]">
+            근접도는 원래 자리에서 <Num>1km</Num> 멀어질 때마다 <Num>5</Num>점씩 깎아{' '}
+            <Num>0~100</Num> 사이에 둡니다.
+          </p>
+        </div>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          <strong className="text-fg font-semibold">한적도의 반영 비율을 반드시 가장 높게 둡니다.</strong>{' '}
+          한적한 곳으로 사람을 보내는 것이 추천의 목적 자체이고, 이 규칙은 문서가 아니라 코드가
+          강제합니다 — 근접도가 한적도보다 크면 서버가 뜨지 않습니다. 설문에서 혼잡 민감도를 고르면
+          비율이 <Num>55:45</Num> · <Num>70:30</Num> · <Num>85:15</Num>로 갈리는데,{' '}
+          <strong className="text-fg font-semibold">화면은 비율을 적어 두지 않고 서버가 준 값을 그대로
+          그립니다.</strong> 화면에 박아 두면 가중치가 바뀔 때 한쪽만 고쳐져 두 값이 어긋납니다.
+        </p>
+        <div className="bg-moderate-tint rounded-ui flex items-start gap-2.5 px-3.5 py-3">
+          <span className="bg-moderate mt-1.5 h-2 w-2 flex-none rounded-full" aria-hidden="true" />
+          <p className="text-moderate-deep m-0 text-[12px] leading-[1.7]">
+            <strong className="font-semibold">추천도는 100점 만점이 아닙니다.</strong> 실측 분포가{' '}
+            <Num>25~80</Num> · 중앙 <Num>53</Num>입니다(150건). 구조상 100이 나올 수 없는데 중앙값 53을
+            그대로 내걸면 낙제로 읽혀, 화면은 숫자를 <strong className="font-semibold">구간 문구</strong>로
+            옮겨 세웁니다. 경계는 임의의 70/50이 아니라 실측 1·3분위수(<Num>46</Num> / <Num>64</Num>)입니다.{' '}
+            <Measured on="2026-08-29 실측" />
+          </p>
+        </div>
+      </div>
+
+      {/* 3. 두 출처 */}
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="③ 출처가 둘이고, 자리를 나눠 줍니다" measured="2026-09-01 실측" />
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="bg-bg rounded-ui flex flex-col gap-1 p-3.5">
+            <p className="text-brand-deep m-0 text-[12px] font-semibold">연관 관광지 API</p>
+            <p className="text-muted m-0 text-[12px] leading-[1.7]">
+              함께 많이 방문되는 곳. <strong className="text-fg font-semibold">인기도 하한을 겸합니다</strong>{' '}
+              — 아무도 함께 가지 않는 곳은 이 목록에 나오지 않습니다.
+            </p>
+            <p className="text-hint m-0 text-[11px] leading-[1.6]">
+              근거 문구 · "OO에 다녀간 사람들이 함께 찾은 곳 중에서 골랐어요"
+            </p>
+          </div>
+          <div className="bg-bg rounded-ui flex flex-col gap-1 p-3.5">
+            <p className="text-brand-deep m-0 text-[12px] font-semibold">지역 카탈로그</p>
+            <p className="text-muted m-0 text-[12px] leading-[1.7]">
+              같은 지역의 관광지 전체. 인기도 하한이 없으므로{' '}
+              <strong className="text-fg font-semibold">나머지 조건을 그대로 지킵니다.</strong>
+            </p>
+            <p className="text-hint m-0 text-[11px] leading-[1.6]">
+              근거 문구 · "OO 근처의 비슷한 곳 중에서 골랐어요"
+            </p>
+          </div>
+        </div>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          연관 후보만 보면 <strong className="text-fg font-semibold">관광지 넷 중 셋이 대안을 얻지
+          못했습니다</strong>(경주 25.6% · 제주시 30.9% · 서귀포 33.7%). 그래서 지역 카탈로그를 함께 보되{' '}
+          <strong className="text-fg font-semibold">그냥 섞지는 않습니다</strong> — 지역 후보가 연관 후보보다{' '}
+          <Num>5~6</Num>배 많아(제주시 <Num>698</Num> vs <Num>125</Num>) 상위권을 쓸어가기 때문입니다.
+          섞어서 추천도로 자르면 연관이 상위 3에 하나도 못 드는 자리가 제주시 <Num>57%</Num> · 서귀포{' '}
+          <Num>37%</Num>였습니다.
+        </p>
+        <div className="bg-quiet-tint rounded-ui flex items-start gap-2.5 px-3.5 py-3">
+          <span className="bg-quiet mt-1.5 h-2 w-2 flex-none rounded-full" aria-hidden="true" />
+          <p className="text-quiet-deep m-0 text-[12px] leading-[1.7]">
+            <strong className="font-semibold">품질이 밀려서가 아닙니다.</strong> 같은 실측에서 추천도
+            중앙값은 같거나 연관이 오히려 높았습니다(경주 <Num>53.5</Num> vs <Num>52.0</Num> · 서귀포{' '}
+            <Num>62</Num> vs <Num>57</Num>). 순전히 <strong className="font-semibold">표본 크기</strong>{' '}
+            문제라 크기와 무관한 장치로 풉니다 — <strong className="font-semibold">출처마다 한 자리씩
+            보장하고 남은 자리를 겨루게</strong> 합니다. 가중치로 보정하면 배율이 지역마다 달라
+            (<Num>4.9~6.4</Num>배) 값의 근거가 없고, 무엇보다 인기도를 점수에 넣는 것이 되어 과제와
+            어긋납니다.
+          </p>
+        </div>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          자리 보장은 <strong className="text-fg font-semibold">인기도 하한도 함께 지킵니다</strong> — 한
+          자리는 언제나 연관, 곧 실제로 함께 가는 곳입니다. 그리고 그 보장 안에서도{' '}
+          <strong className="text-fg font-semibold">가중 무작위로 뽑습니다.</strong> 출처별 1등을 늘 세우면
+          분산을 지키려던 장치가 도리어 분산을 죽입니다.
+        </p>
+        <div className="bg-bg rounded-ui flex items-baseline justify-between gap-3 p-3.5">
+          <span className="text-muted text-[12.5px]">대안 3개를 채운 자리</span>
+          <span className="text-[13px] font-semibold">
+            <span className="text-crowded-deep">
+              <Num>41%</Num>
+            </span>
+            <span className="text-hint mx-1">→</span>
+            <span className="text-quiet-deep">
+              <Num>86%</Num>
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {/* 4. 빈 목록 */}
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="④ 비었을 때 왜 비었는지 말합니다" measured="2026-08-25 실측" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          개선폭 하한 때문에 <strong className="text-fg font-semibold">목록이 비는 일이 흔합니다</strong> —
+          대안이 있던 자리의 <Num>36~51%</Num>가 빈 목록이 됩니다. 그런데 비는 이유가 서로 완전히 다릅니다.
+          원래 장소가 이미 한적한 것과 대신할 곳을 못 찾은 것은{' '}
+          <strong className="text-fg font-semibold">사용자에게 정반대의 소식</strong>인데, 같은 빈 화면으로
+          뭉개면 둘 다 "이 서비스는 데이터가 부실하다"로 읽힙니다.
+        </p>
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {[
+            {
+              tone: 'quiet' as const,
+              label: '이미 한적함',
+              text: '여기는 이미 한적한 편이에요. 굳이 바꾸지 않아도 좋아요.',
+            },
+            {
+              tone: 'plain' as const,
+              label: '코스에 있음',
+              text: '더 한적한 곳들이 이미 이 날 코스에 담겨 있어요.',
+            },
+            {
+              tone: 'plain' as const,
+              label: '개선폭 미달',
+              text: '지금보다 눈에 띄게 한적한 곳을 찾지 못했어요.',
+            },
+            {
+              tone: 'plain' as const,
+              label: '후보 없음',
+              text: '이 자리를 대신할 만한 곳을 찾지 못했어요.',
+            },
+            {
+              tone: 'plain' as const,
+              label: '예측 대상 아님',
+              text: '예상 혼잡을 알 수 없는 곳이라 추천 순서를 매기지 못해요.',
+            },
+          ].map((row) => (
+            <li
+              key={row.label}
+              className={`rounded-ui flex flex-col gap-0.5 px-3.5 py-2.5 ${
+                row.tone === 'quiet' ? 'bg-quiet-tint' : 'bg-bg'
+              }`}
+            >
+              <span
+                className={`text-[10.5px] font-semibold tracking-[0.06em] ${
+                  row.tone === 'quiet' ? 'text-quiet-deep' : 'text-hint'
+                }`}
+              >
+                {row.label}
+              </span>
+              <span
+                className={`text-[12.5px] leading-[1.6] ${
+                  row.tone === 'quiet' ? 'text-quiet-deep' : 'text-muted'
+                }`}
+              >
+                {row.text}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          맨 위 하나가 특히 중요합니다. 하한 때문에 사라지는 자리의 대부분이{' '}
+          <strong className="text-fg font-semibold">원래 자리가 이미 한적한 곳</strong>입니다 — 경주는 25곳
+          중 22곳이 그랬습니다. <strong className="text-fg font-semibold">이것은 실패가 아니라
+          성공인데</strong>, "찾지 못했어요"로 뭉개면 잘 고른 사용자에게 서비스가 사과하는 꼴이 됩니다.
+          그래서 문구를 화면이 아니라 <strong className="text-fg font-semibold">서버가 들고 있습니다</strong>{' '}
+          — 하한을 3점으로 낮추는 날 문구도 함께 손봐야 하는데, 문구가 화면에 있으면 그 사실을 아무도
+          모릅니다.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
 /* ── 분산 ──────────────────────────────────────────────────── */
 
+/**
+ * 뽑기가 실제로 어떻게 도는지 편다.
+ *
+ * <p>발표에서 가장 값이 나가는 자리다 — <b>추천 서비스가 스스로 만드는 혼잡</b>을 어떻게
+ * 막았는가는 되묻고 싶어지는 질문이고, 답이 실측으로 준비돼 있다.
+ */
 function SpreadSection() {
   return (
     <Section
@@ -606,16 +941,67 @@ function SpreadSection() {
       title="같은 곳으로 몰지 않는 장치"
       lead="동일한 대안이 모든 사용자에게 반복 추천되면 그곳이 새로운 혼잡지가 됩니다. 오버투어리즘을 풀겠다는 서비스가 오버투어리즘을 만드는 셈입니다."
     >
+      {/* 뽑기 방식 */}
       <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="점수에 비례하되, 매번 같지는 않게" measured="설계 규칙" />
+        {/* 한글에 고정폭을 씌우지 않는다 — 자간이 벌어져 낱말이 쪼개진다. 추천도 칸과 같은 규칙. */}
+        <div className="bg-bg rounded-ui flex flex-col gap-2.5 p-3.5">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-muted text-[12.5px]">뽑힐 무게</span>
+              <span className="text-brand-deep text-[12.5px] font-semibold">
+                추천도<sup className="ml-px text-[9px]">1.2</sup>
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-muted text-[12.5px]">상위 후보군</span>
+              <span className="text-brand-deep text-[12.5px] font-semibold">
+                <Num>3</Num>곳
+              </span>
+            </div>
+          </div>
+          <p className="text-hint m-0 text-[11.5px] leading-[1.7]">
+            중복 없이 뽑고, 부를 때마다 다시 계산합니다.
+          </p>
+        </div>
         <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
-          자격을 통과한 상위 후보군을 만든 뒤, 그 안에서{' '}
-          <strong className="text-fg font-semibold">점수에 비례한 가중 무작위</strong>로 뽑습니다. 뽑은
-          뒤에는 점수순으로 다시 정렬하지 않습니다 — 다시 정렬하면 최고점이 언제나 1등이 되어 이
-          장치가 아무 일도 하지 않게 됩니다.
+          지수가 <Num>1</Num>이면 점수에 그대로 비례하고, 클수록 상위 후보에 쏠립니다.{' '}
+          <Num>1.2</Num>는 <strong className="text-fg font-semibold">높은 점수가 더 자주 뽑히되 1등이
+          고정되지는 않는</strong> 자리입니다. 후보군을 <Num>3</Num>으로 자르기 때문에 뽑히는 것은 언제나
+          "충분히 좋은 후보" 안에서입니다 — 거르기를 뽑기 뒤로 미루면 자격 미달 후보가 무작위로 1등이 될
+          수 있습니다.
         </p>
+      </div>
+
+      {/* 고쳤을 때의 변화 */}
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="이 장치가 오래도록 아무 일도 안 하고 있었습니다" measured="2026-08-26 · 09-03 실측" />
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          같은 자리를 <Num>40</Num>번 물어도 1등이 한 번도 바뀌지 않았습니다. 값은 전부 맞게 들어 있었고,
+          죽인 것은 <strong className="text-fg font-semibold">구현 두 가지</strong>였습니다.
+        </p>
+        <ol className="text-muted m-0 flex list-none flex-col gap-2.5 p-0">
+          <li className="bg-bg rounded-ui flex flex-col gap-0.5 px-3.5 py-3">
+            <span className="text-fg text-[12.5px] font-semibold">
+              화면이 후보군보다 많이 요청했다
+            </span>
+            <span className="text-[12px] leading-[1.7]">
+              후보군이 셋인데 여덟을 달라고 하면 <strong className="text-fg font-semibold">"다 가져가라"와
+              같아</strong> 후보군이라는 개념이 무의미해집니다. 화면도 후보군 크기만큼만 요청합니다.
+            </span>
+          </li>
+          <li className="bg-bg rounded-ui flex flex-col gap-0.5 px-3.5 py-3">
+            <span className="text-fg text-[12.5px] font-semibold">뽑은 뒤 점수순으로 다시 정렬했다</span>
+            <span className="text-[12px] leading-[1.7]">
+              뽑힌 순서가 통째로 덮여 <strong className="text-fg font-semibold">최고점이 언제나
+              1등</strong>이 됐습니다. 자격 후보가 20곳이나 되는 자리에서도 1등이 68~82% 고정이었는데,
+              데이터가 모자라서가 아니라 이 정렬 때문이었습니다.
+            </span>
+          </li>
+        </ol>
 
         <div className="bg-bg rounded-ui flex flex-col gap-2.5 p-3.5">
-          <p className="text-fg m-0 text-[12.5px] font-semibold">고쳤을 때의 변화</p>
+          <p className="text-fg m-0 text-[12.5px] font-semibold">고친 뒤</p>
           <div className="flex items-baseline justify-between gap-3">
             <span className="text-muted text-[12.5px]">1등이 고정되는 비율</span>
             <span className="font-mono text-[13px] font-semibold">
@@ -637,15 +1023,65 @@ function SpreadSection() {
             </span>
           </div>
           <p className="text-hint m-0 text-[11px] leading-[1.6]">
-            이론상 기대값은 약 35%입니다. <Measured on="2026-08-26 · 09-03 실측" />
+            이론상 기대값은 약 <Num>35%</Num>입니다. 1등이 세 종류씩 돌아갑니다.
           </p>
         </div>
+      </div>
 
+      {/* 정렬 · 재추첨 */}
+      <div className={`${CARD} flex flex-col gap-3 p-4.5`}>
+        <CardHead title="뽑은 뒤에 지키는 것 둘" measured="2026-08-26 · 08-30" />
+        <div className="flex flex-col gap-1">
+          <p className="text-fg m-0 text-[13px] font-semibold">
+            정렬은 <strong className="text-brand-deep">구간 단위까지만</strong> 합니다
+          </p>
+          <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+            점수로 줄 세우지 않되 아무 순서도 아니면 "(문구 없음)"이 "이날 가기 좋아요" 위에 서서 고장으로
+            읽힙니다. 구간까지만 세우면{' '}
+            <strong className="text-fg font-semibold">줄 세운 값이 카드에 적힌 문구 그 자체</strong>라
+            설명이 서고, 같은 구간 안은 뽑힌 차례 그대로라 분산도 삽니다. ⚠️ 그래서 "추천도가 높은 순"
+            같은 문구를 두면 화면이 거짓말을 합니다 — 정렬과 문구는 한 몸입니다.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-fg m-0 text-[13px] font-semibold">
+            뽑은 목록을 <strong className="text-brand-deep">세션에 저장</strong>합니다
+          </p>
+          <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+            화면이 다시 그려질 때마다 다시 뽑지 않습니다. 대안 시트를 닫았다 열었을 뿐인데 목록이 바뀌면{' '}
+            <strong className="text-fg font-semibold">사용자가 되돌아갈 후보를 찾지 못합니다.</strong> 다시
+            뽑는 것은 사용자가 새 추천을 <strong className="text-fg font-semibold">직접 요청</strong>했거나
+            코스·날짜·지역 조건이 <strong className="text-fg font-semibold">실제로 바뀐</strong> 경우뿐입니다.
+          </p>
+        </div>
+      </div>
+
+      {/* 균등 예외 */}
+      <div className={`${CARD} flex flex-col gap-2 p-4.5`}>
+        <CardHead title="자격선으로 이미 잘랐다면 균등입니다" measured="2026-09-03 실측" />
         <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
-          ⚠️ 후보를 자격선으로 이미 잘랐다면 그 안에서는{' '}
-          <strong className="text-fg font-semibold">가중이 아니라 균등</strong>으로 뽑습니다. 남은 점수
-          차는 우열이 아니라 같은 등급 안의 잔차이고, 그 잔차로 확률을 기울이면 넓혀 놓은 후보군에서
-          결국 위쪽 몇 곳만 나옵니다.
+          가중 무작위는 <strong className="text-fg font-semibold">후보들 사이에 우열이 있을 때</strong> 쓰는
+          규칙입니다. 자격선으로 먼저 자른 뒤라면 남은 점수 차는 우열이 아니라 같은 등급 안의 잔차이고, 그
+          잔차로 확률을 기울이면 넓혀 놓은 후보군에서 결국 위쪽 몇 곳만 나옵니다.
+        </p>
+        <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
+          홈의 "이번 주 한적한 곳"이 그랬습니다 — 지역마다 상위 6곳을 이어 와 그중 상위 3곳에서
+          가중으로 뽑으니, 곱하면 <strong className="text-fg font-semibold">지역마다 가장 한적한 세 곳이
+          전부</strong>라 화면에 한적도 <Num>83~91</Num>만 떴습니다. 후보를{' '}
+          <strong className="text-fg font-semibold">지역 상위 35%</strong>로 넓히고 그 안에서는 고르게 뽑자
+          한적도가 <Num>70~90</Num>으로 퍼졌습니다. 35%인 이유는 그 경계의 한적도가 지역마다{' '}
+          <Num>70~80</Num>이라 <strong className="text-fg font-semibold">전부 한적(65) 등급 안</strong>이기
+          때문입니다 — 더 넓히면 보통인 곳을 한적하다고 부르게 됩니다.
+        </p>
+      </div>
+
+      <div className="bg-crowded-tint rounded-card flex items-start gap-2.5 px-4 py-3.5">
+        <span className="bg-crowded mt-1.5 h-2 w-2 flex-none rounded-full" aria-hidden="true" />
+        <p className="text-crowded-deep m-0 text-[12.5px] leading-[1.7]">
+          <strong className="font-semibold">완성된 추천 목록은 캐시하지 않습니다.</strong> 서버가 결과를
+          기억해 모든 사용자에게 같은 목록을 돌려주면 위의 장치가 통째로 죽고, 우리가 미는 곳이 새 혼잡지가
+          됩니다. 캐시는 <strong className="font-semibold">공사 응답까지만</strong>이고, 점수 계산과 뽑기는
+          매번 다시 합니다.
         </p>
       </div>
     </Section>
