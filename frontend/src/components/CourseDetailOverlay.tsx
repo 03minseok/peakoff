@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Close } from './icons'
+import { Close, LinkIcon } from './icons'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import { fetchSavedCourse, fetchSharedCourse, shareSavedCourse, shareUrlOf } from '../services/api'
 import type { SavedCourseDetail, SharedCourse } from '../types/api'
@@ -321,34 +321,66 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
               */}
               <div className="mt-1 flex flex-col gap-2">
                 {/*
-                  ⚠️ 카카오가 준비됐을 때만 세운다. 키가 없거나(개발 중) SDK를 못 받으면
-                  눌러도 아무 일이 없는 버튼이 되는데, 그럴 바에는 아래 링크 복사 하나가 낫다.
+                  ⚠️ 카카오가 준비됐을 때만 노란 버튼을 세운다. 키가 없거나(개발 중) SDK를 못 받으면
+                  눌러도 아무 일이 없는 버튼이 되는데, 그럴 바에는 링크 복사 하나가 낫다.
                   브랜드 색(#FEE500)은 팔레트 토큰의 예외다 — 남의 브랜드라 우리 색으로 칠할 수 없다.
+
+                  <p><b>둘을 한 줄에 둔다.</b> 같은 일(보내기)의 두 가지 방법이라 위아래로 쌓으면
+                  서로 다른 단계처럼 읽힌다. 자리도 갈랐다 — 카톡이 대부분의 사람이 쓸 길이라
+                  남는 폭을 가져가고, 링크 복사는 <b>아이콘 하나</b>로 접어 다른 메신저·메모로
+                  보낼 사람의 몫만 남긴다.
+
+                  <p>카카오가 없을 때는 링크 복사가 유일한 길이 되므로 <b>글자를 되찾는다</b> —
+                  아이콘 하나만 덩그러니 남으면 무엇을 하는 자리인지 말해줄 것이 없다.
                 */}
-                {kakaoStatus === 'ready' && (
+                {kakaoStatus === 'ready' ? (
+                  <div className="flex items-stretch gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void sendToKakao(course.id)}
+                      disabled={busy !== null}
+                      className="rounded-ui flex h-12 flex-1 cursor-pointer items-center justify-center gap-2 bg-[#FEE500] text-sm font-semibold text-[#191600] press disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <span
+                        className="grid h-4.75 w-4.75 place-items-center rounded-full bg-[#191600] text-[11px] font-bold text-[#FEE500]"
+                        aria-hidden="true"
+                      >
+                        K
+                      </span>
+                      {busy === 'kakao' ? '카카오톡 여는 중…' : '카카오톡으로 공유'}
+                    </button>
+                    {/* 글자가 없으니 이름은 aria-label이 진다. title은 마우스에게 같은 말을 한다 */}
+                    <button
+                      type="button"
+                      onClick={() => void copyShareLink(course.id)}
+                      disabled={busy !== null}
+                      aria-label="공유 링크 복사"
+                      title="공유 링크 복사"
+                      className="border-line bg-surface text-muted hover:bg-bg hover:text-fg rounded-ui disabled:text-hint grid h-12 w-12 flex-none cursor-pointer place-items-center border press disabled:cursor-wait"
+                    >
+                      <LinkIcon />
+                    </button>
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => void sendToKakao(course.id)}
+                    onClick={() => void copyShareLink(course.id)}
                     disabled={busy !== null}
-                    className="rounded-ui flex h-12 cursor-pointer items-center justify-center gap-2 bg-[#FEE500] text-sm font-semibold text-[#191600] press disabled:cursor-wait disabled:opacity-60"
+                    className="border-line bg-surface text-fg hover:bg-bg rounded-ui disabled:text-hint h-12 cursor-pointer border text-sm font-semibold press disabled:cursor-wait"
                   >
-                    <span
-                      className="grid h-4.75 w-4.75 place-items-center rounded-full bg-[#191600] text-[11px] font-bold text-[#FEE500]"
-                      aria-hidden="true"
-                    >
-                      K
-                    </span>
-                    {busy === 'kakao' ? '카카오톡 여는 중…' : '카카오톡으로 공유'}
+                    공유 링크 복사
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => void copyShareLink(course.id)}
-                  disabled={busy !== null}
-                  className="border-line bg-surface text-fg hover:bg-bg rounded-ui disabled:text-hint h-12 cursor-pointer border text-sm font-semibold press disabled:cursor-wait"
-                >
-                  {result.kind === 'copied' ? '링크를 복사했어요' : '공유 링크 복사'}
-                </button>
+                {/*
+                  복사됐다는 말이 <b>버튼 밖</b>에 선다. 예전에는 버튼 글자가 "링크를 복사했어요"로
+                  바뀌었는데, 아이콘 버튼에는 바꿀 글자가 없다. 한 자리에서 말하면 두 모양 중
+                  무엇이 섰든 같은 방식으로 알린다.
+                */}
+                {result.kind === 'copied' && (
+                  <p className="text-brand-deep m-0 text-center text-[12.5px]" role="status">
+                    링크를 복사했어요
+                  </p>
+                )}
                 {result.kind === 'shown' && (
                   <p className="bg-bg text-fg rounded-ui m-0 px-3.5 py-3 font-mono text-[12px] leading-[1.6] break-all select-all">
                     {result.url}
