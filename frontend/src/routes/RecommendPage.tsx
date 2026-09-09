@@ -615,8 +615,14 @@ export function RecommendPage() {
               {nights === null ? '' : formatDateRange(startDate, nights)}
             </span>
           </div>
+          {/*
+            ⚠️ <b>"오늘의"를 뗐다.</b> 이 화면은 바로 위에서 날짜를 고르게 하고 예측 창이
+            앞으로 24~30일이라 대부분 미래 날짜다 — 고른 날짜가 화면 오른쪽에 적혀 있는데
+            버튼만 오늘이라고 말하고 있었다. 홈 카드에서 같은 말을 걷어낸 것과 같은 이유다
+            (HomePage "새로운 여행을 발견할래요" 옆 주석).
+          */}
           <button type="submit" className={PRIMARY_BUTTON} disabled={!canSubmit || view.phase === 'loading'}>
-            {view.phase === 'loading' ? '코스를 짜는 중…' : '오늘의 여행 발견하기'}
+            {view.phase === 'loading' ? '코스를 짜는 중…' : '여행 발견하기'}
           </button>
           {/*
             "직접 짤래요"는 <b>왼쪽 설명으로 옮겼다.</b> /plan이 반대편 링크를 그 자리에
