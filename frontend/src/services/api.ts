@@ -19,6 +19,7 @@ import type {
   NearbyPlace,
   FavoritePlace,
   PublicCourse,
+  SharedCourse,
   Place,
   Trip,
   QuietSpot,
@@ -638,6 +639,39 @@ export function fetchSavedCourse(
 /** DELETE /api/courses/{id} */
 export function deleteSavedCourse(courseId: number, signal?: AbortSignal): Promise<void> {
   return apiRequest<void>(`/courses/${courseId}`, { method: 'DELETE', signal })
+}
+
+/**
+ * POST /api/courses/{id}/share — 공유 링크의 열쇠(토큰)를 받는다. 두 번 눌러도 같은 토큰이다.
+ *
+ * 완성 주소는 {@link shareUrlOf}가 만든다 — 어느 배포본(운영·프리뷰·로컬)에서 눌렀는지는
+ * 화면만 알기 때문에 서버는 토큰만 준다.
+ */
+export async function shareSavedCourse(courseId: number, signal?: AbortSignal): Promise<string> {
+  const response = await apiRequest<{ token: string }>(`/courses/${courseId}/share`, {
+    method: 'POST',
+    signal,
+  })
+  return response.token
+}
+
+/** 공유 토큰 → 이 배포본의 주소. 라우트 `s/:token`(App.tsx)과 한 몸이다 */
+export function shareUrlOf(token: string): string {
+  return `${window.location.origin}/s/${token}`
+}
+
+/**
+ * GET /api/courses/shared/{token} — 공유 링크로 코스를 본다. 로그인 없이.
+ *
+ * ⚠️ {@link fetchRecentCourses}와 같은 이유로 장소를 캐시에 심는다 — 안 심으면 "이 코스로
+ * 짜보기"로 편집 화면에 간 뒤 칸이 숫자 id로 뜬다. 받은 사람의 브라우저는 그 장소를 검색한 적이 없다.
+ */
+export async function fetchSharedCourse(token: string, signal?: AbortSignal): Promise<SharedCourse> {
+  const course = await apiRequest<SharedCourse>(`/courses/shared/${encodeURIComponent(token)}`, {
+    signal,
+  })
+  rememberPlaces(course.places.map((place) => place.place).filter((place) => place !== null))
+  return course
 }
 
 /**
