@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Close } from './icons'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
-import { fetchSavedCourse, shareSavedCourse, shareUrlOf } from '../services/api'
-import type { SavedCourseDetail } from '../types/api'
+import { fetchSavedCourse, fetchSharedCourse, shareSavedCourse, shareUrlOf } from '../services/api'
+import type { SavedCourseDetail, SharedCourse } from '../types/api'
 import { formatDateRange, formatNights, isPastDate } from '../utils/date'
 import { useScrollLock } from '../hooks/useScrollLock'
+import { shareCourseToKakao, useKakaoShare } from '../hooks/useKakaoShare'
 
 interface Props {
   /** 펼쳐 볼 코스 */
@@ -37,33 +38,83 @@ type Phase =
 export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) {
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
 
+  /** 카카오톡 공유를 쓸 수 있는가. 준비 안 됐으면 그 버튼을 아예 세우지 않는다 */
+  const kakaoStatus = useKakaoShare()
+
+  /** 어느 버튼이 일하는 중인가. 둘이 한 상태를 나눠 쓰면 누른 쪽이 아닌 버튼이 함께 잠긴다 */
+  const [busy, setBusy] = useState<'kakao' | 'copy' | null>(null)
+
   /**
-   * 공유 링크 버튼의 상태. {@code shown}은 클립보드가 안 되어 주소를 글자로 세운 경우다 —
+   * 버튼을 누른 결과. {@code shown}은 클립보드가 안 되어 주소를 글자로 세운 경우다 —
    * 링크는 이미 만들어졌으니 실패({@code failed})와 가른다.
    */
-  const [share, setShare] = useState<
-    | { status: 'idle' }
-    | { status: 'working' }
-    | { status: 'copied' }
-    | { status: 'shown'; url: string }
-    | { status: 'failed' }
-  >({ status: 'idle' })
+  const [result, setResult] = useState<
+    | { kind: 'none' }
+    | { kind: 'copied' }
+    | { kind: 'shown'; url: string }
+    | { kind: 'failed'; message: string }
+  >({ kind: 'none' })
+
+  /**
+   * 만들어 둔 공유 링크. <b>한 번만 만든다.</b>
+   *
+   * <p>토큰은 서버에서 이미 멱등이지만(두 번 불러도 같은 값), 여기 담아 두는 이유는 따로 있다.
+   * 카카오 공유는 PC에서 새 창을 여는데, 브라우저는 <b>클릭 직후가 아닌 창 열기를 막는다.</b>
+   * 두 번째 누름부터는 기다릴 것이 없어 곧바로 열린다.
+   */
+  const [link, setLink] = useState<{ url: string; course: SharedCourse } | null>(null)
+
+  /**
+   * 링크와 카드 재료를 마련한다.
+   *
+   * <p>토큰을 받은 뒤 <b>공유 화면과 같은 응답</b>을 한 번 더 받아 온다({@code fetchSharedCourse}).
+   * 카톡 카드에 적히는 이름·점수·사진이 전부 그 응답의 것이라, 카드와 링크를 눌러 도착한
+   * 화면이 다른 말을 할 자리가 없다. 저장 상세({@code SavedCourseDetail})에는 장소 사진이 없다.
+   */
+  async function ensureLink(id: number) {
+    if (link) {
+      return link
+    }
+    const token = await shareSavedCourse(id)
+    const made = { url: shareUrlOf(token), course: await fetchSharedCourse(token) }
+    setLink(made)
+    return made
+  }
 
   async function copyShareLink(id: number) {
-    setShare({ status: 'working' })
+    setBusy('copy')
     let url: string
     try {
-      url = shareUrlOf(await shareSavedCourse(id))
+      url = (await ensureLink(id)).url
     } catch {
-      setShare({ status: 'failed' })
+      setBusy(null)
+      setResult({ kind: 'failed', message: '링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.' })
       return
     }
+    setBusy(null)
     try {
       await navigator.clipboard.writeText(url)
-      setShare({ status: 'copied' })
+      setResult({ kind: 'copied' })
     } catch {
       // 링크는 살아 있다. 복사만 안 된 것이니 주소를 보여 주고 사용자가 옮기게 한다.
-      setShare({ status: 'shown', url })
+      setResult({ kind: 'shown', url })
+    }
+  }
+
+  async function sendToKakao(id: number) {
+    setBusy('kakao')
+    try {
+      const made = await ensureLink(id)
+      shareCourseToKakao(made.course, made.url)
+      setResult({ kind: 'none' })
+    } catch {
+      /*
+        카카오가 거절하는 흔한 이유는 <b>도메인 미등록</b>이다(개발자센터 > 플랫폼 > Web).
+        그때도 링크 자체는 살아 있으므로 복사 쪽으로 안내한다 — 공유가 통째로 막히지 않는다.
+      */
+      setResult({ kind: 'failed', message: '카카오톡으로 보내지 못했어요. 링크 복사로 보내 주세요.' })
+    } finally {
+      setBusy(null)
     }
   }
 
@@ -269,22 +320,43 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
                 주소는 링크를 만든 순간부터 살아 있으니, 복사 실패가 공유 실패는 아니다.
               */}
               <div className="mt-1 flex flex-col gap-2">
+                {/*
+                  ⚠️ 카카오가 준비됐을 때만 세운다. 키가 없거나(개발 중) SDK를 못 받으면
+                  눌러도 아무 일이 없는 버튼이 되는데, 그럴 바에는 아래 링크 복사 하나가 낫다.
+                  브랜드 색(#FEE500)은 팔레트 토큰의 예외다 — 남의 브랜드라 우리 색으로 칠할 수 없다.
+                */}
+                {kakaoStatus === 'ready' && (
+                  <button
+                    type="button"
+                    onClick={() => void sendToKakao(course.id)}
+                    disabled={busy !== null}
+                    className="rounded-ui flex h-12 cursor-pointer items-center justify-center gap-2 bg-[#FEE500] text-sm font-semibold text-[#191600] press disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <span
+                      className="grid h-4.75 w-4.75 place-items-center rounded-full bg-[#191600] text-[11px] font-bold text-[#FEE500]"
+                      aria-hidden="true"
+                    >
+                      K
+                    </span>
+                    {busy === 'kakao' ? '카카오톡 여는 중…' : '카카오톡으로 공유'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => void copyShareLink(course.id)}
-                  disabled={share.status === 'working'}
+                  disabled={busy !== null}
                   className="border-line bg-surface text-fg hover:bg-bg rounded-ui disabled:text-hint h-12 cursor-pointer border text-sm font-semibold press disabled:cursor-wait"
                 >
-                  {share.status === 'copied' ? '링크를 복사했어요' : '공유 링크 복사'}
+                  {result.kind === 'copied' ? '링크를 복사했어요' : '공유 링크 복사'}
                 </button>
-                {share.status === 'shown' && (
+                {result.kind === 'shown' && (
                   <p className="bg-bg text-fg rounded-ui m-0 px-3.5 py-3 font-mono text-[12px] leading-[1.6] break-all select-all">
-                    {share.url}
+                    {result.url}
                   </p>
                 )}
-                {share.status === 'failed' && (
+                {result.kind === 'failed' && (
                   <p className="text-crowded-deep m-0 text-center text-[12.5px]" role="alert">
-                    링크를 만들지 못했어요. 잠시 후 다시 시도해 주세요.
+                    {result.message}
                   </p>
                 )}
               </div>
