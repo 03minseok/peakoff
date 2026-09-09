@@ -19,7 +19,23 @@ public record ChatResponse(
 		ChatStatus status,
 		String basis,
 		String interest,
+		/**
+		 * 관심사의 <b>코드</b>. 화면이 문장을 받으러 올 때 그대로 돌려보낸다.
+		 *
+		 * <p>{@code interest}는 사람에게 보이는 이름("바다")이라 되돌려 받아 해석하면
+		 * 표기를 바꾸는 순간 조용히 깨진다. 코드는 화면이 읽지 않는 값이다.
+		 */
+		String interestCode,
 		boolean crowdedPeriod,
+		/**
+		 * 카드 문장을 <b>따로 받아 갈 것이 남았는가.</b>
+		 *
+		 * <p>이 응답의 문장은 서버 템플릿이다. 모델이 켜져 있고 하루 상한이 남았으면
+		 * {@code POST /api/chat/regions/lines}로 더 나은 문장을 받아 조용히 갈아끼울 수 있다.
+		 * 꺼져 있거나 상한이 닳았으면 {@code false}이고, 화면은 <b>묻지 않는다</b> —
+		 * 어차피 같은 템플릿이 돌아올 요청을 한 번 더 보낼 이유가 없다.
+		 */
+		boolean moreLines,
 		List<RegionCardResponse> cards) {
 
 	/** 창을 못 읽었을 때 쓸 말. 며칠인지 모를 뿐 <b>예측을 본다는 사실</b>은 그대로다. */
@@ -31,15 +47,14 @@ public record ChatResponse(
 	 *                      낮은 것은 <b>기간이 붐벼서가 아니라 바닷가 지역이 붐벼서</b>이고,
 	 *                      그때 통영은 55%다. 그 상태로 "어디나 붐빈다"고 하면 거짓말이 된다
 	 */
-	public static ChatResponse ok(
-			String basis, Interest interest, boolean crowdedPeriod, List<RegionCard> cards) {
-
-		return new ChatResponse(ChatStatus.OK, basis(basis), interest.label(), crowdedPeriod,
-				cards.stream().map(RegionCardResponse::from).toList());
+	public static ChatResponse ok(String basis, Interest interest, boolean crowdedPeriod,
+			boolean moreLines, List<RegionCard> cards) {
+		return new ChatResponse(ChatStatus.OK, basis(basis), interest.label(), interest.name(),
+				crowdedPeriod, moreLines, cards.stream().map(RegionCardResponse::from).toList());
 	}
 
 	public static ChatResponse offTopic(String basis) {
-		return new ChatResponse(ChatStatus.OFF_TOPIC, basis(basis), null, false, List.of());
+		return new ChatResponse(ChatStatus.OFF_TOPIC, basis(basis), null, null, false, false, List.of());
 	}
 
 	/**
@@ -50,11 +65,11 @@ public record ChatResponse(
 	 * 대신 {@code basis}가 어디까지 볼 수 있는지 말하므로, 화면은 그 기간을 알려 줄 수 있다.
 	 */
 	public static ChatResponse tooFar(String basis) {
-		return new ChatResponse(ChatStatus.TOO_FAR, basis(basis), null, false, List.of());
+		return new ChatResponse(ChatStatus.TOO_FAR, basis(basis), null, null, false, false, List.of());
 	}
 
 	public static ChatResponse unavailable(String basis) {
-		return new ChatResponse(ChatStatus.UNAVAILABLE, basis(basis), null, false, List.of());
+		return new ChatResponse(ChatStatus.UNAVAILABLE, basis(basis), null, null, false, false, List.of());
 	}
 
 	/**
