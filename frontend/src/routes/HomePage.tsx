@@ -1503,7 +1503,7 @@ export function HomePage() {
           출처를 밝히는 것과 <b>무엇인지 밝히는 것</b>은 다른 일이다.
         */}
         <p className="text-hint m-0 pt-5 pb-2 text-center text-[11.5px]">
-          혼잡 예측은 통계·예측값이라 실제와 다를 수 있어요 · 출처 ⓒ한국관광공사
+          혼잡 예측은 통계·예측값이라 실제와 다를 수 있어요 · 출처: ⓒ한국관광공사
         </p>
       </div>
 

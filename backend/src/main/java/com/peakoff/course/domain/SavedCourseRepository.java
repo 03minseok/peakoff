@@ -52,6 +52,16 @@ public interface SavedCourseRepository extends JpaRepository<SavedCourse, Long> 
 	long countByMemberId(Long memberId);
 
 	/**
+	 * 공유 링크로 찾는다. <b>주인을 가리지 않는다</b> — 링크를 받은 사람은 누구든(게스트도) 본다.
+	 *
+	 * <p>{@code memberId} 없이 여는 두 번째 자리다({@code findTop12…}이 첫 번째). 여기서는 토큰이
+	 * 소유권 검사 노릇을 한다 — 추측 불가한 열쇠를 들고 왔다는 것이 "주인이 준 링크"라는 증거다.
+	 * 열쇠가 그 역할을 하려면 토큰이 짧거나 순차적이어서는 안 된다({@code SavedCourse.shareToken}).
+	 */
+	@EntityGraph(attributePaths = "places")
+	Optional<SavedCourse> findByShareToken(String shareToken);
+
+	/**
 	 * 그 회원의 코스를 전부 지운다. 탈퇴할 때 쓴다.
 	 *
 	 * <p>파생 삭제 메서드는 <b>엔티티를 읽어 하나씩 지운다.</b> 그래서

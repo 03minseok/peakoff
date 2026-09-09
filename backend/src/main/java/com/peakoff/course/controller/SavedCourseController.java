@@ -21,6 +21,8 @@ import com.peakoff.course.dto.SaveCourseRequest;
 import com.peakoff.course.dto.PublicCourseSummary;
 import com.peakoff.course.dto.SavedCourseDetail;
 import com.peakoff.course.dto.SavedCourseSummary;
+import com.peakoff.course.dto.ShareLinkResponse;
+import com.peakoff.course.dto.SharedCourseView;
 import com.peakoff.course.service.SavedCourseService;
 import com.peakoff.global.response.ApiResponse;
 
@@ -129,6 +131,39 @@ public class SavedCourseController {
 
 		savedCourseService.delete(member.id(), courseId);
 		return ApiResponse.ok(null);
+	}
+
+	/**
+	 * POST /api/courses/{id}/share — 공유 링크를 연다.
+	 *
+	 * <p>토큰만 돌려준다. 완성 주소는 화면이 자기 origin으로 만든다(ShareLinkResponse 참고).
+	 * 두 번 눌러도 같은 토큰이다.
+	 */
+	@Operation(summary = "공유 링크 열기",
+			description = """
+					내 코스의 공유 토큰을 만든다(이미 있으면 그것을). 남의 코스는 404.
+					화면이 {origin}/s/{token}으로 이어 붙인다. 공개 토글과 무관하게 링크는 열린다 —
+					링크를 만든 것 자체가 공개 행위라서다.""")
+	@PostMapping("/{courseId}/share")
+	public ApiResponse<ShareLinkResponse> share(
+			@AuthenticationPrincipal AuthenticatedMember member,
+			@PathVariable Long courseId) {
+		return ApiResponse.ok(new ShareLinkResponse(savedCourseService.share(member.id(), courseId)));
+	}
+
+	/**
+	 * GET /api/courses/shared/{token} — 공유 링크로 코스를 본다. <b>로그인 없이</b> 열린다.
+	 *
+	 * <p>{@code /{courseId}}와 경로가 겹치지 않는다 — 그쪽은 숫자 id, 이쪽은 {@code shared/} 아래다.
+	 * 코스 id는 여전히 나가지 않는다.
+	 */
+	@Operation(summary = "공유 코스 보기 (로그인 불필요)",
+			description = """
+					토큰이 열쇠다. 없거나 지워진 코스는 404. 코스 이름·닉네임·장소가 나가고,
+					진단 전 코스면 총점·등급이 null이다(0이 아니다 — 0은 "매우 붐빔"으로 읽힌다).""")
+	@GetMapping("/shared/{token}")
+	public ApiResponse<SharedCourseView> shared(@PathVariable String token) {
+		return ApiResponse.ok(savedCourseService.findShared(token));
 	}
 	/**
 	 * GET /api/courses/recent?limit=4 — 최근 저장된 코스.

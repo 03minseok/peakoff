@@ -488,7 +488,7 @@ export function DiagnosisPage() {
                 )}
                 {/* 출처 표기. 숫자가 서는 화면마다 한 번은 말한다 — 표기 규칙은 HomePage 주석 참고 */}
                 <span className="text-hint text-[13px]">
-                  {formatKoreanDate(plan.startDate)} 기준 예측 · 출처 ⓒ한국관광공사
+                  {formatKoreanDate(plan.startDate)} 기준 예측 · 출처: ⓒ한국관광공사
                 </span>
               </div>
 

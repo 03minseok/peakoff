@@ -589,6 +589,21 @@ export interface PublicCourse {
 }
 
 /**
+ * 공유 링크(`/s/{token}`)로 여는 코스. `GET /api/courses/shared/{token}`, 로그인 없이.
+ *
+ * {@link PublicCourse}와 모양이 같고 둘이 다르다 — 서버 `SharedCourseView` 주석과 한 몸이다:
+ * - **코스 이름이 온다.** 홈 목록에서 이름을 뺀 이유(문법이 제각각 · 동의 없음)가 링크 한 장에는 없다
+ * - **점수 셋이 함께 null일 수 있다.** 진단 전 코스도 공유되기 때문이다. 화면은 마이페이지
+ *   카드처럼 `—` · "아직 진단 전"으로 그린다. ⚠️ 0으로 채우지 않는다 — 0은 "매우 붐빔"이다
+ */
+export interface SharedCourse extends Omit<PublicCourse, 'totalQuietness' | 'level' | 'levelLabel'> {
+  name: string
+  totalQuietness: number | null
+  level: CongestionLevel | null
+  levelLabel: string | null
+}
+
+/**
  * 찜한 장소 하나. 서버 FavoritePlaceResponse와 짝을 이룬다.
  *
  * <p>⚠️ <b>한적도가 없다.</b> 찜은 날짜가 없는 표시라("언젠가 가고 싶다") 어느 날 기준으로
@@ -811,4 +826,25 @@ export interface ChatAnswer {
    */
   crowdedPeriod: boolean
   cards: RegionCard[]
+}
+
+/**
+ * 서버 QuotaResponse — 오늘 공사 OpenAPI를 몇 번 불렀나.
+ *
+ * <p>심사에서 "실제로 공사 API를 부르나요?"에 화면으로 답하는 값이다. 한도는 포털이
+ * 알려주지 않아 서버가 가정한 값({@code assumedDailyLimit})을 함께 내려보낸다 —
+ * 화면이 1,000을 박아 두면 서버가 그 가정을 고칠 때 한쪽만 바뀐다.
+ */
+export interface QuotaSummary {
+  /** yyyy-MM-dd. 서버 시계 기준 */
+  date: string
+  assumedDailyLimit: number
+  apis: {
+    api: string
+    total: number
+    success: number
+    failure: number
+    percentOfAssumedLimit: number
+  }[]
+  totalAllApis: number
 }

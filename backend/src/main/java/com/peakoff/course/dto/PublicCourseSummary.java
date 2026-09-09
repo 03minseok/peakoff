@@ -116,18 +116,7 @@ public record PublicCourseSummary(
 	public static PublicCourseSummary from(
 			SavedCourse course, java.util.function.Function<String, Place> livePlaceOf) {
 		CongestionLevel level = CongestionLevel.fromQuietness(course.totalQuietness());
-
-		// 담은 순서대로. 무작위로 섞으면 같은 코스가 볼 때마다 달라 보인다.
-		List<PublicPlace> places = course.places().stream()
-				.sorted(Comparator.comparingInt(SavedCoursePlace::day)
-						.thenComparingInt(SavedCoursePlace::visitOrder))
-				.map(place -> new PublicPlace(
-						place.day(),
-						place.visitOrder(),
-						place.placeId(),
-						place.placeName(),
-						livePlaceOf.apply(place.placeId())))
-				.toList();
+		List<PublicPlace> places = placesOf(course, livePlaceOf);
 
 		SupportedRegion region = SupportedRegion.fromSlug(course.region());
 		return new PublicCourseSummary(
@@ -144,5 +133,24 @@ public record PublicCourseSummary(
 				level.label(),
 				places,
 				course.createdAt());
+	}
+
+	/**
+	 * 담긴 장소를 화면 순서로. 공유 코스({@code SharedCourseView})도 같은 모양을 쓴다 —
+	 * 두 화면이 장소를 다르게 그리면 같은 코스가 홈과 링크에서 다르게 보인다.
+	 */
+	public static List<PublicPlace> placesOf(
+			SavedCourse course, java.util.function.Function<String, Place> livePlaceOf) {
+		// 담은 순서대로. 무작위로 섞으면 같은 코스가 볼 때마다 달라 보인다.
+		return course.places().stream()
+				.sorted(Comparator.comparingInt(SavedCoursePlace::day)
+						.thenComparingInt(SavedCoursePlace::visitOrder))
+				.map(place -> new PublicPlace(
+						place.day(),
+						place.visitOrder(),
+						place.placeId(),
+						place.placeName(),
+						livePlaceOf.apply(place.placeId())))
+				.toList();
 	}
 }

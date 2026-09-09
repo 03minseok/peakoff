@@ -63,6 +63,14 @@ public class KtoCongestionClient {
 		return cache.get(region, this::fetch);
 	}
 
+	/**
+	 * 예측을 <b>지금</b> 다시 받아 담는다. 프리워밍({@code KtoCacheWarmer}) 전용.
+	 * 빈 응답은 담지 않고 옛 값을 지킨다 — {@code usable} 술어가 {@code get}과 같은 길에서 막는다.
+	 */
+	public RegionForecast refreshForecast(Region region) {
+		return cache.refresh(region, this::fetch);
+	}
+
 	private RegionForecast fetch(Region region) {
 		JsonNode body = caller.body(PATH, Map.of(
 				"numOfRows", String.valueOf(MAX_ROWS),

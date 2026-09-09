@@ -67,4 +67,11 @@ public class RegionCache<T> {
 	public T get(Region region, Function<Region, T> loader) {
 		return cache.get(region.legalDongCode(), key -> loader.apply(region));
 	}
+
+	/**
+	 * 수명이 남았어도 지금 다시 받아 담는다. 프리워밍 전용 — 이유는 {@link TtlCache#refresh}에.
+	 */
+	public T refresh(Region region, Function<Region, T> loader) {
+		return cache.refresh(region.legalDongCode(), key -> loader.apply(region));
+	}
 }

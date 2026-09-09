@@ -35,7 +35,7 @@ import {
   fetchTrips,
   removeCourseFromTrip,
 } from '../services/api'
-import { daysBetween, formatMonthDay } from '../utils/date'
+import { daysBetween, formatMonthDay, isPastDate } from '../utils/date'
 import { useAuth } from '../state/authContext'
 import { useFavorites } from '../state/favoriteContext'
 import { defaultRegionSlug, regionNameOf, searchRegions } from '../constants/regions'
@@ -100,6 +100,78 @@ function MoreButton({ remaining, onClick }: { remaining: number; onClick: () => 
     >
       더보기 <span className="text-hint">({remaining})</span>
     </button>
+  )
+}
+
+/**
+ * 코스 목록 안의 작은 머리글. "내가 저장한 코스" 아래에서 예정·지난을 가른다.
+ *
+ * <p>지난 쪽은 글자까지 한 단 낮춘다 — 카드만 흐리고 머리글이 또렷하면
+ * 흐린 카드들이 "고장난 카드"로 읽힌다. 섹션 전체가 같은 톤이어야 <b>의도</b>로 읽힌다.
+ */
+function ShelfHeading({
+  title,
+  count,
+  past = false,
+}: {
+  title: string
+  count?: number
+  past?: boolean
+}) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <h3
+        className={`m-0 text-[14.5px] font-bold tracking-[-0.01em] ${past ? 'text-muted' : 'text-fg'}`}
+      >
+        {title}
+      </h3>
+      {count !== undefined && <span className="text-hint text-[12.5px]">{count}개</span>}
+    </div>
+  )
+}
+
+/**
+ * 예정된 여행 · 지난 여행 한 무더기. 머리글 + 격자 + 더보기.
+ *
+ * <p>더보기 한도를 <b>무더기마다 따로</b> 둔다. 하나로 같이 쓰면 지난 여행을 펼치려고
+ * 누른 더보기가 예정된 여행까지 늘려, 위쪽이 길어지면서 방금 보던 자리가 아래로 밀린다.
+ *
+ * <p><b>지난 무더기는 위와 선으로 가른다.</b> 좁은 화면에서는 카드가 한 줄에 하나씩
+ * 세로로만 이어져, 머리글 하나로는 "여기서부터 지난 것"이 훑는 눈에 안 걸린다.
+ */
+function CourseShelf({
+  title,
+  courses,
+  limit,
+  past = false,
+  onMore,
+  onOpen,
+  onDelete,
+}: {
+  title: string
+  courses: SavedCourseSummary[]
+  limit: number
+  past?: boolean
+  onMore: () => void
+  onOpen: (course: SavedCourseSummary) => void
+  onDelete: (course: SavedCourseSummary) => void
+}) {
+  return (
+    <section className={`flex flex-col gap-3 ${past ? 'border-line border-t pt-5' : ''}`}>
+      <ShelfHeading title={title} count={courses.length} past={past} />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {courses.slice(0, limit).map((course) => (
+          <SavedCourseCard
+            key={course.id}
+            course={course}
+            past={past}
+            onOpen={() => onOpen(course)}
+            onDelete={() => onDelete(course)}
+          />
+        ))}
+      </div>
+      {courses.length > limit && <MoreButton remaining={courses.length - limit} onClick={onMore} />}
+    </section>
   )
 }
 
@@ -252,7 +324,8 @@ export function MyPage() {
    * <p>목록이 바뀌어도(코스를 지우거나 찜을 풀어도) 되돌리지 않는다 — 이미 펼쳐 본 것이
    * 다시 접히면 방금 보던 자리를 잃는다. 목록보다 커져도 {@code slice}가 알아서 자른다.
    */
-  const [courseLimit, setCourseLimit] = useState(COURSE_PAGE)
+  const [upcomingLimit, setUpcomingLimit] = useState(COURSE_PAGE)
+  const [pastLimit, setPastLimit] = useState(COURSE_PAGE)
   const [favoriteLimit, setFavoriteLimit] = useState(FAVORITE_PAGE)
 
   /**
@@ -458,6 +531,29 @@ export function MyPage() {
   }, [authLoading, member, load])
 
   const courses = list.status === 'loaded' ? list.courses : []
+
+  /*
+   * ■ 저장 코스를 <b>예정된 여행</b>과 <b>지난 여행</b>으로 가른다 (2026-09-09).
+   *
+   * 예전에는 만든 순서대로 한 목록에 섞여 있고 지난 여행만 흐리게 표시했다. 그래서
+   * 앞으로 갈 여행이 옛 코스 사이에 파묻혔고, 시간이 갈수록 지난 코스가 쌓여
+   * 예정된 코스를 아래로 밀어냈다. 둘은 <b>할 수 있는 일</b>이 다르다 — 예정된 코스는
+   * 다시 진단할 수 있지만 지난 코스는 예측 데이터 범위 밖이라 재계산이 안 된다.
+   * 사용자의 <b>뜻</b>도 다르다 — 예정된 코스는 고치러 오고, 지난 코스는 돌아보러 온다.
+   *
+   * <p><b>기준은 여행 시작일이다.</b> 시작일이 오늘보다 앞이면 지난 여행이다. 끝나는 날로
+   * 재면 어제 떠난 여행이 "예정"에 서는데, 코스 짜기가 오늘 이전 시작일을 받지 않으므로
+   * 그 코스는 다시 진단할 수 없다 — 예정된 자리에 놓고 안 되는 버튼을 주게 된다.
+   *
+   * <p><b>정렬은 저장 순서가 아니라 여행 날짜다.</b> 사용자가 궁금한 것은 언제 저장했느냐가
+   * 아니라 언제 떠나느냐다. 예정은 가까운 순(곧 떠날 것이 위), 지난 것은 최근에 다녀온 순.
+   */
+  const upcomingCourses = courses
+    .filter((course) => !isPastDate(course.startDate))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+  const pastCourses = courses
+    .filter((course) => isPastDate(course.startDate))
+    .sort((a, b) => b.startDate.localeCompare(a.startDate))
   const trips = tripsState.status === 'loaded' ? tripsState.trips : []
   const detailTrip = trips.find((trip) => trip.id === detailTripId) ?? null
 
@@ -872,21 +968,58 @@ export function MyPage() {
           애초에 길어지지 않게 한다. 둘을 함께 두면 세 곳(위·아래·더보기)에 이동 수단이 서서
           어느 것을 눌러야 할지가 오히려 흐려진다.
         */}
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {courses.slice(0, courseLimit).map((course) => (
-                  <SavedCourseCard
-                    key={course.id}
-                    course={course}
-                    onOpen={() => setOpened(course.id)}
-                    onDelete={() => setPendingDelete(course)}
-                  />
-                ))}
-              </div>
+              {/*
+          예정된 여행이 위, 지난 여행이 아래. 새 화면이나 탭을 만들지 않고 섹션으로만 가른다 —
+          탭이면 지난 여행이 없을 때 빈 탭이 덩그러니 남고, 서비스가 갓 만들어져
+          대부분이 그 상태라 미완성으로 보인다.
 
-              {courses.length > courseLimit && (
-                <MoreButton
-                  remaining={courses.length - courseLimit}
-                  onClick={() => setCourseLimit((n) => n + COURSE_PAGE)}
+          <b>예정된 여행은 비어도 자리를 지킨다.</b> 이 화면의 본업이 그쪽이라 빈 자리가
+          곧 "다음 여행을 짜라"는 문이 된다. <b>지난 여행은 비면 아예 그리지 않는다</b>
+          (아래 조건) — 돌아볼 것이 없는데 "지난 여행 0개"라고 적을 이유가 없다.
+        */}
+              {upcomingCourses.length > 0 ? (
+                <CourseShelf
+                  title="예정된 여행"
+                  courses={upcomingCourses}
+                  limit={upcomingLimit}
+                  onMore={() => setUpcomingLimit((n) => n + COURSE_PAGE)}
+                  onOpen={(course) => setOpened(course.id)}
+                  onDelete={setPendingDelete}
+                />
+              ) : (
+                <section className="flex flex-col gap-3">
+                  <ShelfHeading title="예정된 여행" />
+                  {/*
+                    지난 여행만 남은 사람의 빈 자리. 전체가 빈 화면(아래 empty)보다 낮게 둔다 —
+                    이 사람은 이미 끝까지 가본 사람이라 두 문을 다 열어 보일 필요가 없고,
+                    바로 아래 지난 여행 목록이 있어 화면이 비어 보이지도 않는다.
+                  */}
+                  <div className="border-line flex flex-col items-center gap-3 rounded-[18px] border border-dashed px-5 py-8 text-center">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-fg text-[14.5px] font-bold">예정된 여행이 없어요</span>
+                      <span className="text-muted text-[13px] leading-[1.6]">
+                        다음 여행을 미리 짜 두면 여기에 올라와요.
+                      </span>
+                    </div>
+                    <Link
+                      to="/plan"
+                      className="bg-brand hover:bg-brand-hover shadow-cta rounded-ui text-fg grid h-11 place-items-center px-5 text-[14px] font-semibold no-underline press"
+                    >
+                      코스 짜러 가기
+                    </Link>
+                  </div>
+                </section>
+              )}
+
+              {pastCourses.length > 0 && (
+                <CourseShelf
+                  title="지난 여행"
+                  past
+                  courses={pastCourses}
+                  limit={pastLimit}
+                  onMore={() => setPastLimit((n) => n + COURSE_PAGE)}
+                  onOpen={(course) => setOpened(course.id)}
+                  onDelete={setPendingDelete}
                 />
               )}
             </>

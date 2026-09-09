@@ -115,6 +115,17 @@ public class KtoPlaceClient {
 	}
 
 	/**
+	 * 카탈로그를 <b>지금</b> 다시 받아 담는다. 프리워밍({@code KtoCacheWarmer}) 전용.
+	 *
+	 * <p>이 클라이언트에서 가장 비싼 호출이다 — 한 번에 최대 5,000행, 제주시는 1,271곳.
+	 * 그래서 사용자 요청이 아니라 워머가 앞질러 부르는 것이 값어치가 있다.
+	 * 실패하면 옛 값을 지키고 60초 백오프에 든다({@link RegionCache#refresh}).
+	 */
+	public RegionCatalog refreshCatalog(Region region) {
+		return cache.refresh(region, this::fetchCatalog);
+	}
+
+	/**
 	 * 카탈로그에 없는 장소를 하나만 조회한다.
 	 *
 	 * <p>필요한 자리가 하나 있다 — <b>저장해 둔 코스를 불러올 때</b>다. 저장된 장소가

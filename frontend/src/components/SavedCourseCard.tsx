@@ -1,10 +1,18 @@
 import { LEVEL_TINT } from './levelStyles'
 import { Close } from './icons'
 import type { SavedCourseSummary } from '../types/api'
-import { formatDateRange, formatNights, formatRelativeTime, isPastDate } from '../utils/date'
+import { formatDateRange, formatNights, formatRelativeTime } from '../utils/date'
 
 interface Props {
   course: SavedCourseSummary
+  /**
+   * 지난 여행인지. <b>카드가 스스로 재지 않고 목록이 정해 준다.</b>
+   *
+   * 마이페이지가 예정·지난을 섹션으로 가르면서 기준(여행 시작일이 오늘보다 앞)이
+   * 그쪽에 있다. 카드가 따로 재면 두 기준이 어긋나는 날이 온다 — 예전엔 카드가
+   * 끝나는 날로 재서, 시작일로 가른 섹션과 다른 답을 냈다.
+   */
+  past?: boolean
   onOpen: () => void
   onDelete: () => void
 }
@@ -28,7 +36,9 @@ const META_CHIP =
  * 모바일·데스크톱이 갈리는 자리(탭이 사라지는 {@code md})를 그대로 쓴다.
  *
  * <p><b>지난 여행은 흐리게 둔다.</b> 지우지 않는 이유는 기록이기 때문이고,
- * 흐리게 두는 이유는 지금 계획할 수 있는 코스와 섞여 보이면 목록을 훑기 어려워서다.
+ * 흐리게 두는 이유는 지금 계획할 수 있는 코스와 <b>다른 종류</b>임을 보이기 위해서다.
+ * "지난 여행" 알약은 걷어냈다 — 목록이 섹션으로 갈리면서 머리글이 그 말을 하고,
+ * 카드마다 또 적으면 같은 말이 한 섹션에 여섯 번 선다.
  *
  * <h3>카드 전체를 누를 수 있게 만든 방법</h3>
  * 카드 자체는 {@code <div>}다. 안에 진짜 버튼 두 개(제목·삭제)가 들어 있고,
@@ -39,9 +49,7 @@ const META_CHIP =
  * {@code span}으로 흉내 내면 키보드·보조기술 동작을 전부 손으로 재현해야 하고,
  * 그중 하나만 빠뜨려도 그 사람에게는 눌리지 않는 버튼이 된다.
  */
-export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
-  const past = isPastDate(course.endDate)
-
+export function SavedCourseCard({ course, past = false, onOpen, onDelete }: Props) {
   return (
     // relative: 제목 버튼의 ::after가 이 상자를 기준으로 늘어난다
     <div
@@ -51,20 +59,22 @@ export function SavedCourseCard({ course, onOpen, onDelete }: Props) {
     >
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex min-w-0 flex-col gap-1.25">
-          {past && (
-            <span className="text-hint bg-bg self-start rounded-full px-2 py-0.5 text-[10.5px] font-semibold">
-              지난 여행
-            </span>
-          )}
-
           {/*
             버튼에 truncate(overflow:hidden)를 걸면 ::after까지 잘려 확장이 무효가 된다.
             자르는 일은 안쪽 span이 맡는다.
+
+            ⚠️ 이 버튼에는 press를 붙이지 않는다 (2026-09-09). press는 눌리는 순간
+            transform: scale(0.97)을 거는데, <b>transform이 걸린 요소는 absolute 자손의 기준
+            상자가 된다.</b> 카드를 덮고 있던 ::after가 누르는 순간 기준을 카드에서 이 버튼으로
+            바꿔 제목 한 줄로 쪼그라들고, 손을 떼는 자리가 버튼 밖이 되어 클릭이 성립하지
+            않았다 — "상세 보기" 글자를 눌러도 아무 일이 없고 제목만 눌렸다. 눌림 반응이
+            필요하면 transform이 아닌 방법이어야 하고, 카드 전체가 0.97로 줄어드는 것은
+            애초에 의도가 아니다.
           */}
           <button
             type="button"
             onClick={onOpen}
-            className="press text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] max-md:text-[14.5px] after:absolute after:inset-0 after:rounded-card after:content-[''] max-md:after:rounded-[16px]"
+            className="text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] max-md:text-[14.5px] after:absolute after:inset-0 after:rounded-card after:content-[''] max-md:after:rounded-[16px]"
           >
             <span className="block truncate">{course.name}</span>
           </button>

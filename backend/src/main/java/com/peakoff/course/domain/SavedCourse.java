@@ -154,6 +154,23 @@ public class SavedCourse {
 	private Boolean publicCourse;
 
 	/**
+	 * 공유 링크의 열쇠. {@code null}이면 공유한 적이 없는 코스다.
+	 *
+	 * <p><b>코스 id를 링크에 쓰지 않는다.</b> 이 저장소는 남의 코스를 번호로 훑어 여는 길을
+	 * 막아 두었는데(저장소 주석 · {@code /recent}가 id를 내보내지 않는 이유), 링크에 id를
+	 * 실으면 그 길을 우리가 다시 연다. 대신 추측할 수 없는 16자(62진 · 약 95비트)를 따로 만든다.
+	 *
+	 * <p><b>공개 토글({@link #publicCourse})과 별개다.</b> 그쪽은 "홈의 남들 목록에 실어도
+	 * 되나"고, 이쪽은 "이 링크를 받은 사람이 봐도 되나"다. 링크를 만든 것 자체가 명시적
+	 * 공개 행위라 토글이 꺼져 있어도 링크는 열린다 — 사용자가 한 일이 그 뜻이다.
+	 *
+	 * <p>한 번 발급하면 <b>바뀌지 않는다.</b> 누를 때마다 새 토큰을 만들면 먼저 보낸 링크가 죽는다.
+	 * 코스를 지우면 같은 행이라 링크도 함께 사라진다(v1에는 "링크 끄기"가 없다).
+	 */
+	@Column(unique = true, length = 32)
+	private String shareToken;
+
+	/**
 	 * 그 점수를 매긴 시각. 기준이 바뀌었을 때 다시 계산할 대상을 고르는 데 쓴다.
 	 *
 	 * <p><b>총점과 운명을 같이한다</b> — 점수가 없으면 점수를 매긴 시각도 없다.
@@ -396,6 +413,25 @@ public class SavedCourse {
 	/** 고른 적 없는 옛 코스는 비공개로 읽는다 — 묻지 않고 내보내지 않기 위해서다 */
 	public boolean isPublic() {
 		return Boolean.TRUE.equals(publicCourse);
+	}
+
+	/** 공유 링크의 열쇠. 공유한 적이 없으면 {@code null} */
+	public String shareToken() {
+		return shareToken;
+	}
+
+	/**
+	 * 공유 링크를 연다. 이미 열려 있으면 <b>그대로 둔다</b> — 먼저 보낸 링크를 살려 두기 위해서다.
+	 *
+	 * @param token 서비스가 만든 토큰. 엔티티가 난수를 만들지 않는 이유: 어디서 어떤 난수원으로
+	 *              만드는지가 한 곳(서비스)에 보여야 한다
+	 * @return 지금 열려 있는 토큰(새것이거나 예전 것)
+	 */
+	public String openShareLink(String token) {
+		if (shareToken == null) {
+			shareToken = Objects.requireNonNull(token);
+		}
+		return shareToken;
 	}
 
 	/** 총점을 매긴 칸 수. 이 컬럼이 생기기 전에 저장된 코스는 {@code null} */
