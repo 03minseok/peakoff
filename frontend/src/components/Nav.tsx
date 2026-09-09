@@ -13,6 +13,27 @@ import { useAuth } from '../state/authContext'
  * <p>두 컴포넌트가 {@code ITEMS} 하나를 공유한다. 목록을 두 벌로 적으면 메뉴를 더할 때
  * 한쪽만 고쳐진다.
  *
+ * <h3>헤더에 남긴 것 (2026-09-09)</h3>
+ * <pre>
+ *   PEAKOFF   코스 짜기 · 코스 발견 ....................... 마이페이지
+ * </pre>
+ *
+ * <p><b>"홈"을 걷어냈다.</b> 왼쪽 글자가 이미 홈으로 가는 링크다(그 링크의 이름이
+ * "PEAKOFF 처음으로"다). 같은 곳으로 가는 두 개가 손가락 하나 거리에 나란히 서 있었고,
+ * 로고를 눌러 처음으로 가는 것은 웹에서 거의 관습이라 글자를 하나 더 둘 값을 못 한다.
+ *
+ * <p><b>마이페이지를 오른쪽 계정 자리로 옮겼다.</b> "왼쪽은 이동, 오른쪽 끝은 계정"이
+ * 이 파일이 오래 적어 온 규칙인데, 정작 마이페이지가 이동 무리에 섞여 있었다 —
+ * 계정을 찾는 사람이 두 곳을 봐야 했다.
+ *
+ * <p><b>넓은 화면 헤더에서 로그아웃을 걷어냈다.</b> 한 세션에 많아야 한 번 쓰는 일이
+ * <b>오른쪽 끝</b>을 차지하고 있었다. 눈이 마지막으로 머무는 칸이다. 게다가 같은 것이
+ * 세 곳에 있었다 — 헤더·좁은 화면 메뉴·마이페이지 아래쪽. 마이페이지 것은 경고색까지
+ * 입고 있어 그쪽이 진짜 자리다. 이제 한 번 더 눌러 닿는다.
+ *
+ * <p>⚠️ <b>좁은 화면 메뉴에는 로그아웃이 남는다.</b> 거기는 헤더에 링크가 아예 없어,
+ * 걷어내면 메뉴를 열고 마이페이지로 들어가는 두 걸음이 된다.
+ *
  * <p><b>둘 중 하나는 반드시 화면에 있어야 한다.</b> 홈 화면이 {@code Layout} 밖에 있어
  * {@link HeaderNav}를 빠뜨린 적이 있는데, 그때 데스크톱에서는 이동 수단이 통째로 사라졌다.
  *
@@ -32,8 +53,6 @@ interface Item {
   to: string
   label: string
   icon: ReactNode
-  /** 정확히 그 경로일 때만 켜진다. "/"처럼 모든 경로의 앞부분인 경우에 필요하다 */
-  end?: boolean
 }
 
 /*
@@ -49,7 +68,7 @@ interface Item {
  *
  * <p>대신 <b>모양만 가져왔다</b> — 나침반과 주사위를 같은 규격의 선으로 다시 그렸다.
  * 홈 카드와 이어주던 것은 색이 아니라 <b>무엇을 그렸는가</b>이므로, 선으로 옮겨도 그 끈은
- * 끊기지 않는다. 다섯이 한 벌로 남고 색은 글자를 따라간다.
+ * 끊기지 않는다. 한 벌로 남고 색은 글자를 따라간다.
  */
 const ICON_PROPS = {
   width: 20,
@@ -63,17 +82,13 @@ const ICON_PROPS = {
   'aria-hidden': true,
 }
 
+/**
+ * <b>갈 곳 둘.</b> 코스를 시작하는 두 입구이고, 홈이 갈림길 카드 둘로 보여주는 그 쌍이다.
+ *
+ * <p>마이페이지는 여기 없다 — 계정이라 오른쪽 끝({@link HeaderAuthAction})에 선다.
+ * 홈도 없다 — 왼쪽 로고가 그 일을 한다. 파일 머리말 참고.
+ */
 const ITEMS: Item[] = [
-  {
-    to: '/',
-    label: '홈',
-    end: true,
-    icon: (
-      <svg {...ICON_PROPS}>
-        <path d="M3.2 8.8 10 3.5l6.8 5.3V16a1 1 0 0 1-1 1h-3.4v-4.6H7.6V17H4.2a1 1 0 0 1-1-1z" />
-      </svg>
-    ),
-  },
   {
     to: '/plan',
     /*
@@ -123,17 +138,28 @@ const ITEMS: Item[] = [
       </svg>
     ),
   },
-  {
-    to: '/my',
-    label: '마이페이지',
-    icon: (
-      <svg {...ICON_PROPS}>
-        <circle cx="10" cy="6.8" r="3" />
-        <path d="M4.2 16.8a5.8 5.8 0 0 1 11.6 0" />
-      </svg>
-    ),
-  },
 ]
+
+/**
+ * 계정 자리에 서는 항목. <b>{@code ITEMS}와 갈라 두었다</b> (2026-09-09).
+ *
+ * <p>넓은 화면에서는 오른쪽 끝에, 좁은 화면에서는 메뉴 목록 맨 아래에 선다.
+ * 자리가 다르지만 <b>같은 문</b>이라 이름·그림을 한 곳에서 정한다.
+ *
+ * <p>⚠️ <b>로그인한 사람에게만 보인다.</b> 게스트가 눌러도 로그인 화면으로 튕기는데,
+ * 갈 수 없는 곳을 메뉴에 세워 두는 셈이다. 게스트에게는 같은 자리에 "로그인"이 서므로
+ * 들어가는 문이 사라지지도 않는다.
+ */
+const MY_PAGE: Item = {
+  to: '/my',
+  label: '마이페이지',
+  icon: (
+    <svg {...ICON_PROPS}>
+      <circle cx="10" cy="6.8" r="3" />
+      <path d="M4.2 16.8a5.8 5.8 0 0 1 11.6 0" />
+    </svg>
+  ),
+}
 
 /**
  * 좁은 화면의 헤더에 서는 메뉴 토글.
@@ -241,11 +267,15 @@ export function MobileMenu() {
             aria-label="주요 화면"
             className="border-line bg-surface shadow-raised absolute top-full right-0 z-30 mt-2 flex w-44 flex-col gap-0.5 rounded-[16px] border p-1.5"
           >
-            {ITEMS.map((item) => (
+            {/*
+              ⚠️ <b>마이페이지가 목록 끝에 붙는다.</b> 넓은 화면은 그것을 오른쪽 끝으로
+              옮겼지만 여기는 옮길 자리가 없다 — 좁은 화면 헤더에는 토글뿐이라,
+              메뉴 밖으로 빼면 갈 길이 사라진다. 계정이라는 것은 <b>아래 선</b>이 말한다.
+            */}
+            {[...ITEMS, ...(!loading && member ? [MY_PAGE] : [])].map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.end}
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 rounded-chip px-3 py-2.5 text-[14px] no-underline transition-colors ${
                     isActive
@@ -302,6 +332,9 @@ export function MobileMenu() {
  *
  * <p><b>헤더를 직접 그리는 화면마다 넣어야 한다.</b> {@code Layout}을 쓰지 않는 홈 화면이
  * 여기에 해당한다.
+ *
+ * <p>여기 서는 것은 <b>갈 곳 둘</b>뿐이다. 마이페이지는 계정이라 오른쪽 끝으로,
+ * 홈은 왼쪽 로고로 갔다 — 파일 머리말 참고.
  */
 export function HeaderNav() {
   return (
@@ -310,7 +343,6 @@ export function HeaderNav() {
         <NavLink
           key={item.to}
           to={item.to}
-          end={item.end}
           className={({ isActive }) =>
             `text-[13.5px] whitespace-nowrap no-underline transition-colors ${
               isActive ? 'text-fg font-semibold' : 'text-muted hover:text-fg font-medium'
@@ -326,24 +358,32 @@ export function HeaderNav() {
 }
 
 /**
- * 헤더 <b>오른쪽 끝</b>에 서는 인증 버튼. 로그인 전이면 "로그인", 뒤면 "로그아웃".
+ * 헤더 <b>오른쪽 끝</b>에 서는 계정 자리. 로그인 전이면 "로그인", 뒤면 "마이페이지".
  *
  * <p>둘은 같은 자리에서 서로를 대신하는 한 쌍이라 한 컴포넌트로 묶었다. 예전에는
- * 로그인 링크를 헤더마다 각자 그리고 있었는데({@code Layout}과 홈이 따로), 로그아웃을
- * 더하면서 같은 분기를 두 벌 적게 될 자리였다.
+ * 로그인 링크를 헤더마다 각자 그리고 있었는데({@code Layout}과 홈이 따로),
+ * 같은 분기를 두 벌 적게 될 자리였다.
  *
- * <h3>로그아웃이 마이페이지 옆이 아닌 이유</h3>
- * 처음에는 {@link HeaderNav}의 링크들 끝에 붙였는데, 그러면 <b>가는 곳들 사이에
- * 하는 일이 하나 끼어</b> 다섯 번째 화면처럼 읽혔다. 세로선으로 갈라도 줄은 하나였다.
- * 왼쪽은 이동, 오른쪽 끝은 계정 — 자리로 종류를 나누는 편이 선 하나보다 분명하다.
+ * <h3>여기 있던 로그아웃을 걷어냈다 (2026-09-09)</h3>
+ * 왼쪽은 이동, 오른쪽 끝은 계정 — 자리로 종류를 나눈다는 규칙은 그대로다. 다만 그 규칙을
+ * 지키는 것이 <b>로그아웃일 이유가 없었다.</b> 한 세션에 많아야 한 번 쓰는 일이 눈이
+ * 마지막으로 머무는 칸을 차지했고, 정작 <b>계정으로 들어가는 문</b>인 마이페이지는
+ * 이동 링크들 사이에 섞여 있었다. 둘을 맞바꾸니 규칙과 화면이 처음으로 맞는다.
  *
- * <p><b>좁은 화면에서 로그아웃은 여기 서지 않는다.</b> 그쪽은 {@link MobileMenu} 안에
+ * <p>로그아웃은 사라지지 않는다 — {@link MobileMenu} 안과 마이페이지 아래쪽에 있고,
+ * 그중 마이페이지 것은 경고색을 입고 있어 원래 그쪽이 제 자리다.
+ *
+ * <h3>닉네임을 세우지 않는 이유</h3>
+ * 이름은 <b>정보처럼 보이지 버튼처럼 보이지 않는다.</b> 눌러야 한다는 것을 아는 사람에게만
+ * 동작하는 문이 된다. 그래서 이 자리에도 이름 대신 <b>갈 곳의 이름</b>을 적는다.
+ *
+ * <p><b>좁은 화면에서 마이페이지는 여기 서지 않는다.</b> 그쪽은 {@link MobileMenu} 안에
  * 있다 — 헤더에 토글과 나란히 두면 좁은 폭에서 오른쪽이 붐빈다.
  * 반면 "로그인"은 좁은 화면에도 남긴다. 아직 계정이 없는 사람에게는 그것이
  * 메뉴 안에 숨으면 안 되는 유일한 입구다.
  */
 export function HeaderAuthAction() {
-  const { member, loading, logout } = useAuth()
+  const { member, loading } = useAuth()
 
   /*
    * 확인이 끝나기 전에는 자리만 잡아 둔다. "로그인"을 먼저 띄웠다가 로그아웃으로
@@ -364,13 +404,21 @@ export function HeaderAuthAction() {
     )
   }
 
+  /*
+   * 이동 링크와 <b>같은 글자 크기·같은 활성 표시</b>를 쓴다. 갈 곳이라는 점은 왼쪽
+   * 링크들과 다르지 않고, 계정이라는 것은 <b>자리</b>가 말한다 — 모양까지 다르게 두면
+   * 같은 종류인 것을 알아볼 단서가 없어진다.
+   */
   return (
-    <button
-      type="button"
-      onClick={logout}
-      className="text-hint hover:text-fg hidden cursor-pointer rounded-chip bg-transparent p-2 text-[13px] font-medium whitespace-nowrap press md:block"
+    <NavLink
+      to="/my"
+      className={({ isActive }) =>
+        `hidden text-[13.5px] whitespace-nowrap no-underline transition-colors md:block ${
+          isActive ? 'text-fg font-semibold' : 'text-muted hover:text-fg font-medium'
+        }`
+      }
     >
-      로그아웃
-    </button>
+      {MY_PAGE.label}
+    </NavLink>
   )
 }
