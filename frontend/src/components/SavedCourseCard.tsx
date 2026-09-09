@@ -62,11 +62,19 @@ export function SavedCourseCard({ course, past = false, onOpen, onDelete }: Prop
           {/*
             버튼에 truncate(overflow:hidden)를 걸면 ::after까지 잘려 확장이 무효가 된다.
             자르는 일은 안쪽 span이 맡는다.
+
+            ⚠️ 이 버튼에는 press를 붙이지 않는다 (2026-09-09). press는 눌리는 순간
+            transform: scale(0.97)을 거는데, <b>transform이 걸린 요소는 absolute 자손의 기준
+            상자가 된다.</b> 카드를 덮고 있던 ::after가 누르는 순간 기준을 카드에서 이 버튼으로
+            바꿔 제목 한 줄로 쪼그라들고, 손을 떼는 자리가 버튼 밖이 되어 클릭이 성립하지
+            않았다 — "상세 보기" 글자를 눌러도 아무 일이 없고 제목만 눌렸다. 눌림 반응이
+            필요하면 transform이 아닌 방법이어야 하고, 카드 전체가 0.97로 줄어드는 것은
+            애초에 의도가 아니다.
           */}
           <button
             type="button"
             onClick={onOpen}
-            className="press text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] max-md:text-[14.5px] after:absolute after:inset-0 after:rounded-card after:content-[''] max-md:after:rounded-[16px]"
+            className="text-fg block w-full min-w-0 cursor-pointer bg-transparent text-left text-[16.5px] font-bold tracking-[-0.01em] max-md:text-[14.5px] after:absolute after:inset-0 after:rounded-card after:content-[''] max-md:after:rounded-[16px]"
           >
             <span className="block truncate">{course.name}</span>
           </button>
