@@ -123,7 +123,27 @@ public class TtlCache<T> {
 		if (cached != null && !isExpired(cached)) {
 			return cached.value();
 		}
+		return load(key, loader, cached);
+	}
 
+	/**
+	 * 수명이 남았어도 <b>지금 다시 받아 담는다.</b> 프리워밍({@code KtoCacheWarmer})이 쓴다.
+	 *
+	 * <p>{@link #get}은 신선한 값이 있으면 부르지 않는다. 그래서 "5시간마다 갱신"하는 워머가
+	 * {@code get}을 부르면 6시간 수명 안에서는 늘 캐시가 맞아 아무 일도 안 하고, 6시간째에
+	 * 값이 죽은 뒤 <b>다음 사용자가</b> 콜드 호출을 떠안는다 — 워머가 있는데도 첫 손님이 기다린다.
+	 * 이 메서드는 그 한 줄(신선하면 그대로)만 건너뛰고, 나머지 보호 장치 — 실패 백오프,
+	 * 빈 응답 거부, 실패 시 옛 값 — 는 {@code get}과 <b>글자 그대로 같은 길</b>을 탄다.
+	 *
+	 * <p>같은 열쇠를 사용자 요청과 워머가 동시에 부를 수 있다. {@code entries}가
+	 * {@code ConcurrentHashMap}이라 어느 쪽이 이기든 최신 값 하나가 남고, 그 사이 호출이
+	 * 두 번 나가는 일은 5시간에 한 번 있을 수 있는 정도라 감수한다.
+	 */
+	public T refresh(String key, Function<String, T> loader) {
+		return load(key, loader, entries.get(key));
+	}
+
+	private T load(String key, Function<String, T> loader, Entry<T> cached) {
 		Instant failedAt = failures.get(key);
 		if (failedAt != null && withinBackoff(failedAt)) {
 			/*
