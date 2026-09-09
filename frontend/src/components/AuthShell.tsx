@@ -70,10 +70,15 @@ export function AuthShell({ panelTitle, panelDescription, children, footer }: Pr
         </Link>
 
         <div className="relative flex flex-col gap-3.5">
-          <h2 className="m-0 text-[30px] leading-[1.35] font-bold tracking-[-0.025em] text-pretty">
+          {/*
+            break-keep: 한국어는 기본값에서 <b>낱말 한가운데도 끊긴다.</b> 이 패널은 폭이
+            고정(320px대)이라 실제로 "있 / 어요"로 갈렸다. 결과 화면 히어로가 같은 이유로
+            이미 이것을 쓰고 있다 — 어두운 면에 긴 한국어 문장을 얹는 같은 짜임이다.
+          */}
+          <h2 className="m-0 text-[30px] leading-[1.35] font-bold tracking-[-0.025em] break-keep text-pretty">
             {panelTitle}
           </h2>
-          <p className="m-0 text-[14.5px] leading-[1.7] whitespace-pre-line text-white/60 text-pretty">
+          <p className="m-0 text-[14.5px] leading-[1.7] whitespace-pre-line break-keep text-white/60 text-pretty">
             {panelDescription}
           </p>
         </div>

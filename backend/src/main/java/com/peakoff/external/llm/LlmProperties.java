@@ -32,6 +32,7 @@ public record LlmProperties(
 		Integer perKeyLimit,
 		Duration window,
 		Duration timeout,
+		Duration intentTimeout,
 		Boolean cardLines) {
 
 	/**
@@ -72,6 +73,20 @@ public record LlmProperties(
 	public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
 
 	/**
+	 * 의도 추출에만 주는 상한. <b>두 실패의 무게가 달라서 값도 다르다.</b>
+	 *
+	 * <p>카드 문장이 늦으면 템플릿이 그 자리를 지키므로 사용자는 잃는 것이 없다. 그런데 의도
+	 * 추출이 늦으면 지역을 고를 수가 없어 <b>카드가 통째로 사라진다</b>({@code UNAVAILABLE}) —
+	 * 화면은 설문으로 안내한다. 앞단 하나가 전체를 무너뜨리는 비대칭이다.
+	 *
+	 * <p>실측(2026-09-09)에서 의도 추출이 3.5~5.0초라 5초 상한에 <b>걸쳐 있었다.</b>
+	 * 새 질문 다섯 중 둘이 정확히 5.02초에 카드 0장으로 돌아왔다. 10초로 늘려 그 경계에서
+	 * 떨어뜨린다. 늦더라도 답이 나오는 편이 낫다 — 화면은 카드를 먼저 받으므로
+	 * 이 시간이 곧 카드가 뜨는 시간이다.
+	 */
+	public static final Duration DEFAULT_INTENT_TIMEOUT = Duration.ofSeconds(10);
+
+	/**
 	 * 카드 문장을 LLM에게 맡길지의 기본값.
 	 *
 	 * <p>켜 둔다. 다만 <b>끌 수 있다는 것이 설계의 일부</b>다 — 이 호출로 얻는 것은
@@ -99,6 +114,9 @@ public record LlmProperties(
 		}
 		if (timeout == null || timeout.isZero() || timeout.isNegative()) {
 			timeout = DEFAULT_TIMEOUT;
+		}
+		if (intentTimeout == null || intentTimeout.isZero() || intentTimeout.isNegative()) {
+			intentTimeout = DEFAULT_INTENT_TIMEOUT;
 		}
 		if (cardLines == null) {
 			cardLines = DEFAULT_CARD_LINES;

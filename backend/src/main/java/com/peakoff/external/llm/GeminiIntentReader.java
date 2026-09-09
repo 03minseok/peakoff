@@ -134,10 +134,12 @@ public class GeminiIntentReader implements IntentReader {
 			""".formatted(Interest.promptOptions());
 
 	private final GeminiClient client;
+	private final LlmProperties properties;
 	private final TtlCache<QuestionIntent> cache;
 
-	public GeminiIntentReader(GeminiClient client, Clock clock) {
+	public GeminiIntentReader(GeminiClient client, LlmProperties properties, Clock clock) {
 		this.client = client;
+		this.properties = properties;
 		this.cache = new TtlCache<>(clock, CACHE_TTL, CACHE_MAX);
 	}
 
@@ -171,7 +173,11 @@ public class GeminiIntentReader implements IntentReader {
 
 	/** 실제 호출. <b>캐시가 비었을 때만</b> 여기까지 온다. */
 	private QuestionIntent extract(String question) {
-		String raw = client.json(SYSTEM_INSTRUCTION, question, schema());
+		/*
+		 * 카드 문장보다 긴 상한을 쓴다. 이쪽이 늦으면 카드가 통째로 사라지기 때문이다
+		 * (LlmProperties.DEFAULT_INTENT_TIMEOUT 주석).
+		 */
+		String raw = client.json(SYSTEM_INSTRUCTION, question, schema(), properties.intentTimeout());
 		try {
 			JsonNode node = JSON.readTree(raw);
 			boolean relevant = node.path("relevant").asBoolean(false);

@@ -7,6 +7,7 @@ import type {
   AuthMember,
   AuthResult,
   ChatAnswer,
+  ChatLines,
   ChangeNicknameRequest,
   ChangePasswordRequest,
   CourseDiagnosis,
@@ -47,8 +48,40 @@ import { rememberPlaces } from './placeCache'
  */
 const BASE_URL = '/api'
 
-/** 네트워크 자체가 끊긴 경우. 서버가 준 코드가 아니므로 따로 구분한다. */
-export type RequestErrorCode = ApiErrorCode | 'NETWORK_ERROR'
+/**
+ * 네트워크 자체가 끊긴 경우와 <b>제때 답이 오지 않은 경우</b>. 서버가 준 코드가 아니라 따로 구분한다.
+ *
+ * <p>`TIMEOUT`을 `NETWORK_ERROR`와 가르는 이유: 연결이 끊긴 것과 서버가 붙잡고 있는 것은
+ * 사용자가 할 일이 다르다. 앞은 네트워크를 보라는 말이고, 뒤는 잠시 뒤 다시 눌러 보라는 말이다.
+ */
+export type RequestErrorCode = ApiErrorCode | 'NETWORK_ERROR' | 'TIMEOUT'
+
+/**
+ * 이 시간 안에 답이 오지 않으면 실패로 다룬다.
+ *
+ * <h3>왜 필요한가</h3>
+ * 서버가 <b>연결은 받고 답을 주지 않으면</b> `fetch`는 영영 끝나지 않는다. 그 약속을 기다리는
+ * 화면은 로딩 상태에 그대로 멈춘다 — 오류 화면도, 다시 시도 버튼도 나오지 않는다.
+ * 실제로 재현했고, 모든 화면이 그랬다. 지역 목록을 받는 자리가 특히 나쁘다: 그 응답이 오기
+ * 전에는 `RegionProvider`가 앱을 통째로 붙잡고 있어 <b>서비스 전체가 흰 화면</b>이 된다.
+ *
+ * <h3>왜 15초인가</h3>
+ * 캐시가 더운 상태의 실측(2026-09-09)에서 가장 느린 것이 대안 추천 <b>1.8초</b>였고
+ * 나머지는 전부 0.4초 아래였다(장소 검색 15ms · 진단 6ms · 설문 추천 0.3초 · 홈 34ms).
+ * 캐시가 빈 첫 요청과 느린 회선을 넉넉히 덮으면서, 멈춘 서버를 붙잡고 기다리는 시간은
+ * 사람이 견딜 수 있는 선이다. <b>정상 응답을 끊는 일이 없어야 한다</b> — 시간 제한이
+ * 멀쩡한 기능을 죽이면 없느니만 못하다.
+ */
+const DEFAULT_TIMEOUT_MS = 15_000
+
+/*
+ * ⚠️ 챗봇용 35초 제한이 여기 있었는데 <b>걷어냈다</b> (2026-09-09).
+ *
+ * 모델을 두 번 차례로 부르느라 한 요청이 8.5~9.4초였고, 그래서 기본값을 못 썼다.
+ * 지금은 카드와 문장을 <b>두 요청으로 갈랐다</b> — 각각은 모델을 한 번만 부르므로
+ * 기본 15초 안에 넉넉히 들어온다(서버가 의도 추출에 10초, 문장에 5초를 준다).
+ * 예외를 두지 않는 편이 낫다: 값이 크면 정말 멈춘 서버도 그만큼 붙잡고 있게 된다.
+ */
 
 export class ApiRequestError extends Error {
   code: RequestErrorCode
@@ -75,6 +108,8 @@ interface RequestOptions {
   // 코스 수정은 이름·날짜·장소를 통째로 갈아끼우기 때문이다.
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
+  /** 이 요청만 다른 시간 제한을 쓸 때. 비우면 {@link DEFAULT_TIMEOUT_MS} */
+  timeoutMs?: number
 }
 
 /**
@@ -100,7 +135,7 @@ export function setAuthToken(token: string | null): void {
  * 호출하는 쪽이 매번 `success`를 확인하지 않아도 되게 하려는 것이다.
  */
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { signal, method = 'GET', body } = options
+  const { signal, method = 'GET', body, timeoutMs = DEFAULT_TIMEOUT_MS } = options
 
   const headers: Record<string, string> = {}
   if (body) {
@@ -110,31 +145,78 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     headers.Authorization = `Bearer ${authToken}`
   }
 
+  /*
+   * 시간 제한과 호출부의 취소를 <b>하나로 합친다.</b>
+   *
+   * 둘은 뜻이 다르다 — 호출부의 signal은 "화면이 떠났으니 그만"이고, 여기 시계는
+   * "서버가 답을 안 준다"이다. 그래서 어느 쪽이 끊었는지 기억해 두어야 한다({@code timedOut}).
+   * 시간 초과를 취소로 다루면 아래에서 AbortError로 올라가고, 호출부는 그것을
+   * "화면이 떠난 것"으로 알고 <b>조용히 무시한다</b> — 고치려던 흰 화면이 그대로 남는다.
+   *
+   * ⚠️ {@code AbortSignal.any}로 합치지 않는다. 사파리 17.4·파이어폭스 124부터라
+   * 조금 오래된 폰에서 그대로 터진다. 심사위원의 기기를 고를 수 없다.
+   */
+  const controller = new AbortController()
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+  const abortByCaller = () => controller.abort()
+  // 이미 취소된 signal은 이벤트가 다시 오지 않는다. 그때는 시작하기 전에 끊는다.
+  if (signal?.aborted) {
+    controller.abort()
+  }
+  signal?.addEventListener('abort', abortByCaller)
+  const stopWatching = () => {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', abortByCaller)
+  }
+
+  /** 끊긴 요청이 시간 초과였는지 호출부의 취소였는지 가른다. */
+  function abortedError(error: unknown, fallback: ApiRequestError): Error {
+    if (timedOut) {
+      return new ApiRequestError(
+        'TIMEOUT',
+        '서버가 제때 답하지 않았어요.\n잠시 후 다시 시도해 주세요.',
+      )
+    }
+    // 요청 취소는 오류가 아니므로 그대로 올려보내 호출부가 무시하게 한다.
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return error
+    }
+    return fallback
+  }
+
   let response: Response
   try {
     response = await fetch(`${BASE_URL}${path}`, {
       method,
-      signal,
+      signal: controller.signal,
       headers,
       body: body ? JSON.stringify(body) : undefined,
     })
   } catch (error) {
-    // 요청 취소는 오류가 아니므로 그대로 올려보내 호출부가 무시하게 한다.
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw error
-    }
-    throw new ApiRequestError('NETWORK_ERROR', '서버에 연결할 수 없습니다.')
+    stopWatching()
+    throw abortedError(error, new ApiRequestError('NETWORK_ERROR', '서버에 연결할 수 없습니다.'))
   }
 
+  /*
+   * 본문 읽기도 시계 안에 둔다. 서버가 <b>헤더만 주고 본문에서 멈추는</b> 경우가 있는데,
+   * 그때 위 fetch는 이미 성공한 뒤라 여기서 막히면 화면은 똑같이 영영 기다린다.
+   * fetch에 넘긴 signal이 본문 읽기까지 따라가므로 시계를 아직 끄지 않는다.
+   */
   let raw: string
   try {
     raw = await response.text()
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw error
-    }
-    throw new ApiRequestError('INTERNAL_ERROR', '서버 응답을 해석할 수 없습니다.')
+    stopWatching()
+    throw abortedError(
+      error,
+      new ApiRequestError('INTERNAL_ERROR', '서버 응답을 해석할 수 없습니다.'),
+    )
   }
+  stopWatching()
 
   /*
    * ⚠️ <b>본문 없는 응답을 실패로 만들지 않는다.</b>
@@ -741,6 +823,28 @@ export function askRegionChat(question: string, signal?: AbortSignal): Promise<C
   return apiRequest<ChatAnswer>('/chat/regions', {
     method: 'POST',
     body: { question },
+    signal,
+  })
+}
+
+/**
+ * POST /api/chat/regions/lines — 카드에 얹을 **더 나은 문장**만 따로 받는다.
+ *
+ * 카드는 이미 템플릿 문장으로 완결돼 있으므로 이 요청은 **늦거나 실패해도 된다.**
+ * 부르는 쪽은 실패를 조용히 삼키고 카드를 그대로 둔다.
+ *
+ * 서버가 앞 답을 기억하지 않으므로 문장을 쓰는 데 필요한 것을 화면이 되돌려 보낸다.
+ * ⚠️ 되돌려 보낸 값으로 카드의 숫자가 다시 그려지지는 않는다 — 돌아오는 것은 문장뿐이다.
+ */
+export function fetchChatLines(
+  question: string,
+  interest: string | null,
+  regions: { slug: string; quietShare: number | null }[],
+  signal?: AbortSignal,
+): Promise<ChatLines> {
+  return apiRequest<ChatLines>('/chat/regions/lines', {
+    method: 'POST',
+    body: { question, interest, regions },
     signal,
   })
 }

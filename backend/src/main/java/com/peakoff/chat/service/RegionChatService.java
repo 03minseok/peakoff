@@ -24,6 +24,8 @@ import com.peakoff.chat.domain.RegionCards;
 import com.peakoff.chat.domain.RegionChatPicker;
 import com.peakoff.chat.domain.RegionProfile;
 import com.peakoff.chat.domain.RegionProfileProvider;
+import com.peakoff.chat.dto.ChatLinesRequest;
+import com.peakoff.chat.dto.ChatLinesResponse;
 import com.peakoff.chat.dto.ChatResponse;
 import com.peakoff.congestion.domain.CongestionProvider;
 import com.peakoff.global.error.TooManyRequestsException;
@@ -186,8 +188,78 @@ public class RegionChatService {
 			return ChatResponse.unavailable(basis);
 		}
 
-		List<RegionCard> cards = RegionCards.of(interest, picked, writeLines(question, interest, picked));
-		return ChatResponse.ok(basis, interest, crowdedPeriod(profiles), cards);
+		/*
+		 * ■ 카드를 먼저 내려보낸다 (2026-09-09)
+		 *
+		 * 예전에는 여기서 카드 문장까지 모델에게 받아 한 번에 답했다. 그 한 번이 3.2~6.4초라
+		 * 챗봇 전체가 5.0~7.9초였다. 그런데 <b>카드에 필요한 것은 이미 다 있다</b> — 지역·숫자·막대는
+		 * 서버가 계산했고 문장도 템플릿이 쓸 수 있다. 모델의 문장은 그것을 더 낫게 바꿀 뿐이다.
+		 *
+		 * <p>그래서 여기서는 {@code Map.of()}를 넘겨 <b>템플릿으로 완결된 카드</b>를 곧바로 준다.
+		 * 이 경로는 새로 만든 것이 아니라 <b>이미 있던 길</b>이다 — 하루 상한이 닳으면 지금도
+		 * 이렇게 답한다. 모델 문장은 화면이 {@code /regions/lines}로 따로 받아 조용히 갈아끼운다.
+		 */
+		List<RegionCard> cards = RegionCards.of(interest, picked, Map.of());
+		return ChatResponse.ok(basis, interest, crowdedPeriod(profiles), moreLines(), cards);
+	}
+
+	/**
+	 * 카드 문장만 따로 쓴다. 화면이 카드를 받은 뒤 이어서 부른다.
+	 *
+	 * <p><b>서버에 세션을 만들지 않는다.</b> 화면이 질문·관심사·지역을 그대로 돌려보내므로
+	 * 여기서 기억해 둘 것이 없다 — "완성된 답을 캐시하지 않는다"는 규칙과도 어긋나지 않는다.
+	 *
+	 * <p>⚠️ <b>화면이 보내온 값으로 숫자를 다시 그리지 않는다.</b> 돌려주는 것은 문장뿐이고,
+	 * 카드에 적히는 한적 비율·모수는 첫 응답의 것(서버가 계산한 값)이 그대로 남는다.
+	 * 보내온 {@code quietShare}는 문장의 말투를 고르는 데만 쓰인다
+	 * ({@code RegionProfile.hasManyQuietSpots}).
+	 *
+	 * <p>모델이 쓴 문장도 {@link RegionCards#of}의 검증을 그대로 통과해야 한다 —
+	 * 40자 · 숫자 금지 · 다른 지역 이름 금지 · 금칙어. 걸리면 템플릿이 그 자리를 지키고,
+	 * 그 템플릿은 화면이 이미 들고 있는 문장과 같아서 갈아끼워도 아무 일이 없다.
+	 */
+	public ChatLinesResponse lines(ChatLinesRequest request, String callerKey) {
+		CallLimiter.Verdict verdict = limiter.tryAcquire(callerKey);
+		if (!verdict.allowed()) {
+			throw new TooManyRequestsException(
+					"잠시 후 다시 시도해주세요.", verdict.retryAfterSeconds());
+		}
+
+		Interest interest = Interest.of(request.interest());
+		List<RegionProfile> profiles = profilesOf(request.regions());
+		if (profiles.isEmpty()) {
+			return ChatLinesResponse.empty();
+		}
+		List<RegionCard> cards = RegionCards.of(
+				interest, profiles, writeLines(request.question(), interest, profiles));
+		return ChatLinesResponse.of(cards);
+	}
+
+	/**
+	 * 화면이 돌려보낸 지역을 문장 쓰기에 필요한 만큼만 되살린다.
+	 *
+	 * <p>{@code shares}는 비운다 — 관심사로 거르는 일은 이미 끝났고, 문장 프롬프트는
+	 * 지역 이름과 "한적한 곳이 많은 편인가"만 본다. 모르는 slug는 조용히 버린다.
+	 */
+	private static List<RegionProfile> profilesOf(List<ChatLinesRequest.Region> regions) {
+		List<RegionProfile> profiles = new java.util.ArrayList<>();
+		for (ChatLinesRequest.Region region : regions) {
+			try {
+				profiles.add(new RegionProfile(
+						SupportedRegion.fromSlug(region.slug()), Map.of(),
+						region.quietShare(), 0));
+			}
+			catch (RuntimeException e) {
+				// 화면이 보낸 값이라 못 믿는다. 하나가 이상해도 나머지 문장은 나가야 한다.
+				log.debug("문장을 쓸 지역을 알아보지 못했습니다. slug={}", region.slug());
+			}
+		}
+		return List.copyOf(profiles);
+	}
+
+	/** 문장을 더 받아 갈 수 있는가. 모델이 꺼져 있거나 상한이 닳았으면 화면은 묻지 않는다. */
+	private boolean moreLines() {
+		return cardLineWriter.isAvailable() && budget.hasRoom();
 	}
 
 	/**

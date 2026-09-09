@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link } from 'react-router'
-import { ApiRequestError, askRegionChat, fetchChatStatus } from '../services/api'
-import type { ChatAnswer } from '../types/api'
+import { ApiRequestError, askRegionChat, fetchChatLines, fetchChatStatus } from '../services/api'
+import type { ChatAnswer, ChatLines } from '../types/api'
 import { BrandMark } from './BrandMark'
 import { ChevronRight } from './icons'
 
@@ -66,6 +66,14 @@ import { ChevronRight } from './icons'
  * <p>"다음 주"를 고른 이유는 <b>언제 눌러도 창 안</b>이라서다. 아무리 멀어야 이레 뒤이고
  * 예측은 24~30일까지 닿는다. "다음 달"이었다면 어떤 날에는 "아직 예측이 나오지
  * 않았어요"가 떠서, 예시가 <b>막히는 것을 보여주는 꼴</b>이 된다.
+ */
+/**
+ * 빈 입력창 앞에 세우는 예시. 무엇을 물어도 되는지를 이것으로 말한다.
+ *
+ * ⚠️ **서버가 부팅 때 이 질문들의 의도를 미리 뽑아 캐시에 넣는다**(`ChatWarmer.EXAMPLE_QUESTIONS`).
+ * 의도 추출이 3.5~5초라 데워 두면 예시를 누른 사람만은 그만큼을 건너뛴다. 글자가 하나라도
+ * 갈리면 캐시 열쇠가 달라져 **데운 것이 쓰이지 않는다** — 여기를 고치면 저기도 고칠 것.
+ * 어긋나도 고장은 아니고 그 칩만 예전처럼 느려진다.
  */
 const EXAMPLES = ['사람 적은 바다 여행지 없나요?', '다음 주에 어디가 한산해요?']
 
@@ -200,6 +208,48 @@ export function RegionChat() {
     }
   }, [messages, asking])
 
+  /**
+   * 카드 문장을 뒤따라 받아 갈아끼운다. 실패하면 아무 일도 하지 않는다.
+   *
+   * <p>바꾸는 것은 <b>문장뿐</b>이다. 한적 비율·모수·막대는 첫 응답의 값(서버가 계산한 것)이
+   * 그대로 남는다 — 같은 값을 두 번 받아 덮으면 둘이 어긋날 자리가 생긴다.
+   *
+   * <p>서버가 보내는 문장은 이미 검증을 통과한 것이고, 걸렸으면 <b>템플릿이 담겨 온다</b>.
+   * 그 템플릿은 지금 화면에 서 있는 문장과 같아서 덮어도 아무 일이 없다. 그래서 여기서는
+   * 무엇이 왔는지 따지지 않는다.
+   */
+  const fillLines = async (id: number, question: string, answer: ChatAnswer) => {
+    let written: ChatLines
+    try {
+      written = await fetchChatLines(
+        question,
+        answer.interestCode,
+        answer.cards.map((card) => ({ slug: card.region, quietShare: card.quietShare })),
+      )
+    } catch {
+      // 카드는 이미 서 있다. 문장이 안 왔을 뿐이라 사용자에게 알릴 것이 없다.
+      return
+    }
+
+    const byRegion = new Map(written.lines.map((line) => [line.region, line.line]))
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === id && message.kind === 'cards'
+          ? {
+              ...message,
+              answer: {
+                ...message.answer,
+                cards: message.answer.cards.map((card) => ({
+                  ...card,
+                  line: byRegion.get(card.region) ?? card.line,
+                })),
+              },
+            }
+          : message,
+      ),
+    )
+  }
+
   const ask = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || asking) {
@@ -234,6 +284,21 @@ export function RegionChat() {
       const id = nextId
       setMessages((prev) => [...prev, { id, role: 'bot', at: stamp(), kind: 'cards', answer }])
       setCooldown(COOLDOWN_SECONDS)
+      /*
+        ■ 카드를 먼저 세우고 문장을 나중에 갈아끼운다 (2026-09-09)
+
+        서버가 모델을 두 번(의도 읽기 · 문장 쓰기) 차례로 부르느라 한 번 묻는 데 5.0~7.9초였다.
+        그런데 카드에 필요한 것은 첫 응답에 이미 다 있다 — 지역·숫자·막대는 서버가 계산했고
+        문장도 <b>서버 템플릿으로 완결</b>돼 있다. 모델의 문장은 그것을 더 낫게 바꿀 뿐이다.
+
+        <p>그래서 기다리지 않는다. 위에서 카드를 이미 세웠고, 여기서는 문장만 뒤따라 받아
+        조용히 덮는다. ⚠️ <b>await 하지 않는다</b> — 기다리면 갈라 놓은 뜻이 사라진다.
+
+        <p>실패·지연은 그냥 삼킨다. 지금 서 있는 템플릿 문장이 이미 답이라 잃는 것이 없다.
+      */
+      if (answer.status === 'OK' && answer.moreLines && answer.cards.length > 0) {
+        void fillLines(id, trimmed, answer)
+      }
     } catch (error) {
       /*
        * 429면 서버가 몇 초 뒤에 되는지 알려준다. 그 초만큼 잠근다 —
