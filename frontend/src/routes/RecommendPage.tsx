@@ -560,8 +560,6 @@ export function RecommendPage() {
               <span className="text-fg text-[13.5px] font-medium">아무 데나 괜찮아요</span>
               <span className="text-hint text-[12px] leading-[1.55]">
                 갈 만한 지역 중 한 곳을 무작위로 골라 드려요.
-                <br />
-                어디가 뽑혔는지는 결과에서 알려드려요.
               </span>
             </span>
           </label>
