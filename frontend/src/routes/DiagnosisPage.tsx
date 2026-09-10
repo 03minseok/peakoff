@@ -1091,7 +1091,6 @@ export function DiagnosisPage() {
                       */}
                       <div className="relative sm:contents">
                         <PlaceThumbnail
-                          name={slot.place.name}
                           imageUrl={slot.place.imageUrl}
                           size="banner"
                           className="sm:order-1"

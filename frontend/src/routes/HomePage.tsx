@@ -217,7 +217,7 @@ function QuietSpotCard({
         끝까지 민 제스처가 페이지로 이어져 화면 전체가 밀린다
         (CLAUDE.md — 주간 예보에서 이미 한 번 걷어낸 자리다).
       */}
-        <PlaceThumbnail name={spot.place.name} imageUrl={spot.place.imageUrl} size="card" />
+        <PlaceThumbnail imageUrl={spot.place.imageUrl} size="card" />
 
         {/*
           ■ 세 줄이 <b>같은 순서로</b> 선다 — 이름 · 분류 · 지역 (2026-09-03)

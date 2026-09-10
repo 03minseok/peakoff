@@ -1174,7 +1174,6 @@ export function MyPage() {
                         className={`${CARD} relative flex flex-col overflow-hidden p-0 max-sm:flex-row max-sm:items-stretch`}
                       >
                         <PlaceThumbnail
-                          name={favorite.placeName}
                           imageUrl={favorite.imageUrl}
                           size="banner"
                           /*
