@@ -254,7 +254,7 @@ export function PublicCourseArticle({
           placeId: place.placeId,
           /* 남의 코스는 이름 칸이 name이다. 내가 저장한 코스는 placeName */
           name: place.name,
-          place: place.place,
+          place: place.place ?? null,
         }))}
         days={course.days}
         startDate={course.startDate}

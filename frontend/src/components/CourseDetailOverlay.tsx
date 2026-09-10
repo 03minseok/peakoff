@@ -284,7 +284,8 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow, onOpenPla
                   order: saved.order,
                   placeId: saved.placeId,
                   name: saved.placeName,
-                  place: saved.place,
+                  /* 옛 서버는 이 칸을 안 준다. undefined를 null로 접어야 아래가 안 터진다 */
+                  place: saved.place ?? null,
                 }))}
                 days={course.days}
                 startDate={course.startDate}

@@ -1908,6 +1908,7 @@ export function MyPage() {
               setOpened(courseId)
             }}
             onRemoveCourse={(courseId) => void handleRemoveFromTrip(detailTrip.id, courseId)}
+            onOpenPlace={setOpenedCoursePlace}
           />
         )}
 
@@ -1947,7 +1948,7 @@ export function MyPage() {
         )}
 
         {/*
-          코스 상세 안에서 펼친 장소. <b>겹창보다 뒤에 세운다</b> — 둘 다 z-50이라
+          코스 상세·여행 상세 안에서 펼친 장소. <b>두 겹창보다 뒤에 세운다</b> — 모두 z-50이라
           나중에 그려진 쪽이 위로 온다. 위 찜 시트 자리에 끼우면 겹창 밑에 깔린다.
 
           <p>한적도를 넘기지 않는다. 저장된 코스에 남은 것은 <b>코스 총점 하나</b>라

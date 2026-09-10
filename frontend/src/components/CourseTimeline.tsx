@@ -78,8 +78,14 @@ export function CourseTimeline({ places, days, startDate, onOpenPlace }: Props) 
     ⚠️ {@code useMemo}가 필수다. 매 렌더 새 배열을 만들면 CourseMap의 다시 그리기 effect가
     매번 돌아 지도가 깜박인다 — 진단·최종 화면이 같은 이유로 memo를 쓴다.
   */
+  /*
+    ⚠️ {@code != null}이다 — {@code !== null}이 아니다. 옛 서버(place 칸이 없던 응답)를
+    상대로 열면 {@code undefined}가 들어오는데, {@code !== null}은 그것을 통과시켜
+    아래 {@code place.id}에서 창이 통째로 죽었다. 에러 바운더리가 없어 화면이 그대로
+    비었다 — "상세보기를 눌러도 아무 일이 없다"가 이것이었다.
+  */
   const mapPlaces = useMemo<Place[]>(
-    () => places.map((place) => place.place).filter((place): place is Place => place !== null),
+    () => places.map((place) => place.place).filter((place): place is Place => place != null),
     [places],
   )
   /*
@@ -204,8 +210,13 @@ export function CourseTimeline({ places, days, startDate, onOpenPlace }: Props) 
  * <h3>⚠️ 누를 수 있는 줄과 아닌 줄</h3>
  * {@code onOpen}이 없으면 {@code <div>}로 선다. 눌러도 아무 일이 없는 {@code <button>}은
  * 키보드로 훑는 사람에게 <b>있지도 않은 문</b>을 하나씩 세워 보인다.
+ *
+ * <h3>여행 상세도 이 줄을 쓴다</h3>
+ * 그쪽은 코스 여럿을 날짜 축 하나로 이어 붙이는 자리라 타임라인 전체를 못 쓰지만,
+ * <b>장소 한 줄의 생김새</b>는 같아야 한다 — 코스 상세에서 본 줄이 여행 상세에서
+ * 다르게 생기면 같은 장소로 읽히지 않는다. 그래서 줄만 따로 내보낸다.
  */
-function PlaceRow({
+export function PlaceRow({
   place,
   last,
   onOpen,
