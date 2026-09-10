@@ -9,9 +9,9 @@
  *
  * <p>⚠️ <b>예전에는 중립 회색 면에 이름 첫 글자였다.</b> 브랜드 틸을 깔면 "이미지 없는
  * 장소마다 청록 사각형이 서서, 로고·주요 버튼에만 남겨야 할 강조색이 목록 전체에 번진다"는
- * 것이 그때의 이유였다. 지금 면이 그 걱정을 피하는 방식은 <b>연하게 까는 것</b>이다 —
- * 채운 틸이 아니라 흰 바탕에 반투명 원이 물려 들어오는 구성이라, 강조색이 아니라 배경으로
- * 읽힌다. 그리고 <b>80px 아래로는 글자를 빼고 마크만</b> 남겨 작은 자리에서 더 조용해진다.
+ * 것이 그때의 이유였다. 지금 면이 그 걱정을 피하는 방식은 <b>바탕을 옅게 두는 것</b>이다 —
+ * 채운 틸이 아니라 옅은 회청 바탕에 마크 하나라, 강조색이 아니라 배경으로 읽힌다.
+ * 그리고 <b>80px 아래로는 글자를 빼고 마크만</b> 남겨 작은 자리에서 더 조용해진다.
  *
  * <p><b>화면 두 곳에서 쓴다.</b> 홈의 "지금 한적한 곳" 카드와 진단 화면의 코스 목록이다.
  * 복사해 두면 대체면 색이나 로딩 방식을 고칠 때 한쪽만 바뀐다.
@@ -94,6 +94,29 @@ const FALLBACK_WORDMARK: Partial<Record<ThumbnailSize, string>> = {
   banner: 'text-[11px] sm:hidden',
 }
 
+/**
+ * 대체면이 <b>사진과 다른 상자</b>를 쓰는 자리. 없으면 사진과 같은 상자({@link SIZE_CLASS})다.
+ *
+ * <h3>홈 카드의 <b>넓은 화면</b>에서만 흰 테두리를 두른다</h3>
+ * 홈의 "이번 주 한적한 곳"은 lg부터 세로 목록이고 사진이 64px 썸네일로 글자 옆에 선다.
+ * 대체면은 옅은 회청 한 색이라 흰 카드 위에서 <b>가장자리가 흐릿한 얼룩</b>처럼 보였다 —
+ * 사진 썸네일은 제 색으로 모서리가 서는데 대체면만 그렇지 않았다.
+ *
+ * <p>가장자리에 <b>민트 실선 1px</b>을 긋는다. 흰 카드와 옅은 회청 사이를 가르는 것이
+ * 일이라 선은 하나면 되고, 색은 브랜드의 옅은 단계({@code brand-soft})다 — 원색 틸이면
+ * 버튼처럼 눌러 보이고, 잉크 선이면 액자가 된다. 사진에는 긋지 않는다.
+ *
+ * <p>⚠️ <b>좁은 화면은 그대로다.</b> 거기서는 대체면이 카드 맨 위를 가로지르는 배너라
+ * 사진과 같은 문법(꽉 찬 면)이어야 하고, 두르면 배너가 스티커가 된다.
+ * 다른 자리(진단 목록·상세 시트)도 손대지 않는다 — 이 크기에서만이다.
+ *
+ * <p>{@code SIZE_CLASS}를 그대로 쓰고 덧대지 않는 이유: 두 {@code rounded-*}가 한 요소에서
+ * 다투면 어느 쪽이 이기는지 클래스 순서가 정한다. 자기 상자를 통째로 갖는다.
+ */
+const FALLBACK_BOX: Partial<Record<ThumbnailSize, string>> = {
+  card: 'h-19 w-full rounded-none lg:h-16 lg:w-16 lg:rounded-ui lg:border lg:border-brand-soft',
+}
+
 interface Props {
   /*
    * ⚠️ 이름은 받지 않는다. 대체면이 이름 첫 글자를 얹던 시절의 흔적이라 함께 걷었다 —
@@ -128,7 +151,7 @@ export function PlaceThumbnail({ imageUrl, size = 'lg', className = '' }: Props)
     <PlacePhotoFallback
       markClass={FALLBACK_MARK[size]}
       wordmarkClass={FALLBACK_WORDMARK[size]}
-      className={`${sizeClass} flex-none`}
+      className={`${FALLBACK_BOX[size] ?? SIZE_CLASS[size]} ${className} flex-none`}
     />
   )
 }
