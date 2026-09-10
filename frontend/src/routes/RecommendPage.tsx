@@ -310,7 +310,18 @@ export function RecommendPage() {
      * 초안을 원안이라고 찍어두면 최종 비교가 "시스템이 짠 코스 대비 개선폭"을 재게 된다.
      * 사용자가 편집을 마치고 진단에 들어가는 순간 그 코스가 원안이 된다.
      */
-    restore({ region: draftRegion, startDate: draft.startDate, nights: draft.nights }, toDays(draft))
+    /*
+     * ⚠️ origin만 'survey'로 남긴다. 원안은 그대로 비운다 — 위 판단은 바뀌지 않는다.
+     * 결과 화면이 "바꾼 것이 없다"를 두 갈래로 말하려면 이 여행이 설문에서 왔다는 사실을
+     * 어딘가에 남겨야 하는데, 그것을 baseline으로 흉내 내면 개선폭 계산까지 끌려간다.
+     * 표식은 표식이고, 원안은 원안이다.
+     */
+    restore(
+      { region: draftRegion, startDate: draft.startDate, nights: draft.nights },
+      toDays(draft),
+      null,
+      'survey',
+    )
     navigate('/course')
   }
 

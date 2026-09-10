@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { TripContext } from './tripContext'
 import type { TripContextValue } from './tripContext'
 import { EMPTY_TRIP_STATE, loadTripState, saveTripState } from './tripStorage'
-import type { TripPlan, TripSource, TripState } from './tripTypes'
+import type { TripOrigin, TripPlan, TripSource, TripState } from './tripTypes'
 
 /**
  * 여행 흐름의 공유 상태.
@@ -22,7 +22,13 @@ type TripAction =
   | { type: 'REORDER_PLACE'; day: number; from: number; to: number }
   | { type: 'REPLACE_PLACE'; day: number; index: number; placeId: string }
   | { type: 'MARK_BASELINE' }
-  | { type: 'RESTORE'; plan: TripPlan; days: string[][]; source?: TripSource | null }
+  | {
+      type: 'RESTORE'
+      plan: TripPlan
+      days: string[][]
+      source?: TripSource | null
+      origin?: TripOrigin
+    }
   | { type: 'MARK_SAVED'; source: TripSource }
   | { type: 'RESET' }
 
@@ -61,7 +67,8 @@ function reducer(state: TripState, action: TripAction): TripState {
        * <b>새로 짜겠다는 뜻</b>이다 — 장소를 전부 버린 마당에 저장할 때만 옛 코스를
        * 덮어쓰면, 이름은 그대로인데 내용이 전혀 다른 코스가 되어 되돌릴 수 없다.
        */
-      return { plan: action.plan, days, baseline: null, source: null }
+      // 조건을 직접 입력해 시작한 여행이다. 설문에서 온 것은 SET_PLAN을 거치지 않는다.
+      return { plan: action.plan, days, baseline: null, source: null, origin: 'manual' }
     }
 
     case 'CHANGE_START_DATE': {
@@ -164,7 +171,14 @@ function reducer(state: TripState, action: TripAction): TripState {
        * <b>빠뜨리면 새로 만들어지는 쪽</b>으로 넘어진다 — 남의 코스를 덮어쓰는 사고보다
        * 코스가 하나 더 생기는 쪽이 훨씬 낫다.
        */
-      return { plan: action.plan, days: action.days, baseline: null, source: action.source ?? null }
+      return {
+        plan: action.plan,
+        days: action.days,
+        baseline: null,
+        source: action.source ?? null,
+        // 넘기지 않으면 manual이다. 남의 코스를 베끼거나 저장한 코스를 다시 여는 흐름이 그렇다
+        origin: action.origin ?? 'manual',
+      }
 
     case 'MARK_SAVED':
       /*
@@ -199,7 +213,8 @@ export function TripProvider({ children }: { children: ReactNode }) {
       replacePlace: (day, index, placeId) =>
         dispatch({ type: 'REPLACE_PLACE', day, index, placeId }),
       markBaseline: () => dispatch({ type: 'MARK_BASELINE' }),
-      restore: (plan, days, source) => dispatch({ type: 'RESTORE', plan, days, source }),
+      restore: (plan, days, source, origin) =>
+        dispatch({ type: 'RESTORE', plan, days, source, origin }),
       markSaved: (source) => dispatch({ type: 'MARK_SAVED', source }),
       reset: () => dispatch({ type: 'RESET' }),
     }),

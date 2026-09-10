@@ -1,4 +1,4 @@
-import type { TripBaseline, TripSource, TripState } from './tripTypes'
+import type { TripBaseline, TripOrigin, TripSource, TripState } from './tripTypes'
 
 /**
  * 여행 상태를 sessionStorage에 보관한다.
@@ -15,6 +15,15 @@ export const EMPTY_TRIP_STATE: TripState = {
   days: [],
   baseline: null,
   source: null,
+  origin: 'manual',
+}
+
+/**
+ * 모르는 값은 {@code manual}로 읽는다. 이 필드가 생기기 전에 저장된 세션이 그렇고,
+ * 그때는 설문에서 왔더라도 알 수 없다 — 모르는 것을 "발견"이라고 부르지 않는다.
+ */
+function originOf(value: unknown): TripOrigin {
+  return value === 'survey' ? 'survey' : 'manual'
 }
 
 /**
@@ -87,6 +96,7 @@ export function loadTripState(): TripState {
       baseline: isValidBaseline(parsed.baseline) ? (parsed.baseline as TripBaseline) : null,
       // 대개 없다. 마이페이지에서 "수정하기"로 들어온 흐름에만 있다.
       source: isValidSource(parsed.source) ? (parsed.source as TripSource) : null,
+      origin: originOf(parsed.origin),
     }
   } catch {
     // 저장소를 못 쓰는 환경(사파리 시크릿 모드 등)에서도 앱은 돌아가야 한다.

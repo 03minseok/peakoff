@@ -63,10 +63,32 @@ export interface TripSource {
   isPublic: boolean
 }
 
+/**
+ * 이 여행이 <b>어디서 시작됐나.</b>
+ *
+ * <p>결과 화면이 "바꾼 것이 없다"를 두 가지로 갈라 말하기 위해 필요하다(2026-09-10).
+ * 설문(FULL PEAKOFF)이 짜 준 코스를 그대로 진단까지 가져간 사람은 <b>새 여행지를 발견한</b>
+ * 것이고, 손으로 짠 코스를 바꾸지 않은 사람은 <b>이미 여유로운 여행을 확인한</b> 것이다.
+ * 둘 다 "원안 그대로입니다"로 뭉개면 한 일이 없는 것처럼 읽힌다.
+ *
+ * <p>⚠️ 예전에는 이 표식이 없었다. 설문 초안은 {@code restore(plan, days)}로 넘어와
+ * 손으로 짠 코스와 상태상 구분되지 않았다 — 원안(baseline)을 일부러 비워 "시스템이 짠 코스 대비
+ * 개선폭"을 재지 않게 한 설계라, 그 뒤에는 출처를 알 길이 없었다. 판단은 여기서만 한다.
+ *
+ * <ul>
+ *   <li>{@code manual} — 조건 입력 → 지도에서 직접 담은 코스. 남의 코스를 베낀 것과
+ *       마이페이지에서 다시 연 것도 여기다: 그 코스를 <b>고르고 진단한 사람</b>은 사용자다</li>
+ *   <li>{@code survey} — 설문 두 문항으로 서버가 짜 준 초안에서 시작한 코스</li>
+ * </ul>
+ */
+export type TripOrigin = 'manual' | 'survey'
+
 export interface TripState {
   plan: TripPlan | null
   days: string[][]
   baseline: TripBaseline | null
   /** 고쳐 쓰는 중이면 그 코스. 새로 짜는 중이면 null */
   source: TripSource | null
+  /** 어디서 시작한 여행인가. 편집 도중에는 바뀌지 않고, 새 여행을 시작할 때만 다시 정해진다 */
+  origin: TripOrigin
 }
