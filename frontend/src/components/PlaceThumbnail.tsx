@@ -24,12 +24,20 @@
  * {@code md}는 진단 화면의 코스 목록 — 담은 곳을 알아볼 만큼은 되어야 한다.
  * {@code sm}은 좁은 자리용으로 남겨 둔다.
  */
-type ThumbnailSize = 'sm' | 'md' | 'lg' | 'card' | 'banner'
+type ThumbnailSize = 'sm' | 'md' | 'lg' | 'row' | 'card' | 'banner'
 
 const SIZE_CLASS: Record<ThumbnailSize, string> = {
   sm: 'h-10 w-10 rounded-chip',
   md: 'h-16 w-16 rounded-ui',
   lg: 'h-21 w-21 rounded-ui',
+  /*
+   * 코스 한 줄에 붙는 가로 사진 (저장된 여행 시트·공유 링크).
+   *
+   * <b>정사각이 아닌 유일한 고정 크기다.</b> 그 줄은 사진 옆에 이름과 분류가 두 줄로
+   * 서므로, 정사각이면 사진이 글보다 낮아 줄이 위아래로 어긋난다. 4:3에 가깝게 눕히면
+   * 사진 높이가 두 줄과 맞고, 여행 사진이 대개 가로라 잘려 나가는 폭도 줄어든다.
+   */
+  row: 'h-14 w-20 rounded-ui',
   /*
    * 홈의 "이번 주 한적한 곳". <b>좁은 화면에서는 카드 맨 위를 가로지르는 사진,
    * lg부터는 왼쪽 썸네일</b>이다 — banner와 같은 수법이고 갈리는 지점만 다르다
@@ -76,6 +84,7 @@ const FALLBACK_MARK: Record<ThumbnailSize, string> = {
   sm: 'h-4.5 w-4.5',
   md: 'h-7.5 w-7.5',
   lg: 'h-9.5 w-9.5',
+  row: 'h-6 w-6',
   card: 'h-8 w-8 lg:h-7.5 lg:w-7.5',
   banner: 'h-14 w-14 sm:h-7.5 sm:w-7.5',
 }

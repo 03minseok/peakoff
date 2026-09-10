@@ -1,10 +1,20 @@
-import { useEffect, useState } from 'react'
-import { Close } from './icons'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, Close, Route } from './icons'
+import { CourseMap } from './CourseMap'
+import { PlaceThumbnail } from './PlaceThumbnail'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import { DatePicker } from './DatePicker'
 import { fetchForecastWindow } from '../services/api'
-import type { PublicCourse, PublicPlace, SharedCourse } from '../types/api'
-import { formatDateRange, formatKoreanDate, formatNights, today } from '../utils/date'
+import type { Place, PublicCourse, PublicPlace, SharedCourse } from '../types/api'
+import {
+  addDays,
+  formatDateRange,
+  formatKoreanDate,
+  formatMonthDay,
+  formatNights,
+  formatWeekday,
+  today,
+} from '../utils/date'
 import { useScrollLock } from '../hooks/useScrollLock'
 
 interface Props {
@@ -19,6 +29,15 @@ interface Props {
    * 그 사람 사정에 맞춘 날이다.
    */
   onCopyToFlow: (course: PublicCourse, startDate: string) => void
+  /**
+   * 코스 안의 장소 하나를 펼쳐 본다.
+   *
+   * <p>⚠️ <b>시트가 스스로 열지 않고 넘겨받는다.</b> 장소 상세도 시트라, 이 시트 안에서
+   * 띄우면 <b>패널 안에 갇힌다</b> — 패널이 올라오는 애니메이션 동안 {@code position: fixed}가
+   * 패널을 기준으로 잡히기 때문이다. 마이페이지가 겹창과 장소 상세를 <b>화면 층에서 나란히</b>
+   * 세우는 것과 같은 방식으로, 부르는 쪽이 이 시트 뒤에 세운다.
+   */
+  onOpenPlace?: (place: PublicPlace) => void
 }
 
 /**
@@ -41,7 +60,7 @@ interface Props {
  * 화면({@code SharedCoursePage})이 같은 코스를 시트 없이 한 페이지로 펴는데, 두 곳이 장소
  * 목록·게이지·"이 코스로 짜보기"를 따로 그리면 같은 코스가 홈과 링크에서 다르게 보인다.
  */
-export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
+export function PublicCourseSheet({ course, onClose, onCopyToFlow, onOpenPlace }: Props) {
   // 뒤 화면 잠금. ⚠️ body가 아니라 html에 건다 — 이유는 useScrollLock 주석에
   useScrollLock()
   useEffect(() => {
@@ -101,6 +120,7 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
             title={`${course.nickname}님의 ${course.regionShortName}`}
             subtitle={`${shortRegion} ${formatNights(course.nights)} · ${formatDateRange(course.startDate, course.nights)}`}
             onCopyToFlow={(startDate) => onCopyToFlow(course, startDate)}
+            onOpenPlace={onOpenPlace}
           />
         </div>
       </div>
@@ -118,13 +138,21 @@ interface ArticleProps {
   subtitle: string
   /** 날짜를 고르고 나면 부른다. 장소·순서는 {@code course}가 이미 들고 있다 */
   onCopyToFlow: (startDate: string) => void
+  /** 없으면 장소 줄이 눌리지 않는다 — 읽기만 하는 자리가 된다 */
+  onOpenPlace?: (place: PublicPlace) => void
 }
 
 /**
  * 코스 한 장의 본문 — 제목·게이지·일차별 장소·"이 코스로 짜보기".
  * 시트({@link PublicCourseSheet})와 공유 링크 화면이 함께 쓴다.
  */
-export function PublicCourseArticle({ course, title, subtitle, onCopyToFlow }: ArticleProps) {
+export function PublicCourseArticle({
+  course,
+  title,
+  subtitle,
+  onCopyToFlow,
+  onOpenPlace,
+}: ArticleProps) {
   /*
    * 일차별로 묶는다.
    *
@@ -158,6 +186,33 @@ export function PublicCourseArticle({ course, title, subtitle, onCopyToFlow }: A
 
   /** 날짜를 묻는 중인가. 버튼을 누르기 전에는 이 시트가 <b>읽는 자리</b>다 */
   const [picking, setPicking] = useState(false)
+
+  /** 동선을 펼쳤는가. 닫혀 있는 동안에는 지도를 아예 만들지 않는다 */
+  const [mapOpen, setMapOpen] = useState(false)
+
+  /*
+    ⚠️ {@code useMemo}가 필수다. 매 렌더 새 배열을 만들면 CourseMap의 다시 그리기 effect가
+    매번 돌아 지도가 깜박인다 — 진단·최종 화면이 같은 이유로 memo를 쓴다.
+  */
+  const mapPlaces = useMemo<Place[]>(
+    () =>
+      course.places
+        .map((place) => place.place)
+        .filter((place): place is Place => place !== null),
+    [course.places],
+  )
+  /*
+    일차별로 선을 따로 긋는다. 하나로 이으면 <b>밤사이 이동이 경로처럼</b> 보인다.
+    지도에 못 오른 장소(좌표 없음)는 여기서도 빠져야 선이 끊긴 자리를 건너뛰지 않는다.
+  */
+  const mapRoutes = useMemo(() => {
+    const onMap = new Set(mapPlaces.map((place) => place.id))
+    return Array.from({ length: course.days }, (_, index) =>
+      course.places
+        .filter((place) => place.day === index + 1 && onMap.has(place.placeId))
+        .map((place) => place.placeId),
+    ).filter((route) => route.length > 0)
+  }, [course.places, course.days, mapPlaces])
 
   /**
    * 예측이 닿는 마지막 날. 코스 짜기 화면과 <b>같은 달력</b>을 쓰므로 같은 값을 넘긴다 —
@@ -235,31 +290,79 @@ export function PublicCourseArticle({ course, title, subtitle, onCopyToFlow }: A
         </div>
       </div>
 
-      <div className="border-line/60 flex flex-col gap-3 border-t pt-3.5">
+      <div className="border-line/60 flex flex-col gap-4 border-t pt-4">
         {byDay.map((places, index) => (
-          <div key={index} className="flex flex-col gap-1.75">
-            <span className="text-hint text-[11.5px] font-semibold">{index + 1}일차</span>
+          <div key={index} className="flex flex-col gap-2">
+            {/*
+              일차 옆에 <b>실제 날짜</b>를 적는다. "1일차"만으로는 언제 떠나는 여행인지
+              위 부제("9월 23일 → 9월 24일")를 되짚어 세어야 알 수 있다 — 이틀이면 되짚을
+              만하지만 3박 4일이면 못 센다.
+            */}
+            <div className="flex items-baseline gap-2">
+              <span className="text-fg text-[13px] font-bold">{index + 1}일차</span>
+              <span className="text-hint text-[11.5px]">
+                {formatMonthDay(addDays(course.startDate, index))} (
+                {/* "화요일" → "화". 줄이 짧아 요일까지 적으면 날짜보다 길어진다 */}
+                {formatWeekday(addDays(course.startDate, index)).charAt(0)})
+              </span>
+            </div>
             {places.length === 0 ? (
               // 빈 일차를 건너뛰지 않는다. 건너뛰면 2박 3일인데 이틀만 있는 것처럼 보인다.
               <span className="text-hint pl-1 text-[13px]">담긴 장소가 없어요</span>
             ) : (
-              <ul className="m-0 flex list-none flex-col gap-1.75 pl-0">
-                {places.map((place) => (
-                  <li
+              <ul className="m-0 flex list-none flex-col p-0">
+                {places.map((place, placeIndex) => (
+                  <PlaceRow
                     key={`${place.day}-${place.order}-${place.placeId}`}
-                    className="flex items-center gap-2.25"
-                  >
-                    <span className="bg-bg text-hint grid h-5 w-5 flex-none place-items-center rounded-full font-mono text-[10.5px] font-semibold">
-                      {place.order}
-                    </span>
-                    <span className="text-fg truncate text-[13.5px] font-medium">{place.name}</span>
-                  </li>
+                    place={place}
+                    last={placeIndex === places.length - 1}
+                    onOpen={onOpenPlace}
+                  />
                 ))}
               </ul>
             )}
           </div>
         ))}
       </div>
+
+      {/*
+        ■ <b>동선은 접어 둔다</b>
+
+        이 시트는 먼저 <b>읽는 자리</b>라 지도가 펴진 채로 열리면 목록이 아래로 밀려,
+        무엇이 담겼는지 보려고 스크롤부터 해야 한다. 그리고 지도는 카카오 SDK를 부르므로
+        <b>열지 않은 사람은 부르지 않는 편</b>이 낫다 — 코스를 훑고 닫는 사람이 대부분이다.
+
+        <p>⚠️ 좌표가 있는 장소만 지도에 오른다. 공사 카탈로그에서 사라진 장소는
+        {@code place}가 비어 있어(PublicPlace 주석) 찍을 자리가 없다.
+      */}
+      {mapPlaces.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          <button
+            type="button"
+            onClick={() => setMapOpen((open) => !open)}
+            aria-expanded={mapOpen}
+            className="bg-brand-tint/60 hover:bg-brand-tint rounded-card flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left press"
+          >
+            <span className="text-brand-deep flex-none">
+              <Route />
+            </span>
+            <span className="flex flex-1 flex-col gap-0.5">
+              <span className="text-fg text-[14px] font-bold">코스 동선 보기</span>
+              <span className="text-muted text-[12px]">
+                {mapPlaces.length}곳을 지도에서 한눈에 확인해요
+              </span>
+            </span>
+            <span className="text-brand-deep flex-none">
+              {mapOpen ? <ChevronDown /> : <ChevronRight />}
+            </span>
+          </button>
+          {/*
+            ⚠️ 열었다 닫으면 <b>지도를 떼어낸다</b>(조건부 렌더). 감춰만 두면 카카오 지도가
+            폭 0인 상자 안에서 계속 살아 있다가, 다시 열 때 타일을 못 그린다.
+          */}
+          {mapOpen && <CourseMap places={mapPlaces} routes={mapRoutes} className="h-[240px]" />}
+        </div>
+      )}
 
       {/*
         남의 코스는 고칠 수 없다. 할 수 있는 것은 <b>베껴 와서 내 것으로 짜는 일</b>이고,
@@ -284,7 +387,12 @@ export function PublicCourseArticle({ course, title, subtitle, onCopyToFlow }: A
         <button
           type="button"
           onClick={() => setPicking(true)}
-          className="border-brand bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border-[1.5px] text-sm font-semibold press"
+          /*
+            ⚠️ 테두리 버튼에서 <b>채운 버튼</b>으로 바꿨다. 이 시트에서 할 수 있는 일이
+            이것 하나뿐인데 테두리로 두면 아래 여백에 묻혀, 코스를 다 읽고도 다음 걸음이
+            안 보였다. 누르면 이 버튼이 달력에 자리를 내주므로 채운 버튼이 둘로 겹치지 않는다.
+          */
+          className="bg-brand hover:bg-brand-hover text-fg rounded-ui mt-1 h-12 cursor-pointer text-sm font-semibold press"
         >
           {/*
             ⚠️ <b>"나도"를 뺐다</b> (2026-08-31). 목록에 <b>내 코스도 섞이면서</b>
@@ -358,5 +466,87 @@ export function PublicCourseArticle({ course, title, subtitle, onCopyToFlow }: A
         한쪽에만 적으면 <b>다른 쪽은 날짜까지 따라오는 것처럼</b> 읽힌다.
       */}
     </article>
+  )
+}
+
+/**
+ * 코스 한 줄 — 번호·사진·이름·분류, 그리고 누르면 장소 상세.
+ *
+ * <h3>왜 사진과 분류가 붙었나</h3>
+ * 이름만 늘어놓던 목록은 <b>어느 코스나 같은 모양</b>이었다. 여수와 경주가 글자만 다른
+ * 여섯 줄로 보이니, 남의 여행을 구경하러 열어도 볼 것이 없었다.
+ *
+ * <p>분류 자리에 <b>한 줄 소개를 쓰고 싶지만 가진 것이 없다.</b> 공사 국문 관광정보에는
+ * 짧은 설명 필드가 없고({@code overview}는 118~1,399자다) 장소마다 상세를 부르면 이 시트
+ * 하나에 호출이 여섯 번 나간다. 그래서 <b>이미 들고 있는 분류명</b>을 세운다 —
+ * 지어내지 않고, 가진 것으로 말한다.
+ *
+ * <h3>줄을 잇는 선</h3>
+ * 번호 아래로 점선이 다음 줄까지 내려간다. 마지막 줄에는 긋지 않는다 — 이어질 곳이 없다.
+ * 선이 있어야 여섯 줄이 <b>목록이 아니라 순서</b>로 읽힌다.
+ *
+ * <h3>⚠️ 누를 수 있는 줄과 아닌 줄</h3>
+ * {@code onOpen}이 없으면 {@code <div>}로 선다. 눌러도 아무 일이 없는 {@code <button>}은
+ * 키보드로 훑는 사람에게 <b>있지도 않은 문</b>을 하나씩 세워 보인다.
+ */
+function PlaceRow({
+  place,
+  last,
+  onOpen,
+}: {
+  place: PublicPlace
+  last: boolean
+  onOpen?: (place: PublicPlace) => void
+}) {
+  const body = (
+    <>
+      {/* 번호와 점선. 줄 높이가 사진(56px)에 맞춰지므로 선도 그만큼 내려간다 */}
+      <span className="flex flex-none flex-col items-center self-stretch">
+        <span className="bg-bg text-hint grid h-6 w-6 flex-none place-items-center rounded-full font-mono text-[11px] font-semibold">
+          {place.order}
+        </span>
+        {!last && (
+          <span
+            className="border-line mt-1 w-0 flex-1 border-l border-dashed"
+            aria-hidden="true"
+          />
+        )}
+      </span>
+
+      <PlaceThumbnail imageUrl={place.place?.imageUrl ?? null} size="row" />
+
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-fg truncate text-[14px] font-semibold">{place.name}</span>
+        {/*
+          분류를 못 받은 줄은 <b>자리를 비운다.</b> "정보 없음" 같은 말을 채우면
+          공사가 안 준 것을 우리가 못 채운 것처럼 읽힌다.
+        */}
+        {place.place?.categoryName && (
+          <span className="text-hint truncate text-[12px]">{place.place.categoryName}</span>
+        )}
+      </span>
+
+      {onOpen && (
+        <span className="text-hint flex-none">
+          <ChevronRight />
+        </span>
+      )}
+    </>
+  )
+
+  return (
+    <li>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={() => onOpen(place)}
+          className="hover:bg-bg rounded-ui flex w-full cursor-pointer items-center gap-3 bg-transparent px-1 py-1.5 text-left press"
+        >
+          {body}
+        </button>
+      ) : (
+        <div className="flex items-center gap-3 px-1 py-1.5">{body}</div>
+      )}
+    </li>
   )
 }
