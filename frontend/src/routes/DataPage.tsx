@@ -699,12 +699,49 @@ function ThresholdSection() {
             직접 재는 자로 바꿨습니다. 그러자 충주(<Num>52.5%</Num>)가 경주(<Num>47.4%</Num>)와 같은
             자리였습니다.
           </p>
+          {/*
+            ■ <b>다음 후보를 숫자로 세운다</b> (2026-09-10)
+
+            "어떻게 늘리나"에 글로만 답하면 계획으로 읽히고, 숫자로 답하면 <b>이미 재 본 것</b>으로
+            읽힌다. 발전성은 이 화면에서 가장 얇은 칸이라 여기서 벌어야 한다.
+
+            <p>수치는 1부가 받아 둔 스냅샷을 <b>지금 조건</b>으로 다시 잰 것이다
+            ({@code analysis/region-candidates/next.py}). 공사를 다시 부르지 않는다 — 예측이 갱신되면
+            후보끼리 견줄 기준이 어긋난다.
+
+            <p>⚠️ 인천은 옹진군·강화군이 <b>둘 다</b> 통과했지만 하나만 적는다. 시도마다 하나씩이
+            원칙이라 강화군을 함께 세우면 그 원칙과 화면이 어긋난다.
+          */}
+          <div className="bg-bg rounded-ui mt-3 flex flex-col gap-2 p-3.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-fg text-[12.5px] font-semibold">다음에 열 수 있는 시도</span>
+              <span className="text-hint text-[11px]">붐빔 1칸↑ · 예측</span>
+            </div>
+            {[
+              { area: '인천 옹진군', rate: '78.4%', forecast: '59곳' },
+              { area: '울산 울주군', rate: '54.5%', forecast: '54곳' },
+              { area: '대구 달성군', rate: '43.3%', forecast: '48곳' },
+            ].map((row) => (
+              <div key={row.area} className="flex items-baseline justify-between gap-3">
+                <span className="text-muted text-[12.5px]">{row.area}</span>
+                <span className="text-[12.5px] font-semibold">
+                  <span className="text-quiet-deep font-mono">{row.rate}</span>
+                  <span className="text-hint ml-1.5 font-mono font-normal">{row.forecast}</span>
+                </span>
+              </div>
+            ))}
+            <p className="text-hint m-0 pt-0.5 text-[11px] leading-[1.6]">
+              셋을 넣으면 <Num>11</Num>곳 → <Num>14</Num>곳, 시도가 셋 늡니다. 이미 들어와 있는 곳의
+              하한이 <Num>37.9%</Num>(가평)라 새 후보가 기존 지역보다 무른 채로 들어오지 않습니다.
+            </p>
+          </div>
+
           <p className="m-0 mt-2">
             <strong className="text-fg font-semibold">아직 없는 곳과 이유</strong> — 대전은 시 전체가
             자치구라 ③을 넘을 후보가 없고, 세종은 국문 관광정보 카탈로그가 <Num>0</Num>건이며, 부산
             기장군은 예측 대상이 <Num>39</Num>곳으로 <strong className="text-fg font-semibold">한 곳
             모자랐습니다</strong> — 공사가 대상을 늘리면 통과하는 유일한 자리입니다. 인천 옹진군·울산
-            울주군은 조건을 넘어 다음 차례이고, 옹진은 섬이라 15km 안 이웃이 다른 지역의 3분의 1이라
+            울주군·대구 달성군은 조건을 넘어 다음 차례이고, 옹진은 섬이라 15km 안 이웃이 다른 지역의 3분의 1이라
             대안이 자주 빌 수 있습니다. 조건을 지키는 한 <strong className="text-fg font-semibold">
             지역을 늘려도 경계값과 점수식은 그대로</strong>입니다 — 11곳이 되면서 오히려 경계가 전국
             분포에 맞아 들어갔습니다.
