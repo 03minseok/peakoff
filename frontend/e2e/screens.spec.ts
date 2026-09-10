@@ -21,6 +21,16 @@ import { expect, test } from '@playwright/test'
  * 터미널 3  cd frontend && npm run ui:shot
  * </pre>
  * 배포본을 볼 때는 서버 없이 {@code PW_BASE_URL}만 주면 된다.
+ *
+ * <h3>배포본에는 하나를 더 본다 — 내용이 실제로 왔는가</h3>
+ * 배포 워크플로의 스모크가 서버 쪽에서 "200인데 빈" 배포를 잡는다면, 이쪽은 <b>화면 쪽</b>에서
+ * 같은 것을 본다. 이 서비스는 공사가 침묵해도 죽지 않고 지역이 조용히 빠지는 구조라,
+ * 화면이 멀쩡히 뜨고 콘솔이 조용해도 <b>정작 카드가 하나도 없을 수</b> 있다.
+ *
+ * <p>⚠️ {@code PW_BASE_URL}이 있을 때만 본다. 로컬은 목업 서버이거나 서버가 없을 수 있어
+ * 거기서까지 내용을 요구하면 "열어 보는 도구"가 "시험 묶음"이 된다(위 규칙).
+ * 단언은 화면마다 <b>하나</b>다 — 홈은 한적한 곳 카드가 하나라도 섰는지, 데이터 화면은
+ * 백엔드 연결 타일이 "연결됨"인지. 그 둘이 공사 자료와 서버가 실제로 이어졌다는 뜻이다.
  */
 
 /** 로그인 없이 열리는 화면들. 게스트가 전체 흐름을 쓸 수 있어야 한다는 규칙과 같은 목록이다 */
@@ -31,6 +41,31 @@ const SCREENS = [
   { path: '/login', name: 'login' },
   { path: '/data', name: 'data' },
 ]
+
+/** 배포본을 보는 중인가. 로컬 dev 서버를 가리키면 내용 검사는 건너뛴다 */
+const LIVE = Boolean(process.env.PW_BASE_URL)
+
+/**
+ * 화면마다 "내용이 왔다"를 뜻하는 표식 하나. 없는 화면은 검사하지 않는다.
+ *
+ * <p>홈의 표식이 찜 버튼인 이유: "이번 주 한적한 곳" 카드마다 붙고, 그 카드는 공사 집중률
+ * 예측이 실제로 들어와야만 선다. 글자를 찾지 않는 것은 문구가 바뀌어도 이 시험이
+ * 따라 깨지지 않게 하려는 것이다 — 접근성 이름은 문구보다 오래 간다.
+ */
+const CONTENT: Partial<Record<string, (page: import('@playwright/test').Page) => Promise<void>>> = {
+  home: async (page) => {
+    await expect(
+      page.getByRole('button', { name: /찜하기$|찜 취소$/ }).first(),
+      'home: 한적한 곳 카드가 하나도 없다 — 공사 자료가 안 들어왔을 수 있다',
+    ).toBeVisible({ timeout: 15_000 })
+  },
+  data: async (page) => {
+    await expect(
+      page.getByText('연결됨', { exact: true }),
+      'data: 백엔드 연결 타일이 "연결됨"이 아니다',
+    ).toBeVisible({ timeout: 15_000 })
+  },
+}
 
 for (const screen of SCREENS) {
   test(`${screen.name} — 찍고 가로 스크롤·콘솔 확인`, async ({ page }, testInfo) => {
@@ -70,5 +105,10 @@ for (const screen of SCREENS) {
     expect(overflow, `${screen.name}: 가로로 ${overflow}px 넘친다`).toBeLessThanOrEqual(1)
 
     expect(complaints, `${screen.name} 콘솔:\n${complaints.join('\n')}`).toEqual([])
+
+    // 배포본에서만. 위 두 검사와 달리 <b>서버와 공사 자료</b>가 있어야 통과한다.
+    if (LIVE) {
+      await CONTENT[screen.name]?.(page)
+    }
   })
 }
