@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Close, Route } from './icons'
+import { ChevronDown, ChevronRight, Close, MapIcon } from './icons'
 import { CourseMap } from './CourseMap'
 import { PlaceThumbnail } from './PlaceThumbnail'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
@@ -337,21 +337,32 @@ export function PublicCourseArticle({
       */}
       {mapPlaces.length > 0 && (
         <div className="flex flex-col gap-2.5">
+          {/*
+            ■ 오른쪽에 <b>작은 지도 그림</b>이 선다
+
+            글자와 꺾쇠만 있는 줄은 위의 장소 줄들과 같은 무게라 "여기부터 다른 것"이
+            안 읽혔다. 핀 넷과 점선 한 가닥이 카드 오른쪽에서 잘려 들어오면, 누르기 전에
+            <b>무엇이 열리는지</b>가 보인다.
+
+            <p>그림은 카드 세로 여백을 넘어 위아래에 물린다({@code -my-3.5}). 여백 안에
+            얌전히 들어앉으면 스티커처럼 붙어 보이고, 가장자리를 넘겨야 카드의 일부가 된다.
+          */}
           <button
             type="button"
             onClick={() => setMapOpen((open) => !open)}
             aria-expanded={mapOpen}
-            className="bg-brand-tint/60 hover:bg-brand-tint rounded-card flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left press"
+            className="bg-brand-tint hover:bg-brand-soft/45 rounded-card flex w-full cursor-pointer items-center gap-3 overflow-hidden py-3.5 pr-3.5 pl-4 text-left press"
           >
             <span className="text-brand-deep flex-none">
-              <Route />
+              <MapIcon size={26} />
             </span>
-            <span className="flex flex-1 flex-col gap-0.5">
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="text-fg text-[14px] font-bold">코스 동선 보기</span>
-              <span className="text-muted text-[12px]">
-                {mapPlaces.length}곳을 지도에서 한눈에 확인해요
-              </span>
+              {/* 색 면 위의 보조 글자는 회색이 아니라 그 색의 진한 단계로 — 회백에 회색을 얹으면 묻는다 */}
+              <span className="text-brand-deep text-[12px]">{mapPlaces.length}곳을 지도로 한눈에</span>
             </span>
+            {/* 좁은 화면에서는 그림을 조금 줄인다 — 116px이면 부제가 "한 / 눈에"로 꺾인다 */}
+            <RouteSketch className="-my-3.5 h-[72px] w-[100px] flex-none sm:w-[116px]" />
             <span className="text-brand-deep flex-none">
               {mapOpen ? <ChevronDown /> : <ChevronRight />}
             </span>
@@ -540,7 +551,12 @@ function PlaceRow({
         <button
           type="button"
           onClick={() => onOpen(place)}
-          className="hover:bg-bg rounded-ui flex w-full cursor-pointer items-center gap-3 bg-transparent px-1 py-1.5 text-left press"
+          /*
+            hover 배경을 두지 않는다. 사진·이름·분류가 이미 한 줄을 채우고 있어 그 위에
+            회색 면이 켜지면 줄이 <b>선택된 것</b>처럼 읽힌다 — 이 줄은 고르는 자리가
+            아니라 펼쳐 보는 문이다. 눌림은 press가, 초점은 focus-visible 링이 맡는다.
+          */
+          className="rounded-ui flex w-full cursor-pointer items-center gap-3 bg-transparent px-1 py-1.5 text-left press"
         >
           {body}
         </button>
@@ -548,5 +564,67 @@ function PlaceRow({
         <div className="flex items-center gap-3 px-1 py-1.5">{body}</div>
       )}
     </li>
+  )
+}
+
+/**
+ * "코스 동선 보기" 카드에 붙는 작은 지도 그림 — 핀 넷과 그 사이를 잇는 점선.
+ *
+ * <h3>진짜 지도의 말을 빌린다</h3>
+ * 점선의 색은 {@code CourseMap}이 경로에 쓰는 그 색({@code --c-quiet-strong})이다.
+ * 누르면 열리는 지도에서 같은 색의 선을 만나야, 이 그림이 <b>예고</b>로 읽힌다.
+ * 핀도 같은 색이다 — 지도 위의 표식은 한 색으로 묶여야 하나의 코스로 보인다.
+ *
+ * <h3>땅은 두 가지 옅은 면으로만</h3>
+ * 지도 타일을 흉내 내지 않는다. 카드 바탕(브랜드 tint) 위에 한적 tint와 순백을
+ * 둥글게 얹으면 물과 뭍의 인상만 남는다 — 이 크기(116×72)에서 도로나 글자를 그리면
+ * 얼룩이 된다.
+ *
+ * <h3>왼쪽을 흐려 글자에 물린다</h3>
+ * 그림이 글자 쪽으로 다가오는 가장자리를 마스크로 걷어 낸다. 잘린 직선이 글자 옆에
+ * 서면 칸막이처럼 보이고, 흐려지며 사라져야 <b>카드 바탕에서 떠오르는 그림</b>이 된다.
+ *
+ * <p>좌표는 viewBox 0 0 116 72 기준이다. 핀은 뾰족한 끝이 원점에 오도록 그려 두고,
+ * 자리마다 {@code translate}로 옮기고 {@code scale}로 크기를 조금씩 달리한다 —
+ * 같은 크기 넷이 나란히 서면 도장 찍은 것처럼 보인다.
+ */
+function RouteSketch({ className = '' }: { className?: string }) {
+  /** 뾰족한 끝이 (0, 0)인 핀 하나. 머리 가운데 흰 점이 지도 핀의 문법을 완성한다 */
+  const pin = (x: number, y: number, scale: number) => (
+    <g transform={`translate(${x} ${y}) scale(${scale})`}>
+      <path
+        d="M0 0C-3.4-4.2-6.4-7.4-6.4-11a6.4 6.4 0 0 1 12.8 0c0 3.6-3 6.8-6.4 11z"
+        fill="var(--c-quiet-strong)"
+      />
+      <circle cx="0" cy="-11" r="2.4" fill="var(--c-surface)" />
+    </g>
+  )
+
+  return (
+    <svg
+      viewBox="0 0 116 72"
+      className={`[mask-image:linear-gradient(to_right,transparent,black_24%)] ${className}`}
+      aria-hidden="true"
+    >
+      {/* 뭍 둘, 물 하나. 카드 오른쪽 위·아래 모서리에서 물려 들어온다 */}
+      <ellipse cx="96" cy="8" rx="44" ry="26" fill="var(--c-quiet-tint)" />
+      <ellipse cx="34" cy="70" rx="46" ry="24" fill="var(--c-quiet-tint)" />
+      <ellipse cx="72" cy="42" rx="30" ry="16" fill="var(--c-surface)" opacity="0.7" />
+
+      {/* 경로. 진짜 지도의 선과 같은 색·같은 점선 */}
+      <path
+        d="M16 54C26 42 32 32 42 30S62 44 70 42S92 24 100 20"
+        fill="none"
+        stroke="var(--c-quiet-strong)"
+        strokeWidth="1.6"
+        strokeDasharray="3 3"
+        strokeLinecap="round"
+      />
+
+      {pin(16, 54, 0.9)}
+      {pin(42, 30, 1)}
+      {pin(70, 42, 0.85)}
+      {pin(100, 20, 1.1)}
+    </svg>
   )
 }
