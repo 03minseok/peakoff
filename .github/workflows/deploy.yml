@@ -158,13 +158,40 @@ jobs:
             for i in $(seq 1 40); do
               if curl -fsS -m 3 http://localhost:8080/health > /dev/null; then
                 echo "✅ 헬스체크 통과"
-                # 청소는 잡의 첫 단계에서 이미 했다. 여기서 또 돌리면 방금 물러난
-                # 이미지까지 지워져, 새 배포가 잘못됐을 때 되돌릴 것이 서버에 없다.
-                exit 0
+                break
+              fi
+              if [ "$i" = 40 ]; then
+                echo "❌ 2분 안에 뜨지 않았다. 로그:"
+                docker compose logs --tail 80 app
+                exit 1
               fi
               sleep 3
             done
 
-            echo "❌ 2분 안에 뜨지 않았다. 로그:"
+            # 떴다고 끝이 아니다. <내용>까지 본다 — 200인데 빈 배포를 성공으로 넘기지 않는다.
+            #
+            # 공사가 침묵하면 이 서비스는 죽지 않고 <지역이 조용히 빠지는> 구조다(CLAUDE.md 절대 규칙 1).
+            # 헬스체크는 그 상태를 성공이라 말한다. 그래서 공사 자료가 실제로 들어왔는지를
+            # 지역 카탈로그 한 건으로 확인한다: 지역 목록의 첫 슬러그로 장소를 물어 id가 하나라도 오는가.
+            # 카탈로그는 부팅 직후 워머가 채우므로(KtoCacheWarmer, 실측 3~4초) 잠깐 기다려 준다.
+            #
+            # jq 없이 grep으로만 본다 — 서버에 무엇이 깔려 있는지에 기대지 않는다.
+            echo "내용 확인…"
+            for i in $(seq 1 20); do
+              regions=$(curl -fsS -m 5 http://localhost:8080/api/regions || true)
+              slug=$(printf '%s' "$regions" | grep -o '"slug":"[a-z0-9-]*"' | head -1 | cut -d'"' -f4)
+              if [ -n "$slug" ]; then
+                places=$(curl -fsS -m 8 "http://localhost:8080/api/places?region=$slug&limit=3" || true)
+                if printf '%s' "$places" | grep -q '"id":"'; then
+                  echo "✅ 내용 확인 통과 — $slug 카탈로그에 장소가 있다"
+                  # 청소는 잡의 첫 단계에서 이미 했다. 여기서 또 돌리면 방금 물러난
+                  # 이미지까지 지워져, 새 배포가 잘못됐을 때 되돌릴 것이 서버에 없다.
+                  exit 0
+                fi
+              fi
+              sleep 3
+            done
+
+            echo "❌ 서버는 떴는데 내용이 비었다 — 지역 목록 또는 장소 카탈로그가 없다. 로그:"
             docker compose logs --tail 80 app
             exit 1
