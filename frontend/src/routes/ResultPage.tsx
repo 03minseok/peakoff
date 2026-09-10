@@ -871,8 +871,18 @@ export function ResultPage() {
                   </p>
                 )}
               </div>
+              {/*
+                ⚠️ 아래 문단에 <b>w-full이 있어야 한다</b> (2026-09-10). 가운데 정렬 플렉스 안이라
+                없으면 <b>자기 글자 길이만큼만</b> 넓어진다 — 390px 화면에서 쓸 수 있는 폭이
+                314px인데 문단이 190.5px만 차지했다. 문장 길이와 똑같아 <b>여유가 0px</b>이라,
+                기기 글꼴이 조금만 넓거나 사용자가 글자 크기를 키우면 곧바로 넘쳐
+                "관광 수요 분산에 한 / 걸음 보탰어요."로 갈렸다. 실제로 폰에서 그렇게 보였다.
+
+                <p>폭을 채우면 같은 문장이 314px를 다 쓴다. 글이 가운데 정렬이라 <b>보이는 모습은
+                같고</b> 여유만 생긴다. 넓은 화면에서는 max-w-[440px]가 그대로 잡는다.
+              */}
               {heroBody !== '' && (
-                <p className="m-0 max-w-[440px] text-[14px] leading-[1.7] whitespace-pre-line break-keep text-white/70 text-pretty lg:text-[14.5px]">
+                <p className="m-0 w-full max-w-[440px] text-[14px] leading-[1.7] whitespace-pre-line break-keep text-white/70 text-pretty lg:text-[14.5px]">
                   {heroBody}
                 </p>
               )}
