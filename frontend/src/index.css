@@ -101,26 +101,14 @@
   /*
    * 사진이 없는 장소의 자리를 지키는 면 (PlaceThumbnail → PlacePhotoFallback).
    *
-   * <b>뜻을 지지 않는 장식색이다.</b> 그래서 위의 brand·아래의 혼잡 3단계 램프에
-   * 끼워 넣지 않고 따로 둔다 — 저쪽 색들은 눌러야 할 버튼이나 붐빔의 정도를 말하는데,
-   * 이 색들이 그 자에 섞이면 "사진이 없다"가 등급처럼 읽힌다.
+   * <b>뜻을 지지 않는 바탕색이다.</b> brand·혼잡 램프에 끼우지 않는 이유는, 저쪽 색들은
+   * 눌러야 할 버튼이나 붐빔의 정도를 말하는데 이 색이 그 자에 섞이면 "사진이 없다"가
+   * 등급처럼 읽히기 때문이다. 순백(--c-surface)도 아니다 — 카드가 순백이라 면이 사라진다.
    *
-   * ⚠️ <b>cool 둘은 팔레트에 없던 색조다.</b> 넉 줄 띠(네이비·틸·회백·핑크)에 파랑이
-   * 없어서, 시안 구성에 있던 그대로 들여왔다. 여기 한 자리에서만 쓰고 다른 데로
-   * 번지지 않게 이름에 쓰임을 박아 두었다.
-   *
-   * 값이 여럿인 것은 원이 겹치며 <b>안으로 갈수록 짙어지기</b> 때문이다. 한 색을
-   * 투명도만 달리해 겹치면 겹치는 만큼만 짙어져 층이 뭉개진다.
+   * ⚠️ 한때 이 자리에 아홉 색이 있었다(틸 셋·파랑 둘·점·그라디언트 셋). 원들이 겹치는
+   * 그림이었는데 사진 옆에 서면 그림이 사진과 다퉜다. 평평한 바탕 하나로 줄였다.
    */
-  --c-fallback-bg-1: #f2fafa;
-  --c-fallback-bg-2: #fafdfd;
-  --c-fallback-bg-3: #f4f8fc;
-  --c-fallback-teal-1: #5fc3be;
-  --c-fallback-teal-2: #4fbab6;
-  --c-fallback-teal-3: #3fb2af;
-  --c-fallback-teal-dot: #7fd0cb;
-  --c-fallback-cool-1: #a9ccf0;
-  --c-fallback-cool-2: #93bfec;
+  --c-fallback-bg: #eef3f7;
 
   /*
    * 혼잡 3단계. 색조만으로는 색각 이상에서 갈리지 않아 <b>명도까지 벌려</b> 잡았다 —
@@ -204,6 +192,7 @@
   --color-brand-hover: var(--c-brand-hover);
   --color-brand-soft: var(--c-brand-soft);
   --color-brand-tint: var(--c-brand-tint);
+  --color-fallback: var(--c-fallback-bg);
 
   --color-quiet: var(--c-quiet);
   --color-quiet-deep: var(--c-quiet-deep);
