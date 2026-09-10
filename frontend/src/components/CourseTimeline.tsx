@@ -91,15 +91,42 @@ export function CourseTimeline({ places, days, startDate, onOpenPlace }: Props) 
   /*
     일차별로 선을 따로 긋는다. 하나로 이으면 <b>밤사이 이동이 경로처럼</b> 보인다.
     지도에 못 오른 장소(좌표 없음)는 여기서도 빠져야 선이 끊긴 자리를 건너뛰지 않는다.
+
+    <p>⚠️ 빈 날을 <b>여기서 걸러내지 않는다.</b> 배열의 자리가 곧 일차라서, 걸러내면
+    아래 탭의 "Day 2"가 셋째 날을 가리키게 된다. 빈 것은 보여줄 때 뺀다.
   */
-  const mapRoutes = useMemo(() => {
+  const allRoutes = useMemo(() => {
     const onMap = new Set(mapPlaces.map((place) => place.id))
     return Array.from({ length: days }, (_, index) =>
       places
         .filter((place) => place.day === index + 1 && onMap.has(place.placeId))
         .map((place) => place.placeId),
-    ).filter((route) => route.length > 0)
+    )
   }, [places, days, mapPlaces])
+
+  /**
+   * 지도에 보일 일차. 진단·추천·결과 화면과 <b>같은 규칙</b>이다 — 1일차로 열고,
+   * 전체는 탭 끝에 둔다. 전체로 열면 첫 화면이 선 여럿이 뒤엉킨 그림이라 정작
+   * "첫날 어디부터 도나"가 안 보인다.
+   */
+  const [mapDay, setMapDay] = useState<number | 'all'>(1)
+
+  /*
+    고른 일차만 넘긴다. 배열이 하나면 CourseMap이 마커를 "1, 2, 3"으로 매기고,
+    여럿이면 "2-1"처럼 일차를 붙인다 — 여기서 걸러 넘기는 것만으로 번호 표기가 바뀐다.
+  */
+  const visibleRoutes = useMemo(
+    () =>
+      mapDay === 'all'
+        ? allRoutes.filter((route) => route.length > 0)
+        : [allRoutes[mapDay - 1] ?? []],
+    [allRoutes, mapDay],
+  )
+  /* 다른 날의 마커는 지도에서 뺀다. 선은 하루치인데 점이 사흘치면 어느 점이 그 날인지 모른다 */
+  const visiblePlaces = useMemo(() => {
+    const ids = new Set(visibleRoutes.flat())
+    return mapPlaces.filter((place) => ids.has(place.id))
+  }, [mapPlaces, visibleRoutes])
 
   return (
     <>
@@ -184,7 +211,48 @@ export function CourseTimeline({ places, days, startDate, onOpenPlace }: Props) 
             ⚠️ 열었다 닫으면 <b>지도를 떼어낸다</b>(조건부 렌더). 감춰만 두면 카카오 지도가
             폭 0인 상자 안에서 계속 살아 있다가, 다시 열 때 타일을 못 그린다.
           */}
-          {mapOpen && <CourseMap places={mapPlaces} routes={mapRoutes} className="h-[240px]" />}
+          {mapOpen && (
+            <>
+              {/*
+                <b>일차가 먼저, 전체가 마지막이다.</b> 탭은 왼쪽부터 읽히는데 "전체"를 앞에
+                두면 Day 1이 첫 칸이 아니어서 위 타임라인의 순서와 어긋난다. 하루뿐인 코스에는
+                고를 것이 없으니 세우지 않는다.
+              */}
+              {days > 1 && (
+                <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="지도에 표시할 일차">
+                  {([...allRoutes.map((_, index) => index + 1), 'all'] as const).map((tab) => {
+                    const active = tab === mapDay
+                    return (
+                      <button
+                        key={tab}
+                        type="button"
+                        /* 고른 탭은 배경이 잉크라 brand-deep 초점 링이 묻힌다 — 흰 링으로 바꾼다 (결과 화면과 같다) */
+                        className={`rounded-chip h-8 cursor-pointer px-3 text-[12.5px] font-semibold whitespace-nowrap press ${
+                          active
+                            ? 'bg-fg text-white focus-visible:outline-white'
+                            : 'bg-bg text-hint hover:text-fg'
+                        }`}
+                        aria-pressed={active}
+                        onClick={() => setMapDay(tab)}
+                      >
+                        {tab === 'all' ? '전체' : `Day ${tab}`}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              <CourseMap places={visiblePlaces} routes={visibleRoutes} className="h-[240px]" />
+              {days > 1 && (
+                <p className="text-hint m-0 text-[12px] whitespace-pre-line">
+                  {mapDay === 'all'
+                    ? '마커 번호는 “일차-순서”예요.'
+                    : visibleRoutes[0].length === 0
+                      ? `Day ${mapDay}에는 지도에 올릴 장소가 없어요.`
+                      : `Day ${mapDay}에 담은 ${visibleRoutes[0].length}곳만 순서대로 보여주고 있어요.`}
+                </p>
+              )}
+            </>
+          )}
         </div>
       )}
     </>
