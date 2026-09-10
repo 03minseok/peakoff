@@ -8,8 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "ui:shot": "playwright test",
-    "ui:report": "playwright show-report"
+    "ui:shot": "playwright test screens.spec.ts",
+    "ui:report": "playwright show-report",
+    "ui:flow": "playwright test flow.spec.ts --project=mobile"
   },
   "dependencies": {
     "react": "^19.2.7",
