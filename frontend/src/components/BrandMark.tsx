@@ -18,8 +18,17 @@
  * 한 곳이어야 하고, 서비스가 미는 방향(한적)은 이미 틸이 맡고 있다.
  * 봉우리는 잉크, 비껴간 조각은 브랜드 틸이다.
  *
- * <p>⚠️ {@code currentColor}를 쓰지 않는다. 두 조각의 색이 <b>서로 달라야</b>
- * 마크가 성립하는데, currentColor로 두면 글자색을 물려받아 한 덩어리로 뭉친다.
+ * <p>⚠️ {@code currentColor}를 쓰지 않는다. 두 조각의 색이 자리마다 <b>따로 정해져야</b>
+ * 하는데, currentColor로 두면 둘 다 글자색을 물려받아 부르는 쪽이 고를 수 없게 된다.
+ *
+ * <h3>한 색으로 세우는 자리도 있다 ({@code mono})</h3>
+ * 사진이 없는 장소의 대체면({@code PlacePhotoFallback})은 두 조각이 <b>모두 잉크</b>다.
+ * 그 면은 이미 틸 원들이 깔린 바탕이라, 조각까지 틸이면 <b>바탕에 녹아 끊김이 안 보인다</b> —
+ * 색으로 갈라 두려던 것이 색 때문에 뭉개지는 자리다.
+ *
+ * <p>한 색이어도 마크는 성립한다. <b>비껴감을 나르는 것은 색이 아니라 끊김</b>이고
+ * (아래 "사이를 띄운다" 참고) 색은 그것을 거들 뿐이다. 다만 거들 것이 있는 자리에서는
+ * 거들게 두는 편이 낫다 — 흰 면 위의 로고는 {@code light} 그대로다.
  *
  * <h3>어두운 면에서는 두 색이 모두 바뀐다</h3>
  * 봉우리는 흰색({@code --c-surface}), 비껴간 조각은 <b>그린틸</b>({@code --c-quiet-soft})이다.
@@ -31,8 +40,11 @@
  */
 
 interface Props {
-  /** 배경. 어두운 면에서는 두 색이 함께 바뀐다 */
-  tone?: 'light' | 'dark'
+  /**
+   * 배경. 어두운 면에서는 두 색이 함께 바뀌고, {@code mono}는 둘 다 잉크다
+   * (쓰는 자리와 이유는 위 문서 참고)
+   */
+  tone?: 'light' | 'dark' | 'mono'
   /** 상자 한 변(px). 도형은 그 안에서 여백을 두고 그려진다 */
   size?: number
   className?: string
@@ -98,7 +110,8 @@ const OFFSET_PATH = 'M18.11 21.4 L23.7 21.4 L26 26 L20.41 26 Z'
 
 export function BrandMark({ tone = 'light', size = 26, className = '' }: Props) {
   const peak = tone === 'dark' ? 'var(--c-surface)' : 'var(--c-fg)'
-  const offset = tone === 'dark' ? 'var(--c-quiet-soft)' : 'var(--c-brand)'
+  const offset =
+    tone === 'dark' ? 'var(--c-quiet-soft)' : tone === 'mono' ? 'var(--c-fg)' : 'var(--c-brand)'
 
   return (
     <svg

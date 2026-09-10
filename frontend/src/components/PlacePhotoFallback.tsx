@@ -32,9 +32,15 @@ import { BrandMark } from './BrandMark'
  * 언젠가 한쪽만 고쳐진다.
  *
  * <h3>마크는 {@link BrandMark}에서 온다</h3>
- * 여기서 다시 그리지 않는다. 시안의 마크는 두 조각이 모두 잉크였지만,
- * <b>비껴간 조각은 틸</b>이라는 것이 마크의 뜻 자체다(PEAK에서 OFF로 비껴간다).
- * 그 규칙은 {@code BrandMark}가 소유하므로 불러다 쓰면 저절로 지켜진다.
+ * 여기서 다시 그리지 않는다. 도형이 바뀔 때 이 파일만 옛 모양으로 남지 않게 하려는 것이다.
+ *
+ * <p>다만 색은 <b>시안대로 두 조각 모두 잉크</b>다({@code tone="mono"}).
+ * 흰 면 위의 로고에서 비껴간 조각이 틸인 것은 <b>끊김을 거들기 위해서</b>인데,
+ * 이 면은 이미 틸 원들이 깔린 바탕이라 조각까지 틸이면 거들기는커녕
+ * <b>바탕에 녹아 끊김이 안 보인다.</b> 갈라 두려고 준 색이 도리어 뭉개는 자리다.
+ *
+ * <p>색이 빠져도 마크는 성립한다 — 비껴감을 나르는 것은 색이 아니라 <b>끊김</b>이다.
+ * 헤더·로그인·가입의 로고는 그대로 틸이다.
  *
  * <p>글자도 <b>PEAKOFF</b>로 붙여 쓴다. 시안에는 {@code PEAK OFF}로 띄어져 있었는데,
  * 헤더·로그인·가입이 전부 붙여 쓰고 있어 여기만 띄우면 같은 화면에 두 표기가 선다.
@@ -129,7 +135,7 @@ export function PlacePhotoFallback({ markClass, wordmarkClass, className = '' }:
         커지고 잘려서, 같은 목록에서 카드마다 마크 크기가 달라진다.
       */}
       <span className="relative flex flex-col items-center gap-1.5">
-        <BrandMark className={markClass} />
+        <BrandMark tone="mono" className={markClass} />
         {wordmarkClass && (
           <span className={`text-fg font-bold tracking-[0.28em] ${wordmarkClass}`}>PEAKOFF</span>
         )}
