@@ -85,7 +85,7 @@ const FALLBACK_MARK: Record<ThumbnailSize, string> = {
   md: 'h-7.5 w-7.5',
   lg: 'h-9.5 w-9.5',
   row: 'h-6 w-6',
-  card: 'h-8 w-8 lg:h-6 lg:w-6',
+  card: 'h-8 w-8 lg:h-7.5 lg:w-7.5',
   banner: 'h-14 w-14 sm:h-7.5 sm:w-7.5',
 }
 
@@ -102,20 +102,19 @@ const FALLBACK_WORDMARK: Partial<Record<ThumbnailSize, string>> = {
  * 대체면은 옅은 회청 한 색이라 흰 카드 위에서 <b>가장자리가 흐릿한 얼룩</b>처럼 보였다 —
  * 사진 썸네일은 제 색으로 모서리가 서는데 대체면만 그렇지 않았다.
  *
- * <p>안쪽으로 흰 테두리를 두르면 옅은 사각형이 카드 면에서 한 발 떨어져 <b>놓인 타일</b>로
- * 읽힌다. 사진에는 두르지 않는다 — 두르면 사진만 액자에 든 것처럼 보인다.
+ * <p>가장자리에 <b>민트 실선 1px</b>을 긋는다. 흰 카드와 옅은 회청 사이를 가르는 것이
+ * 일이라 선은 하나면 되고, 색은 브랜드의 옅은 단계({@code brand-soft})다 — 원색 틸이면
+ * 버튼처럼 눌러 보이고, 잉크 선이면 액자가 된다. 사진에는 긋지 않는다.
  *
  * <p>⚠️ <b>좁은 화면은 그대로다.</b> 거기서는 대체면이 카드 맨 위를 가로지르는 배너라
  * 사진과 같은 문법(꽉 찬 면)이어야 하고, 두르면 배너가 스티커가 된다.
  * 다른 자리(진단 목록·상세 시트)도 손대지 않는다 — 이 크기에서만이다.
  *
- * <p>테두리만큼 마크를 한 단계 줄인다. 안쪽 면이 56px로 좁아져 30px 마크는 꽉 찬다.
- *
  * <p>{@code SIZE_CLASS}를 그대로 쓰고 덧대지 않는 이유: 두 {@code rounded-*}가 한 요소에서
  * 다투면 어느 쪽이 이기는지 클래스 순서가 정한다. 자기 상자를 통째로 갖는다.
  */
 const FALLBACK_BOX: Partial<Record<ThumbnailSize, string>> = {
-  card: 'h-19 w-full rounded-none lg:h-16 lg:w-16 lg:rounded-ui lg:border-[4px] lg:border-surface',
+  card: 'h-19 w-full rounded-none lg:h-16 lg:w-16 lg:rounded-ui lg:border lg:border-brand-soft',
 }
 
 interface Props {
