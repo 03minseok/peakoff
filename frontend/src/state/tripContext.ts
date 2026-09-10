@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { TripPlan, TripSource, TripState } from './tripTypes'
+import type { TripOrigin, TripPlan, TripSource, TripState } from './tripTypes'
 
 /**
  * Context 정의와 훅.
@@ -40,7 +40,18 @@ export interface TripContextValue {
    *               <b>주지 않으면 새 코스가 된다</b> — 남의 코스를 "나도 짜보기"로
    *               담아 오는 길이 그렇다. 빠뜨렸을 때 새로 만들어지는 쪽으로 넘어진다
    */
-  restore: (plan: TripPlan, days: string[][], source?: TripSource | null) => void
+  /**
+   * 여행을 통째로 갈아끼운다. 원안(baseline)은 비운다.
+   *
+   * @param origin 어디서 시작한 여행인가. 설문 초안만 {@code 'survey'}를 넘긴다 —
+   *               비우면 {@code 'manual'}이다 (TripOrigin 주석 참고)
+   */
+  restore: (
+    plan: TripPlan,
+    days: string[][],
+    source?: TripSource | null,
+    origin?: TripOrigin,
+  ) => void
   /**
    * 방금 저장한 코스를 <b>고쳐 쓸 대상으로 찍는다.</b>
    *

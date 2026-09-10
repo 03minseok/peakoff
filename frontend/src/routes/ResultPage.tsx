@@ -541,6 +541,33 @@ export function ResultPage() {
   const celebrating = gain !== null && gain > 0
 
   /*
+    ■ "바꾼 것이 없다"를 두 갈래로 가른다 (2026-09-10)
+
+    예전에는 바꾼 것이 없으면 누구에게나 "원안 그대로입니다"였다. 그런데 그 문장은
+    <b>한 일이 없다</b>고 읽힌다. 바꾸지 않은 사람에게도 한 일이 있다 — 다만 그것이 무엇인지가
+    여행이 어디서 시작됐느냐에 따라 다르다.
+
+    <ul>
+      <li><b>설문(FULL PEAKOFF)에서 온 코스</b>를 그대로 진단까지 가져왔다면, 그 사람은
+          몰랐던 여행지를 <b>발견한</b> 것이다. 바꿀 것이 없었다는 말은 초안이 이미 그만큼
+          맞았다는 뜻이고, 초안은 한적도 비중으로 뽑히므로 그 발견은 분산 쪽을 향해 있다.</li>
+      <li><b>직접 짠 코스</b>를 바꾸지 않았고 <b>붐비는 곳도 없다면</b>, 그 사람은 이미 여유로운
+          여행을 골랐다는 것을 <b>확인한</b> 것이다.</li>
+    </ul>
+
+    ⚠️ 둘째 갈래에는 <b>붐비는 곳이 없다는 조건</b>이 붙는다. 붐비는 칸이 남아 있는 코스에
+    "이미 충분히 여유로운 여행"이라고 말하면 화면이 거짓말을 한다 — 그 사람은 대안을 보지 않고
+    지나온 것뿐이다. 그때는 예전 문장("원안 그대로입니다")과 다음 걸음(noChangeHint)이 그대로 선다.
+    이 판단은 화면 문구만 가른다. 진단·추천 계산은 아무것도 달라지지 않는다.
+
+    ⚠️ 판단의 자는 <b>{@code summary}</b>다 — 히어로와 아래 "코스 비교"가 쓰는 것과 같은 자.
+    장소는 그대로인데 날짜만 옮긴 코스는 바꾼 것이 있는 코스다.
+  */
+  const unchanged = summary.length === 0
+  const discoveredBySurvey = unchanged && state.origin === 'survey'
+  const alreadyQuiet = unchanged && state.origin !== 'survey' && crowdedAfter === 0
+
+  /*
     새로 찾아낸 곳의 이름. 제목이 "몇 곳"을 말하고 이 줄이 "어디"를 말한다.
 
     개수를 세어 자르지 않고 <b>줄 수로 자른다</b>(line-clamp-2). 이름 길이가
@@ -570,8 +597,11 @@ export function ResultPage() {
     총점이 내려갔거나 견주지 못한 갈래는 그대로 둔다. 그쪽에서 축하 문장을 쓰면
     제목이 결과와 무관하게 늘 하는 말이 된다.
   */
-  const heroHeadline =
-    summary.length === 0
+  const heroHeadline = discoveredBySurvey
+    ? '✨ 새로운 여행을 발견했어요'
+    : alreadyQuiet
+      ? '🌿 지금 여행, 그대로도 좋아요'
+      : summary.length === 0
       ? '원안 그대로입니다'
       : gain === null
         ? `${summary.join(' · ')} · 총점은 견주지 않았어요`
@@ -593,7 +623,7 @@ export function ResultPage() {
     남는 것은 <b>화면의 다른 것으로는 알 수 없는 말</b>뿐이다 —
     왜 못 견줬는지, 다음에 무엇을 할 수 있는지, 그리고 이 서비스가 무엇을 했는지.
   */
-  const heroBody =
+  const heroBodyDefault =
     comparisonGap !== null
       ? [
           comparisonGap,
@@ -672,6 +702,39 @@ export function ResultPage() {
     <p>보여줄 수 없는 총점이면 칸 자체가 없다. {@code '·'}를 찍어두면 "아직 안 온 값"으로
     읽히고, 0을 찍으면 없는 사실을 주장하게 된다.
   */
+  /*
+    두 새 갈래의 본문. 기존 식(heroBodyDefault)은 손대지 않고 앞에 얹는다 — 바꾼 것이 있는
+    코스의 문장은 한 글자도 달라지지 않는다.
+
+    <p>줄바꿈은 문자열의 개행이다. 이 문단은 whitespace-pre-line이라 <b>어느 폭에서나</b> 그 자리에서
+    끊는다 — 두 줄로 읽히라고 준 문장이니 그게 맞다(축하 문장이 br을 쓰는 사정은 그쪽 주석에).
+
+    <p>⚠️ 총점을 숫자로 못 세우는 코스({@code !showAfter})에는 <b>왜 비었는지</b>를 한 줄 덧붙인다.
+    한적 지수 타일이 조용히 빠지는데 아무 말이 없으면 그리다 만 화면으로 읽힌다 — 기본 갈래가
+    지키는 원칙("못 견줬다는 사실이 가장 먼저다")을 여기서도 지킨다.
+
+    <p>⚠️ 발견 갈래에서 붐비는 곳이 남아 있으면 다음 걸음({@code noChangeHint})을 함께 준다.
+    발견은 발견이지만, 그 코스에 붐비는 칸이 있다는 사실을 화면이 숨기면 안 된다.
+  */
+  const heroBody = discoveredBySurvey
+    ? [
+        '미처 몰랐던 여행지를 발견하며',
+        '관광 수요 분산에도 한걸음 보탰어요.',
+        !showAfter && afterDiagnosis ? gapReason('이 코스', afterDiagnosis) : null,
+        crowdedAfter > 0 ? noChangeHint : null,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : alreadyQuiet
+      ? [
+          '이미 충분히 여유로운 여행을 선택해',
+          '관광 수요 분산에도 한걸음 보태고 있어요.',
+          !showAfter && afterDiagnosis ? gapReason('이 코스', afterDiagnosis) : null,
+        ]
+          .filter(Boolean)
+          .join('\n')
+      : heroBodyDefault
+
   const heroStats: { label: string; value: string; delta?: string; deltaTone?: string }[] = [
     ...(showAfter && afterTotal !== null
       ? [
@@ -691,7 +754,12 @@ export function ResultPage() {
           },
         ]
       : []),
-    { label: '교체한 장소', value: `${changes.length}곳` },
+    /*
+      바꾼 것이 없으면 이 칸을 세우지 않는다. "0곳"은 뜻을 더하지 않고, 발견·확인 갈래에서는
+      이 화면이 말하려는 것(지금 코스가 얼마나 한적한가)과 다른 이야기를 한 칸 차지한다.
+      바꾼 것이 있는 코스에서는 예전 그대로 선다.
+    */
+    ...(unchanged ? [] : [{ label: '교체한 장소', value: `${changes.length}곳` }]),
     /*
       ⚠️ <b>화살표를 버리고 한적 지수와 같은 모양으로 세운다</b> (2026-09-03).
 
@@ -871,8 +939,18 @@ export function ResultPage() {
                   </p>
                 )}
               </div>
+              {/*
+                ⚠️ 아래 문단에 <b>w-full이 있어야 한다</b> (2026-09-10). 가운데 정렬 플렉스 안이라
+                없으면 <b>자기 글자 길이만큼만</b> 넓어진다 — 390px 화면에서 쓸 수 있는 폭이
+                314px인데 문단이 190.5px만 차지했다. 문장 길이와 똑같아 <b>여유가 0px</b>이라,
+                기기 글꼴이 조금만 넓거나 사용자가 글자 크기를 키우면 곧바로 넘쳐
+                "관광 수요 분산에 한 / 걸음 보탰어요."로 갈렸다. 실제로 폰에서 그렇게 보였다.
+
+                <p>폭을 채우면 같은 문장이 314px를 다 쓴다. 글이 가운데 정렬이라 <b>보이는 모습은
+                같고</b> 여유만 생긴다. 넓은 화면에서는 max-w-[440px]가 그대로 잡는다.
+              */}
               {heroBody !== '' && (
-                <p className="m-0 max-w-[440px] text-[14px] leading-[1.7] whitespace-pre-line break-keep text-white/70 text-pretty lg:text-[14.5px]">
+                <p className="m-0 w-full max-w-[440px] text-[14px] leading-[1.7] whitespace-pre-line break-keep text-white/70 text-pretty lg:text-[14.5px]">
                   {heroBody}
                 </p>
               )}
