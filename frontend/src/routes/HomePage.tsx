@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { BrandLockup } from '../components/BrandMark'
 import { ChevronRight, Heart } from '../components/icons'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
+import type { TimelinePlace } from '../components/CourseTimeline'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from '../components/levelStyles'
@@ -11,7 +12,7 @@ import { PublicCourseSheet } from '../components/PublicCourseSheet'
 import { RegionChat } from '../components/RegionChat'
 import { CARD_RAISED } from '../components/styles'
 import { ApiRequestError, fetchQuietSpots, fetchRecentCourses } from '../services/api'
-import type { PublicCourse, PublicPlace, QuietSpot } from '../types/api'
+import type { PublicCourse, QuietSpot } from '../types/api'
 import { useAuth } from '../state/authContext'
 import { useFavorites } from '../state/favoriteContext'
 import { useTrip } from '../state/tripContext'
@@ -514,7 +515,7 @@ export function HomePage() {
     일정일 뿐이라 지금 기준의 한적도를 말할 수 없다. 한 상태로 합치면 둘 중 하나가
     <b>재지 않은 점수</b>를 달게 된다.
   */
-  const [openedCoursePlace, setOpenedCoursePlace] = useState<PublicPlace | null>(null)
+  const [openedCoursePlace, setOpenedCoursePlace] = useState<TimelinePlace | null>(null)
 
   /**
    * 한적한 곳 띠가 지금 몇 번째 카드부터 보여주고 있는가. <b>모바일 전용 상태다</b> —

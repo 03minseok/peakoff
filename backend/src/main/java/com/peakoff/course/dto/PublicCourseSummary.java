@@ -10,6 +10,7 @@ import com.peakoff.course.domain.SavedCourse;
 import com.peakoff.course.domain.SavedCoursePlace;
 import com.peakoff.place.domain.Place;
 import com.peakoff.place.domain.SupportedRegion;
+import com.peakoff.place.dto.PlaceResponse;
 
 /**
  * 저장된 코스를 요약한 것. 홈의 "요즘 저장된 여행"에 쓴다.
@@ -100,8 +101,14 @@ public record PublicCourseSummary(
 	 *                실패한 경우다. 그래서 위 {@code name}(저장 시점 스냅샷)을 남겨 둔다 —
 	 *                좌표는 못 줘도 이름은 보여야 한다. 찜이 쓰는 방식과 같다
 	 *                ({@code FavoritePlace.place})
+	 *                <p>⚠️ <b>{@link PlaceResponse}이지 도메인 {@code Place}가 아니다.</b>
+	 *                도메인을 그대로 내보내면 분류가 {@code category: {code, name}} 중첩으로
+	 *                나가는데, 화면은 {@code categoryCode}·{@code categoryName}이 평평하게
+	 *                오기를 기다린다. 실제로 그렇게 어긋나 있었고 <b>아무도 못 알아챘다</b> —
+	 *                사진과 좌표는 이름이 같아 그대로 동작했고 분류만 조용히 비었다.
+	 *                응답 모양은 {@code PlaceResponse} 한 곳에서만 정한다.
 	 */
-	public record PublicPlace(int day, int order, String placeId, String name, Place place) {
+	public record PublicPlace(int day, int order, String placeId, String name, PlaceResponse place) {
 	}
 
 	/**
@@ -150,7 +157,13 @@ public record PublicCourseSummary(
 						place.visitOrder(),
 						place.placeId(),
 						place.placeName(),
-						livePlaceOf.apply(place.placeId())))
+						// 못 찾은 장소는 null 그대로. from()에 null을 넘기면 거기서 터진다.
+						toResponse(livePlaceOf.apply(place.placeId()))))
 				.toList();
+	}
+
+	/** 못 찾은 장소는 null로 남긴다. 이름 스냅샷이 그 자리를 지킨다. */
+	private static PlaceResponse toResponse(Place place) {
+		return place == null ? null : PlaceResponse.from(place);
 	}
 }

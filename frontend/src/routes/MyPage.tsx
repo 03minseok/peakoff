@@ -20,6 +20,7 @@ import { CourseDetailOverlay } from '../components/CourseDetailOverlay'
 import { LegalSheet } from '../components/LegalSheet'
 import type { LegalDocId } from '../content/legal'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
+import type { TimelinePlace } from '../components/CourseTimeline'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { SavedCourseCard } from '../components/SavedCourseCard'
 import { TripDetailSheet } from '../components/TripDetailSheet'
@@ -317,6 +318,12 @@ export function MyPage() {
    * 갈라져 한쪽만 고쳐지는 자리가 생긴다 — 홈이 한적한 곳을 여는 방식과 같다.
    */
   const [openedPlace, setOpenedPlace] = useState<FavoritePlace | null>(null)
+  /*
+    코스 상세 안에서 펼친 장소. 위 찜 상태와 <b>따로 둔다</b> — 찜은 지역을 알아
+    "이 장소로 여행가기"를 세우지만, 코스 안의 장소는 그 문을 세우면 읽던 코스를
+    버리고 새 여행을 시작하게 된다. 한 상태로 합치면 자리에 따라 다른 일이 벌어진다.
+  */
+  const [openedCoursePlace, setOpenedCoursePlace] = useState<TimelinePlace | null>(null)
 
   /**
    * 지금까지 펼쳐 본 만큼. <b>더보기를 누를 때마다 늘어난다.</b>
@@ -1909,6 +1916,7 @@ export function MyPage() {
             courseId={opened}
             onClose={() => setOpened(null)}
             onOpenInFlow={openInFlow}
+            onOpenPlace={setOpenedCoursePlace}
           />
         )}
 
@@ -1935,6 +1943,23 @@ export function MyPage() {
           */
             onPlanTrip={openedPlace.region === null ? undefined : () => planTripFrom(openedPlace)}
             onClose={() => setOpenedPlace(null)}
+          />
+        )}
+
+        {/*
+          코스 상세 안에서 펼친 장소. <b>겹창보다 뒤에 세운다</b> — 둘 다 z-50이라
+          나중에 그려진 쪽이 위로 온다. 위 찜 시트 자리에 끼우면 겹창 밑에 깔린다.
+
+          <p>한적도를 넘기지 않는다. 저장된 코스에 남은 것은 <b>코스 총점 하나</b>라
+          장소마다의 값은 재둔 적이 없다 — 시트는 값이 없으면 배지를 그리지 않는다.
+        */}
+        {openedCoursePlace && (
+          <PlaceDetailSheet
+            placeId={openedCoursePlace.placeId}
+            placeName={openedCoursePlace.name}
+            categoryName={openedCoursePlace.place?.categoryName ?? null}
+            imageUrl={openedCoursePlace.place?.imageUrl ?? null}
+            onClose={() => setOpenedCoursePlace(null)}
           />
         )}
 

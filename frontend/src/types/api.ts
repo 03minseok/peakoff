@@ -512,6 +512,16 @@ export interface SavedPlace {
   order: number
   placeId: string
   placeName: string
+  /**
+   * 지금의 장소 — 사진·분류·좌표. 남의 코스({@link PublicPlace})가 싣는 것과 같다.
+   *
+   * <p>상세 창이 이 값으로 사진과 분류를 세우고, 좌표로 코스 동선을 그린다.
+   * 저장할 때 남긴 것은 이름과 id뿐이라 서버가 열 때 이어 준다.
+   *
+   * <p>⚠️ <b>null일 수 있다.</b> 공사 카탈로그에서 사라졌거나 호출이 실패한 경우다.
+   * 그때는 위 {@code placeName}이 남는다 — 사진은 못 줘도 이름은 보여야 한다.
+   */
+  place: Place | null
 }
 
 /** 서버 SavedCourseDetail. 요약에 장소들이 붙은 모양 */

@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { PageStub } from '../components/PageStub'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
+import type { TimelinePlace } from '../components/CourseTimeline'
 import { PublicCourseArticle } from '../components/PublicCourseSheet'
 import { ApiRequestError, fetchSharedCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
-import type { PublicPlace, SharedCourse } from '../types/api'
+import type { SharedCourse } from '../types/api'
 import { formatDateRange, formatNights } from '../utils/date'
 
 type Phase =
@@ -38,7 +39,7 @@ export function SharedCoursePage() {
   const { restore } = useTrip()
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
   /** 코스 안에서 펼친 장소. 없으면 시트가 서지 않는다 */
-  const [openedPlace, setOpenedPlace] = useState<PublicPlace | null>(null)
+  const [openedPlace, setOpenedPlace] = useState<TimelinePlace | null>(null)
 
   useEffect(() => {
     if (token === '') {

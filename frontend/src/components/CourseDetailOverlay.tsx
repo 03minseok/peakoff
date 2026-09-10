@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Close, LinkIcon } from './icons'
+import { CourseTimeline } from './CourseTimeline'
+import type { TimelinePlace } from './CourseTimeline'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import { fetchSavedCourse, fetchSharedCourse, shareSavedCourse, shareUrlOf } from '../services/api'
 import type { SavedCourseDetail, SharedCourse } from '../types/api'
@@ -13,6 +15,14 @@ interface Props {
   onClose: () => void
   /** 코스를 흐름에 올려 다시 진단한다. 지난 여행이 아닐 때만 쓴다 */
   onOpenInFlow: (course: SavedCourseDetail) => void
+  /**
+   * 코스 안의 장소 하나를 펼쳐 본다.
+   *
+   * <p>⚠️ <b>이 창이 스스로 열지 않고 넘겨받는다.</b> 장소 상세도 겹창이라 이 창 안에서
+   * 띄우면 패널이 올라오는 애니메이션 동안 {@code position: fixed}가 패널을 기준으로
+   * 잡혀 <b>안에 갇힌다.</b> 부르는 쪽이 이 창 뒤에 나란히 세운다.
+   */
+  onOpenPlace?: (place: TimelinePlace) => void
 }
 
 type Phase =
@@ -34,8 +44,13 @@ type Phase =
  * 섞여 있는 화면에서 어떤 카드는 점수가 뜨고 어떤 카드는 안 뜨면 더 헷갈린다.
  * 여기서는 저장 시점의 총점과 담긴 장소만 보여주고, 장소별 진단은
  * "다시 진단하기"로 흐름에 올려 진단 화면에서 본다.
+ *
+ * <h3>장소는 {@link CourseTimeline}이 그린다</h3>
+ * 홈의 남의 코스 시트·공유 링크 화면과 <b>같은 것</b>이다. 예전에는 여기만
+ * {@code 1-1 여수수산물특화시장} 한 줄이었는데, 같은 코스를 저장한 사람이 보는 화면이
+ * 남이 보는 화면보다 초라했다 — 사진도 분류도 동선도 저쪽에만 있었다.
  */
-export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) {
+export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow, onOpenPlace }: Props) {
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
 
   /** 카카오톡 공유를 쓸 수 있는가. 준비 안 됐으면 그 버튼을 아예 세우지 않는다 */
@@ -258,25 +273,23 @@ export function CourseDetailOverlay({ courseId, onClose, onOpenInFlow }: Props) 
                 </div>
               </div>
 
-              <ul className="border-line/60 m-0 flex list-none flex-col gap-1.75 border-t pt-3.5 pl-0">
-                {course.places.map((saved) => (
-                  <li
-                    key={`${saved.day}-${saved.order}-${saved.placeId}`}
-                    className="flex items-center gap-2.25"
-                  >
-                    <span className="text-hint w-7 flex-none font-mono text-[11px]">
-                      {saved.day}-{saved.order}
-                    </span>
-                    {/*
-                          저장 시점의 이름을 그대로 쓴다. 장소 API에 다시 묻지 않으므로
-                          "정보를 찾을 수 없는 장소"가 나올 일이 없다 — 이름을 우리가 갖고 있다.
-                        */}
-                    <span className="text-fg truncate text-[13.5px] font-medium">
-                      {saved.placeName}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {/*
+                ⚠️ 화면에 서는 <b>이름은 여전히 저장 시점의 스냅샷</b>({@code placeName})이다.
+                사진·분류·좌표만 서버가 지금 것을 이어 준다 — 바깥에서 그 id의 내용이
+                바뀌어도 내가 저장한 코스의 이름은 흔들리지 않아야 한다.
+              */}
+              <CourseTimeline
+                places={course.places.map((saved) => ({
+                  day: saved.day,
+                  order: saved.order,
+                  placeId: saved.placeId,
+                  name: saved.placeName,
+                  place: saved.place,
+                }))}
+                days={course.days}
+                startDate={course.startDate}
+                onOpenPlace={onOpenPlace}
+              />
 
               {/*
                     재계산은 <b>사용자가 누를 때만</b> 한다. 예측 데이터가 갱신되므로 열 때마다
