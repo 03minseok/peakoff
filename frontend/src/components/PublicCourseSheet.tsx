@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Close } from './icons'
+import { CourseTimeline } from './CourseTimeline'
+import type { TimelinePlace } from './CourseTimeline'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from './levelStyles'
 import { DatePicker } from './DatePicker'
 import { fetchForecastWindow } from '../services/api'
-import type { PublicCourse, PublicPlace, SharedCourse } from '../types/api'
+import type { PublicCourse, SharedCourse } from '../types/api'
 import { formatDateRange, formatKoreanDate, formatNights, today } from '../utils/date'
 import { useScrollLock } from '../hooks/useScrollLock'
 
@@ -19,6 +21,15 @@ interface Props {
    * 그 사람 사정에 맞춘 날이다.
    */
   onCopyToFlow: (course: PublicCourse, startDate: string) => void
+  /**
+   * 코스 안의 장소 하나를 펼쳐 본다.
+   *
+   * <p>⚠️ <b>시트가 스스로 열지 않고 넘겨받는다.</b> 장소 상세도 시트라, 이 시트 안에서
+   * 띄우면 <b>패널 안에 갇힌다</b> — 패널이 올라오는 애니메이션 동안 {@code position: fixed}가
+   * 패널을 기준으로 잡히기 때문이다. 마이페이지가 겹창과 장소 상세를 <b>화면 층에서 나란히</b>
+   * 세우는 것과 같은 방식으로, 부르는 쪽이 이 시트 뒤에 세운다.
+   */
+  onOpenPlace?: (place: TimelinePlace) => void
 }
 
 /**
@@ -41,7 +52,7 @@ interface Props {
  * 화면({@code SharedCoursePage})이 같은 코스를 시트 없이 한 페이지로 펴는데, 두 곳이 장소
  * 목록·게이지·"이 코스로 짜보기"를 따로 그리면 같은 코스가 홈과 링크에서 다르게 보인다.
  */
-export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
+export function PublicCourseSheet({ course, onClose, onCopyToFlow, onOpenPlace }: Props) {
   // 뒤 화면 잠금. ⚠️ body가 아니라 html에 건다 — 이유는 useScrollLock 주석에
   useScrollLock()
   useEffect(() => {
@@ -101,6 +112,7 @@ export function PublicCourseSheet({ course, onClose, onCopyToFlow }: Props) {
             title={`${course.nickname}님의 ${course.regionShortName}`}
             subtitle={`${shortRegion} ${formatNights(course.nights)} · ${formatDateRange(course.startDate, course.nights)}`}
             onCopyToFlow={(startDate) => onCopyToFlow(course, startDate)}
+            onOpenPlace={onOpenPlace}
           />
         </div>
       </div>
@@ -118,25 +130,21 @@ interface ArticleProps {
   subtitle: string
   /** 날짜를 고르고 나면 부른다. 장소·순서는 {@code course}가 이미 들고 있다 */
   onCopyToFlow: (startDate: string) => void
+  /** 없으면 장소 줄이 눌리지 않는다 — 읽기만 하는 자리가 된다 */
+  onOpenPlace?: (place: TimelinePlace) => void
 }
 
 /**
  * 코스 한 장의 본문 — 제목·게이지·일차별 장소·"이 코스로 짜보기".
  * 시트({@link PublicCourseSheet})와 공유 링크 화면이 함께 쓴다.
  */
-export function PublicCourseArticle({ course, title, subtitle, onCopyToFlow }: ArticleProps) {
-  /*
-   * 일차별로 묶는다.
-   *
-   * 마이페이지 겹창은 `1-1`, `1-2`처럼 번호를 앞에 달아 한 줄로 늘어놓는데, 그쪽은
-   * <b>내가 짠 코스라 이미 아는 일정</b>이다. 여기는 처음 보는 남의 여행이라
-   * "며칠짜리를 어떻게 나눴나"가 먼저 읽혀야 한다.
-   */
-  const byDay: PublicPlace[][] = Array.from({ length: course.days }, () => [])
-  course.places.forEach((place) => {
-    byDay[place.day - 1]?.push(place)
-  })
-
+export function PublicCourseArticle({
+  course,
+  title,
+  subtitle,
+  onCopyToFlow,
+  onOpenPlace,
+}: ArticleProps) {
   /**
    * 고른 출발일. <b>빈 문자열이면 아직 안 골랐다.</b>
    *
@@ -235,31 +243,23 @@ export function PublicCourseArticle({ course, title, subtitle, onCopyToFlow }: A
         </div>
       </div>
 
-      <div className="border-line/60 flex flex-col gap-3 border-t pt-3.5">
-        {byDay.map((places, index) => (
-          <div key={index} className="flex flex-col gap-1.75">
-            <span className="text-hint text-[11.5px] font-semibold">{index + 1}일차</span>
-            {places.length === 0 ? (
-              // 빈 일차를 건너뛰지 않는다. 건너뛰면 2박 3일인데 이틀만 있는 것처럼 보인다.
-              <span className="text-hint pl-1 text-[13px]">담긴 장소가 없어요</span>
-            ) : (
-              <ul className="m-0 flex list-none flex-col gap-1.75 pl-0">
-                {places.map((place) => (
-                  <li
-                    key={`${place.day}-${place.order}-${place.placeId}`}
-                    className="flex items-center gap-2.25"
-                  >
-                    <span className="bg-bg text-hint grid h-5 w-5 flex-none place-items-center rounded-full font-mono text-[10.5px] font-semibold">
-                      {place.order}
-                    </span>
-                    <span className="text-fg truncate text-[13.5px] font-medium">{place.name}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
-      </div>
+      {/*
+        일차별 타임라인과 코스 동선. <b>마이페이지의 내 코스 상세와 같은 것을 쓴다</b> —
+        같은 코스가 홈과 마이페이지에서 다르게 생기면 같은 코스로 읽히지 않는다.
+      */}
+      <CourseTimeline
+        places={course.places.map((place) => ({
+          day: place.day,
+          order: place.order,
+          placeId: place.placeId,
+          /* 남의 코스는 이름 칸이 name이다. 내가 저장한 코스는 placeName */
+          name: place.name,
+          place: place.place ?? null,
+        }))}
+        days={course.days}
+        startDate={course.startDate}
+        onOpenPlace={onOpenPlace}
+      />
 
       {/*
         남의 코스는 고칠 수 없다. 할 수 있는 것은 <b>베껴 와서 내 것으로 짜는 일</b>이고,
@@ -284,7 +284,12 @@ export function PublicCourseArticle({ course, title, subtitle, onCopyToFlow }: A
         <button
           type="button"
           onClick={() => setPicking(true)}
-          className="border-brand bg-surface text-fg hover:bg-bg rounded-ui mt-1 h-12 cursor-pointer border-[1.5px] text-sm font-semibold press"
+          /*
+            ⚠️ 테두리 버튼에서 <b>채운 버튼</b>으로 바꿨다. 이 시트에서 할 수 있는 일이
+            이것 하나뿐인데 테두리로 두면 아래 여백에 묻혀, 코스를 다 읽고도 다음 걸음이
+            안 보였다. 누르면 이 버튼이 달력에 자리를 내주므로 채운 버튼이 둘로 겹치지 않는다.
+          */
+          className="bg-brand hover:bg-brand-hover text-fg rounded-ui mt-1 h-12 cursor-pointer text-sm font-semibold press"
         >
           {/*
             ⚠️ <b>"나도"를 뺐다</b> (2026-08-31). 목록에 <b>내 코스도 섞이면서</b>

@@ -29,6 +29,7 @@ const SCREENS = [
   { path: '/plan', name: 'plan' },
   { path: '/recommend', name: 'recommend' },
   { path: '/login', name: 'login' },
+  { path: '/data', name: 'data' },
 ]
 
 for (const screen of SCREENS) {

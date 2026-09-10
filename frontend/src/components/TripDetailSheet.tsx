@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Close } from './icons'
+import { PlaceRow } from './CourseTimeline'
+import type { TimelinePlace } from './CourseTimeline'
 import { orderCourses, seamsOf, TripCourseList } from './TripCourseList'
 import { fetchSavedCourse } from '../services/api'
 import type { SavedCourseDetail, Trip } from '../types/api'
@@ -18,7 +20,8 @@ interface Day {
     courseId: number
     courseName: string
     region: string
-    places: string[]
+    /** 그 날 그 코스의 장소들. 코스 상세와 <b>같은 줄</b>로 그리려고 같은 모양을 쓴다 */
+    places: TimelinePlace[]
     /**
      * 코스 이름을 적을지. <b>직전 블록과 코스가 다를 때만</b> 적는다.
      *
@@ -71,11 +74,17 @@ export function TripDetailSheet({
   onClose,
   onOpenCourse,
   onRemoveCourse,
+  onOpenPlace,
 }: {
   trip: Trip
   onClose: () => void
   onOpenCourse: (courseId: number) => void
   onRemoveCourse: (courseId: number) => void
+  /**
+   * 일정 안의 장소 하나를 펼쳐 본다. 부르는 쪽이 이 창 <b>뒤에</b> 세운다 —
+   * 코스 상세({@code CourseDetailOverlay})와 같은 이유, 같은 방식이다.
+   */
+  onOpenPlace?: (place: TimelinePlace) => void
 }) {
   const [pane, setPane] = useState<Pane>('courses')
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
@@ -370,24 +379,21 @@ export function TripDetailSheet({
                                     {regionNameOf(block.region)} · {block.courseName}
                                   </span>
                                 )}
-                                <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
+                                {/*
+                                  코스 상세와 <b>같은 줄</b>이다 — 사진·분류·점선·꺾쇠까지.
+                                  예전에는 번호와 이름만 있는 한 줄이라, 같은 장소가 코스 상세에서
+                                  본 것과 다르게 생겨 같은 장소로 읽히지 않았다.
+                                */}
+                                <ul className="m-0 flex list-none flex-col p-0">
                                   {block.places.map((place, order) => (
-                                    <li
-                                      key={place + '-' + order}
-                                      className="flex items-center gap-2.5"
-                                    >
-                                      <span
-                                        className="bg-fill text-muted grid h-5.5 w-5.5 flex-none place-items-center rounded-full text-[11px] font-bold"
-                                        aria-hidden="true"
-                                      >
-                                        {order + 1}
-                                      </span>
-                                      <span className="text-fg min-w-0 flex-1 truncate text-[14.5px]">
-                                        {place}
-                                      </span>
-                                    </li>
+                                    <PlaceRow
+                                      key={`${place.placeId}-${order}`}
+                                      place={place}
+                                      last={order === block.places.length - 1}
+                                      onOpen={onOpenPlace}
+                                    />
                                   ))}
-                                </ol>
+                                </ul>
                               </div>
                             ))}
                           </section>
@@ -417,12 +423,19 @@ function buildDays(courses: SavedCourseDetail[]): Day[] {
   const byDate = new Map<string, Day['blocks']>()
 
   for (const course of [...courses].sort((a, b) => a.startDate.localeCompare(b.startDate))) {
-    const grouped = new Map<number, string[]>()
+    const grouped = new Map<number, TimelinePlace[]>()
     for (const place of [...course.places].sort((a, b) =>
       a.day === b.day ? a.order - b.order : a.day - b.day,
     )) {
       const bucket = grouped.get(place.day) ?? []
-      bucket.push(place.placeName)
+      bucket.push({
+        day: place.day,
+        order: place.order,
+        placeId: place.placeId,
+        name: place.placeName,
+        /* 옛 서버는 이 칸을 안 준다. undefined를 null로 접어야 줄이 안 터진다 */
+        place: place.place ?? null,
+      })
       grouped.set(place.day, bucket)
     }
 

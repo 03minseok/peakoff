@@ -218,13 +218,23 @@ public class SavedCourseService {
 	}
 
 	/**
-	 * 저장된 내용만으로 응답을 만든다. <b>장소 쪽에 묻지 않는다.</b>
+	 * 저장된 코스 하나를 응답으로. <b>화면에 서는 이름은 여전히 저장 시점의 스냅샷이다.</b>
 	 *
-	 * <p>이름을 저장 시점에 남겨두었기 때문이다. 매번 다시 물으면 바깥에서 그 id의 내용이
-	 * 바뀌는 순간 저장된 코스가 사용자 몰래 달라지고, 코스에 담긴 장소 수만큼 조회가 나간다.
+	 * <p>이름을 저장할 때 남겨두었기 때문이다. 이름까지 매번 다시 물으면 바깥에서 그 id의
+	 * 내용이 바뀌는 순간 저장된 코스가 사용자 몰래 달라진다.
+	 *
+	 * <p>⚠️ <b>다만 사진·분류·좌표는 지금 것을 함께 싣는다</b>(2026-09-10). 상세 창이
+	 * 장소를 사진과 분류로 세우고 코스 동선을 지도에 그리려면 그 값들이 있어야 하는데,
+	 * 저장 시점에 남긴 것은 이름과 id뿐이다. 남의 코스({@link #recent})가 이미 같은 길을
+	 * 쓰고 있어 <b>같은 {@code livePlaceOf}</b>를 그대로 넘긴다 — 두 화면이 같은 코스를
+	 * 다르게 그리지 않게.
+	 *
+	 * <p>조회 비용은 코스에 담긴 장소 수만큼이지만 카탈로그가 6시간 캐시라 공사까지 가지
+	 * 않고, 실패는 {@link #livePlaceOf}가 삼켜 null로 둔다 — 장소 하나 때문에 상세 창이
+	 * 통째로 죽지 않는다.
 	 */
 	private SavedCourseDetail toDetail(SavedCourse course) {
-		return SavedCourseDetail.from(course);
+		return SavedCourseDetail.from(course, placeId -> livePlaceOf(course, placeId));
 	}
 	/**
 	 * 최근 저장된 코스 몇 개. 요약만 나가므로 로그인 없이도 볼 수 있다.

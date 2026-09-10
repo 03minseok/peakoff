@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { BrandLockup } from '../components/BrandMark'
 import { ChevronRight, Heart } from '../components/icons'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
+import type { TimelinePlace } from '../components/CourseTimeline'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
 import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from '../components/levelStyles'
@@ -217,7 +218,7 @@ function QuietSpotCard({
         끝까지 민 제스처가 페이지로 이어져 화면 전체가 밀린다
         (CLAUDE.md — 주간 예보에서 이미 한 번 걷어낸 자리다).
       */}
-        <PlaceThumbnail name={spot.place.name} imageUrl={spot.place.imageUrl} size="card" />
+        <PlaceThumbnail imageUrl={spot.place.imageUrl} size="card" />
 
         {/*
           ■ 세 줄이 <b>같은 순서로</b> 선다 — 이름 · 분류 · 지역 (2026-09-03)
@@ -508,6 +509,13 @@ export function HomePage() {
    * 찾는 코드가 목록을 그리는 코드와 갈라져 한쪽만 고쳐지는 자리가 생긴다.
    */
   const [openedSpot, setOpenedSpot] = useState<QuietSpot | null>(null)
+  /*
+    남의 코스 안에서 펼친 장소. openedSpot과 <b>따로 둔다</b> — 저쪽은 "이번 주 한적한 곳"이라
+    날짜와 한적도를 함께 들고 있어 시트가 배지를 세우지만, 코스 안의 장소는 저장 시점의
+    일정일 뿐이라 지금 기준의 한적도를 말할 수 없다. 한 상태로 합치면 둘 중 하나가
+    <b>재지 않은 점수</b>를 달게 된다.
+  */
+  const [openedCoursePlace, setOpenedCoursePlace] = useState<TimelinePlace | null>(null)
 
   /**
    * 한적한 곳 띠가 지금 몇 번째 카드부터 보여주고 있는가. <b>모바일 전용 상태다</b> —
@@ -1531,6 +1539,29 @@ export function HomePage() {
           course={openedCourse}
           onClose={() => setOpenedCourse(null)}
           onCopyToFlow={copyToFlow}
+          onOpenPlace={setOpenedCoursePlace}
+        />
+      )}
+
+      {/*
+        코스 안의 장소 펼쳐 보기. <b>코스 시트보다 뒤에 세운다</b> — 둘 다 z-50이라
+        나중에 그려진 쪽이 위로 온다. 위의 {@code openedSpot} 자리에 끼우면 코스 시트 밑에
+        깔려 열어도 안 보인다.
+
+        <p>한적도를 넘기지 않는다. 코스에 담긴 날짜는 <b>저장하던 때의 일정</b>이라
+        지금 기준으로 그 장소가 얼마나 한적한지는 재지 않았다 — 시트는 값이 없으면
+        배지를 그리지 않는다.
+
+        <p>"이 장소로 여행가기"도 없다. 남의 코스를 구경하다 그 문으로 나가면 읽던 코스가
+        통째로 사라지고, 이 시트에는 이미 <b>"이 코스로 짜보기"</b>라는 출구가 있다.
+      */}
+      {openedCoursePlace && (
+        <PlaceDetailSheet
+          placeId={openedCoursePlace.placeId}
+          placeName={openedCoursePlace.name}
+          categoryName={openedCoursePlace.place?.categoryName ?? null}
+          imageUrl={openedCoursePlace.place?.imageUrl ?? null}
+          onClose={() => setOpenedCoursePlace(null)}
         />
       )}
     </div>

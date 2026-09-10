@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { PageStub } from '../components/PageStub'
+import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
+import type { TimelinePlace } from '../components/CourseTimeline'
 import { PublicCourseArticle } from '../components/PublicCourseSheet'
 import { ApiRequestError, fetchSharedCourse } from '../services/api'
 import { useTrip } from '../state/tripContext'
@@ -36,6 +38,8 @@ export function SharedCoursePage() {
   const navigate = useNavigate()
   const { restore } = useTrip()
   const [phase, setPhase] = useState<Phase>({ status: 'loading' })
+  /** 코스 안에서 펼친 장소. 없으면 시트가 서지 않는다 */
+  const [openedPlace, setOpenedPlace] = useState<TimelinePlace | null>(null)
 
   useEffect(() => {
     if (token === '') {
@@ -130,7 +134,24 @@ export function SharedCoursePage() {
         title={course.name}
         subtitle={`${shortRegion} ${formatNights(course.nights)} · ${formatDateRange(course.startDate, course.nights)}`}
         onCopyToFlow={(startDate) => copyToFlow(course, startDate)}
+        onOpenPlace={setOpenedPlace}
       />
+
+      {/*
+        코스 안의 장소 펼쳐 보기. 홈의 시트와 <b>같은 규칙</b>이다 — 한적도도
+        "이 장소로 여행가기"도 넘기지 않는다(HomePage 주석 참고).
+
+        <p>여기는 위가 시트가 아니라 페이지라 순서를 다툴 상대가 없다.
+      */}
+      {openedPlace && (
+        <PlaceDetailSheet
+          placeId={openedPlace.placeId}
+          placeName={openedPlace.name}
+          categoryName={openedPlace.place?.categoryName ?? null}
+          imageUrl={openedPlace.place?.imageUrl ?? null}
+          onClose={() => setOpenedPlace(null)}
+        />
+      )}
 
       <Link to="/" className="text-brand-deep self-start text-sm font-semibold">
         PEAKOFF 둘러보기

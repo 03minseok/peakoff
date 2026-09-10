@@ -7,6 +7,7 @@ import type { CongestionLevel } from '../types/api'
 import { useAuth } from '../state/authContext'
 import { useFavorites } from '../state/favoriteContext'
 import { useScrollLock } from '../hooks/useScrollLock'
+import { PlacePhotoFallback } from './PlacePhotoFallback'
 
 /**
  * 장소 하나를 자세히 보는 창.
@@ -190,10 +191,20 @@ export function PlaceDetailSheet({
               className="h-60 w-full flex-none object-cover"
             />
           ) : (
-            /* 사진이 없는 관광지가 많다. 빈 칸으로 두면 안 불러온 것처럼 보여 이름을 크게 둔다 */
-            <div className="bg-bg text-muted grid h-40 w-full place-items-center text-[28px] font-bold">
-              {placeName.slice(0, 2)}
-            </div>
+            /*
+              사진이 없는 관광지가 많다. 목록의 썸네일과 <b>같은 면</b>을 깐다 —
+              카드에서 브랜드 면을 보고 눌렀는데 상세에서 회색 글자 상자가 나오면
+              같은 장소가 아닌 것처럼 보인다.
+
+              <p>높이는 사진(h-60)이 아니라 <b>h-40</b>이다. 사진은 이 창의 주인공이라
+              꽉 채우지만 대체면은 <b>자리를 지키는 것</b>이라, 같은 높이로 세우면
+              읽을 것 없는 면이 첫 화면의 절반을 차지한다.
+            */
+            <PlacePhotoFallback
+              markClass="h-14 w-14"
+              wordmarkClass="text-[11px]"
+              className="h-40 w-full flex-none"
+            />
           )}
 
           <div className="flex flex-col gap-3.5 px-5 pt-4 pb-6">
@@ -203,7 +214,14 @@ export function PlaceDetailSheet({
               형식은 공고 FAQ의 {@code 출처: ⓒ한국관광공사}(콜론). 예전 주석은 "중립 표현만"이라
               적어 두었는데 2026-09-09에 뒤집혔다 — CLAUDE.md 절대 규칙 4 참고.
             */}
-            <span className="text-hint text-[11px]">이미지 출처: ⓒ한국관광공사</span>
+            {/*
+              ⚠️ <b>사진이 있을 때만</b> 적는다. 대체면은 우리가 그린 것이라, 거기에도
+              출처를 붙이면 공사가 주지도 않은 이미지를 공사 것이라고 말하게 된다 —
+              표기를 빠뜨리는 것과 반대 방향이지만 <b>틀린 표기인 것은 같다.</b>
+            */}
+            {imageUrl && (
+              <span className="text-hint text-[11px]">이미지 출처: ⓒ한국관광공사</span>
+            )}
 
             <div className="flex flex-col gap-1.5">
               {/*
