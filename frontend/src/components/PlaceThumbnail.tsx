@@ -94,6 +94,29 @@ const FALLBACK_WORDMARK: Partial<Record<ThumbnailSize, string>> = {
   banner: 'text-[11px] sm:hidden',
 }
 
+/**
+ * 대체면이 <b>사진과 다른 상자</b>를 쓰는 자리. 없으면 사진과 같은 상자({@link SIZE_CLASS})다.
+ *
+ * <h3>홈 카드에서만 흰 테두리를 두른다</h3>
+ * 홈의 "이번 주 한적한 곳"은 좁은 화면에서 사진이 카드 <b>맨 위를 가로지른다.</b> 사진이면
+ * 색이 있어 카드 윗선이 서지만, 대체면은 옅은 회청이라 페이지 바탕(회백)과 거의 같아
+ * <b>카드 윗모서리가 페이지에 녹아 없어졌다.</b> 다른 카드는 흰 윗선이 있는데 이 카드만 없다.
+ *
+ * <p>대체면을 카드 가장자리에서 떼어 놓는다 — 흰 테두리 5px는 카드 면 그 자체라, 카드
+ * 윗선이 다른 카드와 같은 흰색으로 돌아온다. 사진에는 두르지 않는다. 사진은 제 색으로
+ * 이미 윗선을 세우고, 두르면 사진만 액자에 든 것처럼 보인다.
+ *
+ * <p>⚠️ <b>이 크기에서만이다.</b> 다른 자리(진단 목록·상세 시트)는 대체면이 카드 가장자리에
+ * 닿지 않아 이 문제가 없고, 거기까지 두르면 테두리가 뜻 없이 번진다. 넓은 화면에서는
+ * 같은 목록이 64px 썸네일로 접혀 문제 자체가 사라지므로 함께 걷는다.
+ *
+ * <p>{@code rounded-none} 대신 자기 반지름을 갖는다. SIZE_CLASS를 그대로 쓰고 위에 덧대면
+ * 두 {@code rounded-*}가 한 요소에서 다투어 어느 쪽이 이기는지 클래스 순서가 정한다.
+ */
+const FALLBACK_BOX: Partial<Record<ThumbnailSize, string>> = {
+  card: 'h-19 w-full rounded-[14px] border-[5px] border-surface lg:h-16 lg:w-16 lg:rounded-ui lg:border-0',
+}
+
 interface Props {
   /*
    * ⚠️ 이름은 받지 않는다. 대체면이 이름 첫 글자를 얹던 시절의 흔적이라 함께 걷었다 —
@@ -128,7 +151,7 @@ export function PlaceThumbnail({ imageUrl, size = 'lg', className = '' }: Props)
     <PlacePhotoFallback
       markClass={FALLBACK_MARK[size]}
       wordmarkClass={FALLBACK_WORDMARK[size]}
-      className={`${sizeClass} flex-none`}
+      className={`${FALLBACK_BOX[size] ?? SIZE_CLASS[size]} ${className} flex-none`}
     />
   )
 }
