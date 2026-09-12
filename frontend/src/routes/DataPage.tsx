@@ -584,6 +584,55 @@ function ThresholdSection() {
           </p>
         </Evidence>
 
+        {/*
+          ■ <b>척도를 건드리지 않았다는 것</b>을 말하는 자리 (2026-09-12)
+
+          위 카드가 "65를 어디 그었나"라면 여기는 <b>그 눈금이 무엇 위에 그어졌나</b>다.
+          둘을 갈라 둔 이유: 경계는 우리가 정했지만 척도는 <b>정하지 않기로</b> 정한 것이라,
+          같은 카드에 넣으면 둘 다 우리가 손댄 값처럼 읽힌다.
+
+          <p>이 칸이 없으면 답할 수 없는 물음이 둘이다 — "후보마다 0~100으로 다시 늘리나요"와
+          "서로 다른 관광지의 값을 그대로 견줘도 되나요". 뒤엣것은 PLACE OFF와 FULL PEAKOFF가
+          <b>딛고 선 전제</b>인데 화면 어디에도 근거가 없었다.
+
+          <p>⚠️ 마지막 문단은 <b>위 카드와 한 몸이다.</b> 재정규화를 넣는 날 65/35는
+          뜻을 잃는다 — 한쪽만 고치면 이 화면이 스스로 모순된다.
+        */}
+        <Evidence
+          title="집중률을 늘리거나 다시 정규화하지 않습니다"
+          value={
+            <>
+              원자료 <Num>0.3</Num> ~ <Num>100.0</Num>
+            </>
+          }
+          measured="2026-08-31 실측"
+        >
+          <p className="m-0">
+            한적도는 <strong className="text-fg font-semibold">100에서 집중률을 뺀 것</strong>이고 그게
+            전부입니다. 후보 목록이나 조회 결과의 최솟값·최댓값에 맞춰{' '}
+            <strong className="text-fg font-semibold">0~100으로 다시 늘리지 않습니다.</strong>
+          </p>
+          <p className="m-0 mt-2">
+            한때 늘려야 하나 싶었습니다 — 서비스 지역이 셋이던 때 관측 범위가 <Num>33~69</Num>라 뒤집으면{' '}
+            <Num>31~67</Num>에 모여 보였기 때문입니다. 전국 표본(
+            <strong className="text-fg font-semibold">64개 시군구 · 관측 87,150건</strong>)으로 보니
+            원자료가 이미 척도 전 구간을 쓰고 있었습니다.{' '}
+            <strong className="text-fg font-semibold">좁아 보였던 것은 척도가 아니라 우리가 셋만 보고
+            있어서</strong>였습니다.
+          </p>
+          <p className="m-0 mt-2">
+            장소별 <Num>30</Num>일 합계가{' '}
+            <strong className="text-fg font-semibold">322 ~ 2,957</strong>로 제각각이라(변동계수{' '}
+            <Num>0.32</Num>) <strong className="text-fg font-semibold">장소 안에서 정규화된 값도
+            아닙니다.</strong> 그래서 서로 다른 관광지의 값을 그대로 견줄 수 있고, 장소 교체와 설문 코스가
+            딛고 선 전제가 이것입니다.
+          </p>
+          <p className="m-0 mt-2">
+            ⚠️ 늘리면 <strong className="text-fg font-semibold">그 성질이 깨집니다.</strong> 같은 관광지가
+            후보 구성에 따라 다른 등급이 되어, 위 <Num>65</Num>/<Num>35</Num>가 가리키는 것이 사라집니다.
+          </p>
+        </Evidence>
+
         <Evidence
           title="연관 관광지를 점수에서 뺀 이유"
           value={
@@ -1246,7 +1295,9 @@ function RegionOffSection() {
             막는 방법이 프롬프트가 아니라 <strong className="text-fg font-semibold">응답 스키마에 지역
             칸을 만들지 않는 것</strong>입니다. 프롬프트로 금지하면 언젠가 넘어오지만, 받을 칸이 없으면
             넘어올 자리가 없습니다. 같은 이유로 관심사도 자유 문자열이 아니라{' '}
-            <strong className="text-fg font-semibold">정해진 아홉</strong> 중 하나입니다.
+            <strong className="text-fg font-semibold">정해진 여덟</strong> 중 하나입니다 — 음식 · 바다 ·
+            자연 · 역사 · 문화 · 레저 · 체험 · 쇼핑. 목록에 없는 값을 주면 "관심사 없음"으로 흘려보내고,
+            그때는 관심사로 거르지 않은 채 한적한 곳만 봅니다.
           </p>
         </div>
         <div className="flex flex-col gap-1">
@@ -1500,8 +1551,39 @@ function FullPeakoffSection() {
           상위 <Num>100</Num>곳을 원천으로 삼고, 거기서{' '}
           <strong className="text-fg font-semibold">코스에 어울리지 않는 분류만</strong> 뺍니다 —
           음식점·숙박·축제, 그리고 문화·명소에 섞여 있는 리조트·도서관·수련관. 그 뒤는 장소 교체와 같은
-          장치를 씁니다: 추천도를 매기고, 상위 후보군에서 가중 무작위로 한 칸씩 채웁니다.
+          장치를 씁니다: 추천도를 매기고, 상위 후보군에서 가중 무작위로 한 칸씩 채웁니다.{' '}
+          <strong className="text-fg font-semibold">새 점수를 만들지 않았습니다</strong> — 교체 추천이
+          쓰는 계산기를 그대로 부릅니다.
         </p>
+        {/*
+          채우는 방식 두 가지. <b>화면에 없으면 "그냥 점수순으로 채운다"로 읽힌다.</b>
+
+          <p>첫 칸을 따로 적는 이유: 근접도는 <b>기준 장소가 있어야</b> 나오는 값이라 하루의
+          첫 칸에는 존재할 수가 없다. 0점으로 채우면 있지도 않은 항목이 점수를 깎는다.
+
+          <p>분류 교대를 적는 이유: 이것이 없으면 한적한 분류 하나가 하루를 통째로 가져간다.
+          ⚠️ <b>거르는 문이 아니라 선호</b>다 — 후보가 없으면 완화한다. 문으로 두면 설문의
+          "어느 답을 골라도 코스가 나와야 한다"를 어기게 된다.
+        */}
+        <div className="bg-bg rounded-ui flex flex-col gap-2 p-3.5">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-fg text-[12.5px] font-semibold">하루의 첫 칸은 한적도만 봅니다</span>
+            <span className="text-muted text-[12px] leading-[1.7]">
+              근접도는 <strong className="text-fg font-semibold">기준 장소가 있어야</strong> 나오는
+              값이라 첫 칸에는 존재하지 않습니다. 0점으로 채우면 있지도 않은 항목이 점수를 깎으므로,
+              항목 자체를 만들지 않습니다.
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-fg text-[12.5px] font-semibold">다음 칸은 직전과 다른 분류를 먼저 봅니다</span>
+            <span className="text-muted text-[12px] leading-[1.7]">
+              없으면 한적한 분류 하나가 하루를 통째로 가져가 <strong className="text-fg font-semibold">
+              절만 다섯 곳 도는 코스</strong>가 나옵니다. 다만 <strong className="text-fg font-semibold">
+              거르는 문이 아니라 선호</strong>라, 다른 분류에 갈 곳이 없으면 같은 분류를 다시 허용합니다 —
+              문으로 두면 하루가 통째로 비는 답이 생깁니다.
+            </span>
+          </div>
+        </div>
         <p className="text-muted m-0 text-[12.5px] leading-[1.7]">
           <strong className="text-fg font-semibold">1등을 그대로 쓰지 않는 이유가 여기서도 같습니다.</strong>{' '}
           같은 장소가 모든 사용자에게 추천되면 그곳이 새로운 혼잡지가 됩니다. 붐비는 곳을 피하라고 안내해
