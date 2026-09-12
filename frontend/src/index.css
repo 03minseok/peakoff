@@ -867,6 +867,132 @@
     min-height: 44px;
     transform: translate(-50%, -50%);
   }
+
+  /*
+   * ■ 소개 화면(/about)의 스크롤 등장 (2026-09-12)
+   *
+   * 스크롤해 내려오면 절마다 글이 아래에서 떠오른다. 처음 만난 사람에게 이야기를
+   * 순서대로 읽히려는 화면이라, 한꺼번에 다 보이는 것보다 <b>읽는 차례대로 나타나는</b>
+   * 편이 뜻에 맞는다. 하루에 여러 번 보는 화면이 아니라 허용된다 — 홈·목록 카드에는
+   * 넣지 않는다(emil-animate 스킬 "하지 말 것").
+   *
+   * <h3>어떻게 도는가</h3>
+   * {@code useInView}가 요소가 화면에 들어온 순간 {@code data-inview}를 단다.
+   * 그 전까지 <b>직접 자식들</b>이 투명하고 18px 아래에 있다가, 달리면 차례로 올라온다.
+   * 차례는 {@code :nth-child}가 정한다 — 인라인 스타일이 필요 없고 마크업 순서가 곧 순서다.
+   *
+   * <h3>왜 transition이지 animation이 아닌가</h3>
+   * 시작 상태(숨김)와 끝 상태(보임)가 <b>속성값</b>으로 서 있어야 한다. 그래야 인쇄와
+   * reduced-motion에서 "끝 상태를 그냥 쓴다"고 한 줄로 되돌릴 수 있다. 키프레임으로
+   * 두면 그 자리마다 animation을 끄고 끝값을 다시 적어야 한다.
+   *
+   * <h3>움직이는 속성은 둘뿐</h3>
+   * {@code opacity}와 {@code translate}. 둘 다 컴포지터에서만 돌아 레이아웃을 건드리지 않는다.
+   * {@code transform} 대신 {@code translate} 속성을 쓴 이유: 아래 스크롤 연동 효과가
+   * {@code transform}·{@code scale}을 따로 쓰는데, 같은 요소에서 <b>서로 덮어쓰지 않게</b>
+   * 속성을 갈라 둔 것이다.
+   *
+   * <h3>시간</h3>
+   * 640ms · ease-out-quart · 90ms 간격. 제품 UI의 300ms 상한보다 길다 — 이 화면은
+   * 조작하는 곳이 아니라 읽는 곳이라, 시트처럼 손끝에 반응할 필요가 없다.
+   * 곡선은 시트·대화상자와 같은 토큰을 쓴다. 곡선이 갈리면 같은 서비스로 안 읽힌다.
+   */
+  .reveal > * {
+    opacity: 0;
+    translate: 0 18px;
+    transition:
+      opacity 640ms var(--ease-out-quart),
+      translate 640ms var(--ease-out-quart);
+    transition-delay: calc(var(--reveal-n, 0) * 90ms);
+  }
+  .reveal[data-inview] > * {
+    opacity: 1;
+    translate: 0 0;
+  }
+  .reveal > :nth-child(1) { --reveal-n: 0; }
+  .reveal > :nth-child(2) { --reveal-n: 1; }
+  .reveal > :nth-child(3) { --reveal-n: 2; }
+  .reveal > :nth-child(4) { --reveal-n: 3; }
+  .reveal > :nth-child(5) { --reveal-n: 4; }
+  .reveal > :nth-child(6) { --reveal-n: 5; }
+  .reveal > :nth-child(7) { --reveal-n: 6; }
+  .reveal > :nth-child(8) { --reveal-n: 7; }
+
+  /*
+   * 그림이 먼저, 글이 뒤따르는 절.
+   * {@code .reveal-visual}만 바로 나타나고 나머지는 180ms 뒤에 차례로 온다.
+   * 마크업 순서를 바꾸지 않고 지연만 바꾼다 — 글이 위에, 그림이 아래에 있어도
+   * 그림이 먼저 자리를 잡는다.
+   */
+  .reveal[data-lead] > * {
+    transition-delay: calc(180ms + var(--reveal-n, 0) * 90ms);
+  }
+  .reveal[data-lead] > .reveal-visual {
+    transition-delay: 0ms;
+  }
+
+  /*
+   * 날짜 띠는 <b>왼쪽에서 자라난다.</b>
+   * 떠오르는 대신 늘어나는 이유: 날짜가 순서대로 놓인 그림이라, 왼쪽부터 채워지는
+   * 움직임이 뜻과 맞는다. {@code width}가 아니라 {@code scaleX}다 — width는 매 프레임
+   * 레이아웃을 다시 잰다.
+   */
+  .about-day {
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 520ms var(--ease-out-quart);
+    transition-delay: calc(240ms + var(--day-n, 0) * 55ms);
+  }
+  .reveal[data-inview] .about-day {
+    transform: scaleX(1);
+  }
+
+  /*
+   * ■ 스크롤에 <b>직접</b> 묶이는 움직임 — 진보적 향상
+   *
+   * 위의 등장은 "들어온 순간 한 번"이고, 이것은 <b>스크롤 위치가 곧 진행도</b>다.
+   * 손가락이 멈추면 멈추고 되돌리면 되돌아온다. JS가 없다 — 브라우저가 컴포지터에서
+   * 스크롤 오프셋을 진행도로 바로 읽는다.
+   *
+   * <p>지원하지 않는 브라우저는 {@code @supports}에 걸려 <b>정지 상태</b>로 본다.
+   * 그래서 끝값이 아니라 <b>중간값이 정지 상태</b>가 되도록 키프레임을 잡는다 —
+   * drift는 위아래로 흐르되 0을 지나고, settle은 살짝 작았다가 1이 된다.
+   *
+   * <p>{@code linear}인 이유: 진행도가 스크롤 거리 그 자체라 곡선을 얹으면
+   * 손가락 이동과 화면 이동이 어긋난다. 여기서는 linear가 "기계적"이 아니라 "정직"하다.
+   */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .about-drift {
+        animation: pk-about-drift linear both;
+        animation-timeline: view();
+        animation-range: entry 0% exit 100%;
+      }
+      .about-settle {
+        animation: pk-about-settle linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 55%;
+      }
+    }
+  }
+}
+
+@keyframes pk-about-drift {
+  from {
+    transform: translateY(22px);
+  }
+  to {
+    transform: translateY(-22px);
+  }
+}
+
+@keyframes pk-about-settle {
+  from {
+    scale: 0.965;
+  }
+  to {
+    scale: 1;
+  }
 }
 
 @keyframes pk-dim-in {
@@ -1045,5 +1171,43 @@
   }
   .press:active:not(:disabled) {
     transform: none;
+  }
+
+  /*
+   * 소개 화면의 등장·성장·스크롤 연동을 전부 끈다. 끝 상태를 그대로 쓴다 —
+   * transition만 끄면 숨김 상태로 굳어 <b>글이 영영 안 보인다.</b>
+   * (useInView도 이 조건에서는 관찰자를 세우지 않고 바로 data-inview를 단다.)
+   */
+  .reveal > * {
+    opacity: 1;
+    translate: 0 0;
+    transition: none;
+  }
+  .about-day {
+    transform: none;
+    transition: none;
+  }
+  .about-drift,
+  .about-settle {
+    animation: none;
+  }
+}
+
+/*
+ * 인쇄에는 스크롤이 없다. 관찰자가 한 번도 안 울린 절이 통째로 빈 종이가 된다.
+ * 등장 전 상태를 걷어내고 끝 상태로 찍는다.
+ */
+@media print {
+  .reveal > * {
+    opacity: 1;
+    translate: 0 0;
+    transition: none;
+  }
+  .about-day {
+    transform: none;
+  }
+  .about-drift,
+  .about-settle {
+    animation: none;
   }
 }

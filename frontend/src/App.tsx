@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
+import { AboutPage } from './routes/AboutPage'
 import { CoursePage } from './routes/CoursePage'
 import { DiagnosisPage } from './routes/DiagnosisPage'
 import { HomePage } from './routes/HomePage'
@@ -78,6 +79,12 @@ function App() {
               내용이 통째로 바뀌면서 뜻을 잃었다. 아래 한 줄이 옛 주소를 여기로 보낸다.
               히스토리를 남기지 않아(replace) 뒤로가기가 그 주소를 다시 밟지 않는다.
             */}
+            {/*
+              서비스 소개. 읽는 사람이 <b>여행자</b>라 아래 {@code /data}와 갈라 둔다 —
+              저쪽은 값을 정한 근거를 펴는 곳이고(읽는 사람이 심사위원), 여기는
+              "왜 만들었고 어떻게 푸는가"를 순서대로 읽히게 하는 곳이다.
+            */}
+            <Route path="about" element={<AboutPage />} />
             <Route path="data" element={<DataPage />} />
             <Route path="preview" element={<Navigate to="/data" replace />} />
             {/*

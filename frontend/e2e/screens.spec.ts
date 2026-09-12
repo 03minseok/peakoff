@@ -39,6 +39,7 @@ const SCREENS = [
   { path: '/plan', name: 'plan' },
   { path: '/recommend', name: 'recommend' },
   { path: '/login', name: 'login' },
+  { path: '/about', name: 'about' },
   { path: '/data', name: 'data' },
 ]
 
@@ -87,6 +88,29 @@ for (const screen of SCREENS) {
     })
 
     await page.goto(screen.path, { waitUntil: 'networkidle' })
+
+    /*
+     * 찍기 전에 한 번 끝까지 훑어 내려갔다 올라온다.
+     *
+     * 소개 화면(/about)은 스크롤해 들어온 절만 나타난다(useInView). fullPage 캡처는
+     * 화면을 실제로 넘기지 않으므로, 훑지 않으면 <b>접힌 구간이 통째로 빈 채</b> 찍힌다 —
+     * "화면이 떠 있나"를 보는 도구가 뜬 화면을 못 보게 된다. 사용자가 하는 일을
+     * 그대로 하고 찍는다. 다른 화면에는 아무 영향이 없다.
+     *
+     * smooth scroll(index.css)이 켜져 있으면 scrollTo가 미끄러져 다 못 가므로 instant로 간다.
+     */
+    await page.evaluate(async () => {
+      const step = Math.max(200, window.innerHeight * 0.7)
+      const bottom = document.documentElement.scrollHeight
+      for (let y = 0; y < bottom; y += step) {
+        window.scrollTo({ top: y, behavior: 'instant' })
+        await new Promise((r) => setTimeout(r, 40))
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    })
+    // 등장 전환(640ms + stagger)이 끝나길 기다린다
+    await page.waitForTimeout(1100)
+
     await testInfo.attach(`${screen.name}.png`, {
       body: await page.screenshot({ fullPage: true }),
       contentType: 'image/png',
