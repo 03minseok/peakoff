@@ -13,10 +13,17 @@ import { useAuth } from '../state/authContext'
  * <p>두 컴포넌트가 {@code ITEMS} 하나를 공유한다. 목록을 두 벌로 적으면 메뉴를 더할 때
  * 한쪽만 고쳐진다.
  *
- * <h3>헤더에 남긴 것 (2026-09-09)</h3>
+ * <h3>헤더에 남긴 것 (2026-09-13 갱신)</h3>
  * <pre>
- *   PEAKOFF   코스 짜기 · 코스 발견 ....................... 마이페이지
+ *   PEAKOFF   코스 짜기 · 코스 발견 .......... 서비스 소개 │ 마이페이지
+ *             └── 하는 것(ITEMS) ──┘         └ 읽는 것 ┘   └ 계정 ┘
  * </pre>
+ *
+ * <p><b>"서비스 소개"는 {@code ITEMS}에 넣지 않는다.</b> 왼쪽 둘은 홈 진입 카드 둘과
+ * 짝이고(나침반 = 가고 싶은 곳이 있다 · 주사위 = 없다) 둘 다 <b>하는 것</b>이다.
+ * 소개는 <b>읽는 것</b>이라 같은 줄에 같은 무게로 세우면 그 짝이 깨지고, 핵심 진입점보다
+ * 강조되어서도 안 된다. 오른쪽 유틸리티 자리에 두면 <b>위치가 위계를 말해</b> 준다 —
+ * 아이콘도 필요 없다.
  *
  * <p><b>"홈"을 걷어냈다.</b> 왼쪽 글자가 이미 홈으로 가는 링크다(그 링크의 이름이
  * "PEAKOFF 처음으로"다). 같은 곳으로 가는 두 개가 손가락 하나 거리에 나란히 서 있었고,
@@ -162,6 +169,28 @@ const MY_PAGE: Item = {
 }
 
 /**
+ * 서비스 소개. <b>{@code ITEMS}와 갈라 둔 이유는 {@link MY_PAGE}와 같다</b> — 자리가 다르다.
+ *
+ * <p>넓은 화면에서는 계정 자리 왼쪽에, 좁은 화면에서는 메뉴 목록에서 이동 링크와 계정
+ * 사이에 선다. 읽는 곳이라 하는 곳들과 계정 사이가 제 자리다.
+ *
+ * <p>그림은 <b>동그라미 안의 i</b>다. {@code Alert}(동그라미 안의 !)와 획은 같고 점의
+ * 자리만 위아래로 갈린다 — 저쪽은 경고, 이쪽은 알림이다. 둘이 같은 화면에 함께 서는
+ * 일이 없어 이 차이로 충분하다.
+ */
+const ABOUT: Item = {
+  to: '/about',
+  label: '서비스 소개',
+  icon: (
+    <svg {...ICON_PROPS}>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6.6v0" />
+      <path d="M10 9.4v4" />
+    </svg>
+  ),
+}
+
+/**
  * 좁은 화면의 헤더에 서는 메뉴 토글.
  *
  * <p>{@link HeaderNav}가 나타나는 md 아래에서만 보인다. 둘이 동시에 보이면 같은 링크가
@@ -272,7 +301,7 @@ export function MobileMenu() {
               옮겼지만 여기는 옮길 자리가 없다 — 좁은 화면 헤더에는 토글뿐이라,
               메뉴 밖으로 빼면 갈 길이 사라진다. 계정이라는 것은 <b>아래 선</b>이 말한다.
             */}
-            {[...ITEMS, ...(!loading && member ? [MY_PAGE] : [])].map((item) => (
+            {[...ITEMS, ABOUT, ...(!loading && member ? [MY_PAGE] : [])].map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -354,6 +383,34 @@ export function HeaderNav() {
       ))}
 
     </nav>
+  )
+}
+
+/**
+ * 헤더 오른쪽, 계정 자리 <b>왼쪽</b>에 서는 소개 링크.
+ *
+ * <p>{@link HeaderNav}(왼쪽 이동 링크들)와 같은 글자 크기·같은 활성 표시를 쓴다.
+ * 모양까지 다르게 두면 같은 종류(갈 곳)인 것을 알아볼 단서가 없어진다 —
+ * 이것이 이동이 아니라 <b>읽는 곳</b>이라는 사실은 자리가 말한다.
+ *
+ * <p>⚠️ <b>좁은 화면에서는 서지 않는다.</b> 그쪽은 {@link MobileMenu} 안에 있다.
+ * 좁은 헤더에 토글·로그인과 나란히 셋을 두면 오른쪽이 붐빈다 — 마이페이지가
+ * 같은 이유로 메뉴 안에 있다.
+ *
+ * <p>홈은 {@code Layout}을 쓰지 않으므로 <b>홈 헤더에도 따로 넣어야 한다.</b>
+ */
+export function HeaderAboutLink() {
+  return (
+    <NavLink
+      to="/about"
+      className={({ isActive }) =>
+        `hidden text-[13.5px] whitespace-nowrap no-underline transition-colors md:block ${
+          isActive ? 'text-fg font-semibold' : 'text-muted hover:text-fg font-medium'
+        }`
+      }
+    >
+      {ABOUT.label}
+    </NavLink>
   )
 }
 

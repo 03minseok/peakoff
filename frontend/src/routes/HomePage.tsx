@@ -6,7 +6,7 @@ import { ChevronRight, Heart } from '../components/icons'
 import { PlaceDetailSheet } from '../components/PlaceDetailSheet'
 import type { TimelinePlace } from '../components/CourseTimeline'
 import { PlaceThumbnail } from '../components/PlaceThumbnail'
-import { HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
+import { HeaderAboutLink, HeaderAuthAction, HeaderNav, MobileMenu } from '../components/Nav'
 import { LEVEL_COLOR_VAR, LEVEL_TINT } from '../components/levelStyles'
 import { PublicCourseSheet } from '../components/PublicCourseSheet'
 import { RegionChat } from '../components/RegionChat'
@@ -801,7 +801,8 @@ export function HomePage() {
             -mr-2는 묶음에 준다. 그래야 좁은 화면에서는 토글이, 넓은 화면에서는
             계정 버튼이 각각 헤더 가장자리에 붙는다.
           */}
-          <div className="-mr-2 flex flex-none items-center gap-1 self-stretch">
+          <div className="-mr-2 flex flex-none items-center gap-3.5 self-stretch md:gap-4">
+            <HeaderAboutLink />
             <HeaderAuthAction />
             <MobileMenu />
           </div>

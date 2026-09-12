@@ -1,6 +1,6 @@
 import { Link, Outlet } from 'react-router'
 import { BrandLockup } from './BrandMark'
-import { HeaderAuthAction, HeaderNav, MobileMenu } from './Nav'
+import { HeaderAboutLink, HeaderAuthAction, HeaderNav, MobileMenu } from './Nav'
 
 /**
  * 모든 페이지가 공유하는 껍데기.
@@ -49,7 +49,8 @@ export function Layout() {
             -mr-2는 묶음에 준다. 그래야 좁은 화면에서는 토글이, 넓은 화면에서는
             계정 버튼이 각각 헤더 가장자리에 붙는다.
           */}
-          <div className="-mr-2 flex flex-none items-center gap-1 self-stretch">
+          <div className="-mr-2 flex flex-none items-center gap-3.5 self-stretch md:gap-4">
+            <HeaderAboutLink />
             <HeaderAuthAction />
             <MobileMenu />
           </div>
